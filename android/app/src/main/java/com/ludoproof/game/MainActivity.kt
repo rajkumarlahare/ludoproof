@@ -118,7 +118,7 @@ class MainActivity : Activity() {
         content.addView(
             TextView(this).apply {
                 text =
-                    "Server-authoritative Ludo with verifiable EntroNex dice."
+                    "Fair multiplayer Ludo with EntroNex verified dice."
                 textSize = 14f
                 gravity =
                     Gravity.CENTER_HORIZONTAL
@@ -321,9 +321,7 @@ class MainActivity : Activity() {
                     dp(24),
                 )
                 text =
-                    "Create or join a match.\n" +
-                        "API: " +
-                        BuildConfig.LUDOPROOF_API_BASE_URL
+                    "Create or join a match to begin."
             }
         content.addView(statusText)
 
