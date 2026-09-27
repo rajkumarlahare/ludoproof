@@ -25,11 +25,14 @@ Worker:
 ludoproof-game-api
 ```
 
-Durable Object:
+Durable Objects:
 
 ```text
 LUDOPROOF_MATCHES -> MatchRoom
+LUDOPROOF_API_GATE -> ApiGate
 ```
+
+The rate gate is sharded by a one-way hash of the Cloudflare client IP plus request scope. Raw client IP addresses are not stored in match state or limiter state.
 
 Required non-secret variable:
 
@@ -51,7 +54,7 @@ Readiness endpoint:
 GET /ready
 ```
 
-The endpoint fails closed with HTTP 503 until the match storage binding and EntroNex server credential are configured.
+The endpoint fails closed with HTTP 503 until the match storage binding, API rate-gate binding, and EntroNex server credential are configured.
 
 ## Android release security
 
@@ -63,7 +66,8 @@ The release candidate:
 - encrypts the pending unrevealed client seed with Android Keystore;
 - limits API response size;
 - enables release shrinking and resource shrinking;
-- runs release lint in CI.
+- runs release lint in CI;
+- refreshes multiplayer state automatically only while the Activity is in the foreground.
 
 The release signing key must be managed outside this repository. Never commit a keystore or signing password.
 
