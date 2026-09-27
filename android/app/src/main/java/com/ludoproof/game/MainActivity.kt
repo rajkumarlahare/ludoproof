@@ -77,6 +77,10 @@ class MainActivity : Activity() {
         PendingRollStore(this)
     }
 
+    private val pendingOperationStore by lazy {
+        PendingOperationStore(this)
+    }
+
     override fun onCreate(
         savedInstanceState: Bundle?,
     ) {
@@ -359,14 +363,35 @@ class MainActivity : Activity() {
                 )
                 return
             }
+        val operationKey =
+            "create:" + displayName
+        val requestId =
+            runCatching {
+                pendingOperationStore
+                    .getOrCreate(
+                        "create",
+                        operationKey,
+                    )
+            }.getOrElse {
+                showStatus(
+                    it.message
+                        ?: "Could not prepare match request",
+                )
+                return
+            }
 
         runNetwork(
             action = {
                 api.createMatch(
                     displayName,
+                    requestId,
                 )
             },
             onSuccess = {
+                pendingOperationStore.clear(
+                    "create",
+                    operationKey,
+                )
                 captureSession(it)
                 applyResponse(it)
             },
@@ -402,14 +427,39 @@ class MainActivity : Activity() {
             return
         }
 
+        val operationKey =
+            "join:" +
+                code +
+                ":" +
+                displayName
+        val requestId =
+            runCatching {
+                pendingOperationStore
+                    .getOrCreate(
+                        "join",
+                        operationKey,
+                    )
+            }.getOrElse {
+                showStatus(
+                    it.message
+                        ?: "Could not prepare join request",
+                )
+                return
+            }
+
         runNetwork(
             action = {
                 api.joinMatch(
                     code,
                     displayName,
+                    requestId,
                 )
             },
             onSuccess = {
+                pendingOperationStore.clear(
+                    "join",
+                    operationKey,
+                )
                 captureSession(it)
                 applyResponse(it)
             },
@@ -504,6 +554,20 @@ class MainActivity : Activity() {
     private fun moveToken(
         index: Int,
     ) {
+        val eventIndex =
+            currentState
+                ?.pendingRoll
+                ?.eventIndex
+                ?.takeIf {
+                    it >= 0
+                }
+                ?: run {
+                    showStatus(
+                        "No verified roll is available for this move.",
+                    )
+                    return
+                }
+
         withSession {
                 code,
                 token,
@@ -514,6 +578,7 @@ class MainActivity : Activity() {
                         code,
                         token,
                         index,
+                        eventIndex,
                     )
                 },
             )
