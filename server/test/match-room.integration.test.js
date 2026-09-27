@@ -725,6 +725,7 @@ test(
               host.playerToken,
             body: {
               tokenIndex: 0,
+              eventIndex: 0,
             },
           },
         ),
