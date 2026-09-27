@@ -1,6 +1,8 @@
 package com.ludoproof.game
 
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -111,6 +113,10 @@ class GameApi(
                 "Accept",
                 "application/json",
             )
+            connection.setRequestProperty(
+                "User-Agent",
+                "LudoProof-Android/" + BuildConfig.VERSION_NAME,
+            )
 
             if (playerToken != null) {
                 connection.setRequestProperty(
@@ -142,8 +148,12 @@ class GameApi(
                 }
             val text =
                 stream
-                    ?.bufferedReader(Charsets.UTF_8)
-                    ?.use { it.readText() }
+                    ?.use {
+                        readUtf8Limited(
+                            it,
+                            MAX_RESPONSE_BYTES,
+                        )
+                    }
                     .orEmpty()
 
             val json =
@@ -172,6 +182,45 @@ class GameApi(
             connection.disconnect()
         }
     }
+
+    private fun readUtf8Limited(
+        stream: InputStream,
+        maxBytes: Int,
+    ): String {
+        val output =
+            ByteArrayOutputStream()
+        val buffer =
+            ByteArray(8 * 1024)
+        var total = 0
+
+        while (true) {
+            val count =
+                stream.read(buffer)
+            if (count < 0) break
+            total += count
+            if (total > maxBytes) {
+                throw GameApiException(
+                    code = "RESPONSE_TOO_LARGE",
+                    message = "Server response exceeded the safety limit.",
+                )
+            }
+            output.write(
+                buffer,
+                0,
+                count,
+            )
+        }
+
+        return output
+            .toByteArray()
+            .toString(Charsets.UTF_8)
+    }
+
+    private companion object {
+        const val MAX_RESPONSE_BYTES =
+            512 * 1024
+    }
+
 }
 
 class GameApiException(
