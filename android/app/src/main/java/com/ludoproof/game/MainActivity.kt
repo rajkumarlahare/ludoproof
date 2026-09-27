@@ -33,6 +33,7 @@ class MainActivity : Activity() {
     private lateinit var proofDetailsText: TextView
     private lateinit var statusText: TextView
     private lateinit var boardView: LudoBoardView
+    private lateinit var diceView: DiceView
     private lateinit var startButton: Button
     private lateinit var refreshButton: Button
     private lateinit var shareButton: Button
@@ -196,6 +197,17 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ),
+        )
+
+        diceView = DiceView(this)
+        content.addView(
+            diceView,
+            LinearLayout.LayoutParams(
+                dp(92),
+                dp(92),
+            ).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+            },
         )
 
         verificationText =
@@ -413,6 +425,9 @@ class MainActivity : Activity() {
                 code,
                 token,
             ->
+            diceView.startRolling()
+            verificationText.text =
+                "Verifying committed EntroNex roll…"
             runNetwork(
                 action = {
                     var secret =
@@ -699,6 +714,7 @@ class MainActivity : Activity() {
                 outcome != null &&
                 digest != null
             ) {
+                diceView.showOutcome(outcome)
                 buildString {
                     append(
                         "Dice: ",
@@ -968,6 +984,7 @@ class MainActivity : Activity() {
                 error: Exception,
             ) {
                 mainHandler.post {
+                    diceView.stopRolling()
                     setNetworkControls(
                         enabled = true,
                     )
