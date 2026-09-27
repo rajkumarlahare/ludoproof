@@ -25,14 +25,8 @@ const kotlin =
 const bom = {
   bomFormat: "CycloneDX",
   specVersion: "1.5",
-  serialNumber:
-    "urn:uuid:" +
-    crypto.randomUUID(),
   version: 1,
   metadata: {
-    timestamp:
-      new Date()
-        .toISOString(),
     component: {
       type: "application",
       name: "LudoProof",
