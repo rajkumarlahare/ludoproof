@@ -424,7 +424,7 @@ class LudoBoardView @JvmOverloads constructor(
                     ) ?: return@forEachIndexed
 
                 val offset =
-                    if (position in 0..56) {
+                    if (position in 0..57) {
                         tokenOffset(
                             tokenIndex + player.seat,
                             cell,
