@@ -62,9 +62,17 @@ test(
       async (_input, init) =>
         new Promise(
           (_resolve, reject) => {
+            const keepAlive =
+              setTimeout(
+                () => {},
+                1_000,
+              );
             init.signal.addEventListener(
               "abort",
               () => {
+                clearTimeout(
+                  keepAlive,
+                );
                 const error =
                   new Error(
                     "aborted",
