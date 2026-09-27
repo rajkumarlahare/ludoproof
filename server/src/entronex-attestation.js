@@ -125,6 +125,11 @@ export function validatePayload(
     payload.type !== expected.type ||
     payload.roundId !== expected.roundId ||
     (
+      "tenantHash" in expected &&
+      payload.tenantHash !==
+        expected.tenantHash
+    ) ||
+    (
       "protocol" in expected &&
       payload.protocol !==
         expected.protocol
