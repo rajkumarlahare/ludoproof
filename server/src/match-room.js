@@ -759,10 +759,16 @@ export class MatchRoom {
 
     const pending =
       state.pendingRoll;
+    if (!pending) {
+      throw httpError(
+        409,
+        "NO_RESOLVED_ROLL",
+        "a verified roll is required before moving",
+      );
+    }
     if (
-      !pending ||
       pending.eventIndex !==
-        eventIndex
+      eventIndex
     ) {
       throw httpError(
         409,
