@@ -11,23 +11,35 @@ class GameApi(
 ) {
     private val baseUrl = baseUrl.trimEnd('/')
 
-    fun createMatch(displayName: String): JSONObject =
+    fun createMatch(
+        displayName: String,
+        clientRequestId: String,
+    ): JSONObject =
         request(
             method = "POST",
             path = "/api/matches",
             body = JSONObject()
-                .put("displayName", displayName),
+                .put("displayName", displayName)
+                .put(
+                    "clientRequestId",
+                    clientRequestId,
+                ),
         )
 
     fun joinMatch(
         matchId: String,
         displayName: String,
+        clientRequestId: String,
     ): JSONObject =
         request(
             method = "POST",
             path = "/api/matches/${matchId.uppercase()}/join",
             body = JSONObject()
-                .put("displayName", displayName),
+                .put("displayName", displayName)
+                .put(
+                    "clientRequestId",
+                    clientRequestId,
+                ),
         )
 
     fun state(
@@ -81,13 +93,18 @@ class GameApi(
         matchId: String,
         playerToken: String,
         tokenIndex: Int,
+        eventIndex: Int,
     ): JSONObject =
         request(
             method = "POST",
             path = "/api/matches/${matchId.uppercase()}/move",
             playerToken = playerToken,
             body = JSONObject()
-                .put("tokenIndex", tokenIndex),
+                .put("tokenIndex", tokenIndex)
+                .put(
+                    "eventIndex",
+                    eventIndex,
+                ),
         )
 
     private fun request(
