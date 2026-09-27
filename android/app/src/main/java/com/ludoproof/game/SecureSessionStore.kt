@@ -36,13 +36,24 @@ class SecureSessionStore(
             Cipher.ENCRYPT_MODE,
             secretKey(),
         )
+        cipher.updateAAD(
+            LocalSecretBinding.playerSessionAad(
+                value.matchId,
+                value.playerId,
+            ),
+        )
         val encrypted =
             cipher.doFinal(
                 value.playerToken
                     .toByteArray(Charsets.UTF_8),
             )
 
-        prefs.edit()
+        val persisted =
+            prefs.edit()
+            .putInt(
+                KEY_FORMAT_VERSION,
+                LocalSecretBinding.FORMAT_VERSION,
+            )
             .putString(KEY_MATCH_ID, value.matchId)
             .putString(KEY_PLAYER_ID, value.playerId)
             .putString(
@@ -59,8 +70,11 @@ class SecureSessionStore(
                     Base64.NO_WRAP,
                 ),
             )
-            .apply()
+            .commit()
 
+        check(persisted) {
+            "Player session could not be durably persisted"
+        }
         legacyPrefs().edit().clear().apply()
     }
 
@@ -101,6 +115,12 @@ class SecureSessionStore(
             return null
         }
 
+        val formatVersion =
+            prefs.getInt(
+                KEY_FORMAT_VERSION,
+                1,
+            )
+
         return try {
             val cipher =
                 Cipher.getInstance(TRANSFORMATION)
@@ -115,6 +135,17 @@ class SecureSessionStore(
                     ),
                 ),
             )
+            if (
+                formatVersion >=
+                LocalSecretBinding.FORMAT_VERSION
+            ) {
+                cipher.updateAAD(
+                    LocalSecretBinding.playerSessionAad(
+                        matchId,
+                        playerId,
+                    ),
+                )
+            }
             val playerToken =
                 cipher.doFinal(
                     Base64.decode(
@@ -128,11 +159,19 @@ class SecureSessionStore(
                 clear()
                 null
             } else {
-                PlayerSession(
-                    matchId = matchId,
-                    playerId = playerId,
-                    playerToken = playerToken,
-                )
+                val value =
+                    PlayerSession(
+                        matchId = matchId,
+                        playerId = playerId,
+                        playerToken = playerToken,
+                    )
+                if (
+                    formatVersion <
+                    LocalSecretBinding.FORMAT_VERSION
+                ) {
+                    save(value)
+                }
+                value
             }
         } catch (_: Exception) {
             clear()
@@ -240,6 +279,8 @@ class SecureSessionStore(
         const val TRANSFORMATION =
             "AES/GCM/NoPadding"
 
+        const val KEY_FORMAT_VERSION =
+            "formatVersion"
         const val KEY_MATCH_ID = "matchId"
         const val KEY_PLAYER_ID = "playerId"
         const val LEGACY_PLAYER_TOKEN =
