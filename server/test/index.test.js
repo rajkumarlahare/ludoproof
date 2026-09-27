@@ -47,7 +47,36 @@ test("public responses include hardened security headers", async () => {
   );
 });
 
-test("ready is fail-closed until EntroNex secret and match storage exist", async () => {
+test("ready is fail-closed until EntroNex trust, storage, and upstream health are ready", { concurrency: false }, async (t) => {
+  const originalFetch =
+    globalThis.fetch;
+  globalThis.fetch =
+    async (input) => {
+      const url =
+        new URL(
+          typeof input === "string"
+            ? input
+            : input.url,
+        );
+      if (
+        url.pathname ===
+        "/health"
+      ) {
+        return Response.json({
+          ok: true,
+          service:
+            "entronex-v4-eval",
+          protocol: "v4",
+        });
+      }
+      throw new Error(
+        "unexpected fetch",
+      );
+    };
+  t.after(() => {
+    globalThis.fetch =
+      originalFetch;
+  });
   const missing =
     await body(
       await worker.fetch(
@@ -187,3 +216,54 @@ test("oversized JSON bodies fail before allocating match storage", async () => {
     "REQUEST_TOO_LARGE",
   );
 });
+
+
+test(
+  "ready fails closed when EntroNex health is unreachable",
+  { concurrency: false },
+  async (t) => {
+    const originalFetch =
+      globalThis.fetch;
+    globalThis.fetch =
+      async () => {
+        throw new Error(
+          "offline",
+        );
+      };
+    t.after(() => {
+      globalThis.fetch =
+        originalFetch;
+    });
+
+    const result =
+      await body(
+        await worker.fetch(
+          new Request(
+            "https://ludoproof.example/ready",
+          ),
+          {
+            ENTRONEX_BASE_URL:
+              "https://entronex.example.test",
+            ENTRONEX_API_TOKEN:
+              "lp_test_entronex_token_1234567890",
+            ...TEST_TRUST_ENV,
+            LUDOPROOF_MATCHES: {},
+            LUDOPROOF_API_GATE: {},
+          },
+        ),
+      );
+
+    assert.equal(
+      result.response.status,
+      503,
+    );
+    assert.equal(
+      result.json.ready,
+      false,
+    );
+    assert.equal(
+      result.json.entronexReachable,
+      false,
+    );
+  },
+);
