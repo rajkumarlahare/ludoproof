@@ -1,0 +1,14 @@
+{
+  "name": "ludoproof-game-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "deploy": "npx --yes wrangler@4.135.0 deploy",
+    "dev": "npx --yes wrangler@4.135.0 dev"
+  },
+  "engines": {
+    "node": ">=22 <23"
+  }
+}

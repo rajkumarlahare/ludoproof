@@ -1,0 +1,198 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  RULESET,
+  addPlayer,
+  applyMove,
+  attachHostAuth,
+  attachRoundCommitment,
+  authoritativeStateForRandomness,
+  globalCellFor,
+  legalTokenIndexes,
+  newMatch,
+  registerResolvedRoll,
+  reserveRoll,
+  startMatch,
+} from "../src/game.js";
+
+function activeMatch() {
+  let state = newMatch({
+    matchId: "ABC12345",
+    hostPlayerId: "p1",
+    hostDisplayName: "One",
+    now: 1,
+  });
+  state = attachHostAuth(state, "a".repeat(64), 2);
+  state = addPlayer(state, {
+    playerId: "p2",
+    displayName: "Two",
+    tokenAuthHash: "b".repeat(64),
+    now: 3,
+  });
+  return startMatch(state, "p1", 4);
+}
+
+test("a match requires at least two players and starts with host turn", () => {
+  let state = newMatch({
+    matchId: "M",
+    hostPlayerId: "p1",
+    hostDisplayName: "One",
+    now: 1,
+  });
+  assert.throws(() => startMatch(state, "p1", 2), /at least two players/);
+  state = attachHostAuth(state, "a".repeat(64), 2);
+  state = addPlayer(state, {
+    playerId: "p2",
+    displayName: "Two",
+    tokenAuthHash: "b".repeat(64),
+    now: 3,
+  });
+  state = startMatch(state, "p1", 4);
+  assert.equal(state.status, "ACTIVE");
+  assert.equal(state.turnSeat, 0);
+});
+
+test("yard token can leave only on six", () => {
+  const state = activeMatch();
+  assert.deepEqual(legalTokenIndexes(state, 0, 5), []);
+  assert.deepEqual(legalTokenIndexes(state, 0, 6), [0, 1, 2, 3]);
+});
+
+test("authoritative randomness snapshot excludes secret auth hashes", () => {
+  const snapshot = authoritativeStateForRandomness(activeMatch());
+  assert.equal(JSON.stringify(snapshot).includes("tokenAuthHash"), false);
+});
+
+test("one roll is reserved and bound to the current event index", () => {
+  const state = activeMatch();
+  const reserved = reserveRoll(state, {
+    playerId: "p1",
+    clientCommitment: "c".repeat(64),
+    eventIndex: 0,
+    actorHash: "1".repeat(64),
+    previousStateHash: "2".repeat(64),
+    rulesetHash: "3".repeat(64),
+    now: 5,
+  });
+  assert.equal(reserved.pendingRoll.status, "CREATING");
+  assert.equal(reserved.pendingRoll.eventIndex, 0);
+
+  const committed = attachRoundCommitment(reserved, {
+    roundId: "11111111-1111-4111-8111-111111111111",
+    serverCommitment: "4".repeat(64),
+    now: 6,
+  });
+  assert.equal(committed.pendingRoll.status, "COMMITTED");
+  assert.equal(committed.randomEventIndex, 1);
+});
+
+test("verified six lets a token enter and grants an extra turn", () => {
+  let state = activeMatch();
+  state = reserveRoll(state, {
+    playerId: "p1",
+    clientCommitment: "c".repeat(64),
+    eventIndex: 0,
+    actorHash: "1".repeat(64),
+    previousStateHash: "2".repeat(64),
+    rulesetHash: "3".repeat(64),
+    now: 5,
+  });
+  state = attachRoundCommitment(state, {
+    roundId: "11111111-1111-4111-8111-111111111111",
+    serverCommitment: "4".repeat(64),
+    now: 6,
+  });
+
+  const resolved = registerResolvedRoll(state, {
+    outcome: 6,
+    proofDigest: "5".repeat(64),
+    now: 7,
+  });
+  assert.deepEqual(resolved.legalTokenIndexes, [0, 1, 2, 3]);
+
+  const moved = applyMove(resolved.state, {
+    playerId: "p1",
+    tokenIndex: 0,
+    now: 8,
+  });
+  assert.equal(moved.state.players[0].tokens[0], 0);
+  assert.equal(moved.extraTurn, true);
+  assert.equal(moved.state.turnSeat, 0);
+});
+
+test("capture returns opponent token to yard and grants extra turn", () => {
+  let state = activeMatch();
+  state.players[0].tokens[0] = 1;
+  state.players[1].tokens[0] = 41;
+  assert.equal(globalCellFor("RED", 2), globalCellFor("GREEN", 41));
+
+  state = reserveRoll(state, {
+    playerId: "p1",
+    clientCommitment: "c".repeat(64),
+    eventIndex: 0,
+    actorHash: "1".repeat(64),
+    previousStateHash: "2".repeat(64),
+    rulesetHash: "3".repeat(64),
+    now: 5,
+  });
+  state = attachRoundCommitment(state, {
+    roundId: "11111111-1111-4111-8111-111111111111",
+    serverCommitment: "4".repeat(64),
+    now: 6,
+  });
+  const resolved = registerResolvedRoll(state, {
+    outcome: 1,
+    proofDigest: "5".repeat(64),
+    now: 7,
+  });
+  const moved = applyMove(resolved.state, {
+    playerId: "p1",
+    tokenIndex: 0,
+    now: 8,
+  });
+
+  assert.equal(moved.captures, 1);
+  assert.equal(moved.state.players[1].tokens[0], -1);
+  assert.equal(moved.extraTurn, true);
+  assert.equal(moved.state.turnSeat, 0);
+});
+
+test("third consecutive six forfeits the roll and passes turn", () => {
+  let state = activeMatch();
+  state.players[0].tokens[0] = 0;
+  state.consecutiveSixes[0] = 2;
+  state = reserveRoll(state, {
+    playerId: "p1",
+    clientCommitment: "c".repeat(64),
+    eventIndex: 0,
+    actorHash: "1".repeat(64),
+    previousStateHash: "2".repeat(64),
+    rulesetHash: "3".repeat(64),
+    now: 5,
+  });
+  state = attachRoundCommitment(state, {
+    roundId: "11111111-1111-4111-8111-111111111111",
+    serverCommitment: "4".repeat(64),
+    now: 6,
+  });
+  const resolved = registerResolvedRoll(state, {
+    outcome: 6,
+    proofDigest: "5".repeat(64),
+    now: 7,
+  });
+  assert.equal(resolved.forfeitedThirdSix, true);
+  assert.equal(resolved.state.turnSeat, 1);
+  assert.equal(resolved.state.pendingRoll, null);
+  assert.equal(resolved.state.consecutiveSixes[0], 0);
+});
+
+test("exact roll is required to reach home", () => {
+  const state = activeMatch();
+  state.players[0].tokens = [55, 56, 57, -1];
+  assert.deepEqual(legalTokenIndexes(state, 0, 2), [0]);
+  assert.deepEqual(legalTokenIndexes(state, 0, 1), [0, 1]);
+});
+
+test("ruleset contains safe global cells and no capture there", () => {
+  assert.deepEqual(RULESET.safeGlobalCells, [0, 8, 13, 21, 26, 34, 39, 47]);
+});

@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ludoproof-game-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-25",
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "LUDOPROOF_MATCHES",
+        "class_name": "MatchRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "MatchRoom"
+      ]
+    }
+  ],
+  "vars": {
+    "ENTRONEX_BASE_URL": "https://entronex-v4-eval.ai-8f3.workers.dev"
+  }
+}
