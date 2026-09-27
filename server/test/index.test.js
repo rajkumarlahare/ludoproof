@@ -78,6 +78,7 @@ test("ready is fail-closed until EntroNex secret and match storage exist", async
           ENTRONEX_API_TOKEN:
             "lp_test_entronex_token_1234567890",
           LUDOPROOF_MATCHES: {},
+          LUDOPROOF_API_GATE: {},
         },
       ),
     );
