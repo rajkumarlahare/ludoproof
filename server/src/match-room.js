@@ -22,9 +22,10 @@ import {
 import {
   bearerToken,
   canonicalJson,
+  derivePlayerIdentity,
   httpError,
   normalizeDisplayName,
-  randomToken,
+  requireClientRequestId,
   requireDigest,
   sha256Hex,
 } from "./crypto.js";
@@ -170,65 +171,189 @@ export class MatchRoom {
   }
 
   async #create(body) {
-    const existing = await this.ctx.storage.get(STATE_KEY);
+    const displayName =
+      normalizeDisplayName(
+        body?.displayName,
+      );
+    const matchId =
+      String(
+        body?.matchId ?? "",
+      );
+    const clientRequestId =
+      requireClientRequestId(
+        body?.clientRequestId,
+      );
+
+    if (
+      !/^LP[A-Z2-9]{8}$/.test(
+        matchId,
+      )
+    ) {
+      throw httpError(
+        400,
+        "INVALID_MATCH_ID",
+        "invalid match ID",
+      );
+    }
+
+    const identity =
+      await derivePlayerIdentity(
+        this.env,
+        matchId,
+        clientRequestId,
+      );
+    const existing =
+      await this.ctx.storage.get(
+        STATE_KEY,
+      );
+
     if (existing) {
-      throw httpError(409, "MATCH_EXISTS", "match already exists");
+      if (
+        existing.createRequestId ===
+          clientRequestId &&
+        existing.hostPlayerId ===
+          identity.playerId
+      ) {
+        return json(200, {
+          replayed: true,
+          matchId,
+          playerId:
+            identity.playerId,
+          playerToken:
+            identity.playerToken,
+          state:
+            publicStateWithHistory(
+              existing,
+            ),
+        });
+      }
+      throw httpError(
+        409,
+        "MATCH_EXISTS",
+        "match already exists",
+      );
     }
 
-    const displayName = normalizeDisplayName(body?.displayName);
-    const matchId = String(body?.matchId ?? "");
-    if (!/^LP[A-Z2-9]{8}$/.test(matchId)) {
-      throw httpError(400, "INVALID_MATCH_ID", "invalid match ID");
-    }
-
-    const playerId = crypto.randomUUID();
-    const playerToken = randomToken();
-    const tokenAuthHash = await sha256Hex(
-      "ludoproof:player-token:v1:" + playerToken,
-    );
+    const tokenAuthHash =
+      await sha256Hex(
+        "ludoproof:player-token:v1:" +
+          identity.playerToken,
+      );
     const now = Date.now();
 
     let state = newMatch({
       matchId,
-      hostPlayerId: playerId,
-      hostDisplayName: displayName,
+      hostPlayerId:
+        identity.playerId,
+      hostDisplayName:
+        displayName,
       now,
     });
-    state = attachHostAuth(state, tokenAuthHash, now);
+    state = attachHostAuth(
+      state,
+      tokenAuthHash,
+      now,
+    );
+    state.createRequestId =
+      clientRequestId;
+    state.players[0]
+      .joinRequestId =
+      clientRequestId;
     state.history = [];
     await this.#persist(state);
 
     return json(201, {
+      replayed: false,
       matchId,
-      playerId,
-      playerToken,
-      state: publicStateWithHistory(state),
+      playerId:
+        identity.playerId,
+      playerToken:
+        identity.playerToken,
+      state:
+        publicStateWithHistory(
+          state,
+        ),
     });
   }
 
   async #join(body) {
-    const state = await this.#requireState();
-    const displayName = normalizeDisplayName(body?.displayName);
-    const playerId = crypto.randomUUID();
-    const playerToken = randomToken();
-    const tokenAuthHash = await sha256Hex(
-      "ludoproof:player-token:v1:" + playerToken,
-    );
+    const state =
+      await this.#requireState();
+    const displayName =
+      normalizeDisplayName(
+        body?.displayName,
+      );
+    const clientRequestId =
+      requireClientRequestId(
+        body?.clientRequestId,
+      );
+    const identity =
+      await derivePlayerIdentity(
+        this.env,
+        state.matchId,
+        clientRequestId,
+      );
 
-    const next = addPlayer(state, {
-      playerId,
-      displayName,
-      tokenAuthHash,
-      now: Date.now(),
-    });
-    next.history = state.history ?? [];
+    const existingPlayer =
+      state.players.find(
+        (candidate) =>
+          candidate.playerId ===
+            identity.playerId &&
+          candidate.joinRequestId ===
+            clientRequestId,
+      );
+    if (existingPlayer) {
+      return json(200, {
+        replayed: true,
+        matchId:
+          state.matchId,
+        playerId:
+          identity.playerId,
+        playerToken:
+          identity.playerToken,
+        state:
+          publicStateWithHistory(
+            state,
+          ),
+      });
+    }
+
+    const tokenAuthHash =
+      await sha256Hex(
+        "ludoproof:player-token:v1:" +
+          identity.playerToken,
+      );
+
+    const next = addPlayer(
+      state,
+      {
+        playerId:
+          identity.playerId,
+        displayName,
+        tokenAuthHash,
+        now: Date.now(),
+      },
+    );
+    next.players[
+      next.players.length - 1
+    ].joinRequestId =
+      clientRequestId;
+    next.history =
+      state.history ?? [];
     await this.#persist(next);
 
     return json(201, {
-      matchId: next.matchId,
-      playerId,
-      playerToken,
-      state: publicStateWithHistory(next),
+      replayed: false,
+      matchId:
+        next.matchId,
+      playerId:
+        identity.playerId,
+      playerToken:
+        identity.playerToken,
+      state:
+        publicStateWithHistory(
+          next,
+        ),
     });
   }
 
@@ -242,12 +367,44 @@ export class MatchRoom {
   }
 
   async #start(request) {
-    const state = await this.#requireState();
-    const player = await this.#authorize(state, request);
-    const next = startMatch(state, player.playerId, Date.now());
-    next.history = state.history ?? [];
+    const state =
+      await this.#requireState();
+    const player =
+      await this.#authorize(
+        state,
+        request,
+      );
+
+    if (
+      state.status === "ACTIVE" &&
+      state.hostPlayerId ===
+        player.playerId
+    ) {
+      return json(200, {
+        replayed: true,
+        state:
+          publicStateWithHistory(
+            state,
+          ),
+      });
+    }
+
+    const next =
+      startMatch(
+        state,
+        player.playerId,
+        Date.now(),
+      );
+    next.history =
+      state.history ?? [];
     await this.#persist(next);
-    return json(200, { state: publicStateWithHistory(next) });
+    return json(200, {
+      replayed: false,
+      state:
+        publicStateWithHistory(
+          next,
+        ),
+    });
   }
 
   async #commitRoll(request, body) {
