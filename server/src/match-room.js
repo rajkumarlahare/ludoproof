@@ -679,44 +679,155 @@ export class MatchRoom {
   }
 
   async #move(request, body) {
-    let state = await this.#requireState();
-    const player = await this.#authorize(state, request);
-    const tokenIndex = Number(body?.tokenIndex);
+    let state =
+      await this.#requireState();
+    const player =
+      await this.#authorize(
+        state,
+        request,
+      );
+    const tokenIndex =
+      Number(body?.tokenIndex);
+    const eventIndex =
+      Number(body?.eventIndex);
 
-    if (!Number.isInteger(tokenIndex) || tokenIndex < 0 || tokenIndex > 3) {
-      throw httpError(400, "INVALID_TOKEN_INDEX", "tokenIndex must be 0 through 3");
+    if (
+      !Number.isInteger(tokenIndex) ||
+      tokenIndex < 0 ||
+      tokenIndex > 3
+    ) {
+      throw httpError(
+        400,
+        "INVALID_TOKEN_INDEX",
+        "tokenIndex must be 0 through 3",
+      );
+    }
+    if (
+      !Number.isSafeInteger(
+        eventIndex,
+      ) ||
+      eventIndex < 0
+    ) {
+      throw httpError(
+        400,
+        "INVALID_EVENT_INDEX",
+        "eventIndex must be a non-negative safe integer",
+      );
     }
 
-    const pending = state.pendingRoll;
-    const eventIndex = pending?.eventIndex;
-    const moved = applyMove(state, {
-      playerId: player.playerId,
-      tokenIndex,
-      now: Date.now(),
-    });
+    const previous =
+      [...(state.history ?? [])]
+        .reverse()
+        .find(
+          (event) =>
+            event.eventIndex ===
+              eventIndex &&
+            event.playerId ===
+              player.playerId &&
+            event.moveTokenIndex !=
+              null,
+        );
+
+    if (previous) {
+      if (
+        previous.moveTokenIndex !==
+        tokenIndex
+      ) {
+        throw httpError(
+          409,
+          "MOVE_ALREADY_APPLIED",
+          "this verified roll was already applied to another token",
+        );
+      }
+      return json(200, {
+        replayed: true,
+        captures:
+          previous.captures ?? 0,
+        extraTurn:
+          Boolean(
+            previous.extraTurn,
+          ),
+        winnerPlayerId:
+          previous.winnerPlayerId ??
+          null,
+        state:
+          publicStateWithHistory(
+            state,
+          ),
+      });
+    }
+
+    const pending =
+      state.pendingRoll;
+    if (
+      !pending ||
+      pending.eventIndex !==
+        eventIndex
+    ) {
+      throw httpError(
+        409,
+        "EVENT_INDEX_DRIFT",
+        "move does not match the currently resolved roll",
+      );
+    }
+
+    const moved =
+      applyMove(
+        state,
+        {
+          playerId:
+            player.playerId,
+          tokenIndex,
+          now: Date.now(),
+        },
+      );
     state = moved.state;
 
-    const history = [...(state.history ?? [])];
-    const entryIndex = history.findLastIndex(
-      (event) =>
-        event.eventIndex === eventIndex &&
-        event.playerId === player.playerId,
-    );
-    if (entryIndex >= 0) {
-      history[entryIndex] = {
-        ...history[entryIndex],
-        moveTokenIndex: tokenIndex,
-        captures: moved.captures,
-      };
+    const history = [
+      ...(state.history ?? []),
+    ];
+    const entryIndex =
+      history.findLastIndex(
+        (event) =>
+          event.eventIndex ===
+            eventIndex &&
+          event.playerId ===
+            player.playerId,
+      );
+    if (entryIndex < 0) {
+      throw httpError(
+        500,
+        "MOVE_HISTORY_MISSING",
+        "verified roll history is missing",
+      );
     }
+
+    history[entryIndex] = {
+      ...history[entryIndex],
+      moveTokenIndex:
+        tokenIndex,
+      captures:
+        moved.captures,
+      extraTurn:
+        moved.extraTurn,
+      winnerPlayerId:
+        moved.winnerPlayerId,
+      movedAt:
+        Date.now(),
+    };
     state.history = history;
     await this.#persist(state);
 
     return json(200, {
+      replayed: false,
       captures: moved.captures,
       extraTurn: moved.extraTurn,
-      winnerPlayerId: moved.winnerPlayerId,
-      state: publicStateWithHistory(state),
+      winnerPlayerId:
+        moved.winnerPlayerId,
+      state:
+        publicStateWithHistory(
+          state,
+        ),
     });
   }
 
