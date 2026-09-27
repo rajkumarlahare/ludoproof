@@ -1,4 +1,8 @@
 const HEX_32 = /^[0-9a-f]{64}$/i;
+const REQUEST_ID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MATCH_ALPHABET =
+  "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 export async function sha256Hex(text) {
   const bytes = new TextEncoder().encode(text);
@@ -53,6 +57,104 @@ function serialize(value) {
   throw new TypeError("unsupported canonical JSON value");
 }
 
+export async function deterministicMatchId(
+  clientRequestId,
+  attempt = 0,
+) {
+  const requestId =
+    requireClientRequestId(
+      clientRequestId,
+    );
+  if (
+    !Number.isInteger(attempt) ||
+    attempt < 0 ||
+    attempt > 16
+  ) {
+    throw new RangeError(
+      "match ID attempt is invalid",
+    );
+  }
+  const bytes =
+    await sha256Bytes(
+      "ludoproof:match-id:v1:" +
+        requestId +
+        ":" +
+        attempt,
+    );
+  let value = "LP";
+  for (let index = 0; index < 8; index += 1) {
+    value +=
+      MATCH_ALPHABET[
+        bytes[index] & 31
+      ];
+  }
+  return value;
+}
+
+export async function derivePlayerIdentity(
+  env,
+  matchId,
+  clientRequestId,
+) {
+  const requestId =
+    requireClientRequestId(
+      clientRequestId,
+    );
+  const sessionKey =
+    requireSessionKey(env);
+  const playerDigest =
+    await sha256Hex(
+      "ludoproof:player-id:v1:" +
+        matchId +
+        ":" +
+        requestId,
+    );
+  const tokenBytes =
+    await hmacSha256(
+      sessionKey,
+      "ludoproof:player-token:v2:" +
+        matchId +
+        ":" +
+        requestId,
+    );
+
+  return {
+    playerId:
+      "p_" +
+      playerDigest.slice(0, 32),
+    playerToken:
+      "lp_" +
+      base64Url(tokenBytes),
+  };
+}
+
+export function requireClientRequestId(
+  value,
+) {
+  if (
+    typeof value !== "string" ||
+    !REQUEST_ID.test(value)
+  ) {
+    throw httpError(
+      400,
+      "INVALID_CLIENT_REQUEST_ID",
+      "clientRequestId must be a UUID v4",
+    );
+  }
+  return value.toLowerCase();
+}
+
+export function hasSessionKey(env) {
+  return (
+    typeof env?.LUDOPROOF_SESSION_HMAC_KEY ===
+      "string" &&
+    env.LUDOPROOF_SESSION_HMAC_KEY.length >=
+      32 &&
+    env.LUDOPROOF_SESSION_HMAC_KEY.length <=
+      512
+  );
+}
+
 export function randomToken() {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
@@ -101,6 +203,56 @@ export function httpError(status, code, message) {
   error.status = status;
   error.code = code;
   return error;
+}
+
+async function sha256Bytes(text) {
+  const bytes =
+    new TextEncoder().encode(text);
+  const digest =
+    await crypto.subtle.digest(
+      "SHA-256",
+      bytes,
+    );
+  return new Uint8Array(digest);
+}
+
+async function hmacSha256(
+  secret,
+  message,
+) {
+  const key =
+    await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder()
+        .encode(secret),
+      {
+        name: "HMAC",
+        hash: "SHA-256",
+      },
+      false,
+      ["sign"],
+    );
+  const signature =
+    await crypto.subtle.sign(
+      "HMAC",
+      key,
+      new TextEncoder()
+        .encode(message),
+    );
+  return new Uint8Array(
+    signature,
+  );
+}
+
+function requireSessionKey(env) {
+  if (!hasSessionKey(env)) {
+    throw httpError(
+      503,
+      "SESSION_KEY_NOT_CONFIGURED",
+      "LudoProof session-token HMAC key is not configured",
+    );
+  }
+  return env.LUDOPROOF_SESSION_HMAC_KEY;
 }
 
 function base64Url(bytes) {

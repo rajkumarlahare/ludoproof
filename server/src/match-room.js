@@ -22,9 +22,10 @@ import {
 import {
   bearerToken,
   canonicalJson,
+  derivePlayerIdentity,
   httpError,
   normalizeDisplayName,
-  randomToken,
+  requireClientRequestId,
   requireDigest,
   sha256Hex,
 } from "./crypto.js";
@@ -35,6 +36,10 @@ const ACTIVE_IDLE_TTL_MS =
   7 * 24 * 60 * 60 * 1000;
 const FINISHED_IDLE_TTL_MS =
   24 * 60 * 60 * 1000;
+const DEFAULT_ENTRONEX_TIMEOUT_MS =
+  8_000;
+const MAX_ENTRONEX_RESPONSE_BYTES =
+  256 * 1024;
 const WORLD = Object.freeze({
   cellsPerOutcome: 16,
   timelineTicks: 512,
@@ -166,65 +171,189 @@ export class MatchRoom {
   }
 
   async #create(body) {
-    const existing = await this.ctx.storage.get(STATE_KEY);
+    const displayName =
+      normalizeDisplayName(
+        body?.displayName,
+      );
+    const matchId =
+      String(
+        body?.matchId ?? "",
+      );
+    const clientRequestId =
+      requireClientRequestId(
+        body?.clientRequestId,
+      );
+
+    if (
+      !/^LP[A-Z2-9]{8}$/.test(
+        matchId,
+      )
+    ) {
+      throw httpError(
+        400,
+        "INVALID_MATCH_ID",
+        "invalid match ID",
+      );
+    }
+
+    const identity =
+      await derivePlayerIdentity(
+        this.env,
+        matchId,
+        clientRequestId,
+      );
+    const existing =
+      await this.ctx.storage.get(
+        STATE_KEY,
+      );
+
     if (existing) {
-      throw httpError(409, "MATCH_EXISTS", "match already exists");
+      if (
+        existing.createRequestId ===
+          clientRequestId &&
+        existing.hostPlayerId ===
+          identity.playerId
+      ) {
+        return json(200, {
+          replayed: true,
+          matchId,
+          playerId:
+            identity.playerId,
+          playerToken:
+            identity.playerToken,
+          state:
+            publicStateWithHistory(
+              existing,
+            ),
+        });
+      }
+      throw httpError(
+        409,
+        "MATCH_EXISTS",
+        "match already exists",
+      );
     }
 
-    const displayName = normalizeDisplayName(body?.displayName);
-    const matchId = String(body?.matchId ?? "");
-    if (!/^LP[A-Z2-9]{8}$/.test(matchId)) {
-      throw httpError(400, "INVALID_MATCH_ID", "invalid match ID");
-    }
-
-    const playerId = crypto.randomUUID();
-    const playerToken = randomToken();
-    const tokenAuthHash = await sha256Hex(
-      "ludoproof:player-token:v1:" + playerToken,
-    );
+    const tokenAuthHash =
+      await sha256Hex(
+        "ludoproof:player-token:v1:" +
+          identity.playerToken,
+      );
     const now = Date.now();
 
     let state = newMatch({
       matchId,
-      hostPlayerId: playerId,
-      hostDisplayName: displayName,
+      hostPlayerId:
+        identity.playerId,
+      hostDisplayName:
+        displayName,
       now,
     });
-    state = attachHostAuth(state, tokenAuthHash, now);
+    state = attachHostAuth(
+      state,
+      tokenAuthHash,
+      now,
+    );
+    state.createRequestId =
+      clientRequestId;
+    state.players[0]
+      .joinRequestId =
+      clientRequestId;
     state.history = [];
     await this.#persist(state);
 
     return json(201, {
+      replayed: false,
       matchId,
-      playerId,
-      playerToken,
-      state: publicStateWithHistory(state),
+      playerId:
+        identity.playerId,
+      playerToken:
+        identity.playerToken,
+      state:
+        publicStateWithHistory(
+          state,
+        ),
     });
   }
 
   async #join(body) {
-    const state = await this.#requireState();
-    const displayName = normalizeDisplayName(body?.displayName);
-    const playerId = crypto.randomUUID();
-    const playerToken = randomToken();
-    const tokenAuthHash = await sha256Hex(
-      "ludoproof:player-token:v1:" + playerToken,
-    );
+    const state =
+      await this.#requireState();
+    const displayName =
+      normalizeDisplayName(
+        body?.displayName,
+      );
+    const clientRequestId =
+      requireClientRequestId(
+        body?.clientRequestId,
+      );
+    const identity =
+      await derivePlayerIdentity(
+        this.env,
+        state.matchId,
+        clientRequestId,
+      );
 
-    const next = addPlayer(state, {
-      playerId,
-      displayName,
-      tokenAuthHash,
-      now: Date.now(),
-    });
-    next.history = state.history ?? [];
+    const existingPlayer =
+      state.players.find(
+        (candidate) =>
+          candidate.playerId ===
+            identity.playerId &&
+          candidate.joinRequestId ===
+            clientRequestId,
+      );
+    if (existingPlayer) {
+      return json(200, {
+        replayed: true,
+        matchId:
+          state.matchId,
+        playerId:
+          identity.playerId,
+        playerToken:
+          identity.playerToken,
+        state:
+          publicStateWithHistory(
+            state,
+          ),
+      });
+    }
+
+    const tokenAuthHash =
+      await sha256Hex(
+        "ludoproof:player-token:v1:" +
+          identity.playerToken,
+      );
+
+    const next = addPlayer(
+      state,
+      {
+        playerId:
+          identity.playerId,
+        displayName,
+        tokenAuthHash,
+        now: Date.now(),
+      },
+    );
+    next.players[
+      next.players.length - 1
+    ].joinRequestId =
+      clientRequestId;
+    next.history =
+      state.history ?? [];
     await this.#persist(next);
 
     return json(201, {
-      matchId: next.matchId,
-      playerId,
-      playerToken,
-      state: publicStateWithHistory(next),
+      replayed: false,
+      matchId:
+        next.matchId,
+      playerId:
+        identity.playerId,
+      playerToken:
+        identity.playerToken,
+      state:
+        publicStateWithHistory(
+          next,
+        ),
     });
   }
 
@@ -238,12 +367,44 @@ export class MatchRoom {
   }
 
   async #start(request) {
-    const state = await this.#requireState();
-    const player = await this.#authorize(state, request);
-    const next = startMatch(state, player.playerId, Date.now());
-    next.history = state.history ?? [];
+    const state =
+      await this.#requireState();
+    const player =
+      await this.#authorize(
+        state,
+        request,
+      );
+
+    if (
+      state.status === "ACTIVE" &&
+      state.hostPlayerId ===
+        player.playerId
+    ) {
+      return json(200, {
+        replayed: true,
+        state:
+          publicStateWithHistory(
+            state,
+          ),
+      });
+    }
+
+    const next =
+      startMatch(
+        state,
+        player.playerId,
+        Date.now(),
+      );
+    next.history =
+      state.history ?? [];
     await this.#persist(next);
-    return json(200, { state: publicStateWithHistory(next) });
+    return json(200, {
+      replayed: false,
+      state:
+        publicStateWithHistory(
+          next,
+        ),
+    });
   }
 
   async #commitRoll(request, body) {
@@ -518,44 +679,161 @@ export class MatchRoom {
   }
 
   async #move(request, body) {
-    let state = await this.#requireState();
-    const player = await this.#authorize(state, request);
-    const tokenIndex = Number(body?.tokenIndex);
+    let state =
+      await this.#requireState();
+    const player =
+      await this.#authorize(
+        state,
+        request,
+      );
+    const tokenIndex =
+      Number(body?.tokenIndex);
+    const eventIndex =
+      Number(body?.eventIndex);
 
-    if (!Number.isInteger(tokenIndex) || tokenIndex < 0 || tokenIndex > 3) {
-      throw httpError(400, "INVALID_TOKEN_INDEX", "tokenIndex must be 0 through 3");
+    if (
+      !Number.isInteger(tokenIndex) ||
+      tokenIndex < 0 ||
+      tokenIndex > 3
+    ) {
+      throw httpError(
+        400,
+        "INVALID_TOKEN_INDEX",
+        "tokenIndex must be 0 through 3",
+      );
+    }
+    if (
+      !Number.isSafeInteger(
+        eventIndex,
+      ) ||
+      eventIndex < 0
+    ) {
+      throw httpError(
+        400,
+        "INVALID_EVENT_INDEX",
+        "eventIndex must be a non-negative safe integer",
+      );
     }
 
-    const pending = state.pendingRoll;
-    const eventIndex = pending?.eventIndex;
-    const moved = applyMove(state, {
-      playerId: player.playerId,
-      tokenIndex,
-      now: Date.now(),
-    });
+    const previous =
+      [...(state.history ?? [])]
+        .reverse()
+        .find(
+          (event) =>
+            event.eventIndex ===
+              eventIndex &&
+            event.playerId ===
+              player.playerId &&
+            event.moveTokenIndex !=
+              null,
+        );
+
+    if (previous) {
+      if (
+        previous.moveTokenIndex !==
+        tokenIndex
+      ) {
+        throw httpError(
+          409,
+          "MOVE_ALREADY_APPLIED",
+          "this verified roll was already applied to another token",
+        );
+      }
+      return json(200, {
+        replayed: true,
+        captures:
+          previous.captures ?? 0,
+        extraTurn:
+          Boolean(
+            previous.extraTurn,
+          ),
+        winnerPlayerId:
+          previous.winnerPlayerId ??
+          null,
+        state:
+          publicStateWithHistory(
+            state,
+          ),
+      });
+    }
+
+    const pending =
+      state.pendingRoll;
+    if (!pending) {
+      throw httpError(
+        409,
+        "NO_RESOLVED_ROLL",
+        "a verified roll is required before moving",
+      );
+    }
+    if (
+      pending.eventIndex !==
+      eventIndex
+    ) {
+      throw httpError(
+        409,
+        "EVENT_INDEX_DRIFT",
+        "move does not match the currently resolved roll",
+      );
+    }
+
+    const moved =
+      applyMove(
+        state,
+        {
+          playerId:
+            player.playerId,
+          tokenIndex,
+          now: Date.now(),
+        },
+      );
     state = moved.state;
 
-    const history = [...(state.history ?? [])];
-    const entryIndex = history.findLastIndex(
-      (event) =>
-        event.eventIndex === eventIndex &&
-        event.playerId === player.playerId,
-    );
-    if (entryIndex >= 0) {
-      history[entryIndex] = {
-        ...history[entryIndex],
-        moveTokenIndex: tokenIndex,
-        captures: moved.captures,
-      };
+    const history = [
+      ...(state.history ?? []),
+    ];
+    const entryIndex =
+      history.findLastIndex(
+        (event) =>
+          event.eventIndex ===
+            eventIndex &&
+          event.playerId ===
+            player.playerId,
+      );
+    if (entryIndex < 0) {
+      throw httpError(
+        500,
+        "MOVE_HISTORY_MISSING",
+        "verified roll history is missing",
+      );
     }
+
+    history[entryIndex] = {
+      ...history[entryIndex],
+      moveTokenIndex:
+        tokenIndex,
+      captures:
+        moved.captures,
+      extraTurn:
+        moved.extraTurn,
+      winnerPlayerId:
+        moved.winnerPlayerId,
+      movedAt:
+        Date.now(),
+    };
     state.history = history;
     await this.#persist(state);
 
     return json(200, {
+      replayed: false,
       captures: moved.captures,
       extraTurn: moved.extraTurn,
-      winnerPlayerId: moved.winnerPlayerId,
-      state: publicStateWithHistory(state),
+      winnerPlayerId:
+        moved.winnerPlayerId,
+      state:
+        publicStateWithHistory(
+          state,
+        ),
     });
   }
 
@@ -877,7 +1155,7 @@ function publicStateWithHistory(state) {
   };
 }
 
-async function entronexRequest(env, path, {
+export async function entronexRequest(env, path, {
   method,
   body,
   authenticated = true,
@@ -897,13 +1175,30 @@ async function entronexRequest(env, path, {
     response = await fetch(baseUrl + path, {
       method,
       headers,
+      signal: AbortSignal.timeout(
+        entronexTimeoutMs(env),
+      ),
       body: body == null ? undefined : JSON.stringify(body),
     });
-  } catch {
+  } catch (error) {
+    if (
+      error?.name === "TimeoutError" ||
+      error?.name === "AbortError"
+    ) {
+      throw httpError(
+        504,
+        "ENTRONEX_TIMEOUT",
+        "EntroNex request timed out",
+      );
+    }
     throw httpError(502, "ENTRONEX_UNAVAILABLE", "EntroNex request failed");
   }
 
-  const text = await response.text();
+  const text =
+    await readTextLimited(
+      response,
+      MAX_ENTRONEX_RESPONSE_BYTES,
+    );
   let parsed = {};
   try {
     parsed = text ? JSON.parse(text) : {};
@@ -922,6 +1217,79 @@ async function entronexRequest(env, path, {
   }
 
   return parsed;
+}
+
+function entronexTimeoutMs(env) {
+  const value =
+    Number(
+      env?.ENTRONEX_REQUEST_TIMEOUT_MS,
+    );
+  return Number.isSafeInteger(value) &&
+    value >= 100 &&
+    value <= 30_000
+    ? value
+    : DEFAULT_ENTRONEX_TIMEOUT_MS;
+}
+
+async function readTextLimited(
+  response,
+  maxBytes,
+) {
+  const declared =
+    Number(
+      response.headers.get(
+        "content-length",
+      ),
+    );
+  if (
+    Number.isFinite(declared) &&
+    declared > maxBytes
+  ) {
+    throw httpError(
+      502,
+      "ENTRONEX_RESPONSE_TOO_LARGE",
+      "EntroNex response exceeded the maximum allowed size",
+    );
+  }
+
+  if (!response.body) {
+    return "";
+  }
+
+  const reader =
+    response.body.getReader();
+  const chunks = [];
+  let total = 0;
+
+  try {
+    while (true) {
+      const { done, value } =
+        await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw httpError(
+          502,
+          "ENTRONEX_RESPONSE_TOO_LARGE",
+          "EntroNex response exceeded the maximum allowed size",
+        );
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes =
+    new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder()
+    .decode(bytes);
 }
 
 function assertLocalProofValid(proof) {

@@ -21,6 +21,8 @@ const ALGORITHM =
   "entronex-v4-dual-commit-hkdf-sha256-context-bound";
 const BASE_URL = "https://entronex.example.test";
 const API_TOKEN = "lp_test_entronex_token_1234567890";
+const SESSION_KEY =
+  "lp_test_session_hmac_key_1234567890abcdef";
 
 class FakeStorage {
   constructor() {
@@ -60,6 +62,8 @@ function makeEnv() {
   return {
     ENTRONEX_BASE_URL: BASE_URL,
     ENTRONEX_API_TOKEN: API_TOKEN,
+    LUDOPROOF_SESSION_HMAC_KEY:
+      SESSION_KEY,
     ...TEST_TRUST_ENV,
   };
 }
@@ -92,7 +96,11 @@ function roomRequest(path, {
   });
 }
 
-async function createMatch(room, matchId = "LPABCDEFGH") {
+async function createMatch(
+  room,
+  matchId = "LPABCDEFGH",
+  clientRequestId = crypto.randomUUID(),
+) {
   const { response, body } = await json(
     await room.fetch(
       roomRequest("/create", {
@@ -100,6 +108,7 @@ async function createMatch(room, matchId = "LPABCDEFGH") {
         body: {
           matchId,
           displayName: "Alice",
+          clientRequestId,
         },
       }),
     ),
@@ -108,12 +117,19 @@ async function createMatch(room, matchId = "LPABCDEFGH") {
   return body;
 }
 
-async function joinMatch(room, displayName) {
+async function joinMatch(
+  room,
+  displayName,
+  clientRequestId = crypto.randomUUID(),
+) {
   const { response, body } = await json(
     await room.fetch(
       roomRequest("/join", {
         method: "POST",
-        body: { displayName },
+        body: {
+          displayName,
+          clientRequestId,
+        },
       }),
     ),
   );
@@ -709,6 +725,7 @@ test(
               host.playerToken,
             body: {
               tokenIndex: 0,
+              eventIndex: 0,
             },
           },
         ),
@@ -780,6 +797,7 @@ test(
           token: host.playerToken,
           body: {
             tokenIndex: 0,
+            eventIndex: 0,
           },
         }),
       ),
@@ -912,6 +930,338 @@ test(
       after.history.at(-1)
         .clientCommitment,
       clientCommitment,
+    );
+  },
+);
+
+
+test(
+  "create retry with the same request ID returns the same host session",
+  { concurrency: false },
+  async () => {
+    const ctx = makeContext();
+    const env = makeEnv();
+    const room = new MatchRoom(
+      ctx,
+      env,
+    );
+    const requestId =
+      "11111111-1111-4111-8111-111111111111";
+
+    const first =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/create",
+            {
+              method: "POST",
+              body: {
+                matchId:
+                  "LPABCDEFGH",
+                displayName:
+                  "Alice",
+                clientRequestId:
+                  requestId,
+              },
+            },
+          ),
+        ),
+      );
+    const retry =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/create",
+            {
+              method: "POST",
+              body: {
+                matchId:
+                  "LPABCDEFGH",
+                displayName:
+                  "Alice",
+                clientRequestId:
+                  requestId,
+              },
+            },
+          ),
+        ),
+      );
+
+    assert.equal(
+      first.response.status,
+      201,
+    );
+    assert.equal(
+      retry.response.status,
+      200,
+    );
+    assert.equal(
+      retry.body.replayed,
+      true,
+    );
+    assert.equal(
+      retry.body.playerId,
+      first.body.playerId,
+    );
+    assert.equal(
+      retry.body.playerToken,
+      first.body.playerToken,
+    );
+    assert.equal(
+      retry.body.state.players.length,
+      1,
+    );
+  },
+);
+
+test(
+  "join retry with the same request ID does not create a duplicate player",
+  { concurrency: false },
+  async () => {
+    const ctx = makeContext();
+    const env = makeEnv();
+    const room = new MatchRoom(
+      ctx,
+      env,
+    );
+    await createMatch(room);
+
+    const requestId =
+      "22222222-2222-4222-8222-222222222222";
+    const first =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/join",
+            {
+              method: "POST",
+              body: {
+                displayName:
+                  "Bob",
+                clientRequestId:
+                  requestId,
+              },
+            },
+          ),
+        ),
+      );
+    const retry =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/join",
+            {
+              method: "POST",
+              body: {
+                displayName:
+                  "Bob",
+                clientRequestId:
+                  requestId,
+              },
+            },
+          ),
+        ),
+      );
+
+    assert.equal(
+      first.response.status,
+      201,
+    );
+    assert.equal(
+      retry.response.status,
+      200,
+    );
+    assert.equal(
+      retry.body.replayed,
+      true,
+    );
+    assert.equal(
+      retry.body.playerId,
+      first.body.playerId,
+    );
+    assert.equal(
+      retry.body.playerToken,
+      first.body.playerToken,
+    );
+    assert.equal(
+      retry.body.state.players.length,
+      2,
+    );
+  },
+);
+
+test(
+  "host start retry is replay-safe",
+  { concurrency: false },
+  async () => {
+    const {
+      room,
+      host,
+    } =
+      await setupActiveMatch(2);
+
+    const retry =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/start",
+            {
+              method: "POST",
+              token:
+                host.playerToken,
+              body: {},
+            },
+          ),
+        ),
+      );
+
+    assert.equal(
+      retry.response.status,
+      200,
+    );
+    assert.equal(
+      retry.body.replayed,
+      true,
+    );
+    assert.equal(
+      retry.body.state.status,
+      "ACTIVE",
+    );
+  },
+);
+
+test(
+  "move retry is idempotent for the same event and rejects token substitution",
+  { concurrency: false },
+  async (t) => {
+    installEntroNexMock(t, {
+      outcomes: [6],
+      clientSeeds: [
+        "1".repeat(64),
+      ],
+    });
+    const {
+      room,
+      host,
+    } =
+      await setupActiveMatch(2);
+
+    const clientSeed =
+      "1".repeat(64);
+    const clientCommitment =
+      await sha256Hex(
+        "entronex:v4:client-commit:" +
+          clientSeed,
+      );
+
+    await room.fetch(
+      roomRequest(
+        "/roll/commit",
+        {
+          method: "POST",
+          token:
+            host.playerToken,
+          body: {
+            clientCommitment,
+          },
+        },
+      ),
+    );
+    const reveal =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/roll/reveal",
+            {
+              method: "POST",
+              token:
+                host.playerToken,
+              body: {
+                clientSeed,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      reveal.response.status,
+      200,
+    );
+
+    const moveBody = {
+      tokenIndex: 0,
+      eventIndex: 0,
+    };
+    const first =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/move",
+            {
+              method: "POST",
+              token:
+                host.playerToken,
+              body: moveBody,
+            },
+          ),
+        ),
+      );
+    const retry =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/move",
+            {
+              method: "POST",
+              token:
+                host.playerToken,
+              body: moveBody,
+            },
+          ),
+        ),
+      );
+
+    assert.equal(
+      first.response.status,
+      200,
+    );
+    assert.equal(
+      first.body.replayed,
+      false,
+    );
+    assert.equal(
+      retry.response.status,
+      200,
+    );
+    assert.equal(
+      retry.body.replayed,
+      true,
+    );
+
+    const changed =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/move",
+            {
+              method: "POST",
+              token:
+                host.playerToken,
+              body: {
+                tokenIndex: 1,
+                eventIndex: 0,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      changed.response.status,
+      409,
+    );
+    assert.equal(
+      changed.body.error,
+      "MOVE_ALREADY_APPLIED",
     );
   },
 );

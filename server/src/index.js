@@ -1,7 +1,9 @@
 import { hasPinnedEntroNexTrust } from "./entronex-trust.js";
 import {
+  deterministicMatchId,
+  hasSessionKey,
   httpError,
-  randomMatchId,
+  requireClientRequestId,
   sha256Hex,
 } from "./crypto.js";
 
@@ -43,16 +45,25 @@ export default {
       }
 
       if (request.method === "GET" && url.pathname === "/ready") {
-        const ready =
+        const configured =
           hasEntroNexConfig(env) &&
           Boolean(env.LUDOPROOF_MATCHES) &&
           Boolean(env.LUDOPROOF_API_GATE);
+        const entronexReachable =
+          configured
+            ? await probeEntroNex(env)
+            : false;
+        const ready =
+          configured &&
+          hasSessionKey(env) &&
+          entronexReachable;
         return json(ready ? 200 : 503, {
           ok: ready,
           ready,
           service: "ludoproof-game-api",
           ruleset: "ludoproof-standard-v1",
           entronex: "v4-evaluation",
+          entronexReachable,
           productionClaim: false,
         });
       }
@@ -67,8 +78,17 @@ export default {
           RATE_POLICIES.create,
         );
 
+        const clientRequestId =
+          requireClientRequestId(
+            body.clientRequestId,
+          );
+
         for (let attempt = 0; attempt < 4; attempt += 1) {
-          const matchId = randomMatchId();
+          const matchId =
+            await deterministicMatchId(
+              clientRequestId,
+              attempt,
+            );
           const target = room(env, matchId);
           const response = await target.fetch(
             new Request("https://room/create", {
@@ -318,6 +338,71 @@ function room(env, matchId) {
   const id =
     env.LUDOPROOF_MATCHES.idFromName(matchId);
   return env.LUDOPROOF_MATCHES.get(id);
+}
+
+async function probeEntroNex(env) {
+  const baseUrl =
+    String(
+      env.ENTRONEX_BASE_URL,
+    ).replace(/\/$/, "");
+
+  try {
+    const response =
+      await fetch(
+        baseUrl + "/health",
+        {
+          method: "GET",
+          headers: {
+            accept:
+              "application/json",
+          },
+          signal:
+            AbortSignal.timeout(
+              3_000,
+            ),
+        },
+      );
+    if (!response.ok) {
+      return false;
+    }
+
+    const length =
+      Number(
+        response.headers.get(
+          "content-length",
+        ),
+      );
+    if (
+      Number.isFinite(length) &&
+      length > 16 * 1024
+    ) {
+      return false;
+    }
+
+    const text =
+      await response.text();
+    if (
+      new TextEncoder()
+        .encode(text)
+        .byteLength >
+      16 * 1024
+    ) {
+      return false;
+    }
+    const body =
+      JSON.parse(text);
+    return (
+      body?.ok === true &&
+      (
+        body?.protocol ===
+          "v4" ||
+        body?.service ===
+          "entronex-v4-eval"
+      )
+    );
+  } catch {
+    return false;
+  }
 }
 
 function hasEntroNexConfig(env) {
