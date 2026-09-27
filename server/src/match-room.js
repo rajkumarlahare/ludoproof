@@ -1,5 +1,10 @@
 import { verifyProofV4 } from "./vendor/entronex-v4/v4.js";
 import {
+  hasPinnedEntroNexTrust,
+  verifyCommitmentAttestation,
+  verifyProofAttestation,
+} from "./entronex-trust.js";
+import {
   ROLL_REVEAL_TIMEOUT_MS,
   RULESET,
   addPlayer,
@@ -324,6 +329,7 @@ export class MatchRoom {
     }
 
     validateRoundCommitment(remote, pending, expected, config);
+    verifyCommitmentAttestation(remote, this.env);
 
     let latest = await this.#requireState();
     if (
@@ -460,6 +466,7 @@ export class MatchRoom {
     await validateResolvedProof(proof, pending, state.matchId);
 
     assertLocalProofValid(proof);
+    verifyProofAttestation(proof, this.env);
 
     let latest = await this.#requireState();
     if (
@@ -623,6 +630,7 @@ export class MatchRoom {
       },
     );
     assertLocalProofValid(proof);
+    verifyProofAttestation(proof, this.env);
     return proof;
   }
 
@@ -933,7 +941,8 @@ function requireEntroNex(env) {
     typeof env.ENTRONEX_BASE_URL !== "string" ||
     !env.ENTRONEX_BASE_URL.startsWith("https://") ||
     typeof env.ENTRONEX_API_TOKEN !== "string" ||
-    env.ENTRONEX_API_TOKEN.length < 20
+    env.ENTRONEX_API_TOKEN.length < 20 ||
+    !hasPinnedEntroNexTrust(env)
   ) {
     throw httpError(
       503,
