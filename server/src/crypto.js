@@ -185,9 +185,22 @@ export function normalizeDisplayName(value) {
     throw httpError(400, "INVALID_DISPLAY_NAME", "displayName is required");
   }
 
+  const normalized =
+    value.normalize("NFC");
+
+  if (
+    /[\u0000-\u001F\u007F-\u009F\u061C\u200B\u200E\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/u
+      .test(normalized)
+  ) {
+    throw httpError(
+      400,
+      "INVALID_DISPLAY_NAME",
+      "displayName contains invisible or directional control characters",
+    );
+  }
+
   const name =
-    value
-      .normalize("NFC")
+    normalized
       .trim()
       .replace(/\s+/gu, " ");
   const codePoints =
@@ -201,17 +214,6 @@ export function normalizeDisplayName(value) {
       400,
       "INVALID_DISPLAY_NAME",
       "displayName must contain 2 to 24 characters",
-    );
-  }
-
-  if (
-    /[\u0000-\u001F\u007F-\u009F\u061C\u200B\u200E\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/u
-      .test(name)
-  ) {
-    throw httpError(
-      400,
-      "INVALID_DISPLAY_NAME",
-      "displayName contains invisible or directional control characters",
     );
   }
 
