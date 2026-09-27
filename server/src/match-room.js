@@ -46,25 +46,25 @@ export class MatchRoom {
           : null;
 
       if (request.method === "POST" && url.pathname === "/create") {
-        return this.#mutate(() => this.#create(body));
+        return await this.#mutate(() => this.#create(body));
       }
       if (request.method === "POST" && url.pathname === "/join") {
-        return this.#mutate(() => this.#join(body));
+        return await this.#mutate(() => this.#join(body));
       }
       if (request.method === "GET" && url.pathname === "/state") {
-        return this.#state(request);
+        return await this.#state(request);
       }
       if (request.method === "POST" && url.pathname === "/start") {
-        return this.#mutate(() => this.#start(request));
+        return await this.#mutate(() => this.#start(request));
       }
       if (request.method === "POST" && url.pathname === "/roll/commit") {
-        return this.#mutate(() => this.#commitRoll(request, body));
+        return await this.#mutate(() => this.#commitRoll(request, body));
       }
       if (request.method === "POST" && url.pathname === "/roll/reveal") {
-        return this.#mutate(() => this.#revealRoll(request, body));
+        return await this.#mutate(() => this.#revealRoll(request, body));
       }
       if (request.method === "POST" && url.pathname === "/move") {
-        return this.#mutate(() => this.#move(request, body));
+        return await this.#mutate(() => this.#move(request, body));
       }
 
       return json(404, { error: "NOT_FOUND", message: "route not found" });
