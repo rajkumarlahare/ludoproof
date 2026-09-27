@@ -12,6 +12,13 @@ class DiceView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : View(context, attrs) {
+    init {
+        importantForAccessibility =
+            IMPORTANT_FOR_ACCESSIBILITY_YES
+        contentDescription =
+            "Dice. No verified outcome yet."
+    }
+
     private val facePaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
@@ -54,6 +61,8 @@ class DiceView @JvmOverloads constructor(
     fun startRolling() {
         if (rolling) return
         rolling = true
+        contentDescription =
+            "Dice verification in progress."
         removeCallbacks(ticker)
         post(ticker)
     }
@@ -63,12 +72,16 @@ class DiceView @JvmOverloads constructor(
         rolling = false
         removeCallbacks(ticker)
         face = outcome
+        contentDescription =
+            "Verified dice outcome $outcome."
         invalidate()
     }
 
     fun stopRolling() {
         rolling = false
         removeCallbacks(ticker)
+        contentDescription =
+            "Dice verification stopped."
         invalidate()
     }
 
