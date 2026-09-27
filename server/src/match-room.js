@@ -23,6 +23,10 @@ import {
 
 const STATE_KEY = "match-state";
 const APP_ID = "ludoproof";
+const ACTIVE_IDLE_TTL_MS =
+  7 * 24 * 60 * 60 * 1000;
+const FINISHED_IDLE_TTL_MS =
+  24 * 60 * 60 * 1000;
 const WORLD = Object.freeze({
   cellsPerOutcome: 16,
   timelineTicks: 512,
@@ -79,6 +83,52 @@ export class MatchRoom {
     return run;
   }
 
+  async alarm() {
+    const state =
+      await this.ctx.storage.get(STATE_KEY);
+    if (!state) return;
+
+    const expiresAt =
+      Number(state.updatedAt ?? state.createdAt ?? 0) +
+      this.#idleTtl(state);
+
+    if (Date.now() < expiresAt) {
+      await this.#setAlarm(expiresAt);
+      return;
+    }
+
+    if (
+      typeof this.ctx.storage.deleteAll === "function"
+    ) {
+      await this.ctx.storage.deleteAll();
+    }
+  }
+
+  async #persist(state) {
+    await this.ctx.storage.put(
+      STATE_KEY,
+      state,
+    );
+    const expiresAt =
+      Number(state.updatedAt ?? state.createdAt ?? Date.now()) +
+      this.#idleTtl(state);
+    await this.#setAlarm(expiresAt);
+  }
+
+  #idleTtl(state) {
+    return state.status === "FINISHED"
+      ? FINISHED_IDLE_TTL_MS
+      : ACTIVE_IDLE_TTL_MS;
+  }
+
+  async #setAlarm(timestamp) {
+    if (
+      typeof this.ctx.storage.setAlarm === "function"
+    ) {
+      await this.ctx.storage.setAlarm(timestamp);
+    }
+  }
+
   async #create(body) {
     const existing = await this.ctx.storage.get(STATE_KEY);
     if (existing) {
@@ -106,7 +156,7 @@ export class MatchRoom {
     });
     state = attachHostAuth(state, tokenAuthHash, now);
     state.history = [];
-    await this.ctx.storage.put(STATE_KEY, state);
+    await this.#persist(state);
 
     return json(201, {
       matchId,
@@ -132,7 +182,7 @@ export class MatchRoom {
       now: Date.now(),
     });
     next.history = state.history ?? [];
-    await this.ctx.storage.put(STATE_KEY, next);
+    await this.#persist(next);
 
     return json(201, {
       matchId: next.matchId,
@@ -156,7 +206,7 @@ export class MatchRoom {
     const player = await this.#authorize(state, request);
     const next = startMatch(state, player.playerId, Date.now());
     next.history = state.history ?? [];
-    await this.ctx.storage.put(STATE_KEY, next);
+    await this.#persist(next);
     return json(200, { state: publicStateWithHistory(next) });
   }
 
@@ -218,7 +268,7 @@ export class MatchRoom {
         now: Date.now(),
       });
       state.history = state.history ?? [];
-      await this.ctx.storage.put(STATE_KEY, state);
+      await this.#persist(state);
     }
 
     const pending = state.pendingRoll;
@@ -260,7 +310,7 @@ export class MatchRoom {
         now: Date.now(),
       });
       latest.history = state.history ?? [];
-      await this.ctx.storage.put(STATE_KEY, latest);
+      await this.#persist(latest);
     }
 
     return json(201, {
@@ -322,7 +372,7 @@ export class MatchRoom {
       state.pendingRoll.status = "RESOLVING";
       state.updatedAt = Date.now();
       state.revision += 1;
-      await this.ctx.storage.put(STATE_KEY, state);
+      await this.#persist(state);
     }
 
     let proof;
@@ -346,7 +396,7 @@ export class MatchRoom {
         latest.pendingRoll.status = "COMMITTED";
         latest.updatedAt = Date.now();
         latest.revision += 1;
-        await this.ctx.storage.put(STATE_KEY, latest);
+        await this.#persist(latest);
       }
       throw error;
     }
@@ -404,7 +454,7 @@ export class MatchRoom {
         resolvedAt: Date.now(),
       },
     ].slice(-200);
-    await this.ctx.storage.put(STATE_KEY, latest);
+    await this.#persist(latest);
 
     return json(200, {
       replayed: Boolean(proof.replayed),
@@ -451,7 +501,7 @@ export class MatchRoom {
       };
     }
     state.history = history;
-    await this.ctx.storage.put(STATE_KEY, state);
+    await this.#persist(state);
 
     return json(200, {
       captures: moved.captures,

@@ -15,6 +15,8 @@ const API_TOKEN = "lp_test_entronex_token_1234567890";
 class FakeStorage {
   constructor() {
     this.values = new Map();
+    this.alarmAt = null;
+    this.deleteAllCalls = 0;
   }
 
   async get(key) {
@@ -26,6 +28,15 @@ class FakeStorage {
 
   async put(key, value) {
     this.values.set(key, structuredClone(value));
+  }
+
+  async setAlarm(timestamp) {
+    this.alarmAt = timestamp;
+  }
+
+  async deleteAll() {
+    this.values.clear();
+    this.deleteAllCalls += 1;
   }
 }
 
@@ -704,6 +715,44 @@ test(
     assert.equal(
       body.error,
       "NO_RESOLVED_ROLL",
+    );
+  },
+);
+
+
+test(
+  "inactive matches are removed by the Durable Object alarm",
+  { concurrency: false },
+  async () => {
+    const ctx = makeContext();
+    const env = makeEnv();
+    const room = new MatchRoom(ctx, env);
+    await createMatch(room);
+
+    assert.ok(
+      ctx.storage.alarmAt > Date.now(),
+      "creating a match should schedule expiry",
+    );
+
+    const state =
+      await ctx.storage.get("match-state");
+    state.updatedAt =
+      Date.now() -
+      8 * 24 * 60 * 60 * 1000;
+    await ctx.storage.put(
+      "match-state",
+      state,
+    );
+
+    await room.alarm();
+
+    assert.equal(
+      await ctx.storage.get("match-state"),
+      undefined,
+    );
+    assert.equal(
+      ctx.storage.deleteAllCalls,
+      1,
     );
   },
 );

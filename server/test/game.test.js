@@ -196,3 +196,216 @@ test("exact roll is required to reach home", () => {
 test("ruleset contains safe global cells and no capture there", () => {
   assert.deepEqual(RULESET.safeGlobalCells, [0, 8, 13, 21, 26, 34, 39, 47]);
 });
+
+
+test("only the host can start the match", () => {
+  let state = newMatch({
+    matchId: "M",
+    hostPlayerId: "p1",
+    hostDisplayName: "One",
+    now: 1,
+  });
+  state = attachHostAuth(
+    state,
+    "a".repeat(64),
+    2,
+  );
+  state = addPlayer(state, {
+    playerId: "p2",
+    displayName: "Two",
+    tokenAuthHash: "b".repeat(64),
+    now: 3,
+  });
+
+  assert.throws(
+    () => startMatch(state, "p2", 4),
+    (error) =>
+      error.code === "HOST_ONLY",
+  );
+});
+
+test("waiting room caps at four players and locks after start", () => {
+  let state = newMatch({
+    matchId: "M",
+    hostPlayerId: "p1",
+    hostDisplayName: "One",
+    now: 1,
+  });
+  state = attachHostAuth(
+    state,
+    "a".repeat(64),
+    2,
+  );
+
+  for (const [index, id] of [
+    [2, "p2"],
+    [3, "p3"],
+    [4, "p4"],
+  ]) {
+    state = addPlayer(state, {
+      playerId: id,
+      displayName: id,
+      tokenAuthHash:
+        String(index).repeat(64),
+      now: index + 2,
+    });
+  }
+
+  assert.equal(state.players.length, 4);
+  assert.throws(
+    () =>
+      addPlayer(state, {
+        playerId: "p5",
+        displayName: "Five",
+        tokenAuthHash: "f".repeat(64),
+        now: 10,
+      }),
+    (error) =>
+      error.code === "MATCH_FULL",
+  );
+
+  const started =
+    startMatch(state, "p1", 11);
+  assert.throws(
+    () =>
+      addPlayer(started, {
+        playerId: "late",
+        displayName: "Late",
+        tokenAuthHash: "e".repeat(64),
+        now: 12,
+      }),
+    (error) =>
+      error.code ===
+      "INVALID_MATCH_STATUS",
+  );
+});
+
+test("safe cells never capture an opponent token", () => {
+  let state = activeMatch();
+  state.players[0].tokens[0] = 7;
+  state.players[1].tokens[0] = 47;
+
+  assert.equal(
+    globalCellFor("RED", 8),
+    8,
+  );
+  assert.equal(
+    globalCellFor("GREEN", 47),
+    8,
+  );
+
+  state = reserveRoll(state, {
+    playerId: "p1",
+    clientCommitment: "c".repeat(64),
+    eventIndex: 0,
+    actorHash: "1".repeat(64),
+    previousStateHash: "2".repeat(64),
+    rulesetHash: "3".repeat(64),
+    now: 5,
+  });
+  state = attachRoundCommitment(
+    state,
+    {
+      roundId:
+        "11111111-1111-4111-8111-111111111111",
+      serverCommitment:
+        "4".repeat(64),
+      now: 6,
+    },
+  );
+  const resolved =
+    registerResolvedRoll(state, {
+      outcome: 1,
+      proofDigest:
+        "5".repeat(64),
+      now: 7,
+    });
+  const moved =
+    applyMove(resolved.state, {
+      playerId: "p1",
+      tokenIndex: 0,
+      now: 8,
+    });
+
+  assert.equal(moved.captures, 0);
+  assert.equal(
+    moved.state.players[1]
+      .tokens[0],
+    47,
+  );
+});
+
+test("the final exact move finishes the match and records the winner", () => {
+  let state = activeMatch();
+  state.players[0].tokens =
+    [57, 57, 57, 56];
+
+  state = reserveRoll(state, {
+    playerId: "p1",
+    clientCommitment: "c".repeat(64),
+    eventIndex: 0,
+    actorHash: "1".repeat(64),
+    previousStateHash: "2".repeat(64),
+    rulesetHash: "3".repeat(64),
+    now: 5,
+  });
+  state = attachRoundCommitment(
+    state,
+    {
+      roundId:
+        "11111111-1111-4111-8111-111111111111",
+      serverCommitment:
+        "4".repeat(64),
+      now: 6,
+    },
+  );
+  const resolved =
+    registerResolvedRoll(state, {
+      outcome: 1,
+      proofDigest:
+        "5".repeat(64),
+      now: 7,
+    });
+  const moved =
+    applyMove(resolved.state, {
+      playerId: "p1",
+      tokenIndex: 3,
+      now: 8,
+    });
+
+  assert.equal(
+    moved.state.status,
+    "FINISHED",
+  );
+  assert.equal(
+    moved.winnerPlayerId,
+    "p1",
+  );
+  assert.equal(
+    moved.state.winnerPlayerId,
+    "p1",
+  );
+  assert.equal(
+    moved.state.pendingRoll,
+    null,
+  );
+});
+
+test("all color start offsets map to their expected global cells", () => {
+  assert.equal(
+    globalCellFor("RED", 0),
+    0,
+  );
+  assert.equal(
+    globalCellFor("GREEN", 0),
+    13,
+  );
+  assert.equal(
+    globalCellFor("YELLOW", 0),
+    26,
+  );
+  assert.equal(
+    globalCellFor("BLUE", 0),
+    39,
+  );
+});

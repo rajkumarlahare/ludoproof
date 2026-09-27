@@ -34,6 +34,8 @@ class MainActivity : Activity() {
     private lateinit var statusText: TextView
     private lateinit var boardView: LudoBoardView
     private lateinit var diceView: DiceView
+    private lateinit var createButton: Button
+    private lateinit var joinButton: Button
     private lateinit var startButton: Button
     private lateinit var refreshButton: Button
     private lateinit var shareButton: Button
@@ -46,11 +48,29 @@ class MainActivity : Activity() {
     private var currentState: MatchSnapshot? = null
     private var pendingSecret: PendingRollSecret? = null
 
-    private val sessionPrefs by lazy {
-        getSharedPreferences(
-            "ludoproof_session",
-            MODE_PRIVATE,
-        )
+    private val statePollRunnable =
+        object : Runnable {
+            override fun run() {
+                val state = currentState
+                if (
+                    playerToken != null &&
+                    ::refreshButton.isInitialized &&
+                    refreshButton.isEnabled &&
+                    state?.status != "FINISHED"
+                ) {
+                    refreshState(
+                        silent = true,
+                    )
+                }
+                mainHandler.postDelayed(
+                    this,
+                    STATE_POLL_MS,
+                )
+            }
+        }
+
+    private val secureSessionStore by lazy {
+        SecureSessionStore(this)
     }
 
     private val pendingRollStore by lazy {
@@ -62,21 +82,11 @@ class MainActivity : Activity() {
     ) {
         super.onCreate(savedInstanceState)
 
-        matchId =
-            sessionPrefs.getString(
-                "matchId",
-                null,
-            )
-        playerToken =
-            sessionPrefs.getString(
-                "playerToken",
-                null,
-            )
-        playerId =
-            sessionPrefs.getString(
-                "playerId",
-                null,
-            )
+        secureSessionStore.load()?.let { session ->
+            matchId = session.matchId
+            playerToken = session.playerToken
+            playerId = session.playerId
+        }
         pendingSecret = pendingRollStore.load()
 
         val content =
@@ -110,7 +120,7 @@ class MainActivity : Activity() {
         content.addView(
             TextView(this).apply {
                 text =
-                    "Server-authoritative Ludo with verifiable EntroNex dice."
+                    "Fair multiplayer Ludo with EntroNex verified dice."
                 textSize = 14f
                 gravity =
                     Gravity.CENTER_HORIZONTAL
@@ -143,14 +153,18 @@ class MainActivity : Activity() {
             }
         content.addView(matchInput)
 
+        createButton =
+            button("Create Match") {
+                createMatch()
+            }
+        joinButton =
+            button("Join Match") {
+                joinMatch()
+            }
         content.addView(
             row(
-                button("Create Match") {
-                    createMatch()
-                },
-                button("Join Match") {
-                    joinMatch()
-                },
+                createButton,
+                joinButton,
             ),
         )
 
@@ -313,9 +327,7 @@ class MainActivity : Activity() {
                     dp(24),
                 )
                 text =
-                    "Create or join a match.\n" +
-                        "API: " +
-                        BuildConfig.LUDOPROOF_API_BASE_URL
+                    "Create or join a match to begin."
             }
         content.addView(statusText)
 
@@ -404,7 +416,9 @@ class MainActivity : Activity() {
         )
     }
 
-    private fun refreshState() {
+    private fun refreshState(
+        silent: Boolean = false,
+    ) {
         withSession {
                 code,
                 token,
@@ -416,6 +430,13 @@ class MainActivity : Activity() {
                         token,
                     )
                 },
+                onSuccess = {
+                    applyResponse(
+                        it,
+                        announce = !silent,
+                    )
+                },
+                showWorking = !silent,
             )
         }
     }
@@ -528,38 +549,33 @@ class MainActivity : Activity() {
         playerId = id
         matchInput.setText(code)
 
-        sessionPrefs.edit()
-            .putString(
-                "matchId",
-                code,
-            )
-            .putString(
-                "playerToken",
-                token,
-            )
-            .putString(
-                "playerId",
-                id,
-            )
-            .apply()
+        persistSessionSecurely(
+            code = code,
+            id = id,
+            token = token,
+        )
     }
 
     private fun applyResponse(
         response: JSONObject,
+        announce: Boolean = true,
     ) {
         val envelope =
             GameJson.envelope(
                 response,
             )
 
-        envelope.playerId?.let {
-            playerId = it
-            sessionPrefs.edit()
-                .putString(
-                    "playerId",
-                    it,
+        envelope.playerId?.let { resolvedPlayerId ->
+            playerId = resolvedPlayerId
+            val code = matchId
+            val token = playerToken
+            if (code != null && token != null) {
+                persistSessionSecurely(
+                    code = code,
+                    id = resolvedPlayerId,
+                    token = token,
                 )
-                .apply()
+            }
         }
 
         val state =
@@ -624,11 +640,13 @@ class MainActivity : Activity() {
         updateControls(state)
         updateRollButton()
 
-        showStatus(
-            "State revision updated. " +
-                "Event index: " +
-                state.randomEventIndex,
-        )
+        if (announce) {
+            showStatus(
+                "State revision updated. " +
+                    "Event index: " +
+                    state.randomEventIndex,
+            )
+        }
     }
 
     private fun updateTurnBanner(
@@ -771,20 +789,69 @@ class MainActivity : Activity() {
                 mySeat >= 0 &&
                 state.turnSeat == mySeat
 
+        val canEnterAnotherMatch =
+            state.status == "FINISHED"
+
+        nameInput.visibility =
+            if (canEnterAnotherMatch) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+        matchInput.visibility =
+            if (canEnterAnotherMatch) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+        createButton.visibility =
+            if (canEnterAnotherMatch) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+        joinButton.visibility =
+            if (canEnterAnotherMatch) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
+        createButton.isEnabled =
+            canEnterAnotherMatch
+        joinButton.isEnabled =
+            canEnterAnotherMatch
+        nameInput.isEnabled =
+            canEnterAnotherMatch
+        matchInput.isEnabled =
+            canEnterAnotherMatch
+
+        startButton.visibility =
+            if (state.status == "WAITING") {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
         startButton.isEnabled =
             state.status == "WAITING" &&
                 state.players.size >= 2 &&
                 state.hostPlayerId == playerId
 
-        refreshButton.isEnabled = true
-        shareButton.isEnabled =
-            state.matchId.isNotBlank()
-
+        rollButton.visibility =
+            if (state.status == "ACTIVE") {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
         rollButton.isEnabled =
             myTurn &&
                 state.pendingRoll
                     ?.status !=
                 "RESOLVED"
+
+        refreshButton.isEnabled = true
+        shareButton.isEnabled =
+            state.matchId.isNotBlank()
     }
 
     private fun updateRollButton() {
@@ -929,6 +996,24 @@ class MainActivity : Activity() {
         return value
     }
 
+    private fun persistSessionSecurely(
+        code: String,
+        id: String,
+        token: String,
+    ) {
+        try {
+            secureSessionStore.save(
+                PlayerSession(
+                    matchId = code,
+                    playerId = id,
+                    playerToken = token,
+                ),
+            )
+        } catch (_: Exception) {
+            secureSessionStore.clear()
+        }
+    }
+
     private fun withSession(
         action: (
             String,
@@ -961,8 +1046,11 @@ class MainActivity : Activity() {
         ) -> Unit = {
             applyResponse(it)
         },
+        showWorking: Boolean = true,
     ) {
-        showStatus("Working…")
+        if (showWorking) {
+            showStatus("Working…")
+        }
         setNetworkControls(
             enabled = false,
         )
@@ -985,33 +1073,107 @@ class MainActivity : Activity() {
             ) {
                 mainHandler.post {
                     diceView.stopRolling()
-                    setNetworkControls(
-                        enabled = true,
-                    )
-                    showStatus(
-                        "Error: " +
-                            (
-                                error.message
-                                    ?: error
-                                        .toString()
-                                ),
-                    )
-                    currentState
-                        ?.let {
-                            updateControls(
-                                it,
-                            )
-                        }
+                    val sessionReset =
+                        resetInvalidSessionIfNeeded(
+                            error,
+                        )
+                    if (!sessionReset) {
+                        setNetworkControls(
+                            enabled = true,
+                        )
+                        showStatus(
+                            "Error: " +
+                                (
+                                    error.message
+                                        ?: error
+                                            .toString()
+                                    ),
+                        )
+                        currentState
+                            ?.let {
+                                updateControls(
+                                    it,
+                                )
+                            }
+                    }
                     updateRollButton()
                 }
             }
         }
     }
 
+    private fun resetInvalidSessionIfNeeded(
+        error: Exception,
+    ): Boolean {
+        val code =
+            (error as? GameApiException)
+                ?.code
+                ?: return false
+        if (
+            code != "MATCH_NOT_FOUND" &&
+            code != "AUTH_INVALID"
+        ) {
+            return false
+        }
+
+        secureSessionStore.clear()
+        pendingRollStore.clear()
+        pendingSecret = null
+        matchId = null
+        playerToken = null
+        playerId = null
+        currentState = null
+
+        matchInput.setText("")
+        boardView.bind(
+            null,
+            null,
+        )
+        diceView.stopRolling()
+        matchInfoText.text =
+            "No active match"
+        playersText.text =
+            "Players will appear here."
+        turnText.text =
+            "Create or join a new match."
+        verificationText.text =
+            "No verified roll yet."
+        proofDetailsText.text = ""
+        proofDetailsText.visibility =
+            View.GONE
+
+        nameInput.visibility =
+            View.VISIBLE
+        matchInput.visibility =
+            View.VISIBLE
+        createButton.visibility =
+            View.VISIBLE
+        joinButton.visibility =
+            View.VISIBLE
+        startButton.visibility =
+            View.GONE
+        rollButton.visibility =
+            View.GONE
+
+        nameInput.isEnabled = true
+        matchInput.isEnabled = true
+        createButton.isEnabled = true
+        joinButton.isEnabled = true
+        refreshButton.isEnabled = false
+        shareButton.isEnabled = false
+
+        showStatus(
+            "Previous match session is no longer available. Create or join a new match.",
+        )
+        return true
+    }
+
     private fun setNetworkControls(
         enabled: Boolean,
     ) {
         if (!enabled) {
+            createButton.isEnabled = false
+            joinButton.isEnabled = false
             refreshButton.isEnabled = false
             startButton.isEnabled = false
             rollButton.isEnabled = false
@@ -1022,6 +1184,10 @@ class MainActivity : Activity() {
         if (state != null) {
             updateControls(state)
         } else {
+            createButton.isEnabled = true
+            joinButton.isEnabled = true
+            nameInput.isEnabled = true
+            matchInput.isEnabled = true
             refreshButton.isEnabled =
                 playerToken != null
             startButton.isEnabled = false
@@ -1110,8 +1276,34 @@ class MainActivity : Activity() {
                     .density
             ).toInt()
 
+    override fun onStart() {
+        super.onStart()
+        mainHandler.removeCallbacks(
+            statePollRunnable,
+        )
+        mainHandler.postDelayed(
+            statePollRunnable,
+            STATE_POLL_MS,
+        )
+    }
+
+    override fun onStop() {
+        mainHandler.removeCallbacks(
+            statePollRunnable,
+        )
+        super.onStop()
+    }
+
     override fun onDestroy() {
+        mainHandler.removeCallbacks(
+            statePollRunnable,
+        )
         executor.shutdownNow()
         super.onDestroy()
+    }
+
+    private companion object {
+        const val STATE_POLL_MS =
+            3_000L
     }
 }

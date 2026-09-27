@@ -18,6 +18,14 @@ class LudoBoardView @JvmOverloads constructor(
 ) : View(context, attrs) {
     var onTokenSelected: ((Int) -> Unit)? = null
 
+    init {
+        isClickable = true
+        isFocusable = true
+        importantForAccessibility =
+            IMPORTANT_FOR_ACCESSIBILITY_YES
+        contentDescription = "Ludo board"
+    }
+
     private var snapshot: MatchSnapshot? = null
     private var localPlayerId: String? = null
     private val tokenHits = mutableListOf<TokenHit>()
@@ -57,6 +65,34 @@ class LudoBoardView @JvmOverloads constructor(
     ) {
         snapshot = state
         localPlayerId = playerId
+
+        val localPlayer =
+            state?.players?.find {
+                it.playerId == playerId
+            }
+        val legalTokens =
+            state?.pendingRoll
+                ?.legalTokenIndexes
+                .orEmpty()
+                .sorted()
+                .joinToString(", ") {
+                    (it + 1).toString()
+                }
+
+        contentDescription =
+            when {
+                state == null ->
+                    "Ludo board. No active match."
+                state.status == "FINISHED" ->
+                    "Ludo board. Match finished."
+                localPlayer == null ->
+                    "Ludo board. Spectator state."
+                legalTokens.isNotBlank() ->
+                    "Ludo board. Your legal tokens are $legalTokens."
+                else ->
+                    "Ludo board. No legal token is currently selectable."
+            }
+
         invalidate()
     }
 
@@ -438,6 +474,12 @@ class LudoBoardView @JvmOverloads constructor(
                 )
 
                 textPaint.textSize = cell * 0.27f
+                textPaint.color =
+                    if (player.color == "YELLOW") {
+                        Color.rgb(35, 35, 35)
+                    } else {
+                        Color.WHITE
+                    }
                 canvas.drawText(
                     (tokenIndex + 1).toString(),
                     x,
