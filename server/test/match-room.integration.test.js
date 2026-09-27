@@ -21,6 +21,8 @@ const ALGORITHM =
   "entronex-v4-dual-commit-hkdf-sha256-context-bound";
 const BASE_URL = "https://entronex.example.test";
 const API_TOKEN = "lp_test_entronex_token_1234567890";
+const SESSION_KEY =
+  "lp_test_session_hmac_key_1234567890abcdef";
 
 class FakeStorage {
   constructor() {
@@ -60,6 +62,8 @@ function makeEnv() {
   return {
     ENTRONEX_BASE_URL: BASE_URL,
     ENTRONEX_API_TOKEN: API_TOKEN,
+    LUDOPROOF_SESSION_HMAC_KEY:
+      SESSION_KEY,
     ...TEST_TRUST_ENV,
   };
 }
@@ -92,7 +96,11 @@ function roomRequest(path, {
   });
 }
 
-async function createMatch(room, matchId = "LPABCDEFGH") {
+async function createMatch(
+  room,
+  matchId = "LPABCDEFGH",
+  clientRequestId = crypto.randomUUID(),
+) {
   const { response, body } = await json(
     await room.fetch(
       roomRequest("/create", {
@@ -100,6 +108,7 @@ async function createMatch(room, matchId = "LPABCDEFGH") {
         body: {
           matchId,
           displayName: "Alice",
+          clientRequestId,
         },
       }),
     ),
@@ -108,12 +117,19 @@ async function createMatch(room, matchId = "LPABCDEFGH") {
   return body;
 }
 
-async function joinMatch(room, displayName) {
+async function joinMatch(
+  room,
+  displayName,
+  clientRequestId = crypto.randomUUID(),
+) {
   const { response, body } = await json(
     await room.fetch(
       roomRequest("/join", {
         method: "POST",
-        body: { displayName },
+        body: {
+          displayName,
+          clientRequestId,
+        },
       }),
     ),
   );
