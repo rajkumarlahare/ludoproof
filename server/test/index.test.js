@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import worker from "../src/index.js";
+import { TEST_TRUST_ENV } from "./entronex-test-trust.js";
 
 async function body(response) {
   return {
@@ -77,6 +78,7 @@ test("ready is fail-closed until EntroNex secret and match storage exist", async
             "https://entronex.example.test",
           ENTRONEX_API_TOKEN:
             "lp_test_entronex_token_1234567890",
+          ...TEST_TRUST_ENV,
           LUDOPROOF_MATCHES: {},
           LUDOPROOF_API_GATE: {},
         },
