@@ -1,3 +1,4 @@
+import { verifyProofV4 } from "./vendor/entronex-v4/v4.js";
 import {
   ROLL_REVEAL_TIMEOUT_MS,
   RULESET,
@@ -458,22 +459,7 @@ export class MatchRoom {
 
     await validateResolvedProof(proof, pending, state.matchId);
 
-    const hostedVerification = await entronexRequest(
-      this.env,
-      "/v4/verify",
-      {
-        method: "POST",
-        body: proof,
-        authenticated: false,
-      },
-    );
-    if (hostedVerification.valid !== true) {
-      throw httpError(
-        502,
-        "ENTRONEX_PROOF_INVALID",
-        "EntroNex mathematical proof verification failed",
-      );
-    }
+    assertLocalProofValid(proof);
 
     let latest = await this.#requireState();
     if (
@@ -636,22 +622,7 @@ export class MatchRoom {
         body: null,
       },
     );
-    const hostedVerification = await entronexRequest(
-      this.env,
-      "/v4/verify",
-      {
-        method: "POST",
-        body: proof,
-        authenticated: false,
-      },
-    );
-    if (hostedVerification.valid !== true) {
-      throw httpError(
-        502,
-        "ENTRONEX_PROOF_INVALID",
-        "archived EntroNex proof verification failed",
-      );
-    }
+    assertLocalProofValid(proof);
     return proof;
   }
 
@@ -943,6 +914,18 @@ async function entronexRequest(env, path, {
   }
 
   return parsed;
+}
+
+function assertLocalProofValid(proof) {
+  const verification =
+    verifyProofV4(proof);
+  if (verification.valid !== true) {
+    throw httpError(
+      502,
+      "ENTRONEX_PROOF_INVALID",
+      "EntroNex proof failed local mathematical verification",
+    );
+  }
 }
 
 function requireEntroNex(env) {
