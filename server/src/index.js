@@ -1,11 +1,20 @@
 import {
   httpError,
   randomMatchId,
+  sha256Hex,
 } from "./crypto.js";
 
 export { MatchRoom } from "./match-room.js";
+export { ApiGate } from "./api-gate.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
+const RATE_WINDOW_MS = 60 * 1000;
+const RATE_POLICIES = Object.freeze({
+  create: 12,
+  join: 30,
+  state: 120,
+  mutation: 90,
+});
 
 export default {
   async fetch(request, env) {
@@ -35,7 +44,8 @@ export default {
       if (request.method === "GET" && url.pathname === "/ready") {
         const ready =
           hasEntroNexConfig(env) &&
-          Boolean(env.LUDOPROOF_MATCHES);
+          Boolean(env.LUDOPROOF_MATCHES) &&
+          Boolean(env.LUDOPROOF_API_GATE);
         return json(ready ? 200 : 503, {
           ok: ready,
           ready,
@@ -49,6 +59,12 @@ export default {
       if (url.pathname === "/api/matches") {
         requireMethod(request, "POST");
         const body = await readJsonRequest(request);
+        await enforceRateLimit(
+          env,
+          request,
+          "create",
+          RATE_POLICIES.create,
+        );
 
         for (let attempt = 0; attempt < 4; attempt += 1) {
           const matchId = randomMatchId();
@@ -158,6 +174,19 @@ export default {
           );
       }
 
+      const rateScope =
+        action === "join"
+          ? "join"
+          : action === "state"
+            ? "state"
+            : "mutation";
+      await enforceRateLimit(
+        env,
+        request,
+        rateScope,
+        RATE_POLICIES[rateScope],
+      );
+
       const response =
         await target.fetch(
           new Request(
@@ -176,6 +205,106 @@ export default {
     }
   },
 };
+
+async function enforceRateLimit(
+  env,
+  request,
+  scope,
+  limit,
+) {
+  if (!env.LUDOPROOF_API_GATE) {
+    throw httpError(
+      503,
+      "RATE_LIMITER_NOT_CONFIGURED",
+      "API rate limiter is not configured",
+    );
+  }
+
+  const clientIp =
+    request.headers.get(
+      "cf-connecting-ip",
+    ) ?? "unknown";
+  const rateKey =
+    await sha256Hex(
+      "ludoproof:api-rate:v1:" +
+        scope +
+        ":" +
+        clientIp,
+    );
+  const id =
+    env.LUDOPROOF_API_GATE
+      .idFromName(rateKey);
+  const target =
+    env.LUDOPROOF_API_GATE.get(id);
+
+  let response;
+  try {
+    response =
+      await target.fetch(
+        new Request(
+          "https://gate/check",
+          {
+            method: "POST",
+            headers: {
+              "content-type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              limit,
+              periodMs:
+                RATE_WINDOW_MS,
+            }),
+          },
+        ),
+      );
+  } catch {
+    throw httpError(
+      503,
+      "RATE_LIMITER_UNAVAILABLE",
+      "API rate limiter is unavailable",
+    );
+  }
+
+  let result;
+  try {
+    result =
+      await response.json();
+  } catch {
+    throw httpError(
+      503,
+      "RATE_LIMITER_BAD_RESPONSE",
+      "API rate limiter returned invalid data",
+    );
+  }
+
+  if (
+    response.status === 429 ||
+    result.allowed === false
+  ) {
+    const error =
+      httpError(
+        429,
+        "RATE_LIMITED",
+        "too many requests",
+      );
+    error.retryAfter =
+      response.headers.get(
+        "retry-after",
+      ) ?? "60";
+    throw error;
+  }
+
+  if (
+    !response.ok ||
+    result.allowed !== true
+  ) {
+    throw httpError(
+      503,
+      "RATE_LIMITER_UNAVAILABLE",
+      "API rate limiter rejected the check",
+    );
+  }
+}
 
 function room(env, matchId) {
   if (!env.LUDOPROOF_MATCHES) {
@@ -361,10 +490,20 @@ function errorResponse(error) {
       ? error.status
       : 500;
 
-  const extraHeaders =
-    error?.allow
-      ? [["allow", error.allow]]
-      : null;
+  const extraHeaders = [];
+  if (error?.allow) {
+    extraHeaders.push(
+      ["allow", error.allow],
+    );
+  }
+  if (error?.retryAfter) {
+    extraHeaders.push(
+      [
+        "retry-after",
+        String(error.retryAfter),
+      ],
+    );
+  }
 
   return json(
     status,
