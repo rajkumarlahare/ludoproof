@@ -590,6 +590,7 @@ class MainActivity : Activity() {
 
         currentState = state
         matchId = state.matchId
+        reconcilePendingSecret(state)
         boardView.bind(
             state,
             playerId,
@@ -646,6 +647,31 @@ class MainActivity : Activity() {
                     "Event index: " +
                     state.randomEventIndex,
             )
+        }
+    }
+
+    private fun reconcilePendingSecret(
+        state: MatchSnapshot,
+    ) {
+        val secret =
+            pendingSecret
+                ?: return
+        if (secret.matchId != state.matchId) {
+            pendingRollStore.clear()
+            pendingSecret = null
+            return
+        }
+
+        val remoteCommitment =
+            state.pendingRoll
+                ?.clientCommitment
+        if (
+            remoteCommitment == null ||
+            remoteCommitment !=
+            secret.clientCommitment
+        ) {
+            pendingRollStore.clear()
+            pendingSecret = null
         }
     }
 
