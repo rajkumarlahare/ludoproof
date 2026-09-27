@@ -81,7 +81,7 @@ export default {
       if (authorization) headers.set("authorization", authorization);
       headers.set("content-type", "application/json");
 
-      return target.fetch(
+      return await target.fetch(
         new Request("https://room" + targetPath, {
           method: request.method,
           headers,
