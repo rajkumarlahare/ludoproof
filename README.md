@@ -41,7 +41,7 @@ game Worker verifies event binding + proof
 legal Ludo move
 ```
 
-A network retry reuses the same logical random event. The game never requests a replacement roll because a result is undesirable.
+A network retry reuses the same logical random event. The game never requests a replacement roll because a result is undesirable. The Android dice animation is visual only and cannot change, reroll, weight, or select the authoritative outcome.
 
 ## Playable v1 rules
 
@@ -65,15 +65,17 @@ Package:
 com.ludoproof.game
 ```
 
-The first Android UI already supports:
+The Android MVP now supports:
 
-- create match;
-- join by match code;
-- start match;
-- refresh match state;
-- commit + reveal a dice roll;
-- move token 1–4;
-- persistence of match/player session on the device.
+- create/join/share match and waiting-room player display;
+- a native interactive 15×15 Ludo board;
+- server-authoritative token positions and legal-token highlighting;
+- tap-to-move only for server-returned legal tokens;
+- presentation-only dice animation whose final face is the verified server outcome;
+- turn/winner banners and EntroNex verified-roll status;
+- recent round/proof history;
+- persisted match/player session;
+- encrypted pending client-seed recovery with Android Keystore so a reconnect resumes the same logical roll.
 
 The current API URL compiled into the app is:
 
