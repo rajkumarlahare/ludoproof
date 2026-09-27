@@ -545,12 +545,10 @@ class MainActivity : Activity() {
         playerId = id
         matchInput.setText(code)
 
-        secureSessionStore.save(
-            PlayerSession(
-                matchId = code,
-                playerId = id,
-                playerToken = token,
-            ),
+        persistSessionSecurely(
+            code = code,
+            id = id,
+            token = token,
         )
     }
 
@@ -568,12 +566,10 @@ class MainActivity : Activity() {
             val code = matchId
             val token = playerToken
             if (code != null && token != null) {
-                secureSessionStore.save(
-                    PlayerSession(
-                        matchId = code,
-                        playerId = resolvedPlayerId,
-                        playerToken = token,
-                    ),
+                persistSessionSecurely(
+                    code = code,
+                    id = resolvedPlayerId,
+                    token = token,
                 )
             }
         }
@@ -945,6 +941,24 @@ class MainActivity : Activity() {
             "Player name must contain 2 to 24 characters"
         }
         return value
+    }
+
+    private fun persistSessionSecurely(
+        code: String,
+        id: String,
+        token: String,
+    ) {
+        try {
+            secureSessionStore.save(
+                PlayerSession(
+                    matchId = code,
+                    playerId = id,
+                    playerToken = token,
+                ),
+            )
+        } catch (_: Exception) {
+            secureSessionStore.clear()
+        }
     }
 
     private fun withSession(
