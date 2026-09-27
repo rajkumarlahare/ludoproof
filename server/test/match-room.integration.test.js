@@ -756,3 +756,88 @@ test(
     );
   },
 );
+
+
+test(
+  "pending committed roll timeout is sealed and passes the turn without replacement",
+  { concurrency: false },
+  async (t) => {
+    installEntroNexMock(t, {
+      outcomes: [6],
+    });
+    const {
+      ctx,
+      room,
+      host,
+    } =
+      await setupActiveMatch(2);
+
+    const clientSeed = "7".repeat(64);
+    const clientCommitment =
+      await sha256Hex(
+        "entronex:v4:client-commit:" +
+          clientSeed,
+      );
+
+    const committed = await json(
+      await room.fetch(
+        roomRequest(
+          "/roll/commit",
+          {
+            method: "POST",
+            token: host.playerToken,
+            body: { clientCommitment },
+          },
+        ),
+      ),
+    );
+    assert.equal(
+      committed.response.status,
+      201,
+    );
+
+    const stored =
+      await ctx.storage.get(
+        "match-state",
+      );
+    stored.pendingRoll.revealDeadlineAt =
+      Date.now() - 1;
+    await ctx.storage.put(
+      "match-state",
+      stored,
+    );
+
+    await room.alarm();
+
+    const after =
+      await ctx.storage.get(
+        "match-state",
+      );
+    assert.equal(
+      after.pendingRoll,
+      null,
+    );
+    assert.equal(
+      after.turnSeat,
+      1,
+    );
+    assert.equal(
+      after.randomEventIndex,
+      1,
+    );
+    assert.equal(
+      after.history.at(-1).status,
+      "TIMED_OUT",
+    );
+    assert.equal(
+      after.history.at(-1)
+        .replacementRoundAllowed,
+      false,
+    );
+    assert.equal(
+      after.history.at(-1)
+        .clientCommitment,
+      clientCommitment,
+    );
+  },
+);
