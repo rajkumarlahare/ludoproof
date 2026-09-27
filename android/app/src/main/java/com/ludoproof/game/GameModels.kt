@@ -36,6 +36,7 @@ data class HistoryEventSnapshot(
 data class MatchSnapshot(
     val matchId: String,
     val status: String,
+    val hostPlayerId: String,
     val players: List<PlayerSnapshot>,
     val turnSeat: Int,
     val randomEventIndex: Int,
@@ -72,6 +73,7 @@ object GameJson {
         MatchSnapshot(
             matchId = value.optString("matchId"),
             status = value.optString("status", "WAITING"),
+            hostPlayerId = value.optString("hostPlayerId"),
             players =
                 value.optJSONArray("players")
                     .toPlayerList(),
