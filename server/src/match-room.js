@@ -242,7 +242,7 @@ export class MatchRoom {
       throw error;
     }
 
-    validateRoundCommitment(remote, pending, expected);
+    validateRoundCommitment(remote, pending, expected, config);
 
     let latest = await this.#requireState();
     if (
@@ -302,7 +302,7 @@ export class MatchRoom {
     }
     if (pending.status === "RESOLVED") {
       const proof = await this.#loadArchivedProof(pending.roundId);
-      validateResolvedProof(proof, pending);
+      await validateResolvedProof(proof, pending, state.matchId);
       return json(200, {
         replayed: true,
         outcome: proof.outcome,
@@ -351,7 +351,7 @@ export class MatchRoom {
       throw error;
     }
 
-    validateResolvedProof(proof, pending);
+    await validateResolvedProof(proof, pending, state.matchId);
 
     const hostedVerification = await entronexRequest(
       this.env,
@@ -392,7 +392,9 @@ export class MatchRoom {
         playerId: pending.playerId,
         color: state.players[pending.seat].color,
         roundId: pending.roundId,
+        serverCommitment: pending.serverCommitment,
         clientCommitment: pending.clientCommitment,
+        actorHash: pending.actorHash,
         previousStateHash: pending.previousStateHash,
         rulesetHash: pending.rulesetHash,
         proofDigest: proof.proofDigest,
@@ -481,9 +483,21 @@ export class MatchRoom {
     }
 
     const proof = await this.#loadArchivedProof(event.roundId);
+    const actorHash =
+      event.actorHash ??
+      (await sha256Hex(
+        "ludoproof:actor:v1:" + event.playerId,
+      ));
+    await validateResolvedProof(
+      proof,
+      {
+        ...event,
+        actorHash,
+        clientCommitment,
+      },
+      state.matchId,
+    );
     if (
-      proof.roundId !== event.roundId ||
-      proof.clientCommitment !== clientCommitment ||
       proof.proofDigest !== event.proofDigest ||
       proof.outcome !== event.outcome
     ) {
@@ -558,7 +572,7 @@ export class MatchRoom {
   }
 }
 
-function buildEntroNexConfig(matchId, pending) {
+export function buildEntroNexConfig(matchId, pending) {
   return {
     outcomes: [1, 2, 3, 4, 5, 6],
     context: {
@@ -575,7 +589,7 @@ function buildEntroNexConfig(matchId, pending) {
   };
 }
 
-async function expectedDigests(config) {
+export async function expectedDigests(config) {
   const contextDigest = await sha256Hex(
     "entronex:v4:context:" + canonicalJson(config.context),
   );
@@ -594,14 +608,26 @@ async function expectedDigests(config) {
   return { contextDigest, eventBindingDigest, configDigest };
 }
 
-function validateRoundCommitment(round, pending, expected) {
+export function validateRoundCommitment(
+  round,
+  pending,
+  expected,
+  config,
+) {
+  const exactConfig =
+    round?.config &&
+    canonicalJson(round.config) === canonicalJson(config);
+
   if (
     !round ||
+    round.protocol !== "v4" ||
     typeof round.roundId !== "string" ||
+    round.roundId.length < 1 ||
     round.clientCommitment !== pending.clientCommitment ||
     round.configDigest !== expected.configDigest ||
     round.contextDigest !== expected.contextDigest ||
     round.eventBindingDigest !== expected.eventBindingDigest ||
+    !exactConfig ||
     !/^[0-9a-f]{64}$/i.test(round.serverCommitment ?? "")
   ) {
     throw httpError(
@@ -612,13 +638,32 @@ function validateRoundCommitment(round, pending, expected) {
   }
 }
 
-function validateResolvedProof(proof, pending) {
+export async function validateResolvedProof(
+  proof,
+  pending,
+  matchId,
+) {
+  const config = buildEntroNexConfig(matchId, pending);
+  const expected = await expectedDigests(config);
+  const exactConfig =
+    proof?.config &&
+    canonicalJson(proof.config) === canonicalJson(config);
+
   if (
     !proof ||
+    proof.algorithm !==
+      "entronex-v4-dual-commit-hkdf-sha256-context-bound" ||
     proof.roundId !== pending.roundId ||
+    proof.serverCommitment !== pending.serverCommitment ||
     proof.clientCommitment !== pending.clientCommitment ||
-    proof.config?.context?.eventIndex !== pending.eventIndex ||
-    proof.config?.context?.sessionId == null ||
+    proof.configDigest !== expected.configDigest ||
+    proof.contextDigest !== expected.contextDigest ||
+    proof.eventBindingDigest !== expected.eventBindingDigest ||
+    !exactConfig ||
+    proof.config?.context?.applicationId !== APP_ID ||
+    proof.config.context.sessionId !== matchId ||
+    proof.config.context.eventType !== "DICE_ROLL" ||
+    proof.config.context.eventIndex !== pending.eventIndex ||
     proof.config.context.eventId !== pending.eventId ||
     proof.config.context.subjectHash !== pending.actorHash ||
     proof.config.context.previousStateHash !== pending.previousStateHash ||
