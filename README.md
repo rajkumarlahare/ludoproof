@@ -76,7 +76,8 @@ The Android MVP now supports:
 - recent round/proof history;
 - persisted match/player session with the bearer token encrypted by Android Keystore;
 - encrypted pending client-seed recovery with Android Keystore so a reconnect resumes the same logical roll;
-- cleartext network traffic blocked and app backup disabled for sensitive local game state.
+- cleartext network traffic blocked and app backup disabled for sensitive local game state;
+- foreground-only automatic state sync so multiplayer turns, moves, verified rolls, and winner state refresh without manual polling.
 
 The current API URL compiled into the app is:
 
@@ -92,11 +93,14 @@ The isolated Cloudflare Worker name is:
 ludoproof-game-api
 ```
 
-It uses one SQLite-backed Durable Object class:
+It uses two isolated SQLite-backed Durable Object classes:
 
 ```text
-MatchRoom
+LUDOPROOF_MATCHES -> MatchRoom
+LUDOPROOF_API_GATE -> ApiGate
 ```
+
+`ApiGate` provides per-client, per-scope request throttling without storing raw client IP addresses.
 
 Existing EntroNex, Rekixo, AR3D, domains, DNS, and Workers are not modified by this project.
 
@@ -168,7 +172,7 @@ Deployment readiness can be checked with:
 GET /ready
 ```
 
-It returns HTTP 503 until the Durable Object binding and server-only EntroNex token are configured.
+It returns HTTP 503 until both Durable Object bindings and the server-only EntroNex token are configured.
 
 ## Security boundary
 
