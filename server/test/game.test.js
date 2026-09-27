@@ -123,7 +123,7 @@ test("verified six lets a token enter and grants an extra turn", () => {
 test("capture returns opponent token to yard and grants extra turn", () => {
   let state = activeMatch();
   state.players[0].tokens[0] = 1;
-  state.players[1].tokens[0] = 40;
+  state.players[1].tokens[0] = 41;
   assert.equal(globalCellFor("RED", 2), globalCellFor("GREEN", 41));
 
   state = reserveRoll(state, {
