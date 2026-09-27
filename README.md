@@ -2,7 +2,7 @@
 
 LudoProof is an Android Ludo game being built around **verifiable EntroNex dice outcomes**.
 
-Current status: **MVP / evaluation**.
+Current status: **release candidate / evaluation**. The app and game backend are being hardened for production operation, while EntroNex v4 remains pre-independent-audit.
 
 The repository contains:
 
@@ -74,8 +74,9 @@ The Android MVP now supports:
 - presentation-only dice animation whose final face is the verified server outcome;
 - turn/winner banners and EntroNex verified-roll status;
 - recent round/proof history;
-- persisted match/player session;
-- encrypted pending client-seed recovery with Android Keystore so a reconnect resumes the same logical roll.
+- persisted match/player session with the bearer token encrypted by Android Keystore;
+- encrypted pending client-seed recovery with Android Keystore so a reconnect resumes the same logical roll;
+- cleartext network traffic blocked and app backup disabled for sensitive local game state.
 
 The current API URL compiled into the app is:
 
@@ -139,7 +140,7 @@ Build command: (empty)
 Deploy command: npx --yes wrangler@4.135.0 deploy
 ```
 
-Do not attach a custom route or existing domain during MVP evaluation.
+Keep the Worker isolated on `workers.dev` during the current evaluation stage. Do not attach existing Rekixo/AR3D domains or routes.
 
 ## Local checks
 
@@ -154,10 +155,20 @@ npx --yes wrangler@4.135.0 deploy --dry-run
 Android:
 
 ```bash
+gradle -p android :app:lintRelease
 gradle -p android :app:assembleDebug
+gradle -p android :app:assembleRelease
 ```
 
-GitHub Actions runs both checks automatically.
+GitHub Actions gates server tests, Wrangler dry-run, Android release lint, debug build, and release build automatically.
+
+Deployment readiness can be checked with:
+
+```text
+GET /ready
+```
+
+It returns HTTP 503 until the Durable Object binding and server-only EntroNex token are configured.
 
 ## Security boundary
 
@@ -179,8 +190,8 @@ rulesetHash
 
 ## Important status
 
-LudoProof is not yet a production game.
+LudoProof is now structured as a production release candidate, but it must not be represented as cryptographically production-certified yet.
 
 EntroNex v4 is still an evaluation candidate pending independent cryptographic review. LudoProof must not be described as independently audited, certified, or gambling-certified at this stage.
 
-See [Architecture](docs/ARCHITECTURE.md).
+See [Architecture](docs/ARCHITECTURE.md) and [Production release checklist](docs/PRODUCTION_RELEASE.md).
