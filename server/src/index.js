@@ -174,7 +174,7 @@ export default {
           );
       }
 
-      const rateScope =
+      const policyKey =
         action === "join"
           ? "join"
           : action === "state"
@@ -183,8 +183,8 @@ export default {
       await enforceRateLimit(
         env,
         request,
-        rateScope,
-        RATE_POLICIES[rateScope],
+        policyKey + ":" + matchId,
+        RATE_POLICIES[policyKey],
       );
 
       const response =
