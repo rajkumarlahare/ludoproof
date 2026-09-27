@@ -35,6 +35,10 @@ const ACTIVE_IDLE_TTL_MS =
   7 * 24 * 60 * 60 * 1000;
 const FINISHED_IDLE_TTL_MS =
   24 * 60 * 60 * 1000;
+const DEFAULT_ENTRONEX_TIMEOUT_MS =
+  8_000;
+const MAX_ENTRONEX_RESPONSE_BYTES =
+  256 * 1024;
 const WORLD = Object.freeze({
   cellsPerOutcome: 16,
   timelineTicks: 512,
@@ -877,7 +881,7 @@ function publicStateWithHistory(state) {
   };
 }
 
-async function entronexRequest(env, path, {
+export async function entronexRequest(env, path, {
   method,
   body,
   authenticated = true,
@@ -897,13 +901,30 @@ async function entronexRequest(env, path, {
     response = await fetch(baseUrl + path, {
       method,
       headers,
+      signal: AbortSignal.timeout(
+        entronexTimeoutMs(env),
+      ),
       body: body == null ? undefined : JSON.stringify(body),
     });
-  } catch {
+  } catch (error) {
+    if (
+      error?.name === "TimeoutError" ||
+      error?.name === "AbortError"
+    ) {
+      throw httpError(
+        504,
+        "ENTRONEX_TIMEOUT",
+        "EntroNex request timed out",
+      );
+    }
     throw httpError(502, "ENTRONEX_UNAVAILABLE", "EntroNex request failed");
   }
 
-  const text = await response.text();
+  const text =
+    await readTextLimited(
+      response,
+      MAX_ENTRONEX_RESPONSE_BYTES,
+    );
   let parsed = {};
   try {
     parsed = text ? JSON.parse(text) : {};
@@ -922,6 +943,79 @@ async function entronexRequest(env, path, {
   }
 
   return parsed;
+}
+
+function entronexTimeoutMs(env) {
+  const value =
+    Number(
+      env?.ENTRONEX_REQUEST_TIMEOUT_MS,
+    );
+  return Number.isSafeInteger(value) &&
+    value >= 100 &&
+    value <= 30_000
+    ? value
+    : DEFAULT_ENTRONEX_TIMEOUT_MS;
+}
+
+async function readTextLimited(
+  response,
+  maxBytes,
+) {
+  const declared =
+    Number(
+      response.headers.get(
+        "content-length",
+      ),
+    );
+  if (
+    Number.isFinite(declared) &&
+    declared > maxBytes
+  ) {
+    throw httpError(
+      502,
+      "ENTRONEX_RESPONSE_TOO_LARGE",
+      "EntroNex response exceeded the maximum allowed size",
+    );
+  }
+
+  if (!response.body) {
+    return "";
+  }
+
+  const reader =
+    response.body.getReader();
+  const chunks = [];
+  let total = 0;
+
+  try {
+    while (true) {
+      const { done, value } =
+        await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw httpError(
+          502,
+          "ENTRONEX_RESPONSE_TOO_LARGE",
+          "EntroNex response exceeded the maximum allowed size",
+        );
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes =
+    new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder()
+    .decode(bytes);
 }
 
 function assertLocalProofValid(proof) {
