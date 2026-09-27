@@ -749,7 +749,8 @@ class MainActivity : Activity() {
 
         startButton.isEnabled =
             state.status == "WAITING" &&
-                state.players.size >= 2
+                state.players.size >= 2 &&
+                state.hostPlayerId == playerId
 
         refreshButton.isEnabled = true
         shareButton.isEnabled =
@@ -985,15 +986,22 @@ class MainActivity : Activity() {
     private fun setNetworkControls(
         enabled: Boolean,
     ) {
-        refreshButton.isEnabled =
-            enabled &&
+        if (!enabled) {
+            refreshButton.isEnabled = false
+            startButton.isEnabled = false
+            rollButton.isEnabled = false
+            return
+        }
+
+        val state = currentState
+        if (state != null) {
+            updateControls(state)
+        } else {
+            refreshButton.isEnabled =
                 playerToken != null
-        startButton.isEnabled =
-            enabled &&
-                startButton.isEnabled
-        rollButton.isEnabled =
-            enabled &&
-                rollButton.isEnabled
+            startButton.isEnabled = false
+            rollButton.isEnabled = false
+        }
     }
 
     private fun showStatus(
