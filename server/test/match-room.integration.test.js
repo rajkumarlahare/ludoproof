@@ -7,6 +7,11 @@ import {
 } from "../src/match-room.js";
 import { sha256Hex } from "../src/crypto.js";
 import {
+  TEST_TRUST_ENV,
+  attachCommitmentEvidence,
+  attachProofEvidence,
+} from "./entronex-test-trust.js";
+import {
   clientCommitmentForSeedV4,
   resolveOutcomeV4,
   serverCommitmentForSeedV4,
@@ -55,6 +60,7 @@ function makeEnv() {
   return {
     ENTRONEX_BASE_URL: BASE_URL,
     ENTRONEX_API_TOKEN: API_TOKEN,
+    ...TEST_TRUST_ENV,
   };
 }
 
@@ -224,16 +230,20 @@ function installEntroNexMock(t, {
         serverCommitmentForSeedV4(
           serverSeed,
         );
-      const round = {
-        protocol: "v4",
-        roundId,
-        serverCommitment,
-        clientCommitment:
-          parsedBody.clientCommitment,
-        config,
-        ...digests,
-        replayed: false,
-      };
+      const round =
+        attachCommitmentEvidence(
+          {
+            protocol: "v4",
+            roundId,
+            serverCommitment,
+            clientCommitment:
+              parsedBody.clientCommitment,
+            config,
+            ...digests,
+            replayed: false,
+          },
+          createCalls * 2 - 1,
+        );
       rounds.set(roundId, {
         round,
         serverSeed,
@@ -290,26 +300,29 @@ function installEntroNexMock(t, {
       outcomeCursor += 1;
 
       const proof =
-        resolveOutcomeV4({
-          roundId,
-          serverSeed:
-            record.serverSeed,
-          serverCommitment:
-            record.round.serverCommitment,
-          clientSeed:
-            parsedBody.clientSeed,
-          clientCommitment:
-            record.round.clientCommitment,
-          contextDigest:
-            record.round.contextDigest,
-          eventBindingDigest:
-            record.round
-              .eventBindingDigest,
-          config:
-            record.round.config,
-          configDigest:
-            record.round.configDigest,
-        });
+        attachProofEvidence(
+          resolveOutcomeV4({
+            roundId,
+            serverSeed:
+              record.serverSeed,
+            serverCommitment:
+              record.round.serverCommitment,
+            clientSeed:
+              parsedBody.clientSeed,
+            clientCommitment:
+              record.round.clientCommitment,
+            contextDigest:
+              record.round.contextDigest,
+            eventBindingDigest:
+              record.round
+                .eventBindingDigest,
+            config:
+              record.round.config,
+            configDigest:
+              record.round.configDigest,
+          }),
+          createCalls * 2,
+        );
 
       record.revealedSeed =
         parsedBody.clientSeed;
