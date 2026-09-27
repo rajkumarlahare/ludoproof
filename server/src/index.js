@@ -1,3 +1,4 @@
+import { hasPinnedEntroNexTrust } from "./entronex-trust.js";
 import {
   httpError,
   randomMatchId,
@@ -324,7 +325,8 @@ function hasEntroNexConfig(env) {
     typeof env.ENTRONEX_BASE_URL === "string" &&
     env.ENTRONEX_BASE_URL.startsWith("https://") &&
     typeof env.ENTRONEX_API_TOKEN === "string" &&
-    env.ENTRONEX_API_TOKEN.length >= 20
+    env.ENTRONEX_API_TOKEN.length >= 20 &&
+    hasPinnedEntroNexTrust(env)
   );
 }
 
