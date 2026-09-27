@@ -184,10 +184,39 @@ export function normalizeDisplayName(value) {
   if (typeof value !== "string") {
     throw httpError(400, "INVALID_DISPLAY_NAME", "displayName is required");
   }
-  const name = value.trim().replace(/\s+/g, " ");
-  if (name.length < 2 || name.length > 24) {
-    throw httpError(400, "INVALID_DISPLAY_NAME", "displayName must contain 2 to 24 characters");
+
+  const normalized =
+    value.normalize("NFC");
+
+  if (
+    /[\u0000-\u001F\u007F-\u009F\u061C\u200B\u200E\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/u
+      .test(normalized)
+  ) {
+    throw httpError(
+      400,
+      "INVALID_DISPLAY_NAME",
+      "displayName contains invisible or directional control characters",
+    );
   }
+
+  const name =
+    normalized
+      .trim()
+      .replace(/\s+/gu, " ");
+  const codePoints =
+    [...name];
+
+  if (
+    codePoints.length < 2 ||
+    codePoints.length > 24
+  ) {
+    throw httpError(
+      400,
+      "INVALID_DISPLAY_NAME",
+      "displayName must contain 2 to 24 characters",
+    );
+  }
+
   return name;
 }
 

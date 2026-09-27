@@ -36,6 +36,12 @@ class PendingRollStore(
             Cipher.ENCRYPT_MODE,
             secretKey(),
         )
+        cipher.updateAAD(
+            LocalSecretBinding.pendingRollAad(
+                value.matchId,
+                value.clientCommitment,
+            ),
+        )
         val encrypted =
             cipher.doFinal(
                 value.clientSeed
@@ -44,6 +50,10 @@ class PendingRollStore(
 
         val persisted =
             prefs.edit()
+            .putInt(
+                KEY_FORMAT_VERSION,
+                LocalSecretBinding.FORMAT_VERSION,
+            )
             .putString(KEY_MATCH_ID, value.matchId)
             .putString(
                 KEY_COMMITMENT,
@@ -94,6 +104,12 @@ class PendingRollStore(
             return null
         }
 
+        val formatVersion =
+            prefs.getInt(
+                KEY_FORMAT_VERSION,
+                1,
+            )
+
         return try {
             val cipher =
                 Cipher.getInstance(TRANSFORMATION)
@@ -108,6 +124,17 @@ class PendingRollStore(
                     ),
                 ),
             )
+            if (
+                formatVersion >=
+                LocalSecretBinding.FORMAT_VERSION
+            ) {
+                cipher.updateAAD(
+                    LocalSecretBinding.pendingRollAad(
+                        matchId,
+                        commitment,
+                    ),
+                )
+            }
             val seed =
                 cipher.doFinal(
                     Base64.decode(
@@ -121,11 +148,19 @@ class PendingRollStore(
                 clear()
                 null
             } else {
-                PendingRollSecret(
-                    matchId = matchId,
-                    clientSeed = seed,
-                    clientCommitment = commitment,
-                )
+                val value =
+                    PendingRollSecret(
+                        matchId = matchId,
+                        clientSeed = seed,
+                        clientCommitment = commitment,
+                    )
+                if (
+                    formatVersion <
+                    LocalSecretBinding.FORMAT_VERSION
+                ) {
+                    save(value)
+                }
+                value
             }
         } catch (_: Exception) {
             clear()
@@ -135,6 +170,7 @@ class PendingRollStore(
 
     fun clear() {
         prefs.edit()
+            .remove(KEY_FORMAT_VERSION)
             .remove(KEY_MATCH_ID)
             .remove(KEY_COMMITMENT)
             .remove(KEY_IV)
@@ -192,6 +228,8 @@ class PendingRollStore(
         const val TRANSFORMATION =
             "AES/GCM/NoPadding"
 
+        const val KEY_FORMAT_VERSION =
+            "formatVersion"
         const val KEY_MATCH_ID = "matchId"
         const val KEY_COMMITMENT =
             "clientCommitment"

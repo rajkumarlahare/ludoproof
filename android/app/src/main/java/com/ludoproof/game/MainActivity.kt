@@ -124,7 +124,7 @@ class MainActivity : Activity() {
         content.addView(
             TextView(this).apply {
                 text =
-                    "Fair multiplayer Ludo with EntroNex verified dice."
+                    "Fair multiplayer Ludo with locally verified EntroNex v4 dice proofs."
                 textSize = 14f
                 gravity =
                     Gravity.CENTER_HORIZONTAL
@@ -830,7 +830,7 @@ class MainActivity : Activity() {
                     )
                     append(outcome)
                     append(
-                        "   ✓ EntroNex Verified",
+                        "   ✓ EntroNex v4 proof verified locally",
                     )
                     if (
                         eventIndex != null

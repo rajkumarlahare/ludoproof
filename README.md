@@ -35,7 +35,9 @@ Android reveals original client seed
 EntroNex proof
         |
         v
-game Worker verifies event binding + proof
+game Worker verifies exact event binding
++ frozen local v4 mathematics
++ pinned Ed25519 attestation
         |
         v
 legal Ludo move
@@ -74,8 +76,8 @@ The Android MVP now supports:
 - presentation-only dice animation whose final face is the verified server outcome;
 - turn/winner banners and EntroNex verified-roll status;
 - recent round/proof history;
-- persisted match/player session with the bearer token encrypted by Android Keystore;
-- encrypted pending client-seed recovery with Android Keystore so a reconnect resumes the same logical roll;
+- persisted match/player session with the bearer token encrypted by Android Keystore and AAD-bound to its match/player metadata;
+- encrypted pending client-seed recovery with Android Keystore, AAD-bound to its match/commitment metadata, so a reconnect resumes the same logical roll;
 - cleartext network traffic blocked and app backup disabled for sensitive local game state;
 - foreground-only automatic state sync so multiplayer turns, moves, verified rolls, and winner state refresh without manual polling.
 
@@ -104,31 +106,35 @@ LUDOPROOF_API_GATE -> ApiGate
 
 Existing EntroNex, Rekixo, AR3D, domains, DNS, and Workers are not modified by this project.
 
-### Required secret
+### Required server configuration
 
-The game Worker needs one server-only secret:
+Server-only Cloudflare secrets:
 
 ```text
 ENTRONEX_API_TOKEN
+LUDOPROOF_SESSION_HMAC_KEY
 ```
 
-This is the existing EntroNex evaluation customer bearer token.
+`ENTRONEX_API_TOKEN` is the EntroNex evaluation customer bearer token. `LUDOPROOF_SESSION_HMAC_KEY` must be an independently generated random value of at least 32 characters and is used only by the game Worker to reconstruct retry-safe player sessions.
 
-**Never put this secret in Android source, BuildConfig, GitHub, or chat.**
+**Never put either secret in Android source, BuildConfig, the repository, or chat.**
 
-After the Worker is connected to Cloudflare, add it in:
+Pinned public EntroNex trust material must also be configured on the Worker:
 
 ```text
-Workers & Pages
-→ ludoproof-game-api
-→ Settings
-→ Variables and Secrets
-→ Add
-→ Secret
-→ ENTRONEX_API_TOKEN
+ENTRONEX_SIGNING_KEY_ID
+ENTRONEX_TENANT_ID
+ENTRONEX_SIGNING_KEY_FINGERPRINT
+ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64
 ```
 
-The EntroNex base URL is already a non-secret Worker variable.
+Obtain the signing fingerprint/public key from an independently verified EntroNex export or release channel. Do not create the trust root by copying only from the same unauthenticated proof response.
+
+The non-secret EntroNex base URL remains:
+
+```text
+ENTRONEX_BASE_URL=https://entronex-v4-eval.ai-8f3.workers.dev
+```
 
 ## Cloudflare Git deployment
 
@@ -159,12 +165,14 @@ npx --yes wrangler@4.135.0 deploy --dry-run
 Android:
 
 ```bash
+gradle -p android :app:testDebugUnitTest
 gradle -p android :app:lintRelease
 gradle -p android :app:assembleDebug
 gradle -p android :app:assembleRelease
+gradle -p android :app:bundleRelease
 ```
 
-GitHub Actions gates server tests, Wrangler dry-run, Android release lint, debug build, and release build automatically.
+GitHub Actions gates server tests, Wrangler dry-run, Android JVM unit tests, release lint, debug/release APK builds, release AAB bundling, SBOM generation, and SHA-256 release evidence automatically. CI release artifacts are intentionally not store-signed; upload/store signing remains an external release-key operation.
 
 Deployment readiness can be checked with:
 
@@ -172,7 +180,7 @@ Deployment readiness can be checked with:
 GET /ready
 ```
 
-It returns HTTP 503 until both Durable Object bindings and the server-only EntroNex token are configured.
+It returns HTTP 503 until both Durable Object bindings, the retry-safe session HMAC key, pinned EntroNex signing identity, EntroNex bearer credential, and a reachable EntroNex health endpoint are all available.
 
 ## Security boundary
 

@@ -61,12 +61,29 @@ jobs:
         uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
           gradle-version: "8.9"
+      - name: Android unit tests
+        run: gradle -p android :app:testDebugUnitTest --stacktrace
       - name: Release lint
         run: gradle -p android :app:lintRelease --stacktrace
       - name: Assemble debug APK
         run: gradle -p android :app:assembleDebug --stacktrace
       - name: Assemble release APK
         run: gradle -p android :app:assembleRelease --stacktrace
+      - name: Bundle release AAB
+        run: gradle -p android :app:bundleRelease --stacktrace
+      - name: Hash Android release evidence
+        run: node scripts/hash-android-release.mjs
+      - name: Upload release candidate evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ludoproof-release-candidate
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/bundle/release/*.aab
+            ludoproof-android-release.json
+            ludoproof-android-release.sha256
+          if-no-files-found: error
+          retention-days: 90
       - name: Upload debug APK
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
