@@ -88,6 +88,90 @@ for (const file of files.sort()) {
   }
 }
 
+const gitignore =
+  fs.readFileSync(
+    ".gitignore",
+    "utf8",
+  );
+for (const pattern of [
+  "*.jks",
+  "*.keystore",
+  "key.properties",
+  "keystore.properties",
+]) {
+  if (!gitignore.includes(pattern)) {
+    findings.push(
+      ".gitignore: missing Android signing-secret pattern " +
+        pattern,
+    );
+  }
+}
+
+const serverPackage =
+  JSON.parse(
+    fs.readFileSync(
+      "server/package.json",
+      "utf8",
+    ),
+  );
+const androidBuild =
+  fs.readFileSync(
+    "android/app/build.gradle.kts",
+    "utf8",
+  );
+const androidVersion =
+  androidBuild.match(
+    /versionName\s*=\s*"([^"]+)"/,
+  )?.[1] ?? null;
+if (
+  !androidVersion ||
+  serverPackage.version !==
+    androidVersion
+) {
+  findings.push(
+    "release version drift between server and Android",
+  );
+}
+
+for (const file of [
+  "android/app/src/main/java/com/ludoproof/game/PendingRollStore.kt",
+  "android/app/src/main/java/com/ludoproof/game/SecureSessionStore.kt",
+]) {
+  const content =
+    fs.readFileSync(
+      file,
+      "utf8",
+    );
+  if (
+    !content.includes(
+      "cipher.updateAAD(",
+    )
+  ) {
+    findings.push(
+      file +
+        ": encrypted metadata is not AAD-bound",
+    );
+  }
+}
+
+const ci =
+  fs.readFileSync(
+    ".github/workflows/ci.yml",
+    "utf8",
+  );
+for (const invariant of [
+  ":app:testDebugUnitTest",
+  ":app:bundleRelease",
+  "hash-android-release.mjs",
+]) {
+  if (!ci.includes(invariant)) {
+    findings.push(
+      ".github/workflows/ci.yml: missing release gate " +
+        invariant,
+    );
+  }
+}
+
 if (findings.length > 0) {
   console.error(
     "LudoProof security gate failed:",
