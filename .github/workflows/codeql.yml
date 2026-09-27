@@ -1,0 +1,31 @@
+name: LudoProof CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '37 4 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze JavaScript
+    if: ${{ github.event.repository.private == false || vars.LUDOPROOF_CODEQL_PRIVATE == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@1190a975f95ce23525efb6a3fc21ea29567c1b52
+        with:
+          languages: javascript-typescript
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@1190a975f95ce23525efb6a3fc21ea29567c1b52
+      - name: Analyze
+        uses: github/codeql-action/analyze@1190a975f95ce23525efb6a3fc21ea29567c1b52
