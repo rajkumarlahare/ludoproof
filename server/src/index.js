@@ -1,7 +1,9 @@
 import { hasPinnedEntroNexTrust } from "./entronex-trust.js";
 import {
+  deterministicMatchId,
+  hasSessionKey,
   httpError,
-  randomMatchId,
+  requireClientRequestId,
   sha256Hex,
 } from "./crypto.js";
 
@@ -53,6 +55,7 @@ export default {
             : false;
         const ready =
           configured &&
+          hasSessionKey(env) &&
           entronexReachable;
         return json(ready ? 200 : 503, {
           ok: ready,
@@ -75,8 +78,17 @@ export default {
           RATE_POLICIES.create,
         );
 
+        const clientRequestId =
+          requireClientRequestId(
+            body.clientRequestId,
+          );
+
         for (let attempt = 0; attempt < 4; attempt += 1) {
-          const matchId = randomMatchId();
+          const matchId =
+            await deterministicMatchId(
+              clientRequestId,
+              attempt,
+            );
           const target = room(env, matchId);
           const response = await target.fetch(
             new Request("https://room/create", {
