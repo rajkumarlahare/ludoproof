@@ -1,10 +1,13 @@
+import { verifyProofV4 } from "./vendor/entronex-v4/v4.js";
 import {
+  ROLL_REVEAL_TIMEOUT_MS,
   RULESET,
   addPlayer,
   applyMove,
   attachHostAuth,
   attachRoundCommitment,
   authoritativeStateForRandomness,
+  forfeitTimedOutRoll,
   newMatch,
   publicState,
   registerResolvedRoll,
@@ -56,7 +59,7 @@ export class MatchRoom {
         return await this.#mutate(() => this.#join(body));
       }
       if (request.method === "GET" && url.pathname === "/state") {
-        return await this.#state(request);
+        return await this.#mutate(() => this.#state(request));
       }
       if (request.method === "POST" && url.pathname === "/start") {
         return await this.#mutate(() => this.#start(request));
@@ -84,16 +87,31 @@ export class MatchRoom {
   }
 
   async alarm() {
-    const state =
+    let state =
       await this.ctx.storage.get(STATE_KEY);
     if (!state) return;
+
+    const now = Date.now();
+    const expired =
+      await this.#expirePendingIfNeeded(
+        state,
+        now,
+      );
+    state = expired.state;
+
+    if (expired.changed) {
+      await this.#persist(state);
+      return;
+    }
 
     const expiresAt =
       Number(state.updatedAt ?? state.createdAt ?? 0) +
       this.#idleTtl(state);
 
-    if (Date.now() < expiresAt) {
-      await this.#setAlarm(expiresAt);
+    if (now < expiresAt) {
+      await this.#setAlarm(
+        this.#nextAlarmAt(state, expiresAt),
+      );
       return;
     }
 
@@ -109,10 +127,23 @@ export class MatchRoom {
       STATE_KEY,
       state,
     );
-    const expiresAt =
+    const idleExpiresAt =
       Number(state.updatedAt ?? state.createdAt ?? Date.now()) +
       this.#idleTtl(state);
-    await this.#setAlarm(expiresAt);
+    await this.#setAlarm(
+      this.#nextAlarmAt(
+        state,
+        idleExpiresAt,
+      ),
+    );
+  }
+
+  #nextAlarmAt(state, idleExpiresAt) {
+    const deadline =
+      state.pendingRoll?.revealDeadlineAt;
+    return Number.isSafeInteger(deadline)
+      ? Math.min(idleExpiresAt, deadline)
+      : idleExpiresAt;
   }
 
   #idleTtl(state) {
@@ -304,10 +335,14 @@ export class MatchRoom {
     }
 
     if (latest.pendingRoll.status === "CREATING") {
+      const committedAt = Date.now();
       latest = attachRoundCommitment(latest, {
         roundId: remote.roundId,
         serverCommitment: remote.serverCommitment,
-        now: Date.now(),
+        revealDeadlineAt:
+          committedAt +
+          ROLL_REVEAL_TIMEOUT_MS,
+        now: committedAt,
       });
       latest.history = state.history ?? [];
       await this.#persist(latest);
@@ -388,8 +423,29 @@ export class MatchRoom {
         },
       );
     } catch (error) {
-      const latest = await this.#requireState();
+      let latest = await this.#requireState();
       if (
+        error?.code === "ROUND_EXPIRED" &&
+        latest.pendingRoll?.roundId ===
+          pending.roundId
+      ) {
+        const expired =
+          await this.#expirePendingIfNeeded(
+            latest,
+            Math.max(
+              Date.now(),
+              Number(
+                latest.pendingRoll
+                  .revealDeadlineAt ?? 0,
+              ),
+            ),
+            "ENTRONEX_ROUND_EXPIRED",
+          );
+        latest = expired.state;
+        if (expired.changed) {
+          await this.#persist(latest);
+        }
+      } else if (
         latest.pendingRoll?.roundId === pending.roundId &&
         latest.pendingRoll.status === "RESOLVING"
       ) {
@@ -403,22 +459,7 @@ export class MatchRoom {
 
     await validateResolvedProof(proof, pending, state.matchId);
 
-    const hostedVerification = await entronexRequest(
-      this.env,
-      "/v4/verify",
-      {
-        method: "POST",
-        body: proof,
-        authenticated: false,
-      },
-    );
-    if (hostedVerification.valid !== true) {
-      throw httpError(
-        502,
-        "ENTRONEX_PROOF_INVALID",
-        "EntroNex mathematical proof verification failed",
-      );
-    }
+    assertLocalProofValid(proof);
 
     let latest = await this.#requireState();
     if (
@@ -581,22 +622,7 @@ export class MatchRoom {
         body: null,
       },
     );
-    const hostedVerification = await entronexRequest(
-      this.env,
-      "/v4/verify",
-      {
-        method: "POST",
-        body: proof,
-        authenticated: false,
-      },
-    );
-    if (hostedVerification.valid !== true) {
-      throw httpError(
-        502,
-        "ENTRONEX_PROOF_INVALID",
-        "archived EntroNex proof verification failed",
-      );
-    }
+    assertLocalProofValid(proof);
     return proof;
   }
 
@@ -615,10 +641,89 @@ export class MatchRoom {
   }
 
   async #requireState() {
-    const state = await this.ctx.storage.get(STATE_KEY);
+    let state = await this.ctx.storage.get(STATE_KEY);
     if (!state) throw httpError(404, "MATCH_NOT_FOUND", "match does not exist");
     if (!Array.isArray(state.history)) state.history = [];
+
+    const expired =
+      await this.#expirePendingIfNeeded(
+        state,
+        Date.now(),
+      );
+    state = expired.state;
+    if (expired.changed) {
+      await this.#persist(state);
+    }
     return state;
+  }
+
+  async #expirePendingIfNeeded(
+    state,
+    now,
+    reason = "REVEAL_TIMEOUT",
+  ) {
+    const pending = state.pendingRoll;
+    if (
+      !pending ||
+      !["CREATING", "COMMITTED", "RESOLVING"]
+        .includes(pending.status) ||
+      !Number.isSafeInteger(
+        pending.revealDeadlineAt,
+      ) ||
+      now < pending.revealDeadlineAt
+    ) {
+      return {
+        state,
+        changed: false,
+      };
+    }
+
+    const result = forfeitTimedOutRoll(
+      state,
+      {
+        now,
+        reason,
+      },
+    );
+    const timedOut =
+      result.timedOutRoll;
+    const player =
+      state.players[timedOut.seat];
+
+    result.state.history = [
+      ...(state.history ?? []),
+      {
+        eventIndex: timedOut.eventIndex,
+        eventId: timedOut.eventId,
+        playerId: timedOut.playerId,
+        color: player?.color ?? null,
+        roundId: timedOut.roundId,
+        serverCommitment:
+          timedOut.serverCommitment,
+        clientCommitment:
+          timedOut.clientCommitment,
+        actorHash: timedOut.actorHash,
+        previousStateHash:
+          timedOut.previousStateHash,
+        rulesetHash:
+          timedOut.rulesetHash,
+        proofDigest: null,
+        outcome: null,
+        moveTokenIndex: null,
+        captures: 0,
+        status: "TIMED_OUT",
+        timeoutReason:
+          timedOut.timeoutReason,
+        timedOutAt:
+          timedOut.timedOutAt,
+        replacementRoundAllowed: false,
+      },
+    ].slice(-200);
+
+    return {
+      state: result.state,
+      changed: true,
+    };
   }
 }
 
@@ -740,6 +845,8 @@ function commitmentSummary(pending) {
     clientCommitment: pending.clientCommitment,
     previousStateHash: pending.previousStateHash,
     rulesetHash: pending.rulesetHash,
+    revealDeadlineAt:
+      pending.revealDeadlineAt,
   };
 }
 
@@ -807,6 +914,18 @@ async function entronexRequest(env, path, {
   }
 
   return parsed;
+}
+
+function assertLocalProofValid(proof) {
+  const verification =
+    verifyProofV4(proof);
+  if (verification.valid !== true) {
+    throw httpError(
+      502,
+      "ENTRONEX_PROOF_INVALID",
+      "EntroNex proof failed local mathematical verification",
+    );
+  }
 }
 
 function requireEntroNex(env) {

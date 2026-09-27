@@ -1,5 +1,7 @@
 export const COLORS = ["RED", "GREEN", "YELLOW", "BLUE"];
 
+export const ROLL_REVEAL_TIMEOUT_MS = 4 * 60 * 1000;
+
 export const RULESET = Object.freeze({
   id: "ludoproof-standard-v1",
   boardTrackCells: 52,
@@ -152,6 +154,8 @@ export function reserveRoll(state, {
     legalTokenIndexes: null,
     createdAt: now,
     resolvedAt: null,
+    committedAt: null,
+    revealDeadlineAt: now + ROLL_REVEAL_TIMEOUT_MS,
   };
   touch(next, now);
   return next;
@@ -160,6 +164,7 @@ export function reserveRoll(state, {
 export function attachRoundCommitment(state, {
   roundId,
   serverCommitment,
+  revealDeadlineAt,
   now,
 }) {
   if (!state.pendingRoll || state.pendingRoll.status !== "CREATING") {
@@ -170,9 +175,60 @@ export function attachRoundCommitment(state, {
   next.pendingRoll.status = "COMMITTED";
   next.pendingRoll.roundId = roundId;
   next.pendingRoll.serverCommitment = serverCommitment;
+  next.pendingRoll.committedAt = now;
+  next.pendingRoll.revealDeadlineAt =
+    Number.isSafeInteger(revealDeadlineAt)
+      ? revealDeadlineAt
+      : now + ROLL_REVEAL_TIMEOUT_MS;
   next.randomEventIndex += 1;
   touch(next, now);
   return next;
+}
+
+export function forfeitTimedOutRoll(state, {
+  now,
+  reason = "REVEAL_TIMEOUT",
+}) {
+  requireStatus(state, "ACTIVE");
+  const pending = state.pendingRoll;
+  if (!pending) {
+    throw gameError("NO_PENDING_ROLL", "there is no pending roll to forfeit");
+  }
+  if (!["CREATING", "COMMITTED", "RESOLVING"].includes(pending.status)) {
+    throw gameError("ROLL_STATE_CONFLICT", "only an unresolved roll can time out");
+  }
+  if (
+    !Number.isSafeInteger(pending.revealDeadlineAt) ||
+    now < pending.revealDeadlineAt
+  ) {
+    throw gameError("ROLL_NOT_TIMED_OUT", "pending roll has not reached its reveal deadline");
+  }
+
+  const next = clone(state);
+  const timedOut = structuredClone(next.pendingRoll);
+
+  if (
+    timedOut.status === "CREATING" &&
+    next.randomEventIndex === timedOut.eventIndex
+  ) {
+    next.randomEventIndex += 1;
+  }
+
+  next.consecutiveSixes[timedOut.seat] = 0;
+  next.pendingRoll = null;
+  advanceTurn(next);
+  touch(next, now);
+
+  return {
+    state: next,
+    timedOutRoll: {
+      ...timedOut,
+      status: "TIMED_OUT",
+      timeoutReason: reason,
+      timedOutAt: now,
+      replacementRoundAllowed: false,
+    },
+  };
 }
 
 export function legalTokenIndexes(state, seat, roll) {
@@ -350,6 +406,8 @@ export function publicState(state) {
           proofDigest: state.pendingRoll.proofDigest,
           outcome: state.pendingRoll.outcome,
           legalTokenIndexes: state.pendingRoll.legalTokenIndexes,
+          clientCommitment: state.pendingRoll.clientCommitment,
+          revealDeadlineAt: state.pendingRoll.revealDeadlineAt,
         }
       : null,
     winnerPlayerId: state.winnerPlayerId,

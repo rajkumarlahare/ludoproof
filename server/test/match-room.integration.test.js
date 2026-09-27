@@ -6,6 +6,11 @@ import {
   expectedDigests,
 } from "../src/match-room.js";
 import { sha256Hex } from "../src/crypto.js";
+import {
+  clientCommitmentForSeedV4,
+  resolveOutcomeV4,
+  serverCommitmentForSeedV4,
+} from "../src/vendor/entronex-v4/v4.js";
 
 const ALGORITHM =
   "entronex-v4-dual-commit-hkdf-sha256-context-bound";
@@ -151,6 +156,10 @@ async function setupActiveMatch(playerCount = 2) {
 
 function installEntroNexMock(t, {
   outcomes = [6],
+  clientSeeds = [
+    "1".repeat(64),
+    "3".repeat(64),
+  ],
 } = {}) {
   const originalFetch = globalThis.fetch;
   const rounds = new Map();
@@ -174,15 +183,6 @@ function installEntroNexMock(t, {
 
     if (
       method === "POST" &&
-      url.pathname === "/v4/verify"
-    ) {
-      return Response.json({
-        valid: true,
-      });
-    }
-
-    if (
-      method === "POST" &&
       url.pathname === "/v4/rounds"
     ) {
       createCalls += 1;
@@ -196,11 +196,34 @@ function installEntroNexMock(t, {
       const roundId =
         "00000000-0000-4000-8000-" +
         String(createCalls).padStart(12, "0");
+      const desiredOutcome =
+        outcomes[
+          Math.min(
+            createCalls - 1,
+            outcomes.length - 1,
+          )
+        ];
+      const hintedClientSeed =
+        clientSeeds[
+          createCalls - 1
+        ];
+      const serverSeed =
+        chooseServerSeed({
+          roundId,
+          config,
+          digests,
+          clientCommitment:
+            parsedBody.clientCommitment,
+          clientSeed:
+            hintedClientSeed,
+          desiredOutcome,
+          fallbackIndex:
+            createCalls,
+        });
       const serverCommitment =
-        createCalls
-          .toString(16)
-          .padStart(64, "a")
-          .slice(-64);
+        serverCommitmentForSeedV4(
+          serverSeed,
+        );
       const round = {
         protocol: "v4",
         roundId,
@@ -213,6 +236,7 @@ function installEntroNexMock(t, {
       };
       rounds.set(roundId, {
         round,
+        serverSeed,
         proof: null,
         revealedSeed: null,
       });
@@ -263,51 +287,29 @@ function installEntroNexMock(t, {
         });
       }
 
-      const outcome =
-        outcomes[
-          Math.min(
-            outcomeCursor,
-            outcomes.length - 1,
-          )
-        ];
       outcomeCursor += 1;
 
-      const proof = {
-        algorithm: ALGORITHM,
-        roundId,
-        serverCommitment:
-          record.round.serverCommitment,
-        serverSeed: "f".repeat(64),
-        clientCommitment:
-          record.round.clientCommitment,
-        clientSeed:
-          parsedBody.clientSeed,
-        configDigest:
-          record.round.configDigest,
-        contextDigest:
-          record.round.contextDigest,
-        eventBindingDigest:
-          record.round
-            .eventBindingDigest,
-        transcriptDigest:
-          "1".repeat(64),
-        config:
-          structuredClone(
+      const proof =
+        resolveOutcomeV4({
+          roundId,
+          serverSeed:
+            record.serverSeed,
+          serverCommitment:
+            record.round.serverCommitment,
+          clientSeed:
+            parsedBody.clientSeed,
+          clientCommitment:
+            record.round.clientCommitment,
+          contextDigest:
+            record.round.contextDigest,
+          eventBindingDigest:
+            record.round
+              .eventBindingDigest,
+          config:
             record.round.config,
-          ),
-        outcomeIndex:
-          outcome - 1,
-        outcome,
-        world: {
-          worldDigest:
-            "2".repeat(64),
-        },
-        proofDigest:
-          String(outcome)
-            .padStart(64, "3")
-            .slice(-64),
-        replayed: false,
-      };
+          configDigest:
+            record.round.configDigest,
+        });
 
       record.revealedSeed =
         parsedBody.clientSeed;
@@ -359,6 +361,65 @@ function installEntroNexMock(t, {
     createCalls: () => createCalls,
     resolveCalls: () => resolveCalls,
   };
+}
+
+function chooseServerSeed({
+  roundId,
+  config,
+  digests,
+  clientCommitment,
+  clientSeed,
+  desiredOutcome,
+  fallbackIndex,
+}) {
+  if (
+    typeof clientSeed !== "string" ||
+    clientCommitmentForSeedV4(
+      clientSeed,
+    ) !== clientCommitment
+  ) {
+    return String(fallbackIndex)
+      .padStart(64, "0");
+  }
+
+  for (
+    let candidate = 1;
+    candidate <= 10_000;
+    candidate += 1
+  ) {
+    const serverSeed =
+      candidate
+        .toString(16)
+        .padStart(64, "0");
+    const proof =
+      resolveOutcomeV4({
+        roundId,
+        serverSeed,
+        serverCommitment:
+          serverCommitmentForSeedV4(
+            serverSeed,
+          ),
+        clientSeed,
+        clientCommitment,
+        contextDigest:
+          digests.contextDigest,
+        eventBindingDigest:
+          digests.eventBindingDigest,
+        config,
+        configDigest:
+          digests.configDigest,
+      });
+    if (
+      proof.outcome ===
+      desiredOutcome
+    ) {
+      return serverSeed;
+    }
+  }
+
+  throw new Error(
+    "could not find deterministic test server seed",
+  );
 }
 
 test(
@@ -416,7 +477,7 @@ for (const playerCount of [2, 3, 4]) {
 }
 
 test(
-  "commit/reveal is idempotent across reconnect and advances eventIndex only after the logical roll completes",
+  "commit/reveal is idempotent across reconnect and consumes eventIndex at commitment",
   { concurrency: false },
   async (t) => {
     const mock =
@@ -753,6 +814,91 @@ test(
     assert.equal(
       ctx.storage.deleteAllCalls,
       1,
+    );
+  },
+);
+
+
+test(
+  "pending committed roll timeout is sealed and passes the turn without replacement",
+  { concurrency: false },
+  async (t) => {
+    installEntroNexMock(t, {
+      outcomes: [6],
+    });
+    const {
+      ctx,
+      room,
+      host,
+    } =
+      await setupActiveMatch(2);
+
+    const clientSeed = "7".repeat(64);
+    const clientCommitment =
+      await sha256Hex(
+        "entronex:v4:client-commit:" +
+          clientSeed,
+      );
+
+    const committed = await json(
+      await room.fetch(
+        roomRequest(
+          "/roll/commit",
+          {
+            method: "POST",
+            token: host.playerToken,
+            body: { clientCommitment },
+          },
+        ),
+      ),
+    );
+    assert.equal(
+      committed.response.status,
+      201,
+    );
+
+    const stored =
+      await ctx.storage.get(
+        "match-state",
+      );
+    stored.pendingRoll.revealDeadlineAt =
+      Date.now() - 1;
+    await ctx.storage.put(
+      "match-state",
+      stored,
+    );
+
+    await room.alarm();
+
+    const after =
+      await ctx.storage.get(
+        "match-state",
+      );
+    assert.equal(
+      after.pendingRoll,
+      null,
+    );
+    assert.equal(
+      after.turnSeat,
+      1,
+    );
+    assert.equal(
+      after.randomEventIndex,
+      1,
+    );
+    assert.equal(
+      after.history.at(-1).status,
+      "TIMED_OUT",
+    );
+    assert.equal(
+      after.history.at(-1)
+        .replacementRoundAllowed,
+      false,
+    );
+    assert.equal(
+      after.history.at(-1)
+        .clientCommitment,
+      clientCommitment,
     );
   },
 );

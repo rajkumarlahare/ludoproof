@@ -42,7 +42,8 @@ class PendingRollStore(
                     .toByteArray(Charsets.UTF_8),
             )
 
-        prefs.edit()
+        val persisted =
+            prefs.edit()
             .putString(KEY_MATCH_ID, value.matchId)
             .putString(
                 KEY_COMMITMENT,
@@ -62,7 +63,11 @@ class PendingRollStore(
                     Base64.NO_WRAP,
                 ),
             )
-            .apply()
+            .commit()
+
+        check(persisted) {
+            "Pending roll seed could not be durably persisted"
+        }
     }
 
     fun load(): PendingRollSecret? {

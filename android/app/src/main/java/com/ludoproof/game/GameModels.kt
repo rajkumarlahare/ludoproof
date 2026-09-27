@@ -18,6 +18,8 @@ data class PendingRollSnapshot(
     val eventId: String?,
     val roundId: String?,
     val serverCommitment: String?,
+    val clientCommitment: String?,
+    val revealDeadlineAt: Long?,
     val proofDigest: String?,
     val outcome: Int?,
     val legalTokenIndexes: Set<Int>,
@@ -105,6 +107,18 @@ object GameJson {
             serverCommitment =
                 value.optString("serverCommitment")
                     .takeIf { it.isNotBlank() && it != "null" },
+            clientCommitment =
+                value.optString("clientCommitment")
+                    .takeIf { it.isNotBlank() && it != "null" },
+            revealDeadlineAt =
+                if (
+                    value.has("revealDeadlineAt") &&
+                    !value.isNull("revealDeadlineAt")
+                ) {
+                    value.optLong("revealDeadlineAt")
+                } else {
+                    null
+                },
             proofDigest =
                 value.optString("proofDigest")
                     .takeIf { it.isNotBlank() && it != "null" },

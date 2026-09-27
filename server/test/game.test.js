@@ -7,6 +7,7 @@ import {
   attachHostAuth,
   attachRoundCommitment,
   authoritativeStateForRandomness,
+  forfeitTimedOutRoll,
   globalCellFor,
   legalTokenIndexes,
   newMatch,
@@ -408,4 +409,57 @@ test("all color start offsets map to their expected global cells", () => {
     globalCellFor("BLUE", 0),
     39,
   );
+});
+
+
+test("timed-out committed roll is forfeited without replacement and advances turn", () => {
+  let state = activeMatch();
+  state = reserveRoll(state, {
+    playerId: "p1",
+    clientCommitment: "c".repeat(64),
+    eventIndex: 0,
+    actorHash: "1".repeat(64),
+    previousStateHash: "2".repeat(64),
+    rulesetHash: "3".repeat(64),
+    now: 5,
+  });
+  state = attachRoundCommitment(state, {
+    roundId: "11111111-1111-4111-8111-111111111111",
+    serverCommitment: "4".repeat(64),
+    revealDeadlineAt: 100,
+    now: 6,
+  });
+
+  const result = forfeitTimedOutRoll(state, {
+    now: 100,
+  });
+
+  assert.equal(result.state.pendingRoll, null);
+  assert.equal(result.state.turnSeat, 1);
+  assert.equal(result.state.randomEventIndex, 1);
+  assert.equal(result.timedOutRoll.status, "TIMED_OUT");
+  assert.equal(result.timedOutRoll.replacementRoundAllowed, false);
+});
+
+test("timed-out uncertain create consumes the logical event before advancing turn", () => {
+  let state = activeMatch();
+  state = reserveRoll(state, {
+    playerId: "p1",
+    clientCommitment: "c".repeat(64),
+    eventIndex: 0,
+    actorHash: "1".repeat(64),
+    previousStateHash: "2".repeat(64),
+    rulesetHash: "3".repeat(64),
+    now: 5,
+  });
+  state.pendingRoll.revealDeadlineAt = 100;
+
+  const result = forfeitTimedOutRoll(state, {
+    now: 100,
+  });
+
+  assert.equal(result.state.randomEventIndex, 1);
+  assert.equal(result.state.turnSeat, 1);
+  assert.equal(result.state.pendingRoll, null);
+  assert.equal(result.timedOutRoll.roundId, null);
 });
