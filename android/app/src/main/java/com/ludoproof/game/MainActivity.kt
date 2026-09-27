@@ -46,6 +46,27 @@ class MainActivity : Activity() {
     private var currentState: MatchSnapshot? = null
     private var pendingSecret: PendingRollSecret? = null
 
+    private val statePollRunnable =
+        object : Runnable {
+            override fun run() {
+                val state = currentState
+                if (
+                    playerToken != null &&
+                    ::refreshButton.isInitialized &&
+                    refreshButton.isEnabled &&
+                    state?.status != "FINISHED"
+                ) {
+                    refreshState(
+                        silent = true,
+                    )
+                }
+                mainHandler.postDelayed(
+                    this,
+                    STATE_POLL_MS,
+                )
+            }
+        }
+
     private val secureSessionStore by lazy {
         SecureSessionStore(this)
     }
@@ -391,7 +412,9 @@ class MainActivity : Activity() {
         )
     }
 
-    private fun refreshState() {
+    private fun refreshState(
+        silent: Boolean = false,
+    ) {
         withSession {
                 code,
                 token,
@@ -403,6 +426,13 @@ class MainActivity : Activity() {
                         token,
                     )
                 },
+                onSuccess = {
+                    applyResponse(
+                        it,
+                        announce = !silent,
+                    )
+                },
+                showWorking = !silent,
             )
         }
     }
@@ -526,6 +556,7 @@ class MainActivity : Activity() {
 
     private fun applyResponse(
         response: JSONObject,
+        announce: Boolean = true,
     ) {
         val envelope =
             GameJson.envelope(
@@ -609,11 +640,13 @@ class MainActivity : Activity() {
         updateControls(state)
         updateRollButton()
 
-        showStatus(
-            "State revision updated. " +
-                "Event index: " +
-                state.randomEventIndex,
-        )
+        if (announce) {
+            showStatus(
+                "State revision updated. " +
+                    "Event index: " +
+                    state.randomEventIndex,
+            )
+        }
     }
 
     private fun updateTurnBanner(
@@ -946,8 +979,11 @@ class MainActivity : Activity() {
         ) -> Unit = {
             applyResponse(it)
         },
+        showWorking: Boolean = true,
     ) {
-        showStatus("Working…")
+        if (showWorking) {
+            showStatus("Working…")
+        }
         setNetworkControls(
             enabled = false,
         )
@@ -1095,8 +1131,34 @@ class MainActivity : Activity() {
                     .density
             ).toInt()
 
+    override fun onStart() {
+        super.onStart()
+        mainHandler.removeCallbacks(
+            statePollRunnable,
+        )
+        mainHandler.postDelayed(
+            statePollRunnable,
+            STATE_POLL_MS,
+        )
+    }
+
+    override fun onStop() {
+        mainHandler.removeCallbacks(
+            statePollRunnable,
+        )
+        super.onStop()
+    }
+
     override fun onDestroy() {
+        mainHandler.removeCallbacks(
+            statePollRunnable,
+        )
         executor.shutdownNow()
         super.onDestroy()
+    }
+
+    private companion object {
+        const val STATE_POLL_MS =
+            3_000L
     }
 }
