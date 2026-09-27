@@ -1073,27 +1073,99 @@ class MainActivity : Activity() {
             ) {
                 mainHandler.post {
                     diceView.stopRolling()
-                    setNetworkControls(
-                        enabled = true,
-                    )
-                    showStatus(
-                        "Error: " +
-                            (
-                                error.message
-                                    ?: error
-                                        .toString()
-                                ),
-                    )
-                    currentState
-                        ?.let {
-                            updateControls(
-                                it,
-                            )
-                        }
+                    val sessionReset =
+                        resetInvalidSessionIfNeeded(
+                            error,
+                        )
+                    if (!sessionReset) {
+                        setNetworkControls(
+                            enabled = true,
+                        )
+                        showStatus(
+                            "Error: " +
+                                (
+                                    error.message
+                                        ?: error
+                                            .toString()
+                                    ),
+                        )
+                        currentState
+                            ?.let {
+                                updateControls(
+                                    it,
+                                )
+                            }
+                    }
                     updateRollButton()
                 }
             }
         }
+    }
+
+    private fun resetInvalidSessionIfNeeded(
+        error: Exception,
+    ): Boolean {
+        val code =
+            (error as? GameApiException)
+                ?.code
+                ?: return false
+        if (
+            code != "MATCH_NOT_FOUND" &&
+            code != "AUTH_INVALID"
+        ) {
+            return false
+        }
+
+        secureSessionStore.clear()
+        pendingRollStore.clear()
+        pendingSecret = null
+        matchId = null
+        playerToken = null
+        playerId = null
+        currentState = null
+
+        matchInput.setText("")
+        boardView.bind(
+            null,
+            null,
+        )
+        diceView.stopRolling()
+        matchInfoText.text =
+            "No active match"
+        playersText.text =
+            "Players will appear here."
+        turnText.text =
+            "Create or join a new match."
+        verificationText.text =
+            "No verified roll yet."
+        proofDetailsText.text = ""
+        proofDetailsText.visibility =
+            View.GONE
+
+        nameInput.visibility =
+            View.VISIBLE
+        matchInput.visibility =
+            View.VISIBLE
+        createButton.visibility =
+            View.VISIBLE
+        joinButton.visibility =
+            View.VISIBLE
+        startButton.visibility =
+            View.GONE
+        rollButton.visibility =
+            View.GONE
+
+        nameInput.isEnabled = true
+        matchInput.isEnabled = true
+        createButton.isEnabled = true
+        joinButton.isEnabled = true
+        refreshButton.isEnabled = false
+        shareButton.isEnabled = false
+
+        showStatus(
+            "Previous match session is no longer available. Create or join a new match.",
+        )
+        return true
     }
 
     private fun setNetworkControls(
