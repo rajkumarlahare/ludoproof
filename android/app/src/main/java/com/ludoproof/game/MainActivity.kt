@@ -231,12 +231,14 @@ class MainActivity : Activity() {
                         code,
                         token,
                     ->
-                    runNetwork {
-                        api.start(
-                            code,
-                            token,
-                        )
-                    }
+                    runNetwork(
+                        action = {
+                            api.start(
+                                code,
+                                token,
+                            )
+                        },
+                    )
                 }
             }
 
@@ -395,12 +397,14 @@ class MainActivity : Activity() {
                 code,
                 token,
             ->
-            runNetwork {
-                api.state(
-                    code,
-                    token,
-                )
-            }
+            runNetwork(
+                action = {
+                    api.state(
+                        code,
+                        token,
+                    )
+                },
+            )
         }
     }
 
@@ -409,9 +413,10 @@ class MainActivity : Activity() {
                 code,
                 token,
             ->
-            runNetwork {
-                var secret =
-                    pendingSecret
+            runNetwork(
+                action = {
+                    var secret =
+                        pendingSecret
                         ?.takeIf {
                             it.matchId == code
                         }
@@ -453,9 +458,10 @@ class MainActivity : Activity() {
                     )
 
                 pendingRollStore.clear()
-                pendingSecret = null
-                revealed
-            }
+                    pendingSecret = null
+                    revealed
+                },
+            )
         }
     }
 
@@ -466,13 +472,15 @@ class MainActivity : Activity() {
                 code,
                 token,
             ->
-            runNetwork {
-                api.move(
-                    code,
-                    token,
-                    index,
-                )
-            }
+            runNetwork(
+                action = {
+                    api.move(
+                        code,
+                        token,
+                        index,
+                    )
+                },
+            )
         }
     }
 
