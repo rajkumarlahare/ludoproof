@@ -34,6 +34,7 @@ export class MatchRoom {
   constructor(ctx, env) {
     this.ctx = ctx;
     this.env = env;
+    this.mutationTail = Promise.resolve();
   }
 
   async fetch(request) {
@@ -45,31 +46,37 @@ export class MatchRoom {
           : null;
 
       if (request.method === "POST" && url.pathname === "/create") {
-        return this.#create(body);
+        return this.#mutate(() => this.#create(body));
       }
       if (request.method === "POST" && url.pathname === "/join") {
-        return this.#join(body);
+        return this.#mutate(() => this.#join(body));
       }
       if (request.method === "GET" && url.pathname === "/state") {
         return this.#state(request);
       }
       if (request.method === "POST" && url.pathname === "/start") {
-        return this.#start(request);
+        return this.#mutate(() => this.#start(request));
       }
       if (request.method === "POST" && url.pathname === "/roll/commit") {
-        return this.#commitRoll(request, body);
+        return this.#mutate(() => this.#commitRoll(request, body));
       }
       if (request.method === "POST" && url.pathname === "/roll/reveal") {
-        return this.#revealRoll(request, body);
+        return this.#mutate(() => this.#revealRoll(request, body));
       }
       if (request.method === "POST" && url.pathname === "/move") {
-        return this.#move(request, body);
+        return this.#mutate(() => this.#move(request, body));
       }
 
       return json(404, { error: "NOT_FOUND", message: "route not found" });
     } catch (error) {
       return errorResponse(error);
     }
+  }
+
+  #mutate(work) {
+    const run = this.mutationTail.then(work, work);
+    this.mutationTail = run.catch(() => {});
+    return run;
   }
 
   async #create(body) {
@@ -271,36 +278,44 @@ export class MatchRoom {
 
     let state = await this.#requireState();
     const player = await this.#authorize(state, request);
+    const actualCommitment = await sha256Hex(
+      "entronex:v4:client-commit:" + clientSeed,
+    );
     const pending = state.pendingRoll;
 
     if (!pending) {
-      throw httpError(409, "NO_PENDING_ROLL", "there is no roll waiting for reveal");
+      return this.#replayHistoricalReveal(
+        state,
+        player,
+        actualCommitment,
+      );
     }
     if (pending.playerId !== player.playerId) {
       throw httpError(403, "NOT_ROLL_OWNER", "only the rolling player can reveal");
     }
-    if (pending.status === "RESOLVED") {
-      return json(200, {
-        replayed: true,
-        outcome: pending.outcome,
-        proofDigest: pending.proofDigest,
-        legalTokenIndexes: pending.legalTokenIndexes,
-        state: publicStateWithHistory(state),
-      });
-    }
-    if (!["COMMITTED", "RESOLVING"].includes(pending.status)) {
-      throw httpError(409, "ROLL_NOT_COMMITTED", "server commitment is not ready");
-    }
-
-    const actualCommitment = await sha256Hex(
-      "entronex:v4:client-commit:" + clientSeed,
-    );
     if (actualCommitment !== pending.clientCommitment) {
       throw httpError(
         400,
         "CLIENT_COMMITMENT_MISMATCH",
         "revealed seed does not match the committed seed",
       );
+    }
+    if (pending.status === "RESOLVED") {
+      const proof = await this.#loadArchivedProof(pending.roundId);
+      validateResolvedProof(proof, pending);
+      return json(200, {
+        replayed: true,
+        outcome: proof.outcome,
+        proofDigest: proof.proofDigest,
+        roundId: proof.roundId,
+        legalTokenIndexes: pending.legalTokenIndexes,
+        awaitingMove: true,
+        proof,
+        state: publicStateWithHistory(state),
+      });
+    }
+    if (!["COMMITTED", "RESOLVING"].includes(pending.status)) {
+      throw httpError(409, "ROLL_NOT_COMMITTED", "server commitment is not ready");
     }
 
     if (pending.status === "COMMITTED") {
@@ -377,6 +392,9 @@ export class MatchRoom {
         playerId: pending.playerId,
         color: state.players[pending.seat].color,
         roundId: pending.roundId,
+        clientCommitment: pending.clientCommitment,
+        previousStateHash: pending.previousStateHash,
+        rulesetHash: pending.rulesetHash,
         proofDigest: proof.proofDigest,
         outcome: proof.outcome,
         moveTokenIndex: null,
@@ -439,6 +457,83 @@ export class MatchRoom {
       winnerPlayerId: moved.winnerPlayerId,
       state: publicStateWithHistory(state),
     });
+  }
+
+  async #replayHistoricalReveal(
+    state,
+    player,
+    clientCommitment,
+  ) {
+    const event = [...(state.history ?? [])]
+      .reverse()
+      .find(
+        (candidate) =>
+          candidate.playerId === player.playerId &&
+          candidate.clientCommitment === clientCommitment,
+      );
+
+    if (!event) {
+      throw httpError(
+        409,
+        "NO_PENDING_ROLL",
+        "there is no matching committed or resolved roll",
+      );
+    }
+
+    const proof = await this.#loadArchivedProof(event.roundId);
+    if (
+      proof.roundId !== event.roundId ||
+      proof.clientCommitment !== clientCommitment ||
+      proof.proofDigest !== event.proofDigest ||
+      proof.outcome !== event.outcome
+    ) {
+      throw httpError(
+        502,
+        "ENTRONEX_ARCHIVE_MISMATCH",
+        "archived proof does not match the recorded game event",
+      );
+    }
+
+    return json(200, {
+      replayed: true,
+      outcome: proof.outcome,
+      proofDigest: proof.proofDigest,
+      roundId: proof.roundId,
+      legalTokenIndexes: [],
+      awaitingMove: false,
+      proof,
+      state: publicStateWithHistory(state),
+    });
+  }
+
+  async #loadArchivedProof(roundId) {
+    const proof = await entronexRequest(
+      this.env,
+      "/v4/rounds/" +
+        encodeURIComponent(roundId) +
+        "/proof",
+      {
+        method: "GET",
+        body: null,
+      },
+    );
+    const hostedVerification = await entronexRequest(
+      this.env,
+      "/v4/verify",
+      {
+        method: "POST",
+        body: proof,
+        authenticated: false,
+      },
+    );
+    if (hostedVerification.valid !== true) {
+      throw httpError(
+        502,
+        "ENTRONEX_PROOF_INVALID",
+        "archived EntroNex proof verification failed",
+      );
+    }
+    return proof;
   }
 
   async #authorize(state, request) {
@@ -557,6 +652,7 @@ function historyForHash(history) {
   return history.map((event) => ({
     eventIndex: event.eventIndex,
     playerId: event.playerId,
+    clientCommitment: event.clientCommitment,
     proofDigest: event.proofDigest,
     outcome: event.outcome,
     moveTokenIndex: event.moveTokenIndex,
