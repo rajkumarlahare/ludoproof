@@ -16,6 +16,11 @@ node_modules/
 !.env.example
 *.pem
 *.key
+*.jks
+*.keystore
+*.p12
+key.properties
+keystore.properties
 
 # OS
 .DS_Store
