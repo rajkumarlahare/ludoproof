@@ -1,0 +1,709 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  MatchRoom,
+  expectedDigests,
+} from "../src/match-room.js";
+import { sha256Hex } from "../src/crypto.js";
+
+const ALGORITHM =
+  "entronex-v4-dual-commit-hkdf-sha256-context-bound";
+const BASE_URL = "https://entronex.example.test";
+const API_TOKEN = "lp_test_entronex_token_1234567890";
+
+class FakeStorage {
+  constructor() {
+    this.values = new Map();
+  }
+
+  async get(key) {
+    const value = this.values.get(key);
+    return value === undefined
+      ? undefined
+      : structuredClone(value);
+  }
+
+  async put(key, value) {
+    this.values.set(key, structuredClone(value));
+  }
+}
+
+function makeContext() {
+  return {
+    storage: new FakeStorage(),
+  };
+}
+
+function makeEnv() {
+  return {
+    ENTRONEX_BASE_URL: BASE_URL,
+    ENTRONEX_API_TOKEN: API_TOKEN,
+  };
+}
+
+async function json(response) {
+  const body = await response.json();
+  return { response, body };
+}
+
+function roomRequest(path, {
+  method = "GET",
+  token = null,
+  body = null,
+} = {}) {
+  const headers = new Headers();
+  if (token) {
+    headers.set("authorization", "Bearer " + token);
+  }
+  if (body !== null) {
+    headers.set("content-type", "application/json");
+  }
+
+  return new Request("https://room" + path, {
+    method,
+    headers,
+    body:
+      body === null
+        ? undefined
+        : JSON.stringify(body),
+  });
+}
+
+async function createMatch(room, matchId = "LPABCDEFGH") {
+  const { response, body } = await json(
+    await room.fetch(
+      roomRequest("/create", {
+        method: "POST",
+        body: {
+          matchId,
+          displayName: "Alice",
+        },
+      }),
+    ),
+  );
+  assert.equal(response.status, 201);
+  return body;
+}
+
+async function joinMatch(room, displayName) {
+  const { response, body } = await json(
+    await room.fetch(
+      roomRequest("/join", {
+        method: "POST",
+        body: { displayName },
+      }),
+    ),
+  );
+  assert.equal(response.status, 201);
+  return body;
+}
+
+async function startMatch(room, hostToken) {
+  const { response, body } = await json(
+    await room.fetch(
+      roomRequest("/start", {
+        method: "POST",
+        token: hostToken,
+        body: {},
+      }),
+    ),
+  );
+  assert.equal(response.status, 200);
+  return body;
+}
+
+async function setupActiveMatch(playerCount = 2) {
+  const ctx = makeContext();
+  const env = makeEnv();
+  const room = new MatchRoom(ctx, env);
+  const host = await createMatch(room);
+
+  const names = ["Bob", "Cara", "Dev"];
+  for (let i = 1; i < playerCount; i += 1) {
+    await joinMatch(room, names[i - 1]);
+  }
+
+  const started = await startMatch(
+    room,
+    host.playerToken,
+  );
+
+  return {
+    ctx,
+    env,
+    room,
+    host,
+    started,
+  };
+}
+
+function installEntroNexMock(t, {
+  outcomes = [6],
+} = {}) {
+  const originalFetch = globalThis.fetch;
+  const rounds = new Map();
+  let createCalls = 0;
+  let resolveCalls = 0;
+  let outcomeCursor = 0;
+
+  globalThis.fetch = async (input, init = {}) => {
+    const url =
+      new URL(
+        typeof input === "string"
+          ? input
+          : input.url,
+      );
+    const method =
+      String(init.method ?? "GET").toUpperCase();
+    const parsedBody =
+      init.body == null
+        ? null
+        : JSON.parse(String(init.body));
+
+    if (
+      method === "POST" &&
+      url.pathname === "/v4/verify"
+    ) {
+      return Response.json({
+        valid: true,
+      });
+    }
+
+    if (
+      method === "POST" &&
+      url.pathname === "/v4/rounds"
+    ) {
+      createCalls += 1;
+      const config = {
+        outcomes: parsedBody.outcomes,
+        context: parsedBody.context,
+        world: parsedBody.world,
+      };
+      const digests =
+        await expectedDigests(config);
+      const roundId =
+        "00000000-0000-4000-8000-" +
+        String(createCalls).padStart(12, "0");
+      const serverCommitment =
+        createCalls
+          .toString(16)
+          .padStart(64, "a")
+          .slice(-64);
+      const round = {
+        protocol: "v4",
+        roundId,
+        serverCommitment,
+        clientCommitment:
+          parsedBody.clientCommitment,
+        config,
+        ...digests,
+        replayed: false,
+      };
+      rounds.set(roundId, {
+        round,
+        proof: null,
+        revealedSeed: null,
+      });
+      return Response.json(
+        round,
+        { status: 201 },
+      );
+    }
+
+    const resolveMatch =
+      url.pathname.match(
+        /^\/v4\/rounds\/([^/]+)\/resolve$/,
+      );
+    if (
+      method === "POST" &&
+      resolveMatch
+    ) {
+      resolveCalls += 1;
+      const roundId =
+        decodeURIComponent(
+          resolveMatch[1],
+        );
+      const record =
+        rounds.get(roundId);
+      assert.ok(
+        record,
+        "mock round must exist",
+      );
+
+      if (record.proof) {
+        if (
+          record.revealedSeed !==
+          parsedBody.clientSeed
+        ) {
+          return Response.json(
+            {
+              error:
+                "ROUND_ALREADY_RESOLVED",
+              message:
+                "round resolved with another reveal",
+            },
+            { status: 409 },
+          );
+        }
+        return Response.json({
+          ...record.proof,
+          replayed: true,
+        });
+      }
+
+      const outcome =
+        outcomes[
+          Math.min(
+            outcomeCursor,
+            outcomes.length - 1,
+          )
+        ];
+      outcomeCursor += 1;
+
+      const proof = {
+        algorithm: ALGORITHM,
+        roundId,
+        serverCommitment:
+          record.round.serverCommitment,
+        serverSeed: "f".repeat(64),
+        clientCommitment:
+          record.round.clientCommitment,
+        clientSeed:
+          parsedBody.clientSeed,
+        configDigest:
+          record.round.configDigest,
+        contextDigest:
+          record.round.contextDigest,
+        eventBindingDigest:
+          record.round
+            .eventBindingDigest,
+        transcriptDigest:
+          "1".repeat(64),
+        config:
+          structuredClone(
+            record.round.config,
+          ),
+        outcomeIndex:
+          outcome - 1,
+        outcome,
+        world: {
+          worldDigest:
+            "2".repeat(64),
+        },
+        proofDigest:
+          String(outcome)
+            .padStart(64, "3")
+            .slice(-64),
+        replayed: false,
+      };
+
+      record.revealedSeed =
+        parsedBody.clientSeed;
+      record.proof = proof;
+      return Response.json(proof);
+    }
+
+    const proofMatch =
+      url.pathname.match(
+        /^\/v4\/rounds\/([^/]+)\/proof$/,
+      );
+    if (
+      method === "GET" &&
+      proofMatch
+    ) {
+      const roundId =
+        decodeURIComponent(
+          proofMatch[1],
+        );
+      const record =
+        rounds.get(roundId);
+      if (!record?.proof) {
+        return Response.json(
+          {
+            error: "proof_not_found",
+          },
+          { status: 404 },
+        );
+      }
+      return Response.json({
+        ...record.proof,
+        archived: true,
+      });
+    }
+
+    throw new Error(
+      "unexpected EntroNex request: " +
+        method +
+        " " +
+        url.pathname,
+    );
+  };
+
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  return {
+    createCalls: () => createCalls,
+    resolveCalls: () => resolveCalls,
+  };
+}
+
+test(
+  "player bearer auth rejects an invalid session token",
+  { concurrency: false },
+  async () => {
+    const ctx = makeContext();
+    const env = makeEnv();
+    const room = new MatchRoom(ctx, env);
+    await createMatch(room);
+
+    const { response, body } = await json(
+      await room.fetch(
+        roomRequest("/state", {
+          token: "lp_wrong_token",
+        }),
+      ),
+    );
+
+    assert.equal(response.status, 403);
+    assert.equal(body.error, "AUTH_INVALID");
+  },
+);
+
+for (const playerCount of [2, 3, 4]) {
+  test(
+    `host can start an authoritative ${playerCount}-player match`,
+    { concurrency: false },
+    async () => {
+      const {
+        started,
+      } =
+        await setupActiveMatch(
+          playerCount,
+        );
+
+      assert.equal(
+        started.state.status,
+        "ACTIVE",
+      );
+      assert.equal(
+        started.state.players.length,
+        playerCount,
+      );
+      assert.equal(
+        started.state.turnSeat,
+        0,
+      );
+      assert.equal(
+        started.state.randomEventIndex,
+        0,
+      );
+    },
+  );
+}
+
+test(
+  "commit/reveal is idempotent across reconnect and advances eventIndex only after the logical roll completes",
+  { concurrency: false },
+  async (t) => {
+    const mock =
+      installEntroNexMock(t, {
+        outcomes: [6, 2],
+      });
+    const {
+      ctx,
+      env,
+      room,
+      host,
+    } =
+      await setupActiveMatch(2);
+
+    const clientSeed =
+      "1".repeat(64);
+    const clientCommitment =
+      await sha256Hex(
+        "entronex:v4:client-commit:" +
+          clientSeed,
+      );
+
+    const firstCommit = await json(
+      await room.fetch(
+        roomRequest(
+          "/roll/commit",
+          {
+            method: "POST",
+            token:
+              host.playerToken,
+            body: {
+              clientCommitment,
+            },
+          },
+        ),
+      ),
+    );
+    assert.equal(
+      firstCommit.response.status,
+      201,
+    );
+    assert.equal(
+      firstCommit.body.round
+        .eventIndex,
+      0,
+    );
+    assert.equal(
+      mock.createCalls(),
+      1,
+    );
+
+    const duplicateCommit =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/roll/commit",
+            {
+              method: "POST",
+              token:
+                host.playerToken,
+              body: {
+                clientCommitment,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      duplicateCommit.response.status,
+      200,
+    );
+    assert.equal(
+      duplicateCommit.body.replayed,
+      true,
+    );
+    assert.equal(
+      mock.createCalls(),
+      1,
+      "same logical roll must not create another EntroNex round",
+    );
+
+    const otherSeed =
+      "2".repeat(64);
+    const otherCommitment =
+      await sha256Hex(
+        "entronex:v4:client-commit:" +
+          otherSeed,
+      );
+    const conflictingCommit =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/roll/commit",
+            {
+              method: "POST",
+              token:
+                host.playerToken,
+              body: {
+                clientCommitment:
+                  otherCommitment,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      conflictingCommit.response.status,
+      409,
+    );
+    assert.equal(
+      conflictingCommit.body.error,
+      "ROLL_ALREADY_PENDING",
+    );
+    assert.equal(
+      mock.createCalls(),
+      1,
+    );
+
+    const revealed = await json(
+      await room.fetch(
+        roomRequest(
+          "/roll/reveal",
+          {
+            method: "POST",
+            token:
+              host.playerToken,
+            body: {
+              clientSeed,
+            },
+          },
+        ),
+      ),
+    );
+    assert.equal(
+      revealed.response.status,
+      200,
+    );
+    assert.equal(
+      revealed.body.outcome,
+      6,
+    );
+    assert.deepEqual(
+      revealed.body
+        .legalTokenIndexes,
+      [0, 1, 2, 3],
+    );
+    assert.equal(
+      mock.resolveCalls(),
+      1,
+    );
+
+    const reconnectedRoom =
+      new MatchRoom(ctx, env);
+    const replayedReveal =
+      await json(
+        await reconnectedRoom.fetch(
+          roomRequest(
+            "/roll/reveal",
+            {
+              method: "POST",
+              token:
+                host.playerToken,
+              body: {
+                clientSeed,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      replayedReveal.response.status,
+      200,
+    );
+    assert.equal(
+      replayedReveal.body.replayed,
+      true,
+    );
+    assert.equal(
+      replayedReveal.body.outcome,
+      6,
+    );
+
+    const changedReveal =
+      await json(
+        await reconnectedRoom.fetch(
+          roomRequest(
+            "/roll/reveal",
+            {
+              method: "POST",
+              token:
+                host.playerToken,
+              body: {
+                clientSeed:
+                  otherSeed,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      changedReveal.response.status,
+      400,
+    );
+    assert.equal(
+      changedReveal.body.error,
+      "CLIENT_COMMITMENT_MISMATCH",
+    );
+
+    const moved = await json(
+      await reconnectedRoom.fetch(
+        roomRequest(
+          "/move",
+          {
+            method: "POST",
+            token:
+              host.playerToken,
+            body: {
+              tokenIndex: 0,
+            },
+          },
+        ),
+      ),
+    );
+    assert.equal(
+      moved.response.status,
+      200,
+    );
+    assert.equal(
+      moved.body.extraTurn,
+      true,
+    );
+
+    const nextSeed =
+      "3".repeat(64);
+    const nextCommitment =
+      await sha256Hex(
+        "entronex:v4:client-commit:" +
+          nextSeed,
+      );
+    const nextCommit = await json(
+      await reconnectedRoom.fetch(
+        roomRequest(
+          "/roll/commit",
+          {
+            method: "POST",
+            token:
+              host.playerToken,
+            body: {
+              clientCommitment:
+                nextCommitment,
+            },
+          },
+        ),
+      ),
+    );
+
+    assert.equal(
+      nextCommit.response.status,
+      201,
+    );
+    assert.equal(
+      nextCommit.body.round
+        .eventIndex,
+      1,
+    );
+    assert.equal(
+      mock.createCalls(),
+      2,
+    );
+  },
+);
+
+test(
+  "move endpoint rejects movement without a resolved verified roll",
+  { concurrency: false },
+  async () => {
+    const {
+      room,
+      host,
+    } =
+      await setupActiveMatch(2);
+
+    const { response, body } = await json(
+      await room.fetch(
+        roomRequest("/move", {
+          method: "POST",
+          token: host.playerToken,
+          body: {
+            tokenIndex: 0,
+          },
+        }),
+      ),
+    );
+
+    assert.equal(response.status, 409);
+    assert.equal(
+      body.error,
+      "NO_RESOLVED_ROLL",
+    );
+  },
+);
