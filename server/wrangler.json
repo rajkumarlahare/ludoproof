@@ -9,6 +9,10 @@
       {
         "name": "LUDOPROOF_MATCHES",
         "class_name": "MatchRoom"
+      },
+      {
+        "name": "LUDOPROOF_API_GATE",
+        "class_name": "ApiGate"
       }
     ]
   },
@@ -17,6 +21,12 @@
       "tag": "v1",
       "new_sqlite_classes": [
         "MatchRoom"
+      ]
+    },
+    {
+      "tag": "v2-rate-gate",
+      "new_sqlite_classes": [
+        "ApiGate"
       ]
     }
   ],
