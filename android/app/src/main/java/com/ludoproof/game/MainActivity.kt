@@ -46,11 +46,8 @@ class MainActivity : Activity() {
     private var currentState: MatchSnapshot? = null
     private var pendingSecret: PendingRollSecret? = null
 
-    private val sessionPrefs by lazy {
-        getSharedPreferences(
-            "ludoproof_session",
-            MODE_PRIVATE,
-        )
+    private val secureSessionStore by lazy {
+        SecureSessionStore(this)
     }
 
     private val pendingRollStore by lazy {
@@ -62,21 +59,11 @@ class MainActivity : Activity() {
     ) {
         super.onCreate(savedInstanceState)
 
-        matchId =
-            sessionPrefs.getString(
-                "matchId",
-                null,
-            )
-        playerToken =
-            sessionPrefs.getString(
-                "playerToken",
-                null,
-            )
-        playerId =
-            sessionPrefs.getString(
-                "playerId",
-                null,
-            )
+        secureSessionStore.load()?.let { session ->
+            matchId = session.matchId
+            playerToken = session.playerToken
+            playerId = session.playerId
+        }
         pendingSecret = pendingRollStore.load()
 
         val content =
@@ -528,20 +515,13 @@ class MainActivity : Activity() {
         playerId = id
         matchInput.setText(code)
 
-        sessionPrefs.edit()
-            .putString(
-                "matchId",
-                code,
-            )
-            .putString(
-                "playerToken",
-                token,
-            )
-            .putString(
-                "playerId",
-                id,
-            )
-            .apply()
+        secureSessionStore.save(
+            PlayerSession(
+                matchId = code,
+                playerId = id,
+                playerToken = token,
+            ),
+        )
     }
 
     private fun applyResponse(
@@ -552,14 +532,19 @@ class MainActivity : Activity() {
                 response,
             )
 
-        envelope.playerId?.let {
-            playerId = it
-            sessionPrefs.edit()
-                .putString(
-                    "playerId",
-                    it,
+        envelope.playerId?.let { resolvedPlayerId ->
+            playerId = resolvedPlayerId
+            val code = matchId
+            val token = playerToken
+            if (code != null && token != null) {
+                secureSessionStore.save(
+                    PlayerSession(
+                        matchId = code,
+                        playerId = resolvedPlayerId,
+                        playerToken = token,
+                    ),
                 )
-                .apply()
+            }
         }
 
         val state =
