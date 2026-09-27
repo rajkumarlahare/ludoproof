@@ -34,6 +34,8 @@ class MainActivity : Activity() {
     private lateinit var statusText: TextView
     private lateinit var boardView: LudoBoardView
     private lateinit var diceView: DiceView
+    private lateinit var createButton: Button
+    private lateinit var joinButton: Button
     private lateinit var startButton: Button
     private lateinit var refreshButton: Button
     private lateinit var shareButton: Button
@@ -151,14 +153,18 @@ class MainActivity : Activity() {
             }
         content.addView(matchInput)
 
+        createButton =
+            button("Create Match") {
+                createMatch()
+            }
+        joinButton =
+            button("Join Match") {
+                joinMatch()
+            }
         content.addView(
             row(
-                button("Create Match") {
-                    createMatch()
-                },
-                button("Join Match") {
-                    joinMatch()
-                },
+                createButton,
+                joinButton,
             ),
         )
 
@@ -783,20 +789,69 @@ class MainActivity : Activity() {
                 mySeat >= 0 &&
                 state.turnSeat == mySeat
 
+        val canEnterAnotherMatch =
+            state.status == "FINISHED"
+
+        nameInput.visibility =
+            if (canEnterAnotherMatch) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+        matchInput.visibility =
+            if (canEnterAnotherMatch) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+        createButton.visibility =
+            if (canEnterAnotherMatch) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+        joinButton.visibility =
+            if (canEnterAnotherMatch) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
+        createButton.isEnabled =
+            canEnterAnotherMatch
+        joinButton.isEnabled =
+            canEnterAnotherMatch
+        nameInput.isEnabled =
+            canEnterAnotherMatch
+        matchInput.isEnabled =
+            canEnterAnotherMatch
+
+        startButton.visibility =
+            if (state.status == "WAITING") {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
         startButton.isEnabled =
             state.status == "WAITING" &&
                 state.players.size >= 2 &&
                 state.hostPlayerId == playerId
 
-        refreshButton.isEnabled = true
-        shareButton.isEnabled =
-            state.matchId.isNotBlank()
-
+        rollButton.visibility =
+            if (state.status == "ACTIVE") {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
         rollButton.isEnabled =
             myTurn &&
                 state.pendingRoll
                     ?.status !=
                 "RESOLVED"
+
+        refreshButton.isEnabled = true
+        shareButton.isEnabled =
+            state.matchId.isNotBlank()
     }
 
     private fun updateRollButton() {
@@ -1045,6 +1100,8 @@ class MainActivity : Activity() {
         enabled: Boolean,
     ) {
         if (!enabled) {
+            createButton.isEnabled = false
+            joinButton.isEnabled = false
             refreshButton.isEnabled = false
             startButton.isEnabled = false
             rollButton.isEnabled = false
@@ -1055,6 +1112,10 @@ class MainActivity : Activity() {
         if (state != null) {
             updateControls(state)
         } else {
+            createButton.isEnabled = true
+            joinButton.isEnabled = true
+            nameInput.isEnabled = true
+            matchInput.isEnabled = true
             refreshButton.isEnabled =
                 playerToken != null
             startButton.isEnabled = false
