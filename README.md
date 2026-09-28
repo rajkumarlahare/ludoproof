@@ -108,27 +108,29 @@ Existing EntroNex, Rekixo, AR3D, domains, DNS, and Workers are not modified by t
 
 ### Required server configuration
 
-Server-only Cloudflare secrets:
+The game Worker always needs the server-only EntroNex customer bearer token:
 
 ```text
 ENTRONEX_API_TOKEN
+```
+
+The retry-safe session HMAC is also a Cloudflare secret:
+
+```text
 LUDOPROOF_SESSION_HMAC_KEY
 ```
 
-`ENTRONEX_API_TOKEN` is the EntroNex evaluation customer bearer token. `LUDOPROOF_SESSION_HMAC_KEY` must be an independently generated random value of at least 32 characters and is used only by the game Worker to reconstruct retry-safe player sessions.
+During automated deployment, an operator-supplied HMAC is used when provided. Otherwise the workflow preserves an existing Cloudflare secret and, on the first deployment only, generates a cryptographically random 48-byte value directly in the deployment channel without printing it.
 
 **Never put either secret in Android source, BuildConfig, the repository, or chat.**
 
-Pinned public EntroNex trust material must also be configured on the Worker:
+The EntroNex signing identity is now source-pinned from the verified live public-trust export. The current public fingerprint is:
 
 ```text
-ENTRONEX_SIGNING_KEY_ID
-ENTRONEX_TENANT_ID
-ENTRONEX_SIGNING_KEY_FINGERPRINT
-ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64
+1fe248e8ee9129fcd13c1ee96c1cd7d162a610e9b1df3037a4ec48935f2d43c4
 ```
 
-Obtain the signing fingerprint/public key from an independently verified EntroNex export or release channel. Do not create the trust root by copying only from the same unauthenticated proof response.
+The key ID, tenant ID, fingerprint, and base64 SPKI public key are committed as non-secret Worker variables in `server/wrangler.json`. A signing-key rotation requires a new verified EntroNex public-trust export and a reviewed pin update; deployment must not silently learn a new trust root from a proof response.
 
 The non-secret EntroNex base URL remains:
 
