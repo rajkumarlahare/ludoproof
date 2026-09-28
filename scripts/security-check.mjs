@@ -198,6 +198,7 @@ if (
     "randomBytes(48)",
     "/health",
     "/ready",
+    "production-game-smoke.mjs",
   ]) {
     if (
       !deployWorkflow.includes(
