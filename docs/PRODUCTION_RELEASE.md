@@ -64,7 +64,7 @@ Readiness endpoint:
 GET /ready
 ```
 
-The endpoint fails closed with HTTP 503 until the match-storage and rate-gate bindings, retry-safe session HMAC key, EntroNex server credential, pinned EntroNex signing identity, and upstream EntroNex health check are all ready.
+The endpoint fails closed with HTTP 503 until the match-storage and rate-gate bindings, retry-safe session HMAC key, EntroNex server credential, pinned EntroNex signing identity, and upstream EntroNex health check are all ready. In Cloudflare production the health/protocol path uses the direct `ENTRONEX_SERVICE` Service Binding to `entronex-v4-eval`; the public `workers.dev` URL is only a development fallback.
 
 ## Android release security
 
@@ -167,3 +167,14 @@ A changed EntroNex signing key must not be accepted automatically. Run the Entro
 ### GitHub-only bootstrap
 
 A local clone is not required for production bootstrap. The workflow can create the first EntroNex evaluation customer token entirely inside GitHub Actions using the production `CLOUDFLARE_API_TOKEN`. The generated value is masked before it is written to either Worker and is not uploaded as an artifact or printed to logs.
+
+
+### EntroNex Worker-to-Worker transport
+
+Production `server/wrangler.json` must contain:
+
+```text
+ENTRONEX_SERVICE -> entronex-v4-eval
+```
+
+This avoids a public `workers.dev` hop between Workers in the same Cloudflare account. Readiness and all authenticated round create/resolve/proof traffic prefer this binding and only fall back to `ENTRONEX_BASE_URL` when the binding does not exist, such as local tests.
