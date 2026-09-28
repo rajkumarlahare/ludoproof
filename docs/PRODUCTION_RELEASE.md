@@ -180,3 +180,10 @@ A local clone is not required for production bootstrap. The workflow can create 
 ### EntroNex transport
 
 Production must keep `ENTRONEX_SERVICE -> entronex-v4-eval` configured. Cloudflare Service Bindings invoke the target Worker directly within the same account and remove public `workers.dev` reachability from the production dependency path. Local tests and non-Cloudflare tooling retain the public URL fallback.
+
+
+### Automated live game smoke
+
+Every production deployment runs `scripts/production-game-smoke.mjs` after `/ready` succeeds. The smoke creates an isolated two-player match through the public production API, joins the second player, starts the match, performs one or more real EntroNex v4 commit/reveal rolls, validates the returned proof contract, and performs a legal move when the sampled dice sequence makes one available.
+
+The smoke never logs player bearer tokens or client seeds. The temporary match follows the normal match-retention policy and expires automatically. A deployment is considered successful only after readiness and this live game-flow smoke both complete.
