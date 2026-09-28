@@ -67,7 +67,7 @@ jobs:
             printf '%s' "$LUDOPROOF_SESSION_HMAC_KEY" | npx --yes wrangler@4.135.0 secret put LUDOPROOF_SESSION_HMAC_KEY
             echo "Synced operator-managed LUDOPROOF_SESSION_HMAC_KEY."
           else
-            npx --yes wrangler@4.135.0 secret list --json > /tmp/ludoproof-secrets.json
+            npx --yes wrangler@4.135.0 secret list --format json > /tmp/ludoproof-secrets.json
             if node -e '
               const fs = require("node:fs");
               const value = JSON.parse(fs.readFileSync("/tmp/ludoproof-secrets.json", "utf8"));
