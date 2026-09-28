@@ -220,6 +220,26 @@ const wrangler =
       "utf8",
     ),
   );
+const serviceBindings =
+  Array.isArray(
+    wrangler?.services,
+  )
+    ? wrangler.services
+    : [];
+if (
+  !serviceBindings.some(
+    (entry) =>
+      entry?.binding ===
+        "ENTRONEX_SERVICE" &&
+      entry?.service ===
+        "entronex-v4-eval",
+  )
+) {
+  findings.push(
+    "server/wrangler.json: missing internal EntroNex service binding",
+  );
+}
+
 const pinnedVars =
   wrangler?.vars ?? {};
 for (const [name, expected] of [
