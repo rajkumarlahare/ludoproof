@@ -31,6 +31,9 @@ jobs:
         run: node scripts/security-check.mjs
       - name: Server tests
         run: npm test
+      - name: Production smoke syntax check
+        working-directory: .
+        run: node --check scripts/production-game-smoke.mjs
       - name: Cloudflare Worker dry run
         run: npx --yes wrangler@4.135.0 deploy --dry-run --outdir .wrangler-dry-run
       - name: Generate CycloneDX SBOM
