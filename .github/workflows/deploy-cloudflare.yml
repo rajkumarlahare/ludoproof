@@ -1,0 +1,89 @@
+name: LudoProof Cloudflare Production
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'scripts/cloudflare-deploy-preflight.mjs'
+      - '.github/workflows/deploy-cloudflare.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ludoproof-cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.CLOUDFLARE_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ENTRONEX_API_TOKEN: ${{ secrets.ENTRONEX_API_TOKEN }}
+      LUDOPROOF_SESSION_HMAC_KEY: ${{ secrets.LUDOPROOF_SESSION_HMAC_KEY }}
+      ENTRONEX_SIGNING_KEY_FINGERPRINT: ${{ secrets.ENTRONEX_SIGNING_KEY_FINGERPRINT }}
+      ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64: ${{ secrets.ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64 }}
+      LUDOPROOF_WORKER_URL: https://ludoproof-game-api.ai-8f3.workers.dev
+
+    steps:
+      - name: Checkout exact release commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+
+      - name: Validate production configuration
+        run: node scripts/cloudflare-deploy-preflight.mjs
+
+      - name: Repository security gate
+        run: node scripts/security-check.mjs
+
+      - name: Server tests
+        working-directory: server
+        run: npm test
+
+      - name: Wrangler production dry run
+        working-directory: server
+        run: npx --yes wrangler@4.135.0 deploy --dry-run --outdir .wrangler-production-dry-run
+
+      - name: Deploy Worker
+        working-directory: server
+        run: npx --yes wrangler@4.135.0 deploy
+
+      - name: Sync server-only runtime secrets
+        working-directory: server
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$ENTRONEX_API_TOKEN" | npx --yes wrangler@4.135.0 secret put ENTRONEX_API_TOKEN
+          printf '%s' "$LUDOPROOF_SESSION_HMAC_KEY" | npx --yes wrangler@4.135.0 secret put LUDOPROOF_SESSION_HMAC_KEY
+          printf '%s' "$ENTRONEX_SIGNING_KEY_FINGERPRINT" | npx --yes wrangler@4.135.0 secret put ENTRONEX_SIGNING_KEY_FINGERPRINT
+          printf '%s' "$ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64" | npx --yes wrangler@4.135.0 secret put ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64
+
+      - name: Verify public health
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "$LUDOPROOF_WORKER_URL/health"
+
+      - name: Verify production readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "$LUDOPROOF_WORKER_URL/ready")"
+          node -e '
+            const body = JSON.parse(process.argv[1]);
+            if (body.ready !== true || body.ok !== true) {
+              console.error("Worker readiness response is not ready.");
+              process.exit(2);
+            }
+            console.log("LudoProof production Worker is ready.");
+          ' "$body"
