@@ -104,6 +104,8 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
         false,
       entronexTrustConfigured:
         false,
+      entronexServiceBindingConfigured:
+        false,
       entronexConfigured: false,
       matchStoreConfigured:
         false,
@@ -149,6 +151,11 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
   );
   assert.equal(
     ready.json.checks
+      .entronexServiceBindingConfigured,
+    false,
+  );
+  assert.equal(
+    ready.json.checks
       .sessionKeyConfigured,
     true,
   );
@@ -167,6 +174,81 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
     false,
   );
 });
+
+test(
+  "ready prefers the EntroNex Cloudflare service binding when present",
+  { concurrency: false },
+  async (t) => {
+    const originalFetch =
+      globalThis.fetch;
+    globalThis.fetch =
+      async () => {
+        throw new Error(
+          "public fetch should not be used",
+        );
+      };
+    t.after(() => {
+      globalThis.fetch =
+        originalFetch;
+    });
+
+    let serviceCalls = 0;
+    const result =
+      await body(
+        await worker.fetch(
+          new Request(
+            "https://ludoproof.example/ready",
+          ),
+          {
+            ENTRONEX_BASE_URL:
+              "https://entronex.example.test",
+            ENTRONEX_API_TOKEN:
+              "lp_test_entronex_token_1234567890",
+            ...TEST_TRUST_ENV,
+            LUDOPROOF_SESSION_HMAC_KEY:
+              "lp_test_session_hmac_key_1234567890abcdef",
+            LUDOPROOF_MATCHES: {},
+            LUDOPROOF_API_GATE: {},
+            ENTRONEX_SERVICE: {
+              async fetch(request) {
+                serviceCalls += 1;
+                assert.equal(
+                  new URL(
+                    request.url,
+                  ).pathname,
+                  "/health",
+                );
+                return Response.json({
+                  ok: true,
+                  service:
+                    "entronex-v4-eval",
+                  protocol: "v4",
+                });
+              },
+            },
+          },
+        ),
+      );
+
+    assert.equal(
+      result.response.status,
+      200,
+    );
+    assert.equal(
+      result.json.ready,
+      true,
+    );
+    assert.equal(
+      result.json.checks
+        .entronexServiceBindingConfigured,
+      true,
+    );
+    assert.equal(
+      serviceCalls,
+      1,
+    );
+  },
+);
 
 test("match creation rejects the wrong method", async () => {
   const result =
