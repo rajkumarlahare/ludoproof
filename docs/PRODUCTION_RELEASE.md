@@ -144,16 +144,17 @@ Automatic deployment on a `main` push is disabled unless the GitHub repository/e
 CLOUDFLARE_DEPLOY_ENABLED=true
 ```
 
-The production GitHub environment/repository needs only these externally supplied secrets:
+The production GitHub environment needs only one externally supplied secret for a clean first deployment:
 
 ```text
 CLOUDFLARE_API_TOKEN
-ENTRONEX_API_TOKEN
 ```
+
+`ENTRONEX_API_TOKEN` is optional as an operator-supplied synchronized rotation value. When it is absent, the workflow checks the secret names on `entronex-v4-eval` and `ludoproof-game-api`. If both are absent it generates one masked customer credential in GitHub Actions and installs the same value on both Workers after all repository tests and the Wrangler dry-run pass. If both already exist it preserves them. If only one exists, deployment fails closed instead of guessing or silently rotating the trust relationship.
 
 The Cloudflare account ID is non-secret and pinned in the workflow for the existing account. The EntroNex public signing trust is pinned in `server/wrangler.json`. `LUDOPROOF_SESSION_HMAC_KEY` may optionally be supplied as a GitHub secret; otherwise the workflow preserves the existing Cloudflare value or securely generates it on first deployment.
 
-The workflow validates configuration without printing secret values, runs the repository security gate and server tests, performs a Wrangler production dry-run, deploys the Worker, synchronizes the EntroNex credential, preserves or creates the session HMAC, and only completes successfully after both `/health` and `/ready` pass.
+The workflow validates configuration without printing secret values, runs the repository security gate and server tests, performs a Wrangler production dry-run, deploys the Worker, synchronizes or preserves the EntroNex credential, preserves or creates the session HMAC, and only completes successfully after both `/health` and `/ready` pass.
 
 A manual `workflow_dispatch` run is also available. Do not enable continuous deployment until the production environment contains all required values and the pinned EntroNex signing identity has been verified independently.
 
@@ -161,3 +162,8 @@ A manual `workflow_dispatch` run is also available. Do not enable continuous dep
 ### EntroNex signing-key rotation
 
 A changed EntroNex signing key must not be accepted automatically. Run the EntroNex `EntroNex v4 Public Trust Export` workflow, verify that its published fingerprint matches the intended Cloudflare evaluation Worker, review the new public key bundle, update the pinned values in `server/wrangler.json`, and let the repository security gate verify the reviewed pin before deployment.
+
+
+### GitHub-only bootstrap
+
+A local clone is not required for production bootstrap. The workflow can create the first EntroNex evaluation customer token entirely inside GitHub Actions using the production `CLOUDFLARE_API_TOKEN`. The generated value is masked before it is written to either Worker and is not uploaded as an artifact or printed to logs.
