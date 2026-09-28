@@ -353,9 +353,11 @@ async function probeEntroNex(env) {
     ).replace(/\/$/, "");
 
   try {
-    const response =
-      await fetch(
-        baseUrl + "/health",
+    const request =
+      new Request(
+        hasEntroNexServiceBinding(env)
+          ? "https://entronex.internal/health"
+          : baseUrl + "/health",
         {
           method: "GET",
           headers: {
@@ -364,10 +366,16 @@ async function probeEntroNex(env) {
           },
           signal:
             AbortSignal.timeout(
-              3_000,
+              8_000,
             ),
         },
       );
+    const response =
+      hasEntroNexServiceBinding(env)
+        ? await env.ENTRONEX_SERVICE.fetch(
+            request,
+          )
+        : await fetch(request);
     if (!response.ok) {
       return false;
     }
@@ -420,13 +428,19 @@ function configurationChecks(env) {
     env.ENTRONEX_API_TOKEN.length >= 20;
   const entronexTrustConfigured =
     hasPinnedEntroNexTrust(env);
+  const entronexServiceBindingConfigured =
+    hasEntroNexServiceBinding(env);
 
   return {
     entronexBaseUrlConfigured,
+    entronexServiceBindingConfigured,
     entronexTokenConfigured,
     entronexTrustConfigured,
     entronexConfigured:
-      entronexBaseUrlConfigured &&
+      (
+        entronexServiceBindingConfigured ||
+        entronexBaseUrlConfigured
+      ) &&
       entronexTokenConfigured &&
       entronexTrustConfigured,
     matchStoreConfigured:
@@ -438,10 +452,26 @@ function configurationChecks(env) {
   };
 }
 
+function hasEntroNexServiceBinding(env) {
+  return (
+    env?.ENTRONEX_SERVICE &&
+    typeof env.ENTRONEX_SERVICE.fetch ===
+      "function"
+  );
+}
+
 function hasEntroNexConfig(env) {
   return (
-    typeof env.ENTRONEX_BASE_URL === "string" &&
-    env.ENTRONEX_BASE_URL.startsWith("https://") &&
+    (
+      hasEntroNexServiceBinding(env) ||
+      (
+        typeof env.ENTRONEX_BASE_URL ===
+          "string" &&
+        env.ENTRONEX_BASE_URL.startsWith(
+          "https://",
+        )
+      )
+    ) &&
     typeof env.ENTRONEX_API_TOKEN === "string" &&
     env.ENTRONEX_API_TOKEN.length >= 20 &&
     hasPinnedEntroNexTrust(env)
