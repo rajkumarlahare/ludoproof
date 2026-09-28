@@ -95,6 +95,24 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
     missing.json.ready,
     false,
   );
+  assert.deepEqual(
+    missing.json.checks,
+    {
+      entronexBaseUrlConfigured:
+        false,
+      entronexTokenConfigured:
+        false,
+      entronexTrustConfigured:
+        false,
+      entronexConfigured: false,
+      matchStoreConfigured:
+        false,
+      rateGateConfigured:
+        false,
+      sessionKeyConfigured:
+        false,
+    },
+  );
 
   const ready =
     await body(
@@ -122,6 +140,26 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
   );
   assert.equal(
     ready.json.ready,
+    true,
+  );
+  assert.equal(
+    ready.json.checks
+      .entronexConfigured,
+    true,
+  );
+  assert.equal(
+    ready.json.checks
+      .sessionKeyConfigured,
+    true,
+  );
+  assert.equal(
+    ready.json.checks
+      .matchStoreConfigured,
+    true,
+  );
+  assert.equal(
+    ready.json.checks
+      .rateGateConfigured,
     true,
   );
   assert.equal(
