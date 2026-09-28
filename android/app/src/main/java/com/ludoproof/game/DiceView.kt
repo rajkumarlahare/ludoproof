@@ -3,8 +3,10 @@ package com.ludoproof.game
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.View
 
@@ -17,32 +19,42 @@ class DiceView @JvmOverloads constructor(
             IMPORTANT_FOR_ACCESSIBILITY_YES
         contentDescription =
             "Dice. No verified outcome yet."
+        setLayerType(
+            LAYER_TYPE_SOFTWARE,
+            null,
+        )
     }
 
     private val facePaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            style = Paint.Style.FILL
-        }
-
+        Paint(Paint.ANTI_ALIAS_FLAG)
     private val borderPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(35, 39, 47)
             style = Paint.Style.STROKE
-            strokeWidth = dp(2f)
+            strokeWidth = dp(2.4f)
+            color = 0xFF20344F.toInt()
         }
-
     private val pipPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(35, 39, 47)
+            color = 0xFF111827.toInt()
             style = Paint.Style.FILL
+            setShadowLayer(
+                dp(1.5f),
+                0f,
+                dp(1f),
+                0x55000000,
+            )
         }
-
     private val rollingPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(13, 110, 253)
             style = Paint.Style.STROKE
-            strokeWidth = dp(4f)
+            strokeWidth = dp(5f)
+            color = LudoProofTheme.GOLD
+            setShadowLayer(
+                dp(6f),
+                0f,
+                0f,
+                0xAAFFB000.toInt(),
+            )
         }
 
     private var face = 1
@@ -54,7 +66,10 @@ class DiceView @JvmOverloads constructor(
                 if (!rolling) return
                 face = face % 6 + 1
                 invalidate()
-                postDelayed(this, 90L)
+                postDelayed(
+                    this,
+                    85L,
+                )
             }
         }
 
@@ -94,21 +109,64 @@ class DiceView @JvmOverloads constructor(
         widthMeasureSpec: Int,
         heightMeasureSpec: Int,
     ) {
-        val desired = dp(92f).toInt()
+        val desired =
+            dp(96f).toInt()
         val width =
-            resolveSize(desired, widthMeasureSpec)
+            resolveSize(
+                desired,
+                widthMeasureSpec,
+            )
         val height =
-            resolveSize(desired, heightMeasureSpec)
-        val size = minOf(width, height)
-        setMeasuredDimension(size, size)
+            resolveSize(
+                desired,
+                heightMeasureSpec,
+            )
+        val size =
+            minOf(
+                width,
+                height,
+            )
+        setMeasuredDimension(
+            size,
+            size,
+        )
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val size = minOf(width, height).toFloat()
+        val size =
+            minOf(
+                width,
+                height,
+            ).toFloat()
         if (size <= 0f) return
 
-        val inset = dp(7f)
+        val shadow =
+            RectF(
+                size * .11f,
+                size * .14f,
+                size * .92f,
+                size * .94f,
+            )
+        facePaint.shader = null
+        facePaint.color =
+            0x55000000
+        facePaint.setShadowLayer(
+            dp(8f),
+            0f,
+            dp(4f),
+            0x77000000,
+        )
+        canvas.drawRoundRect(
+            shadow,
+            size * .16f,
+            size * .16f,
+            facePaint,
+        )
+        facePaint.clearShadowLayer()
+
+        val inset =
+            size * .10f
         val rect =
             RectF(
                 inset,
@@ -116,30 +174,52 @@ class DiceView @JvmOverloads constructor(
                 size - inset,
                 size - inset,
             )
-        val radius = size * 0.16f
-
+        facePaint.shader =
+            LinearGradient(
+                rect.left,
+                rect.top,
+                rect.right,
+                rect.bottom,
+                intArrayOf(
+                    Color.WHITE,
+                    0xFFF3F6FA.toInt(),
+                    0xFFD5DDE8.toInt(),
+                ),
+                null,
+                Shader.TileMode.CLAMP,
+            )
         canvas.drawRoundRect(
             rect,
-            radius,
-            radius,
+            size * .17f,
+            size * .17f,
             facePaint,
         )
+        facePaint.shader = null
+
         canvas.drawRoundRect(
             rect,
-            radius,
-            radius,
-            if (rolling) rollingPaint else borderPaint,
+            size * .17f,
+            size * .17f,
+            if (rolling) {
+                rollingPaint
+            } else {
+                borderPaint
+            },
         )
 
-        val left = size * 0.31f
-        val center = size * 0.50f
-        val right = size * 0.69f
-        val top = size * 0.31f
-        val middle = size * 0.50f
-        val bottom = size * 0.69f
-        val pipRadius = size * 0.055f
+        val left = size * .31f
+        val center = size * .50f
+        val right = size * .69f
+        val top = size * .31f
+        val middle = size * .50f
+        val bottom = size * .69f
+        val pipRadius =
+            size * .055f
 
-        fun pip(x: Float, y: Float) {
+        fun pip(
+            x: Float,
+            y: Float,
+        ) {
             canvas.drawCircle(
                 x,
                 y,
@@ -149,28 +229,22 @@ class DiceView @JvmOverloads constructor(
         }
 
         when (face) {
-            1 -> {
-                pip(center, middle)
-            }
-
+            1 -> pip(center, middle)
             2 -> {
                 pip(left, top)
                 pip(right, bottom)
             }
-
             3 -> {
                 pip(left, top)
                 pip(center, middle)
                 pip(right, bottom)
             }
-
             4 -> {
                 pip(left, top)
                 pip(right, top)
                 pip(left, bottom)
                 pip(right, bottom)
             }
-
             5 -> {
                 pip(left, top)
                 pip(right, top)
@@ -178,7 +252,6 @@ class DiceView @JvmOverloads constructor(
                 pip(left, bottom)
                 pip(right, bottom)
             }
-
             6 -> {
                 pip(left, top)
                 pip(right, top)
@@ -190,6 +263,11 @@ class DiceView @JvmOverloads constructor(
         }
     }
 
-    private fun dp(value: Float): Float =
-        value * resources.displayMetrics.density
+    private fun dp(
+        value: Float,
+    ): Float =
+        value *
+            resources
+                .displayMetrics
+                .density
 }
