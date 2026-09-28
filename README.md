@@ -134,11 +134,13 @@ The EntroNex signing identity is now source-pinned from the verified live public
 
 The key ID, tenant ID, fingerprint, and base64 SPKI public key are committed as non-secret Worker variables in `server/wrangler.json`. A signing-key rotation requires a new verified EntroNex public-trust export and a reviewed pin update; deployment must not silently learn a new trust root from a proof response.
 
-The non-secret EntroNex base URL remains:
+The non-secret EntroNex base URL remains as a fallback:
 
 ```text
 ENTRONEX_BASE_URL=https://entronex-v4-eval.ai-8f3.workers.dev
 ```
+
+In Cloudflare production, LudoProof uses the direct Service Binding `ENTRONEX_SERVICE → entronex-v4-eval` for Worker-to-Worker health and protocol traffic. The public URL fallback remains for local tests and non-Cloudflare development only.
 
 ## Cloudflare Git deployment
 
