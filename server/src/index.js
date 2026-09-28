@@ -1,5 +1,9 @@
 import { hasPinnedEntroNexTrust } from "./entronex-trust.js";
 import {
+  entronexFetch,
+  hasEntroNexServiceBinding,
+} from "./entronex-transport.js";
+import {
   deterministicMatchId,
   hasSessionKey,
   httpError,
