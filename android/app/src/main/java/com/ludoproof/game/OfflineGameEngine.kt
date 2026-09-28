@@ -31,10 +31,22 @@ class OfflineGameEngine(
             )
             ?.playerId
 
-    fun start(playerCount: Int): MatchSnapshot {
+    fun start(
+        playerCount: Int,
+        preferredColor: String = "RED",
+    ): MatchSnapshot {
         require(playerCount in 2..4) {
             "Offline game supports 2 to 4 players"
         }
+        require(preferredColor in COLORS) {
+            "Unsupported offline color"
+        }
+
+        val colorOrder =
+            listOf(preferredColor) +
+                COLORS.filter {
+                    it != preferredColor
+                }
 
         val players =
             (0 until playerCount)
@@ -46,7 +58,7 @@ class OfflineGameEngine(
                         displayName =
                             "Player " +
                                 (seat + 1),
-                        color = COLORS[seat],
+                        color = colorOrder[seat],
                         tokens =
                             mutableListOf(
                                 -1,
