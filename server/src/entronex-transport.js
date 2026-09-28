@@ -10,16 +10,22 @@ export async function entronexFetch(
   input,
   init,
 ) {
-  const request =
-    input instanceof Request && init == null
-      ? input
-      : new Request(input, init);
-
   if (hasEntroNexServiceBinding(env)) {
+    const request =
+      input instanceof Request &&
+      init == null
+        ? input
+        : new Request(
+            input,
+            init,
+          );
     return env.ENTRONEX_SERVICE.fetch(
       request,
     );
   }
 
-  return fetch(request);
+  return fetch(
+    input,
+    init,
+  );
 }
