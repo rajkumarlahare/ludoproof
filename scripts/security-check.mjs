@@ -172,6 +172,44 @@ for (const invariant of [
   }
 }
 
+const deployWorkflowPath =
+  ".github/workflows/deploy-cloudflare.yml";
+if (
+  fs.existsSync(
+    deployWorkflowPath,
+  )
+) {
+  const deployWorkflow =
+    fs.readFileSync(
+      deployWorkflowPath,
+      "utf8",
+    );
+  for (const invariant of [
+    "CLOUDFLARE_DEPLOY_ENABLED",
+    "CLOUDFLARE_API_TOKEN",
+    "CLOUDFLARE_ACCOUNT_ID",
+    "ENTRONEX_API_TOKEN",
+    "LUDOPROOF_SESSION_HMAC_KEY",
+    "ENTRONEX_SIGNING_KEY_FINGERPRINT",
+    "ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64",
+    "cloudflare-deploy-preflight.mjs",
+    "/health",
+    "/ready",
+  ]) {
+    if (
+      !deployWorkflow.includes(
+        invariant,
+      )
+    ) {
+      findings.push(
+        deployWorkflowPath +
+          ": missing production deploy invariant " +
+          invariant,
+      );
+    }
+  }
+}
+
 if (findings.length > 0) {
   console.error(
     "LudoProof security gate failed:",

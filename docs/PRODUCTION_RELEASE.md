@@ -126,3 +126,35 @@ EntroNex v4 remains an evaluation candidate pending independent cryptographic re
 Therefore the game may describe a roll as mathematically verified against the current EntroNex v4 proof implementation, but must not claim that the system is independently audited, certified, gambling-certified, or production-certified by a third party.
 
 Independent review remains a release requirement for high-assurance or regulated use.
+
+
+## Automated Cloudflare production deployment
+
+The repository contains a gated production workflow:
+
+```text
+.github/workflows/deploy-cloudflare.yml
+```
+
+Automatic deployment on a `main` push is disabled unless the GitHub repository/environment variable below is explicitly enabled:
+
+```text
+CLOUDFLARE_DEPLOY_ENABLED=true
+```
+
+The production GitHub environment must contain these secrets:
+
+```text
+CLOUDFLARE_API_TOKEN
+CLOUDFLARE_ACCOUNT_ID
+ENTRONEX_API_TOKEN
+LUDOPROOF_SESSION_HMAC_KEY
+ENTRONEX_SIGNING_KEY_FINGERPRINT
+ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64
+```
+
+The last two values are public trust material rather than confidential credentials, but they are stored in the deployment secret channel so the pinned trust root cannot silently drift through a source-code commit.
+
+The workflow validates configuration without printing secret values, runs the repository security gate and server tests, performs a Wrangler production dry-run, deploys the Worker, synchronizes runtime secrets, and only completes successfully after both `/health` and `/ready` pass.
+
+A manual `workflow_dispatch` run is also available. Do not enable continuous deployment until the production environment contains all required values and the pinned EntroNex signing identity has been verified independently.
