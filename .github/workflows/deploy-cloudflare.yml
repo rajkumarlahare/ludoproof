@@ -46,7 +46,6 @@ jobs:
 
           if [ -n "${ENTRONEX_API_TOKEN:-}" ]; then
             echo "::add-mask::$ENTRONEX_API_TOKEN"
-            printf '%s' "$ENTRONEX_API_TOKEN" | npx --yes wrangler@4.135.0 secret put ENTRONEX_EVAL_CUSTOMER_TOKEN --name entronex-v4-eval
             echo "ENTRONEX_TOKEN_MODE=operator" >> "$GITHUB_ENV"
             echo "Using operator-supplied EntroNex customer credential."
             exit 0
@@ -106,13 +105,12 @@ jobs:
               '
             )"
             echo "::add-mask::$generated_token"
-            printf '%s' "$generated_token" | npx --yes wrangler@4.135.0 secret put ENTRONEX_EVAL_CUSTOMER_TOKEN --name entronex-v4-eval
             {
               echo "ENTRONEX_API_TOKEN=$generated_token"
               echo "ENTRONEX_TOKEN_MODE=bootstrap"
             } >> "$GITHUB_ENV"
             unset generated_token
-            echo "Bootstrapped a new EntroNex customer credential without printing it."
+            echo "Prepared a new EntroNex customer credential for post-test bootstrap."
             exit 0
           fi
 
@@ -144,10 +142,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -n "${ENTRONEX_API_TOKEN:-}" ]; then
-            printf '%s' "$ENTRONEX_API_TOKEN" | npx --yes wrangler@4.135.0 secret put ENTRONEX_API_TOKEN
-            echo "Synchronized EntroNex customer credential into LudoProof."
-          else
+          if [ "${ENTRONEX_TOKEN_MODE:-}" = "preserve" ]; then
             secret_file="$(mktemp)"
             trap 'rm -f "$secret_file"' EXIT
             npx --yes wrangler@4.135.0 secret list --format json > "$secret_file"
@@ -160,7 +155,22 @@ jobs:
                 process.exit(2);
               }
             ' "$secret_file"
-            echo "Preserved existing LudoProof EntroNex customer credential."
+            echo "Preserved existing synchronized EntroNex customer credential."
+          elif [ -n "${ENTRONEX_API_TOKEN:-}" ]; then
+            printf '%s' "$ENTRONEX_API_TOKEN" | npx --yes wrangler@4.135.0 secret put ENTRONEX_EVAL_CUSTOMER_TOKEN --name entronex-v4-eval
+
+            if ! printf '%s' "$ENTRONEX_API_TOKEN" | npx --yes wrangler@4.135.0 secret put ENTRONEX_API_TOKEN; then
+              if [ "${ENTRONEX_TOKEN_MODE:-}" = "bootstrap" ]; then
+                curl --fail --silent --show-error                   -X DELETE                   -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"                   "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/entronex-v4-eval/secrets/ENTRONEX_EVAL_CUSTOMER_TOKEN"                   >/dev/null || true
+              fi
+              echo "Failed to synchronize the EntroNex customer credential into LudoProof." >&2
+              exit 2
+            fi
+
+            echo "Synchronized EntroNex customer credential across both Workers."
+          else
+            echo "EntroNex deployment mode requires a customer credential but none is available." >&2
+            exit 2
           fi
 
           if [ -n "${LUDOPROOF_SESSION_HMAC_KEY:-}" ]; then
