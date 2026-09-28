@@ -1172,14 +1172,29 @@ export async function entronexRequest(env, path, {
 
   let response;
   try {
-    response = await fetch(baseUrl + path, {
-      method,
-      headers,
-      signal: AbortSignal.timeout(
-        entronexTimeoutMs(env),
-      ),
-      body: body == null ? undefined : JSON.stringify(body),
-    });
+    const request =
+      new Request(
+        hasEntroNexServiceBinding(env)
+          ? "https://entronex.internal" + path
+          : baseUrl + path,
+        {
+          method,
+          headers,
+          signal: AbortSignal.timeout(
+            entronexTimeoutMs(env),
+          ),
+          body:
+            body == null
+              ? undefined
+              : JSON.stringify(body),
+        },
+      );
+    response =
+      hasEntroNexServiceBinding(env)
+        ? await env.ENTRONEX_SERVICE.fetch(
+            request,
+          )
+        : await fetch(request);
   } catch (error) {
     if (
       error?.name === "TimeoutError" ||
@@ -1217,6 +1232,14 @@ export async function entronexRequest(env, path, {
   }
 
   return parsed;
+}
+
+function hasEntroNexServiceBinding(env) {
+  return (
+    env?.ENTRONEX_SERVICE &&
+    typeof env.ENTRONEX_SERVICE.fetch ===
+      "function"
+  );
 }
 
 function entronexTimeoutMs(env) {
