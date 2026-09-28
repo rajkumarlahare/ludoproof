@@ -235,3 +235,6 @@ jobs:
             }
             console.log("LudoProof production Worker is ready.");
           ' "$body"
+
+      - name: Verify live production game flow
+        run: node scripts/production-game-smoke.mjs
