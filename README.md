@@ -211,3 +211,14 @@ LudoProof is now structured as a production release candidate, but it must not b
 EntroNex v4 is still an evaluation candidate pending independent cryptographic review. LudoProof must not be described as independently audited, certified, or gambling-certified at this stage.
 
 See [Architecture](docs/ARCHITECTURE.md) and [Production release checklist](docs/PRODUCTION_RELEASE.md).
+
+
+## Production EntroNex transport
+
+Cloudflare production uses an internal Service Binding:
+
+```text
+ENTRONEX_SERVICE -> entronex-v4-eval
+```
+
+The same-account Worker binding is preferred over the public `workers.dev` network path. The public URL remains only as the canonical request URL and local/test fallback.
