@@ -100,6 +100,8 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
     {
       entronexBaseUrlConfigured:
         false,
+      entronexServiceBindingConfigured:
+        false,
       entronexTokenConfigured:
         false,
       entronexTrustConfigured:
@@ -149,6 +151,11 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
   );
   assert.equal(
     ready.json.checks
+      .entronexServiceBindingConfigured,
+    false,
+  );
+  assert.equal(
+    ready.json.checks
       .sessionKeyConfigured,
     true,
   );
@@ -167,6 +174,93 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
     false,
   );
 });
+
+test(
+  "ready prefers the EntroNex Cloudflare Service Binding over public fetch",
+  { concurrency: false },
+  async (t) => {
+    const originalFetch =
+      globalThis.fetch;
+    let publicFetchCalls = 0;
+    globalThis.fetch =
+      async () => {
+        publicFetchCalls += 1;
+        throw new Error(
+          "public EntroNex fetch must not be used when the service binding exists",
+        );
+      };
+    t.after(() => {
+      globalThis.fetch =
+        originalFetch;
+    });
+
+    const serviceCalls = [];
+    const result =
+      await body(
+        await worker.fetch(
+          new Request(
+            "https://ludoproof.example/ready",
+          ),
+          {
+            ENTRONEX_BASE_URL:
+              "https://entronex.example.test",
+            ENTRONEX_API_TOKEN:
+              "lp_test_entronex_token_1234567890",
+            ENTRONEX_SERVICE: {
+              async fetch(request) {
+                serviceCalls.push(
+                  new URL(
+                    request.url,
+                  ),
+                );
+                return Response.json({
+                  ok: true,
+                  service:
+                    "entronex-v4-eval",
+                  protocol: "v4",
+                });
+              },
+            },
+            ...TEST_TRUST_ENV,
+            LUDOPROOF_SESSION_HMAC_KEY:
+              "lp_test_session_hmac_key_1234567890abcdef",
+            LUDOPROOF_MATCHES: {},
+            LUDOPROOF_API_GATE: {},
+          },
+        ),
+      );
+
+    assert.equal(
+      result.response.status,
+      200,
+    );
+    assert.equal(
+      result.json.ready,
+      true,
+    );
+    assert.equal(
+      result.json.checks
+        .entronexServiceBindingConfigured,
+      true,
+    );
+    assert.equal(
+      publicFetchCalls,
+      0,
+    );
+    assert.equal(
+      serviceCalls.length,
+      1,
+    );
+    assert.equal(
+      serviceCalls[0].hostname,
+      "entronex.internal",
+    );
+    assert.equal(
+      serviceCalls[0].pathname,
+      "/health",
+    );
+  },
+);
 
 test("match creation rejects the wrong method", async () => {
   const result =
