@@ -353,29 +353,30 @@ async function probeEntroNex(env) {
     ).replace(/\/$/, "");
 
   try {
-    const request =
-      new Request(
-        hasEntroNexServiceBinding(env)
-          ? "https://entronex.internal/health"
-          : baseUrl + "/health",
-        {
-          method: "GET",
-          headers: {
-            accept:
-              "application/json",
-          },
-          signal:
-            AbortSignal.timeout(
-              8_000,
-            ),
-        },
-      );
+    const init = {
+      method: "GET",
+      headers: {
+        accept:
+          "application/json",
+      },
+      signal:
+        AbortSignal.timeout(
+          8_000,
+        ),
+    };
+
     const response =
       hasEntroNexServiceBinding(env)
         ? await env.ENTRONEX_SERVICE.fetch(
-            request,
+            new Request(
+              "https://entronex.internal/health",
+              init,
+            ),
           )
-        : await fetch(request);
+        : await fetch(
+            baseUrl + "/health",
+            init,
+          );
     if (!response.ok) {
       return false;
     }
@@ -453,10 +454,10 @@ function configurationChecks(env) {
 }
 
 function hasEntroNexServiceBinding(env) {
-  return (
+  return Boolean(
     env?.ENTRONEX_SERVICE &&
-    typeof env.ENTRONEX_SERVICE.fetch ===
-      "function"
+      typeof env.ENTRONEX_SERVICE.fetch ===
+        "function",
   );
 }
 
