@@ -1,5 +1,9 @@
 import { hasPinnedEntroNexTrust } from "./entronex-trust.js";
 import {
+  entronexFetch,
+  hasEntroNexServiceBinding,
+} from "./entronex-transport.js";
+import {
   deterministicMatchId,
   hasSessionKey,
   httpError,
@@ -354,7 +358,8 @@ async function probeEntroNex(env) {
 
   try {
     const response =
-      await fetch(
+      await entronexFetch(
+        env,
         baseUrl + "/health",
         {
           method: "GET",
@@ -425,6 +430,8 @@ function configurationChecks(env) {
     entronexBaseUrlConfigured,
     entronexTokenConfigured,
     entronexTrustConfigured,
+    entronexServiceBindingConfigured:
+      hasEntroNexServiceBinding(env),
     entronexConfigured:
       entronexBaseUrlConfigured &&
       entronexTokenConfigured &&

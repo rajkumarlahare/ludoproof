@@ -5,6 +5,9 @@ import {
   verifyProofAttestation,
 } from "./entronex-trust.js";
 import {
+  entronexFetch,
+} from "./entronex-transport.js";
+import {
   ROLL_REVEAL_TIMEOUT_MS,
   RULESET,
   addPlayer,
@@ -1172,14 +1175,21 @@ export async function entronexRequest(env, path, {
 
   let response;
   try {
-    response = await fetch(baseUrl + path, {
-      method,
-      headers,
-      signal: AbortSignal.timeout(
-        entronexTimeoutMs(env),
-      ),
-      body: body == null ? undefined : JSON.stringify(body),
-    });
+    response = await entronexFetch(
+      env,
+      baseUrl + path,
+      {
+        method,
+        headers,
+        signal: AbortSignal.timeout(
+          entronexTimeoutMs(env),
+        ),
+        body:
+          body == null
+            ? undefined
+            : JSON.stringify(body),
+      },
+    );
   } catch (error) {
     if (
       error?.name === "TimeoutError" ||

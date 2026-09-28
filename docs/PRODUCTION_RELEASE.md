@@ -35,6 +35,14 @@ LUDOPROOF_MATCHES -> MatchRoom
 LUDOPROOF_API_GATE -> ApiGate
 ```
 
+Internal Worker service binding:
+
+```text
+ENTRONEX_SERVICE -> entronex-v4-eval
+```
+
+Production LudoProof-to-EntroNex traffic uses this Cloudflare Service Binding instead of routing through the public `workers.dev` hostname. The public base URL remains configured as the canonical request URL and as the local/non-Cloudflare fallback.
+
 The rate gate is sharded by a one-way hash of the Cloudflare client IP plus request scope. Raw client IP addresses are not stored in match state or limiter state.
 
 Source-controlled non-secret variables/trust material:
@@ -167,3 +175,8 @@ A changed EntroNex signing key must not be accepted automatically. Run the Entro
 ### GitHub-only bootstrap
 
 A local clone is not required for production bootstrap. The workflow can create the first EntroNex evaluation customer token entirely inside GitHub Actions using the production `CLOUDFLARE_API_TOKEN`. The generated value is masked before it is written to either Worker and is not uploaded as an artifact or printed to logs.
+
+
+### EntroNex transport
+
+Production must keep `ENTRONEX_SERVICE -> entronex-v4-eval` configured. Cloudflare Service Bindings invoke the target Worker directly within the same account and remove public `workers.dev` reachability from the production dependency path. Local tests and non-Cloudflare tooling retain the public URL fallback.
