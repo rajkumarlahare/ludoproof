@@ -4,118 +4,100 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 
 class HomeActivity : Activity() {
-    private lateinit var connectivityText: TextView
+    private lateinit var connectivityText:
+        TextView
     private lateinit var connectivityMonitor:
         ConnectivityMonitor
 
     override fun onCreate(
         savedInstanceState: Bundle?,
     ) {
-        super.onCreate(savedInstanceState)
+        super.onCreate(
+            savedInstanceState,
+        )
+        LudoProofTheme.configureWindow(
+            this,
+        )
 
+        val (
+            root,
+            host,
+        ) =
+            LudoProofTheme.arcadeRoot(
+                this,
+            )
+
+        val scroll =
+            ScrollView(this).apply {
+                isFillViewport = true
+                overScrollMode =
+                    View.OVER_SCROLL_NEVER
+            }
         val content =
-            LudoProofTheme.screen(this)
-
-        val top =
-            TextView(this).apply {
-                text =
-                    "LUDOPROOF  •  FAIR PLAY"
-                LudoProofTheme.body(
-                    this,
-                    12f,
-                    centered = true,
-                )
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
                 setPadding(
-                    0,
-                    4,
-                    0,
-                    12,
+                    dp(18),
+                    dp(18),
+                    dp(18),
+                    dp(22),
                 )
             }
-        content.addView(top)
+        scroll.addView(content)
+        host.addView(
+            scroll,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams
+                    .MATCH_PARENT,
+                FrameLayout.LayoutParams
+                    .MATCH_PARENT,
+            ),
+        )
 
-        val title =
-            TextView(this).apply {
-                text = "LudoProof"
-                LudoProofTheme.title(
-                    this,
-                    34f,
-                )
-            }
-        content.addView(title)
-
-        val subtitle =
-            TextView(this).apply {
-                text =
-                    "One board. Two modes. Verified online play and comfortable offline local play."
-                LudoProofTheme.body(
-                    this,
-                    15f,
-                    centered = true,
-                )
-                setPadding(
-                    12,
-                    6,
-                    12,
-                    14,
-                )
-            }
-        content.addView(subtitle)
-
-        val dice =
-            DiceView(this).apply {
-                showOutcome(6)
-            }
         content.addView(
-            dice,
+            profileHud(),
+        )
+        content.addView(
+            quickActions(),
+        )
+
+        val spacer =
+            View(this)
+        content.addView(
+            spacer,
             LinearLayout.LayoutParams(
-                LudoProofTheme.dp(
-                    this,
-                    112,
-                ),
-                LudoProofTheme.dp(
-                    this,
-                    112,
-                ),
-            ).apply {
+                1,
+                dp(120),
+            ),
+        )
+
+        val modeRow =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
                 gravity =
-                    Gravity.CENTER_HORIZONTAL
-            },
-        )
-
-        connectivityText =
-            TextView(this).apply {
-                text =
-                    "Checking connection…"
-                LudoProofTheme.body(
-                    this,
-                    13f,
-                    centered = true,
-                )
-                setPadding(
-                    0,
-                    8,
-                    0,
-                    12,
-                )
+                    Gravity.CENTER
             }
-        content.addView(
-            connectivityText,
-        )
-
-        content.addView(
+        modeRow.addView(
             modeCard(
+                mode =
+                    ModeArtView
+                        .Mode
+                        .ONLINE,
                 title =
-                    "ONLINE MATCH",
-                detail =
-                    "Server-authoritative multiplayer with locally verified EntroNex v4 proofs.",
-                positive = false,
+                    "Online",
+                footerPositive =
+                    false,
             ) {
                 startActivity(
                     Intent(
@@ -124,35 +106,25 @@ class HomeActivity : Activity() {
                     ),
                 )
             },
+            LinearLayout.LayoutParams(
+                0,
+                dp(245),
+                1f,
+            ).apply {
+                marginEnd =
+                    dp(8)
+            },
         )
-
-        val onlineSession =
-            SecureSessionStore(
-                this,
-            ).load()
-        if (onlineSession != null) {
-            content.addView(
-                compactButton(
-                    "Continue Online Match",
-                    positive = false,
-                ) {
-                    startActivity(
-                        Intent(
-                            this,
-                            MainActivity::class.java,
-                        ),
-                    )
-                },
-            )
-        }
-
-        content.addView(
+        modeRow.addView(
             modeCard(
+                mode =
+                    ModeArtView
+                        .Mode
+                        .LOCAL,
                 title =
-                    "OFFLINE LOCAL",
-                detail =
-                    "2–4 players on one phone. Works without internet. Offline rolls are local and are not EntroNex proofs.",
-                positive = true,
+                    "Local",
+                footerPositive =
+                    true,
             ) {
                 startActivity(
                     Intent(
@@ -161,216 +133,632 @@ class HomeActivity : Activity() {
                     ),
                 )
             },
-        )
-
-        if (
-            OfflineGameEngine(
-                this,
-            ).hasSavedGame()
-        ) {
-            content.addView(
-                compactButton(
-                    "Continue Offline Game",
-                    positive = true,
-                ) {
-                    startActivity(
-                        Intent(
-                            this,
-                            OfflineGameActivity::class.java,
-                        ),
-                    )
-                },
-            )
-        }
-
-        val footer =
-            TextView(this).apply {
-                text =
-                    "Online and offline use the same board, controls and visual language. Trust labels stay mode-specific."
-                LudoProofTheme.body(
-                    this,
-                    12f,
-                    centered = true,
-                )
-                setPadding(
-                    12,
-                    20,
-                    12,
-                    4,
-                )
-            }
-        content.addView(footer)
-
-        setContentView(
-            ScrollView(this).apply {
-                setBackgroundColor(
-                    LudoProofTheme.BLUE_DARK,
-                )
-                addView(content)
+            LinearLayout.LayoutParams(
+                0,
+                dp(245),
+                1f,
+            ).apply {
+                marginStart =
+                    dp(8)
             },
         )
+        content.addView(modeRow)
+
+        val bonus =
+            Button(this).apply {
+                text =
+                    "★  FAIR PLAY • VERIFIED ONLINE  ★"
+                LudoProofTheme.positive(
+                    this,
+                )
+                isEnabled =
+                    false
+            }
+        content.addView(
+            bonus,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams
+                    .MATCH_PARENT,
+                dp(58),
+            ).apply {
+                setMargins(
+                    dp(58),
+                    dp(20),
+                    dp(58),
+                    0,
+                )
+            },
+        )
+
+        continueButton()
+            ?.let {
+                button ->
+                content.addView(
+                    button,
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams
+                            .MATCH_PARENT,
+                        dp(64),
+                    ).apply {
+                        setMargins(
+                            dp(66),
+                            dp(24),
+                            dp(66),
+                            0,
+                        )
+                    },
+                )
+            }
+
+        val flex =
+            View(this)
+        content.addView(
+            flex,
+            LinearLayout.LayoutParams(
+                1,
+                dp(150),
+            ),
+        )
+
+        content.addView(
+            bottomActions(),
+        )
+
+        setContentView(root)
 
         connectivityMonitor =
             ConnectivityMonitor(
                 this,
-            ) { online ->
+            ) {
+                    online ->
                 runOnUiThread {
                     connectivityText.text =
-                        if (online) {
-                            "● Online — verified multiplayer available"
+                        if (
+                            online
+                        ) {
+                            "● ONLINE"
                         } else {
-                            "● Offline — local play available"
+                            "● OFFLINE"
                         }
-                    connectivityText.setTextColor(
-                        if (online) {
-                            LudoProofTheme.GREEN
-                        } else {
-                            LudoProofTheme.ORANGE
-                        },
-                    )
+                    connectivityText
+                        .setTextColor(
+                            if (
+                                online
+                            ) {
+                                0xFF68F053
+                                    .toInt()
+                            } else {
+                                LudoProofTheme
+                                    .GOLD
+                            },
+                        )
                 }
             }
     }
 
     override fun onStart() {
         super.onStart()
-        connectivityMonitor.start()
+        connectivityMonitor
+            .start()
     }
 
     override fun onStop() {
-        connectivityMonitor.stop()
+        connectivityMonitor
+            .stop()
         super.onStop()
     }
 
+    private fun profileHud():
+        LinearLayout =
+        LinearLayout(this).apply {
+            orientation =
+                LinearLayout.HORIZONTAL
+            gravity =
+                Gravity.CENTER_VERTICAL
+
+            val avatar =
+                TextView(
+                    this@HomeActivity,
+                ).apply {
+                    text = "LP"
+                    LudoProofTheme.title(
+                        this,
+                        15f,
+                    )
+                    gravity =
+                        Gravity.CENTER
+                    background =
+                        LudoProofTheme
+                            .rounded(
+                                0xFF0879D9
+                                    .toInt(),
+                                12f,
+                                LudoProofTheme
+                                    .CYAN_BORDER,
+                                2f,
+                                this@HomeActivity,
+                            )
+                }
+            addView(
+                avatar,
+                LinearLayout.LayoutParams(
+                    dp(62),
+                    dp(62),
+                ),
+            )
+
+            val identity =
+                LinearLayout(
+                    this@HomeActivity,
+                ).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+                    setPadding(
+                        dp(12),
+                        0,
+                        0,
+                        0,
+                    )
+                }
+
+            identity.addView(
+                TextView(
+                    this@HomeActivity,
+                ).apply {
+                    text =
+                        "LudoProof Player"
+                    LudoProofTheme.body(
+                        this,
+                        19f,
+                        bright = true,
+                    )
+                },
+            )
+
+            val level =
+                LinearLayout(
+                    this@HomeActivity,
+                ).apply {
+                    orientation =
+                        LinearLayout.HORIZONTAL
+                    gravity =
+                        Gravity.CENTER_VERTICAL
+                }
+            level.addView(
+                TextView(
+                    this@HomeActivity,
+                ).apply {
+                    text = "★"
+                    setTextColor(
+                        LudoProofTheme
+                            .GOLD,
+                    )
+                    textSize = 22f
+                },
+            )
+            level.addView(
+                ProgressBar(
+                    this@HomeActivity,
+                    null,
+                    android.R.attr
+                        .progressBarStyleHorizontal,
+                ).apply {
+                    max = 100
+                    progress = 72
+                    progressTintList =
+                        android.content.res
+                            .ColorStateList
+                            .valueOf(
+                                LudoProofTheme
+                                    .GOLD,
+                            )
+                    progressBackgroundTintList =
+                        android.content.res
+                            .ColorStateList
+                            .valueOf(
+                                0xFF123875
+                                    .toInt(),
+                            )
+                },
+                LinearLayout.LayoutParams(
+                    dp(108),
+                    dp(12),
+                ).apply {
+                    marginStart =
+                        dp(4)
+                },
+            )
+            identity.addView(level)
+            addView(
+                identity,
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams
+                        .WRAP_CONTENT,
+                    1f,
+                ),
+            )
+
+            connectivityText =
+                TextView(
+                    this@HomeActivity,
+                ).apply {
+                    text =
+                        "● CHECKING"
+                    LudoProofTheme.body(
+                        this,
+                        12f,
+                        centered = true,
+                        bright = true,
+                    )
+                    setPadding(
+                        dp(13),
+                        dp(9),
+                        dp(13),
+                        dp(9),
+                    )
+                    background =
+                        LudoProofTheme
+                            .rounded(
+                                0xE4071739
+                                    .toInt(),
+                                18f,
+                                0x553F86FF,
+                                1f,
+                                this@HomeActivity,
+                            )
+                }
+            addView(
+                connectivityText,
+            )
+        }
+
+    private fun quickActions():
+        LinearLayout =
+        LinearLayout(this).apply {
+            orientation =
+                LinearLayout.HORIZONTAL
+            gravity =
+                Gravity.CENTER
+            setPadding(
+                0,
+                dp(32),
+                0,
+                0,
+            )
+
+            addView(
+                quickAction(
+                    "★",
+                    "RULES",
+                ) {
+                    ArcadeDialogs
+                        .showProofHistory(
+                            this@HomeActivity,
+                            "CLASSIC RULES",
+                            """
+                            • Roll 6 to leave the yard.
+                            • Exact roll is required to reach home.
+                            • Rolling 6 gives another turn.
+                            • Capturing gives another turn.
+                            • Three consecutive sixes forfeit the turn.
+                            • Safe cells cannot be captured.
+                            """.trimIndent(),
+                        )
+                },
+                weighted(),
+            )
+            addView(
+                quickAction(
+                    "✓",
+                    "PROOFS",
+                ) {
+                    ArcadeDialogs
+                        .showProofHistory(
+                            this@HomeActivity,
+                            "PROOF MODE",
+                            "Online matches use the server-authoritative EntroNex v4 flow and verify accepted proofs locally on the device.\n\nOffline local matches are clearly separated and do not claim EntroNex verification.",
+                        )
+                },
+                weighted(),
+            )
+            addView(
+                quickAction(
+                    "↗",
+                    "SHARE",
+                ) {
+                    val share =
+                        Intent(
+                            Intent.ACTION_SEND,
+                        ).apply {
+                            type =
+                                "text/plain"
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "Play LudoProof — verified online Ludo with an offline local mode.",
+                            )
+                        }
+                    startActivity(
+                        Intent
+                            .createChooser(
+                                share,
+                                "Share LudoProof",
+                            ),
+                    )
+                },
+                weighted(),
+            )
+            addView(
+                quickAction(
+                    "⚙",
+                    "SETTINGS",
+                ) {
+                    ArcadeDialogs
+                        .showSettings(
+                            this@HomeActivity,
+                        )
+                },
+                weighted(),
+            )
+        }
+
+    private fun quickAction(
+        symbol: String,
+        label: String,
+        action: () -> Unit,
+    ): LinearLayout =
+        LinearLayout(this).apply {
+            orientation =
+                LinearLayout.VERTICAL
+            gravity =
+                Gravity.CENTER
+
+            addView(
+                Button(
+                    this@HomeActivity,
+                ).apply {
+                    LudoProofTheme
+                        .circularAction(
+                            this,
+                            symbol,
+                        )
+                    setOnClickListener {
+                        action()
+                    }
+                },
+                LinearLayout.LayoutParams(
+                    dp(56),
+                    dp(56),
+                ),
+            )
+            addView(
+                TextView(
+                    this@HomeActivity,
+                ).apply {
+                    text = label
+                    LudoProofTheme.body(
+                        this,
+                        11f,
+                        centered = true,
+                        bright = true,
+                    )
+                    setPadding(
+                        0,
+                        dp(4),
+                        0,
+                        0,
+                    )
+                },
+            )
+        }
+
     private fun modeCard(
+        mode: ModeArtView.Mode,
         title: String,
-        detail: String,
-        positive: Boolean,
+        footerPositive: Boolean,
         action: () -> Unit,
     ): LinearLayout =
         LinearLayout(this).apply {
             orientation =
                 LinearLayout.VERTICAL
             setPadding(
-                LudoProofTheme.dp(
-                    this@HomeActivity,
-                    14,
-                ),
-                LudoProofTheme.dp(
-                    this@HomeActivity,
-                    14,
-                ),
-                LudoProofTheme.dp(
-                    this@HomeActivity,
-                    14,
-                ),
-                LudoProofTheme.dp(
-                    this@HomeActivity,
-                    14,
-                ),
+                dp(5),
+                dp(5),
+                dp(5),
+                dp(5),
             )
-            LudoProofTheme.card(
-                this,
-                alternate =
-                    positive,
+            background =
+                LudoProofTheme
+                    .panelDrawable(
+                        this@HomeActivity,
+                    )
+            elevation =
+                dp(8)
+                    .toFloat()
+
+            val art =
+                ModeArtView(
+                    this@HomeActivity,
+                ).apply {
+                    this.mode =
+                        mode
+                }
+            addView(
+                art,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams
+                        .MATCH_PARENT,
+                    0,
+                    1f,
+                ),
             )
 
-            addView(
-                TextView(
-                    this@HomeActivity,
-                ).apply {
-                    text = title
-                    setTextColor(
-                        LudoProofTheme.WHITE,
-                    )
-                    textSize = 19f
-                    gravity =
-                        Gravity.CENTER_HORIZONTAL
-                },
-            )
-            addView(
-                TextView(
-                    this@HomeActivity,
-                ).apply {
-                    text = detail
-                    LudoProofTheme.body(
-                        this,
-                        13f,
-                        centered = true,
-                    )
-                    setPadding(
-                        4,
-                        6,
-                        4,
-                        10,
-                    )
-                },
-            )
             addView(
                 Button(
                     this@HomeActivity,
                 ).apply {
-                    text =
-                        if (positive) {
-                            "PLAY OFFLINE"
-                        } else {
-                            "PLAY ONLINE"
-                        }
-                    if (positive) {
-                        LudoProofTheme.positive(
-                            this,
-                        )
+                    text = title
+                    if (
+                        footerPositive
+                    ) {
+                        LudoProofTheme
+                            .primary(
+                                this,
+                            )
                     } else {
-                        LudoProofTheme.primary(
-                            this,
-                        )
+                        LudoProofTheme
+                            .positive(
+                                this,
+                            )
                     }
+                    textSize = 22f
                     setOnClickListener {
                         action()
                     }
                 },
-            )
-        }.also {
-            it.layoutParams =
                 LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams
                         .MATCH_PARENT,
-                    LinearLayout.LayoutParams
-                        .WRAP_CONTENT,
-                ).apply {
-                    setMargins(
-                        0,
-                        LudoProofTheme.dp(
-                            this@HomeActivity,
-                            8,
-                        ),
-                        0,
-                        LudoProofTheme.dp(
-                            this@HomeActivity,
-                            8,
-                        ),
-                    )
-                }
+                    dp(66),
+                ),
+            )
         }
 
-    private fun compactButton(
-        label: String,
-        positive: Boolean,
+    private fun continueButton():
+        Button? {
+        val online =
+            SecureSessionStore(
+                this,
+            ).load()
+        val offline =
+            OfflineGameEngine(
+                this,
+            ).hasSavedGame()
+
+        if (
+            online == null &&
+            !offline
+        ) {
+            return null
+        }
+
+        return Button(this).apply {
+            text =
+                "Continue Last Game  ›"
+            LudoProofTheme.positive(
+                this,
+            )
+            textSize = 20f
+            setOnClickListener {
+                startActivity(
+                    Intent(
+                        this@HomeActivity,
+                        if (
+                            online != null
+                        ) {
+                            MainActivity::class.java
+                        } else {
+                            OfflineGameActivity::class.java
+                        },
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun bottomActions():
+        LinearLayout =
+        LinearLayout(this).apply {
+            orientation =
+                LinearLayout.HORIZONTAL
+            gravity =
+                Gravity.CENTER
+
+            addView(
+                bottomCircle(
+                    "★",
+                ) {
+                    ArcadeDialogs
+                        .showProofHistory(
+                            this@HomeActivity,
+                            "FAIR PLAY",
+                            "LudoProof keeps online randomness verifiable and keeps offline play clearly labeled as local.",
+                        )
+                },
+                weighted(),
+            )
+            addView(
+                bottomCircle(
+                    "↗",
+                ) {
+                    val share =
+                        Intent(
+                            Intent.ACTION_SEND,
+                        ).apply {
+                            type =
+                                "text/plain"
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "LudoProof",
+                            )
+                        }
+                    startActivity(
+                        Intent
+                            .createChooser(
+                                share,
+                                "Share",
+                            ),
+                    )
+                },
+                weighted(),
+            )
+            addView(
+                bottomCircle(
+                    "⚙",
+                ) {
+                    ArcadeDialogs
+                        .showSettings(
+                            this@HomeActivity,
+                        )
+                },
+                weighted(),
+            )
+        }
+
+    private fun bottomCircle(
+        symbol: String,
         action: () -> Unit,
     ): Button =
         Button(this).apply {
-            text = label
-            if (positive) {
-                LudoProofTheme.positive(
+            LudoProofTheme
+                .circularAction(
                     this,
+                    symbol,
                 )
-            } else {
-                LudoProofTheme.secondary(
-                    this,
-                )
-            }
             setOnClickListener {
                 action()
             }
+            layoutParams =
+                LinearLayout.LayoutParams(
+                    dp(60),
+                    dp(60),
+                )
         }
+
+    private fun weighted():
+        LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(
+            0,
+            LinearLayout.LayoutParams
+                .WRAP_CONTENT,
+            1f,
+        )
+
+    private fun dp(
+        value: Int,
+    ): Int =
+        LudoProofTheme.dp(
+            this,
+            value,
+        )
 }

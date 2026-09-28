@@ -1,635 +1,553 @@
 package com.ludoproof.game
 
 import android.app.Activity
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 
 class OfflineGameActivity : Activity() {
-    private val handler =
-        Handler(
-            Looper.getMainLooper(),
-        )
+    private val handler = Handler(Looper.getMainLooper())
+    private val engine by lazy { OfflineGameEngine(this) }
 
-    private val engine by lazy {
-        OfflineGameEngine(this)
-    }
+    private var selectedPlayers = 2
+    private var selectedColor = "BLUE"
+    private lateinit var playerButtons: Map<Int, Button>
+    private lateinit var colorButtons: Map<String, Button>
 
-    private lateinit var root:
-        LinearLayout
-    private var boardView:
-        LudoBoardView? = null
-    private var diceView:
-        DiceView? = null
-    private var turnText:
-        TextView? = null
-    private var infoText:
-        TextView? = null
-    private var historyText:
-        TextView? = null
-    private var rollButton:
-        Button? = null
+    private var boardView: LudoBoardView? = null
+    private var diceView: DiceView? = null
+    private var turnText: TextView? = null
+    private var infoText: TextView? = null
+    private var statusText: TextView? = null
+    private var rollButton: Button? = null
 
-    override fun onCreate(
-        savedInstanceState: Bundle?,
-    ) {
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        if (engine.hasSavedGame()) {
-            showGame(
-                engine.snapshot(),
-            )
-        } else {
-            showSetup()
-        }
+        LudoProofTheme.configureWindow(this)
+        if (engine.hasSavedGame()) showGame(engine.snapshot()) else showSetup()
     }
 
     private fun showSetup() {
-        root =
-            LudoProofTheme.screen(this)
-
-        root.addView(
-            topBar(
-                "OFFLINE LOCAL",
+        val (root, host) = LudoProofTheme.arcadeRoot(this)
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(18), dp(18), dp(26))
+        }
+        scroll.addView(content)
+        host.addView(
+            scroll,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
             ),
         )
 
-        root.addView(
-            TextView(this).apply {
-                text =
-                    "Choose Players"
-                LudoProofTheme.title(
-                    this,
-                    26f,
-                )
-                setPadding(
-                    0,
-                    14,
-                    0,
-                    6,
-                )
-            },
-        )
+        content.addView(backHeader("LOCAL GAME"))
 
-        root.addView(
-            TextView(this).apply {
-                text =
-                    "Pass-and-play on one phone. Internet is not required."
-                LudoProofTheme.body(
-                    this,
-                    14f,
-                    centered = true,
+        content.addView(
+            selectionPanel("SELECT GAME").apply {
+                val row = LinearLayout(this@OfflineGameActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER
+                }
+                row.addView(
+                    choiceTile("▦", "Classic", "Standard play", true, true) {},
+                    tileParams(),
                 )
-                setPadding(
-                    10,
-                    0,
-                    10,
-                    14,
+                row.addView(
+                    choiceTile("⚡", "Rush", "Fast-paced", false, false) {},
+                    tileParams(),
                 )
-            },
-        )
-
-        val selector =
-            LinearLayout(
-                this,
-            ).apply {
-                orientation =
-                    LinearLayout.VERTICAL
-                setPadding(
-                    14,
-                    14,
-                    14,
-                    14,
-                )
-                LudoProofTheme.card(
-                    this,
-                )
-            }
-
-        for (
-            count in
-            2..4
-        ) {
-            selector.addView(
-                Button(this).apply {
-                    text =
-                        "$count Players"
-                    LudoProofTheme.primary(
-                        this,
-                    )
-                    setOnClickListener {
-                        val snapshot =
-                            engine.start(
-                                count,
+                addView(row)
+                addView(
+                    TextView(this@OfflineGameActivity).apply {
+                        text = "Theme:   CLASSIC                         ▼"
+                        LudoProofTheme.body(this, 16f, bright = true)
+                        setPadding(dp(16), dp(13), dp(16), dp(13))
+                        background =
+                            LudoProofTheme.darkPanelDrawable(
+                                this@OfflineGameActivity,
+                                goldBorder = true,
                             )
-                        showGame(
-                            snapshot,
-                        )
-                    }
-                },
-            )
+                    },
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply { topMargin = dp(14) },
+                )
+            },
+            sectionParams(),
+        )
+
+        val playersPanel = selectionPanel("SELECT PLAYERS")
+        val playersRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
         }
+        val playerMap = linkedMapOf<Int, Button>()
+        listOf(
+            2 to "♟♟",
+            3 to "♟♟♟",
+            4 to "♟♟♟♟",
+        ).forEach { entry ->
+            val button = tileButton(
+                entry.second + "\n" + entry.first + "P",
+            ) {
+                selectedPlayers = entry.first
+                refreshSetupSelections()
+            }
+            playerMap[entry.first] = button
+            playersRow.addView(button, tileParams())
+        }
+        playerButtons = playerMap
+        playersPanel.addView(playersRow)
+        content.addView(playersPanel, sectionParams())
 
-        root.addView(selector)
+        val colorPanel = selectionPanel("CHOOSE YOUR COLOR")
+        val colorRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        val colors = linkedMapOf(
+            "BLUE" to 0xFF298DFF.toInt(),
+            "RED" to 0xFFF22E35.toInt(),
+            "GREEN" to 0xFF1FB257.toInt(),
+            "YELLOW" to 0xFFFFD324.toInt(),
+        )
+        val colorMap = linkedMapOf<String, Button>()
+        colors.forEach { entry ->
+            val button = Button(this).apply {
+                text = "●"
+                textSize = 34f
+                setTextColor(entry.value)
+                setOnClickListener {
+                    selectedColor = entry.key
+                    refreshSetupSelections()
+                }
+            }
+            colorMap[entry.key] = button
+            colorRow.addView(button, tileParams())
+        }
+        colorButtons = colorMap
+        colorPanel.addView(colorRow)
+        content.addView(colorPanel, sectionParams())
 
-        root.addView(
+        refreshSetupSelections()
+
+        content.addView(
             TextView(this).apply {
                 text =
-                    "Offline fairness note: rolls use Android SecureRandom on this device. They are not EntroNex-certified or server-verified."
-                LudoProofTheme.body(
-                    this,
-                    12f,
-                    centered = true,
-                )
-                setPadding(
-                    10,
-                    18,
-                    10,
-                    4,
-                )
+                    "Offline mode works without internet. Dice are generated locally on this device and are not EntroNex proofs."
+                LudoProofTheme.body(this, 12f, centered = true)
+                setPadding(dp(18), dp(12), dp(18), dp(4))
             },
         )
 
-        setContentView(
-            ScrollView(this).apply {
-                setBackgroundColor(
-                    LudoProofTheme.BLUE_DARK,
-                )
-                addView(root)
+        content.addView(
+            Button(this).apply {
+                text = "PLAY"
+                textSize = 23f
+                LudoProofTheme.primary(this)
+                setOnClickListener {
+                    showGame(engine.start(selectedPlayers, selectedColor))
+                }
+            },
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(68),
+            ).apply {
+                setMargins(dp(78), dp(36), dp(78), 0)
             },
         )
+
+        setContentView(root)
     }
 
-    private fun showGame(
-        snapshot: MatchSnapshot?,
-    ) {
-        val state =
-            snapshot ?: run {
-                showSetup()
-                return
-            }
+    private fun showGame(snapshot: MatchSnapshot?) {
+        val state = snapshot ?: run {
+            showSetup()
+            return
+        }
 
-        root =
-            LudoProofTheme.screen(this)
-        root.addView(
-            topBar(
-                "OFFLINE LOCAL",
+        val (root, host) = LudoProofTheme.arcadeRoot(this)
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(14), dp(14), dp(26))
+        }
+        scroll.addView(content)
+        host.addView(
+            scroll,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
             ),
         )
 
-        infoText =
-            TextView(this).apply {
-                LudoProofTheme.body(
-                    this,
-                    13f,
-                    centered = true,
-                )
-                setPadding(
-                    8,
-                    8,
-                    8,
-                    4,
-                )
-            }
-        root.addView(
-            requireNotNull(
-                infoText,
-            ),
-        )
+        content.addView(backHeader("LOCAL • CLASSIC"))
 
-        turnText =
-            TextView(this).apply {
-                LudoProofTheme.title(
-                    this,
-                    22f,
-                )
-                setPadding(
-                    8,
-                    8,
-                    8,
-                    10,
-                )
-            }
-        root.addView(
-            requireNotNull(
-                turnText,
-            ),
-        )
+        infoText = TextView(this).apply {
+            LudoProofTheme.body(this, 13f, centered = true, bright = true)
+            setPadding(dp(8), dp(10), dp(8), dp(4))
+        }
+        content.addView(requireNotNull(infoText))
 
-        boardView =
-            LudoBoardView(this).apply {
-                onTokenSelected = {
-                    tokenIndex ->
-                    runCatching {
-                        engine.move(
-                            tokenIndex,
-                        )
+        turnText = TextView(this).apply {
+            LudoProofTheme.title(this, 23f, gold = true)
+            setPadding(dp(8), dp(4), dp(8), dp(10))
+        }
+        content.addView(requireNotNull(turnText))
+
+        boardView = LudoBoardView(this).apply {
+            onTokenSelected = { tokenIndex ->
+                runCatching { engine.move(tokenIndex) }
+                    .onSuccess { next ->
+                        renderGame(next)
+                        showStatus("Move accepted.")
                     }
-                        .onSuccess {
-                            next ->
-                            renderGame(
-                                next,
-                            )
-                        }
-                        .onFailure {
-                            error ->
-                            showGameMessage(
-                                error.message
-                                    ?: "Move failed",
-                            )
-                        }
-                }
+                    .onFailure { error ->
+                        showStatus(error.message ?: "Move failed")
+                    }
             }
+        }
 
-        val boardCard =
-            LinearLayout(
-                this,
-            ).apply {
-                orientation =
-                    LinearLayout.VERTICAL
-                setPadding(
-                    6,
-                    6,
-                    6,
-                    6,
-                )
-                LudoProofTheme.card(
-                    this,
-                    alternate = true,
-                )
-                addView(
-                    boardView,
-                    LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams
-                            .MATCH_PARENT,
-                        LinearLayout.LayoutParams
-                            .WRAP_CONTENT,
-                    ),
-                )
-            }
-        root.addView(boardCard)
-
-        diceView =
-            DiceView(this)
-        root.addView(
-            diceView,
+        val frame = LudoProofTheme.boardFrame(this)
+        frame.addView(
+            boardView,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+        content.addView(
+            frame,
             LinearLayout.LayoutParams(
-                LudoProofTheme.dp(
-                    this,
-                    104,
-                ),
-                LudoProofTheme.dp(
-                    this,
-                    104,
-                ),
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                gravity =
-                    Gravity.CENTER_HORIZONTAL
+                setMargins(dp(2), 0, dp(2), dp(14))
             },
         )
 
-        rollButton =
+        val actionPanel = LudoProofTheme.panel(this)
+        diceView = DiceView(this)
+        actionPanel.addView(
+            diceView,
+            LinearLayout.LayoutParams(dp(102), dp(102)).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+            },
+        )
+
+        statusText = TextView(this).apply {
+            text = "Offline local game"
+            LudoProofTheme.body(this, 13f, centered = true, bright = true)
+            setPadding(0, dp(4), 0, dp(10))
+        }
+        actionPanel.addView(requireNotNull(statusText))
+
+        rollButton = Button(this).apply {
+            text = "ROLL DICE"
+            textSize = 20f
+            LudoProofTheme.primary(this)
+            setOnClickListener { rollOffline() }
+        }
+        actionPanel.addView(requireNotNull(rollButton))
+
+        val tools = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+        tools.addView(
             Button(this).apply {
-                text = "ROLL DICE"
-                textSize = 18f
-                LudoProofTheme.primary(
-                    this,
-                )
+                text = "HISTORY"
+                LudoProofTheme.secondary(this)
                 setOnClickListener {
-                    rollOffline()
+                    ArcadeDialogs.showProofHistory(
+                        this@OfflineGameActivity,
+                        "OFFLINE HISTORY",
+                        offlineHistory(engine.snapshot()),
+                    )
                 }
-            }
-        root.addView(
-            requireNotNull(
-                rollButton,
-            ),
+            },
+            toolParams(),
         )
-
-        val trust =
-            TextView(this).apply {
-                text =
-                    "OFFLINE • Device SecureRandom • No EntroNex proof"
-                LudoProofTheme.body(
-                    this,
-                    12f,
-                    centered = true,
-                )
-                setPadding(
-                    8,
-                    10,
-                    8,
-                    10,
-                )
-            }
-        root.addView(trust)
-
-        historyText =
-            TextView(this).apply {
-                LudoProofTheme.body(
-                    this,
-                    12f,
-                    centered = false,
-                )
-                setPadding(
-                    12,
-                    12,
-                    12,
-                    12,
-                )
-                LudoProofTheme.card(
-                    this,
-                )
-            }
-        root.addView(
-            requireNotNull(
-                historyText,
-            ),
-        )
-
-        val newButton =
+        tools.addView(
             Button(this).apply {
-                text =
-                    "New Offline Game"
-                LudoProofTheme.secondary(
-                    this,
-                )
+                text = "NEW GAME"
+                LudoProofTheme.positive(this)
                 setOnClickListener {
                     engine.clear()
                     showSetup()
                 }
-            }
-        root.addView(newButton)
+            },
+            toolParams(),
+        )
+        actionPanel.addView(tools)
 
-        setContentView(
-            ScrollView(this).apply {
-                setBackgroundColor(
-                    LudoProofTheme.BLUE_DARK,
-                )
-                addView(root)
+        actionPanel.addView(
+            TextView(this).apply {
+                text = "LOCAL • Device SecureRandom • No EntroNex proof"
+                LudoProofTheme.body(this, 11f, centered = true)
+                setPadding(0, dp(10), 0, 0)
+            },
+        )
+        content.addView(
+            actionPanel,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                setMargins(dp(6), 0, dp(6), 0)
             },
         )
 
+        setContentView(root)
         renderGame(state)
     }
 
-    private fun renderGame(
-        state: MatchSnapshot,
-    ) {
-        val active =
-            state.players
-                .getOrNull(
-                    state.turnSeat,
-                )
-        val winner =
-            state.players
-                .find {
-                    it.playerId ==
-                        state.winnerPlayerId
-                }
+    private fun renderGame(state: MatchSnapshot) {
+        val active = state.players.getOrNull(state.turnSeat)
+        val winner = state.players.find { it.playerId == state.winnerPlayerId }
 
         infoText?.text =
-            state.players
-                .joinToString(
-                    separator = "   ",
-                ) {
-                    it.color +
-                        ": " +
-                        it.displayName
-                }
+            state.players.joinToString(separator = "   ") {
+                it.color + ": " + it.displayName
+            }
 
         turnText?.text =
-            if (
-                state.status ==
-                "FINISHED"
-            ) {
-                "Winner: " +
-                    (
-                        winner
-                            ?.displayName
-                            ?: "Player"
-                        )
+            if (state.status == "FINISHED") {
+                "Winner: " + (winner?.displayName ?: "Player")
             } else {
-                "Turn: " +
-                    (
-                        active
-                            ?.displayName
-                            ?: "Player"
-                        )
+                "Turn: " + (active?.displayName ?: "Player")
             }
 
-        boardView?.bind(
-            state,
-            engine.activePlayerId(),
-        )
+        boardView?.bind(state, engine.activePlayerId())
 
-        val pending =
-            state.pendingRoll
-        val latest =
-            state.history
-                .lastOrNull()
-        val outcome =
-            pending?.outcome
-                ?: latest?.outcome
-        if (outcome != null) {
-            diceView?.showOutcome(
-                outcome,
-            )
-        }
+        val pending = state.pendingRoll
+        val latest = state.history.lastOrNull()
+        val outcome = pending?.outcome ?: latest?.outcome
+        if (outcome != null) diceView?.showOutcome(outcome)
 
         rollButton?.isEnabled =
-            state.status ==
-                "ACTIVE" &&
-                pending == null
+            state.status == "ACTIVE" && pending == null
         rollButton?.text =
             when {
-                state.status ==
-                    "FINISHED" ->
-                    "GAME FINISHED"
-                pending != null ->
-                    "MOVE HIGHLIGHTED TOKEN"
-                else ->
-                    "ROLL DICE"
+                state.status == "FINISHED" -> "GAME FINISHED"
+                pending != null -> "MOVE HIGHLIGHTED TOKEN"
+                else -> "ROLL DICE"
             }
 
-        historyText?.text =
-            buildString {
-                append(
-                    "Recent offline rolls\n",
-                )
-                val recent =
-                    state.history
-                        .takeLast(8)
-                        .reversed()
-                if (recent.isEmpty()) {
-                    append(
-                        "No rolls yet.",
-                    )
-                } else {
-                    recent.forEach {
-                        event ->
-                        append(
-                            "#",
-                        )
-                        append(
-                            event.eventIndex,
-                        )
-                        append(
-                            "  dice=",
-                        )
-                        append(
-                            event.outcome
-                                ?: "?",
-                        )
-                        if (
-                            event.moveTokenIndex !=
-                            null
-                        ) {
-                            append(
-                                "  token=",
-                            )
-                            append(
-                                event.moveTokenIndex +
-                                    1,
-                            )
-                        }
-                        if (
-                            event.captures > 0
-                        ) {
-                            append(
-                                "  captures=",
-                            )
-                            append(
-                                event.captures,
-                            )
-                        }
-                        append("\n")
-                    }
-                }
-            }.trimEnd()
+        if (pending != null) {
+            showStatus(
+                "Dice " + pending.outcome + " • move a highlighted token",
+            )
+        }
     }
 
     private fun rollOffline() {
-        val button =
-            rollButton ?: return
+        val button = rollButton ?: return
         button.isEnabled = false
         diceView?.startRolling()
-        showGameMessage(
-            "Rolling locally…",
-        )
+        showStatus("Rolling locally…")
 
         handler.postDelayed(
             {
-                runCatching {
-                    engine.roll()
-                }
-                    .onSuccess {
-                        state ->
-                        renderGame(
-                            state,
-                        )
-                        val pending =
-                            state.pendingRoll
-                        showGameMessage(
-                            if (
-                                pending !=
-                                null
-                            ) {
+                runCatching { engine.roll() }
+                    .onSuccess { state ->
+                        renderGame(state)
+                        showStatus(
+                            if (state.pendingRoll != null) {
                                 "Move a highlighted token."
                             } else {
                                 "Turn updated."
                             },
                         )
                     }
-                    .onFailure {
-                        error ->
+                    .onFailure { error ->
                         diceView?.stopRolling()
-                        button.isEnabled =
-                            true
-                        showGameMessage(
-                            error.message
-                                ?: "Roll failed",
-                        )
+                        button.isEnabled = true
+                        showStatus(error.message ?: "Roll failed")
                     }
             },
-            420L,
+            430L,
         )
     }
 
-    private fun topBar(
-        mode: String,
+    private fun selectionPanel(title: String): LinearLayout =
+        LudoProofTheme.panel(this).apply {
+            addView(
+                TextView(this@OfflineGameActivity).apply {
+                    text = title
+                    LudoProofTheme.title(this, 20f)
+                    setPadding(0, 0, 0, dp(12))
+                },
+            )
+        }
+
+    private fun choiceTile(
+        icon: String,
+        title: String,
+        subtitle: String,
+        selected: Boolean,
+        enabled: Boolean,
+        action: () -> Unit,
     ): LinearLayout =
         LinearLayout(this).apply {
-            orientation =
-                LinearLayout.HORIZONTAL
-            gravity =
-                Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            isEnabled = enabled
+            alpha = if (enabled) 1f else .48f
+            if (selected) LudoProofTheme.selectedTile(this)
+            else LudoProofTheme.normalTile(this)
+            setPadding(dp(10), dp(10), dp(10), dp(10))
 
             addView(
-                Button(
-                    this@OfflineGameActivity,
-                ).apply {
-                    text = "‹ Home"
-                    LudoProofTheme.secondary(
-                        this,
-                    )
-                    setOnClickListener {
-                        finish()
-                    }
+                TextView(this@OfflineGameActivity).apply {
+                    text = icon
+                    textSize = 30f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                },
+            )
+            addView(
+                TextView(this@OfflineGameActivity).apply {
+                    text = title
+                    LudoProofTheme.body(this, 17f, centered = true, bright = true)
+                },
+            )
+            addView(
+                TextView(this@OfflineGameActivity).apply {
+                    text = subtitle
+                    LudoProofTheme.body(this, 11f, centered = true, bright = true)
+                },
+            )
+            setOnClickListener { if (enabled) action() }
+        }
+
+    private fun tileButton(text: String, action: () -> Unit): Button =
+        Button(this).apply {
+            this.text = text
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            setOnClickListener { action() }
+        }
+
+    private fun refreshSetupSelections() {
+        if (!::playerButtons.isInitialized || !::colorButtons.isInitialized) return
+
+        playerButtons.forEach { entry ->
+            if (entry.key == selectedPlayers) {
+                LudoProofTheme.selectedTile(entry.value)
+            } else {
+                LudoProofTheme.normalTile(entry.value)
+            }
+        }
+        colorButtons.forEach { entry ->
+            if (entry.key == selectedColor) {
+                LudoProofTheme.selectedTile(entry.value)
+            } else {
+                LudoProofTheme.normalTile(entry.value)
+            }
+        }
+    }
+
+    private fun backHeader(label: String): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(
+                Button(this@OfflineGameActivity).apply {
+                    LudoProofTheme.circularAction(this, "‹")
+                    setOnClickListener { finish() }
+                },
+                LinearLayout.LayoutParams(dp(52), dp(52)),
+            )
+            addView(
+                TextView(this@OfflineGameActivity).apply {
+                    text = label
+                    LudoProofTheme.body(this, 14f, centered = true, bright = true)
+                    setPadding(dp(14), dp(8), dp(14), dp(8))
+                    background =
+                        LudoProofTheme.darkPanelDrawable(
+                            this@OfflineGameActivity,
+                            goldBorder = true,
+                        )
                 },
                 LinearLayout.LayoutParams(
                     0,
-                    LinearLayout.LayoutParams
-                        .WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
                     1f,
-                ),
-            )
-
-            addView(
-                TextView(
-                    this@OfflineGameActivity,
-                ).apply {
-                    text = mode
-                    setTextColor(
-                        LudoProofTheme.WHITE,
-                    )
-                    textSize = 13f
-                    gravity =
-                        Gravity.CENTER
-                    LudoProofTheme.chip(
-                        this,
-                        LudoProofTheme.GREEN,
-                    )
-                    setPadding(
-                        12,
-                        8,
-                        12,
-                        8,
-                    )
-                },
+                ).apply { marginStart = dp(12) },
             )
         }
 
-    private fun showGameMessage(
-        value: String,
-    ) {
-        val text =
-            infoText
-        if (text != null) {
-            text.contentDescription =
-                value
+    private fun offlineHistory(state: MatchSnapshot?): String {
+        if (state == null || state.history.isEmpty()) {
+            return "No offline rolls yet."
         }
+        return buildString {
+            append("Recent offline rolls\n\n")
+            state.history.takeLast(16).reversed().forEach { event ->
+                append("#")
+                append(event.eventIndex)
+                append("  dice=")
+                append(event.outcome ?: "?")
+                if (event.moveTokenIndex != null) {
+                    append("  token=")
+                    append(event.moveTokenIndex + 1)
+                }
+                if (event.captures > 0) {
+                    append("  captures=")
+                    append(event.captures)
+                }
+                append("\n")
+            }
+        }.trimEnd()
     }
 
+    private fun showStatus(value: String) {
+        statusText?.text = value
+    }
+
+    private fun sectionParams() =
+        LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { setMargins(0, dp(18), 0, 0) }
+
+    private fun tileParams() =
+        LinearLayout.LayoutParams(
+            0,
+            dp(118),
+            1f,
+        ).apply { setMargins(dp(7), 0, dp(7), 0) }
+
+    private fun toolParams() =
+        LinearLayout.LayoutParams(
+            0,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            1f,
+        ).apply { setMargins(dp(5), dp(12), dp(5), 0) }
+
+    private fun dp(value: Int): Int =
+        LudoProofTheme.dp(this, value)
+
     override fun onDestroy() {
-        handler.removeCallbacksAndMessages(
-            null,
-        )
+        handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 }

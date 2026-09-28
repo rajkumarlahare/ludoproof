@@ -6,6 +6,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -117,7 +119,7 @@ class LudoBoardView @JvmOverloads constructor(
         if (size <= 0f) return
         val cell = size / 15f
 
-        canvas.drawColor(Color.rgb(250, 250, 250))
+        canvas.drawColor(Color.rgb(248, 248, 248))
         drawYards(canvas, cell)
         drawTrack(canvas, cell)
         drawHomeLanes(canvas, cell)
@@ -197,13 +199,7 @@ class LudoBoardView @JvmOverloads constructor(
         col: Int,
         color: Int,
     ) {
-        fillPaint.color =
-            Color.argb(
-                70,
-                Color.red(color),
-                Color.green(color),
-                Color.blue(color),
-            )
+        fillPaint.color = color
         canvas.drawRect(
             col * cell,
             row * cell,
@@ -225,8 +221,13 @@ class LudoBoardView @JvmOverloads constructor(
             fillPaint,
         )
 
-        strokePaint.color = color
-        strokePaint.strokeWidth = density(2f)
+        strokePaint.color = Color.argb(
+            230,
+            22,
+            33,
+            52,
+        )
+        strokePaint.strokeWidth = density(1.4f)
         canvas.drawRoundRect(
             RectF(
                 (col + 1) * cell,
@@ -270,13 +271,18 @@ class LudoBoardView @JvmOverloads constructor(
                         coord.second,
                         cell,
                     )
-                fillPaint.color =
-                    Color.rgb(90, 90, 90)
-                canvas.drawCircle(
+                drawStar(
+                    canvas,
                     center.first,
                     center.second,
-                    cell * 0.12f,
-                    fillPaint,
+                    cell * 0.27f,
+                    when (index) {
+                        0 -> colorFor("RED")
+                        13 -> colorFor("GREEN")
+                        26 -> colorFor("YELLOW")
+                        39 -> colorFor("BLUE")
+                        else -> Color.rgb(45, 138, 204)
+                    },
                 )
             }
         }
@@ -294,12 +300,7 @@ class LudoBoardView @JvmOverloads constructor(
                     cell,
                     coord.first,
                     coord.second,
-                    Color.argb(
-                        165,
-                        Color.red(color),
-                        Color.green(color),
-                        Color.blue(color),
-                    ),
+                    color,
                 )
             }
         }
@@ -458,41 +459,132 @@ class LudoBoardView @JvmOverloads constructor(
                         )
                 }
 
-                fillPaint.color =
-                    colorFor(player.color)
-                canvas.drawCircle(
+                drawPawn(
+                    canvas,
                     x,
                     y,
                     radius,
-                    fillPaint,
-                )
-                canvas.drawCircle(
-                    x,
-                    y,
-                    radius,
-                    tokenStrokePaint,
-                )
-
-                textPaint.textSize = cell * 0.27f
-                textPaint.color =
-                    if (player.color == "YELLOW") {
-                        Color.rgb(35, 35, 35)
-                    } else {
-                        Color.WHITE
-                    }
-                canvas.drawText(
-                    (tokenIndex + 1).toString(),
-                    x,
-                    y -
-                        (
-                            textPaint.ascent() +
-                                textPaint.descent()
-                        ) / 2f,
-                    textPaint,
+                    colorFor(player.color),
                 )
             }
         }
     }
+
+    private fun drawStar(
+        canvas: Canvas,
+        cx: Float,
+        cy: Float,
+        radius: Float,
+        color: Int,
+    ) {
+        val path = Path()
+        for (i in 0 until 10) {
+            val angle =
+                Math.toRadians(
+                    (-90.0 + i * 36.0),
+                )
+            val r =
+                if (i % 2 == 0) {
+                    radius
+                } else {
+                    radius * 0.45f
+                }
+            val x =
+                cx +
+                    (Math.cos(angle) * r)
+                        .toFloat()
+            val y =
+                cy +
+                    (Math.sin(angle) * r)
+                        .toFloat()
+            if (i == 0) {
+                path.moveTo(x, y)
+            } else {
+                path.lineTo(x, y)
+            }
+        }
+        path.close()
+        fillPaint.shader = null
+        fillPaint.color = color
+        canvas.drawPath(path, fillPaint)
+    }
+
+    private fun drawPawn(
+        canvas: Canvas,
+        x: Float,
+        y: Float,
+        radius: Float,
+        color: Int,
+    ) {
+        fillPaint.shader = null
+        fillPaint.color =
+            Color.argb(
+                80,
+                0,
+                0,
+                0,
+            )
+        canvas.drawOval(
+            x - radius * 0.8f,
+            y + radius * 0.62f,
+            x + radius * 0.8f,
+            y + radius * 1.02f,
+            fillPaint,
+        )
+
+        fillPaint.shader =
+            RadialGradient(
+                x - radius * 0.28f,
+                y - radius * 0.35f,
+                radius * 1.25f,
+                intArrayOf(
+                    Color.WHITE,
+                    color,
+                    darken(color),
+                ),
+                floatArrayOf(
+                    0f,
+                    0.30f,
+                    1f,
+                ),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawCircle(
+            x,
+            y - radius * 0.18f,
+            radius * 0.72f,
+            fillPaint,
+        )
+        fillPaint.shader = null
+        fillPaint.color = color
+        canvas.drawRoundRect(
+            x - radius * 0.58f,
+            y + radius * 0.16f,
+            x + radius * 0.58f,
+            y + radius * 0.72f,
+            radius * 0.28f,
+            radius * 0.28f,
+            fillPaint,
+        )
+        canvas.drawCircle(
+            x,
+            y - radius * 0.18f,
+            radius * 0.72f,
+            tokenStrokePaint,
+        )
+    }
+
+    private fun darken(
+        color: Int,
+    ): Int =
+        Color.rgb(
+            (Color.red(color) * 0.56f)
+                .toInt(),
+            (Color.green(color) * 0.56f)
+                .toInt(),
+            (Color.blue(color) * 0.56f)
+                .toInt(),
+        )
 
     private fun tokenCenter(
         player: PlayerSnapshot,
@@ -599,10 +691,10 @@ class LudoBoardView @JvmOverloads constructor(
 
     private fun colorFor(name: String): Int =
         when (name) {
-            "RED" -> Color.rgb(220, 53, 69)
-            "GREEN" -> Color.rgb(25, 135, 84)
-            "YELLOW" -> Color.rgb(255, 193, 7)
-            "BLUE" -> Color.rgb(13, 110, 253)
+            "RED" -> Color.rgb(241, 37, 47)
+            "GREEN" -> Color.rgb(0, 169, 80)
+            "YELLOW" -> Color.rgb(255, 216, 27)
+            "BLUE" -> Color.rgb(48, 151, 215)
             else -> Color.rgb(108, 117, 125)
         }
 

@@ -1,94 +1,314 @@
 package com.ludoproof.game
 
+import android.app.Activity
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 
 object LudoProofTheme {
-    const val BLUE_DARK = 0xFF053A91.toInt()
-    const val BLUE = 0xFF0754C8.toInt()
-    const val BLUE_CARD = 0xFF0A49AD.toInt()
-    const val BLUE_CARD_ALT = 0xFF0B4097.toInt()
+    const val NAVY = 0xFF061D55.toInt()
+    const val NAVY_DARK = 0xFF03153F.toInt()
+    const val BLUE_DARK = 0xFF06318B.toInt()
+    const val BLUE = 0xFF1169D9.toInt()
+    const val BLUE_LIGHT = 0xFF2A8CFF.toInt()
+    const val CYAN_BORDER = 0xFF20C9FF.toInt()
+    const val GOLD = 0xFFFFC62E.toInt()
     const val ORANGE = 0xFFFFA000.toInt()
-    const val GREEN = 0xFF39B54A.toInt()
-    const val YELLOW = 0xFFFFC107.toInt()
+    const val GREEN = 0xFF35C83D.toInt()
     const val WHITE = Color.WHITE
-    const val TEXT_MUTED = 0xFFC9D9F6.toInt()
-    const val RED = 0xFFDC3545.toInt()
+    const val TEXT_MUTED = 0xFFD4E6FF.toInt()
+    const val TEXT_DIM = 0xFF9CBDEB.toInt()
+    const val RED = 0xFFF22E35.toInt()
+    const val YELLOW = 0xFFFFD324.toInt()
 
-    fun screen(context: Context): LinearLayout =
-        LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(BLUE_DARK)
-            setPadding(dp(context, 16), dp(context, 14), dp(context, 16), dp(context, 28))
-        }
-
-    fun title(view: TextView, size: Float = 30f) {
-        view.textSize = size
-        view.setTextColor(WHITE)
-        view.gravity = Gravity.CENTER_HORIZONTAL
+    fun configureWindow(activity: Activity) {
+        activity.window.statusBarColor = NAVY_DARK
+        activity.window.navigationBarColor = NAVY_DARK
+        activity.window.decorView.systemUiVisibility = 0
     }
 
-    fun body(view: TextView, size: Float = 14f, centered: Boolean = false) {
-        view.textSize = size
-        view.setTextColor(TEXT_MUTED)
-        if (centered) view.gravity = Gravity.CENTER_HORIZONTAL
+    fun arcadeRoot(context: Context): Pair<FrameLayout, FrameLayout> {
+        val root = FrameLayout(context)
+        root.addView(
+            ArcadeBackdropView(context),
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        val content = FrameLayout(context)
+        root.addView(
+            content,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        return root to content
+    }
+
+    fun panel(context: Context): LinearLayout =
+        LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(context, 14), dp(context, 14), dp(context, 14), dp(context, 14))
+            background = panelDrawable(context)
+            elevation = dp(context, 8).toFloat()
+        }
+
+    fun panelDrawable(context: Context): GradientDrawable =
+        GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                0xEC1B66C7.toInt(),
+                0xE8103F9C.toInt(),
+            ),
+        ).apply {
+            cornerRadius = dp(context, 18f).toFloat()
+            setStroke(dp(context, 2), CYAN_BORDER)
+        }
+
+    fun darkPanelDrawable(
+        context: Context,
+        goldBorder: Boolean = false,
+    ): GradientDrawable =
+        GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                0xF20C2C68.toInt(),
+                0xF3071C4E.toInt(),
+            ),
+        ).apply {
+            cornerRadius = dp(context, 18f).toFloat()
+            setStroke(dp(context, 2), if (goldBorder) GOLD else CYAN_BORDER)
+        }
+
+    fun primary(button: Button) =
+        glossy(
+            button,
+            intArrayOf(
+                0xFFFFC72D.toInt(),
+                0xFFFF9F00.toInt(),
+                0xFFF47A00.toInt(),
+            ),
+            0xFFFFE07B.toInt(),
+        )
+
+    fun positive(button: Button) =
+        glossy(
+            button,
+            intArrayOf(
+                0xFF83E92F.toInt(),
+                0xFF35C72D.toInt(),
+                0xFF07972C.toInt(),
+            ),
+            0xFFC8FF6F.toInt(),
+        )
+
+    fun secondary(button: Button) =
+        glossy(
+            button,
+            intArrayOf(
+                0xFF2A8EF7.toInt(),
+                0xFF0F61D3.toInt(),
+                0xFF073BA1.toInt(),
+            ),
+            0xFF6DCCFF.toInt(),
+        )
+
+    fun danger(button: Button) =
+        glossy(
+            button,
+            intArrayOf(
+                0xFFFF6C6B.toInt(),
+                0xFFE52B34.toInt(),
+                0xFFB7142A.toInt(),
+            ),
+            0xFFFFB6AF.toInt(),
+        )
+
+    fun circularAction(button: Button, symbol: String) {
+        button.text = symbol
+        button.textSize = 24f
+        button.setTypeface(Typeface.DEFAULT_BOLD)
+        button.gravity = Gravity.CENTER
+        button.setTextColor(WHITE)
+        button.background =
+            GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    0xFFFFC442.toInt(),
+                    0xFFFF8B00.toInt(),
+                    0xFFE76A00.toInt(),
+                ),
+            ).apply {
+                shape = GradientDrawable.OVAL
+                setStroke(dp(button.context, 2), 0xFFFFE884.toInt())
+            }
+        button.elevation = dp(button.context, 6).toFloat()
+        button.minWidth = dp(button.context, 48)
+        button.minHeight = dp(button.context, 48)
     }
 
     fun input(view: EditText) {
         view.setTextColor(WHITE)
-        view.setHintTextColor(0xFF9DB9EA.toInt())
-        view.background = rounded(BLUE_CARD_ALT, 12f, 0xFF2D6ED1.toInt(), 1f, view.context)
-        view.setPadding(dp(view.context, 14), dp(view.context, 12), dp(view.context, 14), dp(view.context, 12))
+        view.setHintTextColor(0xFF9DC5FF.toInt())
+        view.textSize = 16f
+        view.background = darkPanelDrawable(view.context, goldBorder = true)
+        view.setPadding(
+            dp(view.context, 14),
+            dp(view.context, 12),
+            dp(view.context, 14),
+            dp(view.context, 12),
+        )
     }
 
-    fun primary(button: Button) =
-        buttonStyle(button, ORANGE)
+    fun title(
+        view: TextView,
+        size: Float = 28f,
+        gold: Boolean = false,
+    ) {
+        view.textSize = size
+        view.setTextColor(if (gold) GOLD else WHITE)
+        view.setTypeface(Typeface.DEFAULT_BOLD)
+        view.gravity = Gravity.CENTER
+        view.setShadowLayer(
+            4f,
+            0f,
+            dp(view.context, 2).toFloat(),
+            0xB0000000.toInt(),
+        )
+    }
 
-    fun secondary(button: Button) =
-        buttonStyle(button, BLUE)
+    fun body(
+        view: TextView,
+        size: Float = 14f,
+        centered: Boolean = false,
+        bright: Boolean = false,
+    ) {
+        view.textSize = size
+        view.setTextColor(if (bright) WHITE else TEXT_MUTED)
+        if (centered) view.gravity = Gravity.CENTER
+    }
 
-    fun positive(button: Button) =
-        buttonStyle(button, GREEN)
+    fun selectedTile(view: View) {
+        view.background =
+            GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    0xFFFFE34D.toInt(),
+                    0xFFF2B212.toInt(),
+                ),
+            ).apply {
+                cornerRadius = dp(view.context, 14f).toFloat()
+                setStroke(dp(view.context, 2), 0xFFFFEE92.toInt())
+            }
+        view.elevation = dp(view.context, 5).toFloat()
+    }
 
-    fun danger(button: Button) =
-        buttonStyle(button, RED)
+    fun normalTile(view: View) {
+        view.background =
+            GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    0xFF2B8CF7.toInt(),
+                    0xFF1262D1.toInt(),
+                ),
+            ).apply {
+                cornerRadius = dp(view.context, 14f).toFloat()
+                setStroke(dp(view.context, 1), 0xFF5BC2FF.toInt())
+            }
+        view.elevation = dp(view.context, 4).toFloat()
+    }
 
-    private fun buttonStyle(button: Button, color: Int) {
+    fun chip(view: View, color: Int = BLUE) {
+        view.background =
+            rounded(
+                color,
+                999f,
+                0x66FFFFFF,
+                1f,
+                view.context,
+            )
+    }
+
+    fun boardFrame(context: Context): FrameLayout =
+        FrameLayout(context).apply {
+            setPadding(dp(context, 4), dp(context, 4), dp(context, 4), dp(context, 4))
+            background =
+                GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(
+                        0xFF67DEFF.toInt(),
+                        0xFF0B86D9.toInt(),
+                        0xFF00519A.toInt(),
+                    ),
+                ).apply {
+                    cornerRadius = dp(context, 16f).toFloat()
+                    setStroke(dp(context, 2), 0xFFA7F2FF.toInt())
+                }
+            elevation = dp(context, 9).toFloat()
+        }
+
+    private fun glossy(
+        button: Button,
+        colors: IntArray,
+        strokeColor: Int,
+    ) {
         button.isAllCaps = false
+        button.textSize = 17f
+        button.setTypeface(Typeface.DEFAULT_BOLD)
         button.setTextColor(
             ColorStateList(
                 arrayOf(
                     intArrayOf(-android.R.attr.state_enabled),
                     intArrayOf(android.R.attr.state_enabled),
                 ),
-                intArrayOf(0xFF8FA9D6.toInt(), WHITE),
+                intArrayOf(0xFFAAC1E0.toInt(), WHITE),
             ),
         )
-        button.background = rounded(color, 18f, 0x66FFFFFF, 1f, button.context)
-        button.minHeight = dp(button.context, 50)
-        button.setPadding(dp(button.context, 14), dp(button.context, 8), dp(button.context, 14), dp(button.context, 8))
-    }
-
-    fun card(view: View, alternate: Boolean = false) {
-        view.background = rounded(
-            if (alternate) BLUE_CARD_ALT else BLUE_CARD,
-            16f,
-            0x554D8BEA,
-            1f,
-            view.context,
+        button.setShadowLayer(2f, 0f, 1f, 0x70000000)
+        val enabled =
+            GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                colors,
+            ).apply {
+                cornerRadius = dp(button.context, 26f).toFloat()
+                setStroke(dp(button.context, 2), strokeColor)
+            }
+        val disabled =
+            GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    0xFF4D6FA1.toInt(),
+                    0xFF34547F.toInt(),
+                ),
+            ).apply {
+                cornerRadius = dp(button.context, 26f).toFloat()
+                setStroke(dp(button.context, 1), 0xFF7D9BC4.toInt())
+            }
+        button.background =
+            StateListDrawable().apply {
+                addState(intArrayOf(-android.R.attr.state_enabled), disabled)
+                addState(intArrayOf(), enabled)
+            }
+        button.minHeight = dp(button.context, 54)
+        button.setPadding(
+            dp(button.context, 16),
+            dp(button.context, 8),
+            dp(button.context, 16),
+            dp(button.context, 8),
         )
-    }
-
-    fun chip(view: View, color: Int = BLUE) {
-        view.background = rounded(color, 999f, 0x66FFFFFF, 1f, view.context)
+        button.elevation = dp(button.context, 5).toFloat()
     }
 
     fun rounded(
