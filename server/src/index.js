@@ -36,26 +36,31 @@ export default {
       }
 
       if (request.method === "GET" && url.pathname === "/health") {
+        const checks =
+          configurationChecks(env);
         return json(200, {
           ok: true,
           service: "ludoproof-game-api",
           entronexConfigured:
-            hasEntroNexConfig(env),
+            checks.entronexConfigured,
+          checks,
         });
       }
 
       if (request.method === "GET" && url.pathname === "/ready") {
+        const checks =
+          configurationChecks(env);
         const configured =
-          hasEntroNexConfig(env) &&
-          Boolean(env.LUDOPROOF_MATCHES) &&
-          Boolean(env.LUDOPROOF_API_GATE);
+          checks.entronexConfigured &&
+          checks.matchStoreConfigured &&
+          checks.rateGateConfigured;
         const entronexReachable =
           configured
             ? await probeEntroNex(env)
             : false;
         const ready =
           configured &&
-          hasSessionKey(env) &&
+          checks.sessionKeyConfigured &&
           entronexReachable;
         return json(ready ? 200 : 503, {
           ok: ready,
@@ -64,6 +69,7 @@ export default {
           ruleset: "ludoproof-standard-v1",
           entronex: "v4-evaluation",
           entronexReachable,
+          checks,
           productionClaim: false,
         });
       }
@@ -403,6 +409,33 @@ async function probeEntroNex(env) {
   } catch {
     return false;
   }
+}
+
+function configurationChecks(env) {
+  const entronexBaseUrlConfigured =
+    typeof env.ENTRONEX_BASE_URL === "string" &&
+    env.ENTRONEX_BASE_URL.startsWith("https://");
+  const entronexTokenConfigured =
+    typeof env.ENTRONEX_API_TOKEN === "string" &&
+    env.ENTRONEX_API_TOKEN.length >= 20;
+  const entronexTrustConfigured =
+    hasPinnedEntroNexTrust(env);
+
+  return {
+    entronexBaseUrlConfigured,
+    entronexTokenConfigured,
+    entronexTrustConfigured,
+    entronexConfigured:
+      entronexBaseUrlConfigured &&
+      entronexTokenConfigured &&
+      entronexTrustConfigured,
+    matchStoreConfigured:
+      Boolean(env.LUDOPROOF_MATCHES),
+    rateGateConfigured:
+      Boolean(env.LUDOPROOF_API_GATE),
+    sessionKeyConfigured:
+      hasSessionKey(env),
+  };
 }
 
 function hasEntroNexConfig(env) {
