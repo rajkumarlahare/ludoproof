@@ -1,10 +1,13 @@
+import fs from "node:fs";
+import {
+  createHash,
+  createPublicKey,
+} from "node:crypto";
+
 const required = [
   "CLOUDFLARE_API_TOKEN",
   "CLOUDFLARE_ACCOUNT_ID",
   "ENTRONEX_API_TOKEN",
-  "LUDOPROOF_SESSION_HMAC_KEY",
-  "ENTRONEX_SIGNING_KEY_FINGERPRINT",
-  "ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64",
 ];
 
 const missing =
@@ -24,12 +27,14 @@ if (missing.length > 0) {
 }
 
 if (
-  String(
-    process.env.LUDOPROOF_SESSION_HMAC_KEY,
-  ).length < 32
+  !/^[0-9a-f]{32}$/i.test(
+    String(
+      process.env.CLOUDFLARE_ACCOUNT_ID,
+    ),
+  )
 ) {
   console.error(
-    "LUDOPROOF_SESSION_HMAC_KEY must contain at least 32 characters.",
+    "CLOUDFLARE_ACCOUNT_ID must be a 32-character Cloudflare account ID.",
   );
   process.exit(2);
 }
@@ -45,44 +50,89 @@ if (
   process.exit(2);
 }
 
+const optionalHmac =
+  String(
+    process.env
+      .LUDOPROOF_SESSION_HMAC_KEY ??
+      "",
+  );
 if (
-  !/^[0-9a-f]{64}$/i.test(
-    String(
-      process.env
-        .ENTRONEX_SIGNING_KEY_FINGERPRINT,
-    ),
-  )
+  optionalHmac.length > 0 &&
+  optionalHmac.length < 32
 ) {
   console.error(
-    "ENTRONEX_SIGNING_KEY_FINGERPRINT must be a 64-character SHA-256 hex digest.",
+    "LUDOPROOF_SESSION_HMAC_KEY must contain at least 32 characters when supplied.",
   );
   process.exit(2);
 }
 
-let pem;
-try {
-  pem =
-    Buffer.from(
-      String(
-        process.env
-          .ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64,
-      ),
-      "base64",
-    ).toString("utf8");
-} catch {
-  pem = "";
-}
+const wrangler =
+  JSON.parse(
+    fs.readFileSync(
+      "server/wrangler.json",
+      "utf8",
+    ),
+  );
+const vars =
+  wrangler?.vars ?? {};
+const fingerprint =
+  String(
+    vars.ENTRONEX_SIGNING_KEY_FINGERPRINT ??
+      "",
+  ).toLowerCase();
+const publicKeyPemB64 =
+  String(
+    vars.ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64 ??
+      "",
+  );
 
 if (
-  !pem.includes(
-    "-----BEGIN PUBLIC KEY-----",
+  vars.ENTRONEX_SIGNING_KEY_ID !==
+    "cf-v4-eval-sign-1" ||
+  vars.ENTRONEX_TENANT_ID !==
+    "cloudflare_v4_eval" ||
+  !/^[0-9a-f]{64}$/.test(
+    fingerprint,
   ) ||
-  !pem.includes(
-    "-----END PUBLIC KEY-----",
-  )
+  !publicKeyPemB64
 ) {
   console.error(
-    "ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64 must decode to an SPKI public PEM.",
+    "Pinned EntroNex public trust material is incomplete or unexpected.",
+  );
+  process.exit(2);
+}
+
+let publicKey;
+try {
+  const pem =
+    Buffer.from(
+      publicKeyPemB64,
+      "base64",
+    ).toString("utf8");
+  publicKey =
+    createPublicKey(
+      pem,
+    );
+} catch {
+  console.error(
+    "Pinned EntroNex public key is not a valid SPKI PEM.",
+  );
+  process.exit(2);
+}
+
+const recomputed =
+  createHash("sha256")
+    .update(
+      publicKey.export({
+        type: "spki",
+        format: "der",
+      }),
+    )
+    .digest("hex");
+
+if (recomputed !== fingerprint) {
+  console.error(
+    "Pinned EntroNex public key does not match its configured fingerprint.",
   );
   process.exit(2);
 }

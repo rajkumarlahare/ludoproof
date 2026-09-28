@@ -24,11 +24,9 @@ jobs:
     environment: production
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ACCOUNT_ID: 8f31060fbcfee2b3e9309138cad7f12f
       ENTRONEX_API_TOKEN: ${{ secrets.ENTRONEX_API_TOKEN }}
       LUDOPROOF_SESSION_HMAC_KEY: ${{ secrets.LUDOPROOF_SESSION_HMAC_KEY }}
-      ENTRONEX_SIGNING_KEY_FINGERPRINT: ${{ secrets.ENTRONEX_SIGNING_KEY_FINGERPRINT }}
-      ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64: ${{ secrets.ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64 }}
       LUDOPROOF_WORKER_URL: https://ludoproof-game-api.ai-8f3.workers.dev
 
     steps:
@@ -64,9 +62,27 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s' "$ENTRONEX_API_TOKEN" | npx --yes wrangler@4.135.0 secret put ENTRONEX_API_TOKEN
-          printf '%s' "$LUDOPROOF_SESSION_HMAC_KEY" | npx --yes wrangler@4.135.0 secret put LUDOPROOF_SESSION_HMAC_KEY
-          printf '%s' "$ENTRONEX_SIGNING_KEY_FINGERPRINT" | npx --yes wrangler@4.135.0 secret put ENTRONEX_SIGNING_KEY_FINGERPRINT
-          printf '%s' "$ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64" | npx --yes wrangler@4.135.0 secret put ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64
+
+          if [ -n "${LUDOPROOF_SESSION_HMAC_KEY:-}" ]; then
+            printf '%s' "$LUDOPROOF_SESSION_HMAC_KEY" | npx --yes wrangler@4.135.0 secret put LUDOPROOF_SESSION_HMAC_KEY
+            echo "Synced operator-managed LUDOPROOF_SESSION_HMAC_KEY."
+          else
+            npx --yes wrangler@4.135.0 secret list --format json > /tmp/ludoproof-secrets.json
+            if node -e '
+              const fs = require("node:fs");
+              const value = JSON.parse(fs.readFileSync("/tmp/ludoproof-secrets.json", "utf8"));
+              const list = Array.isArray(value) ? value : (value.secrets ?? []);
+              process.exit(list.some((entry) => entry?.name === "LUDOPROOF_SESSION_HMAC_KEY") ? 0 : 1);
+            '; then
+              echo "Preserving existing Cloudflare-managed LUDOPROOF_SESSION_HMAC_KEY."
+            else
+              generated_hmac="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(48).toString("base64url"))')"
+              printf '%s' "$generated_hmac" | npx --yes wrangler@4.135.0 secret put LUDOPROOF_SESSION_HMAC_KEY
+              unset generated_hmac
+              echo "Generated LUDOPROOF_SESSION_HMAC_KEY directly inside the deployment channel."
+            fi
+            rm -f /tmp/ludoproof-secrets.json
+          fi
 
       - name: Verify public health
         shell: bash
