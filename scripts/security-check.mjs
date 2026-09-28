@@ -190,9 +190,9 @@ if (
     "CLOUDFLARE_ACCOUNT_ID",
     "ENTRONEX_API_TOKEN",
     "LUDOPROOF_SESSION_HMAC_KEY",
-    "ENTRONEX_SIGNING_KEY_FINGERPRINT",
-    "ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64",
     "cloudflare-deploy-preflight.mjs",
+    "secret list --json",
+    "randomBytes(48)",
     "/health",
     "/ready",
   ]) {
@@ -207,6 +207,44 @@ if (
           invariant,
       );
     }
+  }
+}
+
+const wrangler =
+  JSON.parse(
+    fs.readFileSync(
+      "server/wrangler.json",
+      "utf8",
+    ),
+  );
+const pinnedVars =
+  wrangler?.vars ?? {};
+for (const [name, expected] of [
+  [
+    "ENTRONEX_SIGNING_KEY_ID",
+    "cf-v4-eval-sign-1",
+  ],
+  [
+    "ENTRONEX_TENANT_ID",
+    "cloudflare_v4_eval",
+  ],
+  [
+    "ENTRONEX_SIGNING_KEY_FINGERPRINT",
+    "1fe248e8ee9129fcd13c1ee96c1cd7d162a610e9b1df3037a4ec48935f2d43c4",
+  ],
+  [
+    "ENTRONEX_SIGNING_PUBLIC_KEY_PEM_B64",
+    "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUNvd0JRWURLMlZ3QXlFQTVlaXhuL3QvV1lYQWhPTEgvOEMybXZTRk8vRHk0Ti93UDhxQ2x4SEtnMUU9Ci0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQo=",
+  ],
+]) {
+  if (
+    pinnedVars[name] !==
+    expected
+  ) {
+    findings.push(
+      "server/wrangler.json: pinned EntroNex trust drift for " +
+        name,
+    );
   }
 }
 
