@@ -110,3 +110,62 @@ test(
     );
   },
 );
+
+
+test(
+  "EntroNex request prefers the Cloudflare service binding",
+  { concurrency: false },
+  async (t) => {
+    const originalFetch =
+      globalThis.fetch;
+    globalThis.fetch =
+      async () => {
+        throw new Error(
+          "public fetch should not be used",
+        );
+      };
+    t.after(() => {
+      globalThis.fetch =
+        originalFetch;
+    });
+
+    let calls = 0;
+    const result =
+      await entronexRequest(
+        {
+          ...BASE_ENV,
+          ENTRONEX_SERVICE: {
+            async fetch(request) {
+              calls += 1;
+              assert.equal(
+                new URL(
+                  request.url,
+                ).pathname,
+                "/health",
+              );
+              return Response.json({
+                ok: true,
+              });
+            },
+          },
+        },
+        "/health",
+        {
+          method: "GET",
+          body: null,
+          authenticated: false,
+        },
+      );
+
+    assert.deepEqual(
+      result,
+      {
+        ok: true,
+      },
+    );
+    assert.equal(
+      calls,
+      1,
+    );
+  },
+);
