@@ -108,11 +108,13 @@ Existing EntroNex, Rekixo, AR3D, domains, DNS, and Workers are not modified by t
 
 ### Required server configuration
 
-The game Worker always needs the server-only EntroNex customer bearer token:
+The game Worker needs a server-only EntroNex customer bearer token at runtime:
 
 ```text
 ENTRONEX_API_TOKEN
 ```
+
+You do **not** need the project on a local PC to create it. The production GitHub workflow inspects both Workers. If neither side has a customer credential yet, it generates a new `ent_cf_eval_...` token inside GitHub Actions, masks it immediately, writes the same value to `ENTRONEX_EVAL_CUSTOMER_TOKEN` on `entronex-v4-eval` and `ENTRONEX_API_TOKEN` on `ludoproof-game-api`, and never prints the value. If both Workers already have the credential, it preserves them. A one-sided mismatch fails closed and requires an explicit synchronized rotation.
 
 The retry-safe session HMAC is also a Cloudflare secret:
 
@@ -122,7 +124,7 @@ LUDOPROOF_SESSION_HMAC_KEY
 
 During automated deployment, an operator-supplied HMAC is used when provided. Otherwise the workflow preserves an existing Cloudflare secret and, on the first deployment only, generates a cryptographically random 48-byte value directly in the deployment channel without printing it.
 
-**Never put either secret in Android source, BuildConfig, the repository, or chat.**
+**Never put either runtime secret in Android source, BuildConfig, the repository, or chat.**
 
 The EntroNex signing identity is now source-pinned from the verified live public-trust export. The current public fingerprint is:
 
