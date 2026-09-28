@@ -191,7 +191,7 @@ if (
     "ENTRONEX_API_TOKEN",
     "LUDOPROOF_SESSION_HMAC_KEY",
     "cloudflare-deploy-preflight.mjs",
-    "secret list --json",
+    "secret list --format json",
     "randomBytes(48)",
     "/health",
     "/ready",
