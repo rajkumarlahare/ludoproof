@@ -7,7 +7,6 @@ import {
 const required = [
   "CLOUDFLARE_API_TOKEN",
   "CLOUDFLARE_ACCOUNT_ID",
-  "ENTRONEX_API_TOKEN",
 ];
 
 const missing =
@@ -39,7 +38,30 @@ if (
   process.exit(2);
 }
 
+const entronexTokenMode =
+  String(
+    process.env.ENTRONEX_TOKEN_MODE ??
+      "",
+  );
+
 if (
+  ![
+    "operator",
+    "bootstrap",
+    "preserve",
+  ].includes(
+    entronexTokenMode,
+  )
+) {
+  console.error(
+    "ENTRONEX_TOKEN_MODE was not prepared by the deployment workflow.",
+  );
+  process.exit(2);
+}
+
+if (
+  entronexTokenMode !==
+    "preserve" &&
   String(
     process.env.ENTRONEX_API_TOKEN,
   ).length < 20
