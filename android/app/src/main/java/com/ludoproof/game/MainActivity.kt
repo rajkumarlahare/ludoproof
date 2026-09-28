@@ -32,6 +32,7 @@ class MainActivity : Activity() {
     private lateinit var verificationText: TextView
     private lateinit var proofDetailsText: TextView
     private lateinit var statusText: TextView
+    private lateinit var connectionText: TextView
     private lateinit var boardView: LudoBoardView
     private lateinit var diceView: DiceView
     private lateinit var createButton: Button
@@ -47,12 +48,14 @@ class MainActivity : Activity() {
     private var playerId: String? = null
     private var currentState: MatchSnapshot? = null
     private var pendingSecret: PendingRollSecret? = null
+    private var isOnline: Boolean = false
 
     private val statePollRunnable =
         object : Runnable {
             override fun run() {
                 val state = currentState
                 if (
+                    isOnline &&
                     playerToken != null &&
                     ::refreshButton.isInitialized &&
                     refreshButton.isEnabled &&
@@ -81,6 +84,54 @@ class MainActivity : Activity() {
         PendingOperationStore(this)
     }
 
+    private val cachedMatchStore by lazy {
+        CachedMatchStore(this)
+    }
+
+    private val connectivityMonitor by lazy {
+        ConnectivityMonitor(this) { online ->
+            mainHandler.post {
+                val changed =
+                    isOnline != online
+                isOnline = online
+                if (::connectionText.isInitialized) {
+                    connectionText.text =
+                        if (online) {
+                            "● ONLINE"
+                        } else {
+                            "● OFFLINE"
+                        }
+                    connectionText.setTextColor(
+                        if (online) {
+                            LudoProofTheme.GREEN
+                        } else {
+                            LudoProofTheme.ORANGE
+                        },
+                    )
+                }
+
+                currentState?.let {
+                    updateControls(it)
+                } ?: setNetworkControls(
+                    enabled = online,
+                )
+
+                if (!online) {
+                    showStatus(
+                        "Offline — showing the last saved online state. Verified rolls and moves resume when internet returns.",
+                    )
+                } else if (
+                    changed &&
+                    playerToken != null
+                ) {
+                    refreshState(
+                        silent = true,
+                    )
+                }
+            }
+        }
+    }
+
     override fun onCreate(
         savedInstanceState: Bundle?,
     ) {
@@ -94,29 +145,62 @@ class MainActivity : Activity() {
         pendingSecret = pendingRollStore.load()
 
         val content =
+            LudoProofTheme.screen(this)
+
+        val topBar =
             LinearLayout(this).apply {
                 orientation =
-                    LinearLayout.VERTICAL
+                    LinearLayout.HORIZONTAL
+                gravity =
+                    Gravity.CENTER_VERTICAL
+            }
+
+        val homeButton =
+            Button(this).apply {
+                text = "‹ Home"
+                LudoProofTheme.secondary(this)
+                setOnClickListener {
+                    finish()
+                }
+            }
+        topBar.addView(
+            homeButton,
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f,
+            ),
+        )
+
+        connectionText =
+            TextView(this).apply {
+                text = "● CHECKING"
+                textSize = 12f
+                setTextColor(
+                    LudoProofTheme.TEXT_MUTED,
+                )
+                gravity =
+                    Gravity.CENTER
                 setPadding(
-                    dp(16),
-                    dp(18),
-                    dp(16),
-                    dp(28),
+                    dp(12),
+                    dp(8),
+                    dp(12),
+                    dp(8),
+                )
+                LudoProofTheme.chip(
+                    this,
+                    LudoProofTheme.BLUE,
                 )
             }
+        topBar.addView(connectionText)
+        content.addView(topBar)
 
         content.addView(
             TextView(this).apply {
                 text = "LudoProof"
-                textSize = 30f
-                gravity =
-                    Gravity.CENTER_HORIZONTAL
-                setTextColor(
-                    Color.rgb(
-                        24,
-                        28,
-                        35,
-                    ),
+                LudoProofTheme.title(
+                    this,
+                    30f,
                 )
             },
         )
@@ -125,9 +209,11 @@ class MainActivity : Activity() {
             TextView(this).apply {
                 text =
                     "Fair multiplayer Ludo with locally verified EntroNex v4 dice proofs."
-                textSize = 14f
-                gravity =
-                    Gravity.CENTER_HORIZONTAL
+                LudoProofTheme.body(
+                    this,
+                    14f,
+                    centered = true,
+                )
                 setPadding(
                     0,
                     0,
@@ -143,6 +229,7 @@ class MainActivity : Activity() {
                 setText("Player")
                 inputType =
                     InputType.TYPE_CLASS_TEXT
+                LudoProofTheme.input(this)
             }
         content.addView(nameInput)
 
@@ -154,6 +241,7 @@ class MainActivity : Activity() {
                 inputType =
                     InputType.TYPE_CLASS_TEXT or
                         InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+                LudoProofTheme.input(this)
             }
         content.addView(matchInput)
 
@@ -165,6 +253,12 @@ class MainActivity : Activity() {
             button("Join Match") {
                 joinMatch()
             }
+        LudoProofTheme.primary(
+            createButton,
+        )
+        LudoProofTheme.positive(
+            joinButton,
+        )
         content.addView(
             row(
                 createButton,
@@ -253,6 +347,9 @@ class MainActivity : Activity() {
                 textSize = 19f
                 minHeight = dp(64)
             }
+        LudoProofTheme.primary(
+            rollButton,
+        )
         content.addView(rollButton)
 
         startButton =
@@ -277,6 +374,9 @@ class MainActivity : Activity() {
                 refreshState()
             }
 
+        LudoProofTheme.primary(
+            startButton,
+        )
         content.addView(
             row(
                 startButton,
@@ -310,12 +410,12 @@ class MainActivity : Activity() {
                     dp(10),
                     dp(10),
                 )
-                setBackgroundColor(
-                    Color.rgb(
-                        245,
-                        246,
-                        248,
-                    ),
+                setTextColor(
+                    LudoProofTheme.TEXT_MUTED,
+                )
+                LudoProofTheme.card(
+                    this,
+                    alternate = true,
                 )
             }
         content.addView(proofDetailsText)
@@ -337,6 +437,9 @@ class MainActivity : Activity() {
 
         setContentView(
             ScrollView(this).apply {
+                setBackgroundColor(
+                    LudoProofTheme.BLUE_DARK,
+                )
                 addView(content)
             },
         )
@@ -348,7 +451,14 @@ class MainActivity : Activity() {
             playerToken != null
         ) {
             matchInput.setText(matchId)
-            refreshState()
+            cachedMatchStore
+                .load()
+                ?.let {
+                    applyResponse(
+                        it,
+                        announce = false,
+                    )
+                }
         }
     }
 
@@ -655,6 +765,17 @@ class MainActivity : Activity() {
 
         currentState = state
         matchId = state.matchId
+
+        response.optJSONObject(
+            "state",
+        )?.let {
+            safeState ->
+            cachedMatchStore.save(
+                envelope.playerId
+                    ?: playerId,
+                safeState,
+            )
+        }
         reconcilePendingSecret(state)
         boardView.bind(
             state,
@@ -909,9 +1030,11 @@ class MainActivity : Activity() {
             }
 
         createButton.isEnabled =
-            canEnterAnotherMatch
+            canEnterAnotherMatch &&
+                isOnline
         joinButton.isEnabled =
-            canEnterAnotherMatch
+            canEnterAnotherMatch &&
+                isOnline
         nameInput.isEnabled =
             canEnterAnotherMatch
         matchInput.isEnabled =
@@ -924,7 +1047,8 @@ class MainActivity : Activity() {
                 View.GONE
             }
         startButton.isEnabled =
-            state.status == "WAITING" &&
+            isOnline &&
+                state.status == "WAITING" &&
                 state.players.size >= 2 &&
                 state.hostPlayerId == playerId
 
@@ -935,12 +1059,14 @@ class MainActivity : Activity() {
                 View.GONE
             }
         rollButton.isEnabled =
-            myTurn &&
+            isOnline &&
+                myTurn &&
                 state.pendingRoll
                     ?.status !=
                 "RESOLVED"
 
-        refreshButton.isEnabled = true
+        refreshButton.isEnabled =
+            isOnline
         shareButton.isEnabled =
             state.matchId.isNotBlank()
     }
@@ -1139,6 +1265,17 @@ class MainActivity : Activity() {
         },
         showWorking: Boolean = true,
     ) {
+        if (!isOnline) {
+            diceView.stopRolling()
+            showStatus(
+                "Offline — this online match is read-only until internet returns.",
+            )
+            currentState?.let {
+                updateControls(it)
+            }
+            return
+        }
+
         if (showWorking) {
             showStatus("Working…")
         }
@@ -1214,6 +1351,7 @@ class MainActivity : Activity() {
         playerToken = null
         playerId = null
         currentState = null
+        cachedMatchStore.clear()
 
         matchInput.setText("")
         boardView.bind(
@@ -1275,12 +1413,15 @@ class MainActivity : Activity() {
         if (state != null) {
             updateControls(state)
         } else {
-            createButton.isEnabled = true
-            joinButton.isEnabled = true
+            createButton.isEnabled =
+                isOnline
+            joinButton.isEnabled =
+                isOnline
             nameInput.isEnabled = true
             matchInput.isEnabled = true
             refreshButton.isEnabled =
-                playerToken != null
+                isOnline &&
+                    playerToken != null
             startButton.isEnabled = false
             rollButton.isEnabled = false
         }
@@ -1298,7 +1439,11 @@ class MainActivity : Activity() {
     ): TextView =
         TextView(this).apply {
             text = value
-            textSize = size
+            LudoProofTheme.body(
+                this,
+                size,
+                centered = false,
+            )
             setPadding(
                 dp(4),
                 dp(6),
@@ -1313,7 +1458,9 @@ class MainActivity : Activity() {
     ): Button =
         Button(this).apply {
             text = label
-            isAllCaps = false
+            LudoProofTheme.secondary(
+                this,
+            )
             setOnClickListener {
                 action()
             }
@@ -1369,6 +1516,7 @@ class MainActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
+        connectivityMonitor.start()
         mainHandler.removeCallbacks(
             statePollRunnable,
         )
@@ -1379,6 +1527,7 @@ class MainActivity : Activity() {
     }
 
     override fun onStop() {
+        connectivityMonitor.stop()
         mainHandler.removeCallbacks(
             statePollRunnable,
         )
