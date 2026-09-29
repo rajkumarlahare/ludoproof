@@ -159,6 +159,114 @@ object LudoProofTheme {
         button.minHeight = dp(button.context, 48)
     }
 
+    fun homeCircularAction(
+        button: Button,
+        symbol: String,
+    ) {
+        button.text =
+            symbol
+        button.textSize =
+            25f
+        button.setTypeface(
+            Typeface.DEFAULT_BOLD,
+        )
+        button.gravity =
+            Gravity.CENTER
+        button.setPadding(
+            0,
+            0,
+            0,
+            0,
+        )
+        button.setTextColor(
+            when (symbol) {
+                "★" ->
+                    GOLD
+                "✓" ->
+                    0xFF5AF05A.toInt()
+                "↗" ->
+                    0xFF91E9FF.toInt()
+                else ->
+                    WHITE
+            },
+        )
+
+        val normal =
+            GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    0xFF0D66C8.toInt(),
+                    0xFF063B8C.toInt(),
+                    0xFF031D57.toInt(),
+                ),
+            ).apply {
+                shape =
+                    GradientDrawable.OVAL
+                setStroke(
+                    dp(button.context, 2),
+                    0xFF58E3FF.toInt(),
+                )
+            }
+
+        val pressed =
+            GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    0xFF08498F.toInt(),
+                    0xFF042E6F.toInt(),
+                    0xFF021743.toInt(),
+                ),
+            ).apply {
+                shape =
+                    GradientDrawable.OVAL
+                setStroke(
+                    dp(button.context, 2),
+                    0xFFFFD45E.toInt(),
+                )
+            }
+
+        button.background =
+            StateListDrawable().apply {
+                addState(
+                    intArrayOf(
+                        android.R.attr.state_pressed,
+                    ),
+                    pressed,
+                )
+                addState(
+                    intArrayOf(),
+                    normal,
+                )
+            }
+        button.elevation =
+            dp(button.context, 7)
+                .toFloat()
+        button.minWidth =
+            dp(button.context, 48)
+        button.minHeight =
+            dp(button.context, 48)
+    }
+
+    fun brandBadgeDrawable(
+        context: Context,
+    ): GradientDrawable =
+        GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                0xFF1179E8.toInt(),
+                0xFF063D9C.toInt(),
+                0xFF031D57.toInt(),
+            ),
+        ).apply {
+            cornerRadius =
+                dp(context, 16f)
+                    .toFloat()
+            setStroke(
+                dp(context, 2),
+                0xFFFFD45E.toInt(),
+            )
+        }
+
     fun input(view: EditText) {
         view.setTextColor(WHITE)
         view.setHintTextColor(0xFF9DC5FF.toInt())

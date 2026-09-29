@@ -297,7 +297,7 @@ class HomeActivity : Activity() {
             text = "LP"
             LudoProofTheme.title(
                 this,
-                15f,
+                17f,
                 gold = true,
             )
             gravity =
@@ -306,13 +306,11 @@ class HomeActivity : Activity() {
                 "LudoProof"
             background =
                 LudoProofTheme
-                    .rounded(
-                        0xFF0879D9.toInt(),
-                        15f,
-                        LudoProofTheme.CYAN_BORDER,
-                        2f,
+                    .brandBadgeDrawable(
                         this@HomeActivity,
                     )
+            elevation =
+                dp(7).toFloat()
         }
 
     private fun identityBlock():
@@ -323,19 +321,44 @@ class HomeActivity : Activity() {
             gravity =
                 Gravity.CENTER_VERTICAL
 
-            addView(
+            val brandRow =
+                LinearLayout(
+                    this@HomeActivity,
+                ).apply {
+                    orientation =
+                        LinearLayout.HORIZONTAL
+                    gravity =
+                        Gravity.CENTER_VERTICAL
+                }
+
+            brandRow.addView(
                 TextView(this@HomeActivity).apply {
                     text =
-                        "LUDOPROOF"
+                        "LUDO"
                     LudoProofTheme.title(
                         this,
-                        if (isCompact()) 18f else 20f,
+                        if (isCompact()) 18f else 21f,
                     )
                     gravity =
                         Gravity.START or
                             Gravity.CENTER_VERTICAL
                 },
             )
+            brandRow.addView(
+                TextView(this@HomeActivity).apply {
+                    text =
+                        "PROOF"
+                    LudoProofTheme.title(
+                        this,
+                        if (isCompact()) 18f else 21f,
+                        gold = true,
+                    )
+                    gravity =
+                        Gravity.START or
+                            Gravity.CENTER_VERTICAL
+                },
+            )
+            addView(brandRow)
 
             addView(
                 TextView(this@HomeActivity).apply {
@@ -343,11 +366,11 @@ class HomeActivity : Activity() {
                         "VERIFIABLE PLAY • ENTRONEX V4"
                     LudoProofTheme.body(
                         this,
-                        if (isCompact()) 10f else 11f,
+                        if (isCompact()) 9.5f else 11f,
                         bright = true,
                     )
                     setTextColor(
-                        LudoProofTheme.TEXT_MUTED,
+                        0xFF5FE4FF.toInt(),
                     )
                     setPadding(
                         0,
@@ -394,56 +417,100 @@ class HomeActivity : Activity() {
         }
 
     private fun heroPanel():
-        LinearLayout =
-        LinearLayout(this).apply {
-            orientation =
-                LinearLayout.VERTICAL
-            gravity =
-                Gravity.CENTER
-            setPadding(
-                dp(if (isCompact()) 14 else 20),
-                dp(if (isCompact()) 18 else 22),
-                dp(if (isCompact()) 14 else 20),
-                dp(if (isCompact()) 18 else 22),
-            )
-            background =
-                LudoProofTheme
-                    .hudPanelDrawable(
-                        this@HomeActivity,
-                        goldBorder = true,
-                    )
-            elevation =
-                dp(7).toFloat()
+        FrameLayout =
+        FrameLayout(this).apply {
+            val heroHeight =
+                dp(
+                    when {
+                        LudoProofTheme
+                            .isExpandedWidth(this@HomeActivity) ->
+                            232
+                        isCompact() ->
+                            188
+                        else ->
+                            208
+                    },
+                )
 
             addView(
+                HomeHeroArtView(
+                    this@HomeActivity,
+                ),
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    heroHeight,
+                ),
+            )
+
+            val copy =
+                LinearLayout(
+                    this@HomeActivity,
+                ).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+                    gravity =
+                        Gravity.CENTER
+                    setPadding(
+                        dp(if (isCompact()) 62 else 92),
+                        dp(16),
+                        dp(if (isCompact()) 62 else 92),
+                        dp(16),
+                    )
+                }
+
+            copy.addView(
                 TextView(this@HomeActivity).apply {
                     text =
-                        "PLAY LUDO. VERIFY THE DICE."
+                        "PLAY LUDO."
                     LudoProofTheme.title(
                         this,
-                        if (isCompact()) 23f else 28f,
+                        if (isCompact()) 22f else 28f,
+                    )
+                },
+            )
+            copy.addView(
+                TextView(this@HomeActivity).apply {
+                    text =
+                        "VERIFY THE DICE."
+                    LudoProofTheme.title(
+                        this,
+                        if (isCompact()) 22f else 28f,
                         gold = true,
                     )
                 },
             )
-
-            addView(
+            copy.addView(
                 TextView(this@HomeActivity).apply {
                     text =
-                        "Online uses remote EntroNex authority. Local keeps the same v4 derivation on-device."
+                        "Online uses remote EntroNex authority.\nLocal keeps the same v4 derivation on-device."
                     LudoProofTheme.body(
                         this,
-                        if (isCompact()) 12f else 13f,
+                        if (isCompact()) 10.5f else 12f,
                         centered = true,
                         bright = true,
                     )
                     setPadding(
-                        dp(6),
-                        dp(8),
-                        dp(6),
+                        dp(4),
+                        dp(7),
+                        dp(4),
                         0,
                     )
+                    setShadowLayer(
+                        3f,
+                        0f,
+                        dp(1).toFloat(),
+                        0xCC001239.toInt(),
+                    )
                 },
+            )
+
+            addView(
+                copy,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    heroHeight,
+                    Gravity.CENTER,
+                ),
             )
         }
 
@@ -549,7 +616,7 @@ class HomeActivity : Activity() {
             addView(
                 Button(this@HomeActivity).apply {
                     LudoProofTheme
-                        .circularAction(
+                        .homeCircularAction(
                             this,
                             symbol,
                         )
