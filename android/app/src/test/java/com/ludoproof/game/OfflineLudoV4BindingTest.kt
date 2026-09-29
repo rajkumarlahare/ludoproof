@@ -101,12 +101,14 @@ class OfflineLudoV4BindingTest {
                 .subjectHash,
         )
 
-        assertNotNull(
+        assertEquals(
+            "ee649afeb2e89a956885e967145d7b0bf8acaceb1ce213289d583c5d0f246fdb",
             result.config
                 .context
                 .previousStateHash,
         )
-        assertNotNull(
+        assertEquals(
+            "4bd777ac5ec430c0a70956dd83a6451f4f8f0e91848b09000791e912fe3886cc",
             result.config
                 .context
                 .metadataDigest,
