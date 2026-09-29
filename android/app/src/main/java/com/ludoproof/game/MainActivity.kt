@@ -630,8 +630,7 @@ class MainActivity : Activity() {
                                 InputType.TYPE_TEXT_FLAG_CAP_WORDS
                         LudoProofTheme
                             .input(this)
-                        singleLine =
-                            true
+                        setSingleLine(true)
                     }
                 addView(
                     nameInput,
@@ -665,8 +664,7 @@ class MainActivity : Activity() {
                                 InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
                         LudoProofTheme
                             .input(this)
-                        singleLine =
-                            true
+                        setSingleLine(true)
                     }
                 addView(
                     matchInput,
