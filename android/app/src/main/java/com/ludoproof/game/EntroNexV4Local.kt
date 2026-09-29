@@ -1715,19 +1715,20 @@ object EntroNexV4Local {
     private fun mod(
         value: Long,
         divisor: Int,
-    ): Int =
-        (
+    ): Int {
+        val d =
+            divisor.toLong()
+        return (
             (
-                value %
-                    divisor
-                        .toLong()
-                ) +
-                divisor
-                    .toLong()
-            ) %
-            divisor
-                .toLong()
+                (
+                    value %
+                        d
+                    ) +
+                    d
+                ) %
+                d
             ).toInt()
+    }
 
     private class HmacStream(
         private val key: ByteArray,
