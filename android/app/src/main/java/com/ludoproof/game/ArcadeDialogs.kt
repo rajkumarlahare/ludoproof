@@ -56,7 +56,7 @@ object ArcadeDialogs {
             settingsRow(
                 context,
                 "Offline rolls",
-                "LOCAL",
+                "V4 LOCAL",
             ),
         )
         panel.addView(
@@ -101,7 +101,7 @@ object ArcadeDialogs {
                 context,
             ).apply {
                 text =
-                    "Online rolls stay server-authoritative. Offline mode never claims an EntroNex proof."
+                    "Online uses EntroNex server commitments and attestations. Offline uses the same v4 derivation and Natural World logic locally, but has no remote server attestation."
                 LudoProofTheme.body(
                     this,
                     12f,
@@ -122,6 +122,319 @@ object ArcadeDialogs {
         sizeDialog(
             dialog,
             .90f,
+        )
+        dialog.show()
+    }
+
+    fun showNaturalWorldAudit(
+        context: Context,
+        audit: OfflineRandomnessAudit?,
+    ) {
+        val dialog =
+            baseDialog(
+                context,
+            )
+        val panel =
+            dialogPanel(
+                context,
+                "V4 LOCAL ENGINE",
+                dialog,
+            )
+
+        if (
+            audit == null
+        ) {
+            panel.addView(
+                TextView(
+                    context,
+                ).apply {
+                    text =
+                        "Roll the offline dice once to generate a local EntroNex v4 Natural World."
+                    LudoProofTheme.body(
+                        this,
+                        14f,
+                        centered = true,
+                        bright = true,
+                    )
+                    setPadding(
+                        LudoProofTheme.dp(
+                            context,
+                            16,
+                        ),
+                        LudoProofTheme.dp(
+                            context,
+                            24,
+                        ),
+                        LudoProofTheme.dp(
+                            context,
+                            16,
+                        ),
+                        LudoProofTheme.dp(
+                            context,
+                            24,
+                        ),
+                    )
+                },
+            )
+        } else {
+            val verified =
+                audit.verify()
+
+            panel.addView(
+                TextView(
+                    context,
+                ).apply {
+                    text =
+                        if (
+                            verified
+                        ) {
+                            "✓ LOCAL V4 RECOMPUTATION VALID"
+                        } else {
+                            "✕ LOCAL V4 RECOMPUTATION FAILED"
+                        }
+                    setTextColor(
+                        if (
+                            verified
+                        ) {
+                            LudoProofTheme.GREEN
+                        } else {
+                            LudoProofTheme.RED
+                        },
+                    )
+                    textSize =
+                        14f
+                    gravity =
+                        Gravity.CENTER
+                    setPadding(
+                        0,
+                        LudoProofTheme.dp(
+                            context,
+                            10,
+                        ),
+                        0,
+                        LudoProofTheme.dp(
+                            context,
+                            10,
+                        ),
+                    )
+                },
+            )
+
+            val map =
+                NaturalWorldMapView(
+                    context,
+                ).apply {
+                    bind(
+                        audit,
+                    )
+                    background =
+                        LudoProofTheme
+                            .darkPanelDrawable(
+                                context,
+                                goldBorder =
+                                    false,
+                            )
+                }
+            panel.addView(
+                map,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams
+                        .MATCH_PARENT,
+                    LudoProofTheme.dp(
+                        context,
+                        240,
+                    ),
+                ),
+            )
+
+            val detail =
+                buildString {
+                    append(
+                        "Outcome: ",
+                    )
+                    append(
+                        audit.outcome,
+                    )
+                    append(
+                        "   Outcome index: ",
+                    )
+                    append(
+                        audit.outcomeIndex,
+                    )
+                    append(
+                        "\nWorld: ",
+                    )
+                    append(
+                        audit.width,
+                    )
+                    append(
+                        "×",
+                    )
+                    append(
+                        audit.height,
+                    )
+                    append(
+                        " = ",
+                    )
+                    append(
+                        audit.field.size,
+                    )
+                    append(
+                        " cells (16 of each 1–6)",
+                    )
+                    append(
+                        "\nSample cell: ",
+                    )
+                    append(
+                        audit.sampleIndex,
+                    )
+                    append(
+                        "   Tick: ",
+                    )
+                    append(
+                        audit.sampleTick,
+                    )
+                    append(
+                        "   Epoch: ",
+                    )
+                    append(
+                        audit.layoutEpoch,
+                    )
+                    append(
+                        "\nMotion: ",
+                    )
+                    append(
+                        audit.motionProfile,
+                    )
+                    append(
+                        "   Probe: ",
+                    )
+                    append(
+                        audit.selectedProbe,
+                    )
+                    append(
+                        "\nWitness swap: ",
+                    )
+                    append(
+                        audit.witnessSwapped,
+                    )
+                    append(
+                        " (",
+                    )
+                    append(
+                        audit.witnessSourceIndex,
+                    )
+                    append(
+                        " → ",
+                    )
+                    append(
+                        audit.witnessTargetIndex,
+                    )
+                    append(
+                        ")",
+                    )
+                    append(
+                        "\n\nProof: ",
+                    )
+                    append(
+                        shortDigest(
+                            audit.proofDigest,
+                        ),
+                    )
+                    append(
+                        "\nWorld: ",
+                    )
+                    append(
+                        shortDigest(
+                            audit.worldDigest,
+                        ),
+                    )
+                    append(
+                        "\nField: ",
+                    )
+                    append(
+                        shortDigest(
+                            audit.fieldDigest,
+                        ),
+                    )
+                    append(
+                        "\nTranscript: ",
+                    )
+                    append(
+                        shortDigest(
+                            audit.transcriptDigest,
+                        ),
+                    )
+                    append(
+                        "\nEvent binding: ",
+                    )
+                    append(
+                        shortDigest(
+                            audit.eventBindingDigest,
+                        ),
+                    )
+                    append(
+                        "\n\nOffline uses the same v4 outcome/map derivation, but both seeds are generated on this device. It is not a remote EntroNex attestation."
+                    )
+                }
+
+            val scroll =
+                ScrollView(
+                    context,
+                )
+            scroll.addView(
+                TextView(
+                    context,
+                ).apply {
+                    text =
+                        detail
+                    setTextIsSelectable(
+                        true,
+                    )
+                    LudoProofTheme.body(
+                        this,
+                        12f,
+                        bright = true,
+                    )
+                    setPadding(
+                        LudoProofTheme.dp(
+                            context,
+                            12,
+                        ),
+                        LudoProofTheme.dp(
+                            context,
+                            12,
+                        ),
+                        LudoProofTheme.dp(
+                            context,
+                            12,
+                        ),
+                        LudoProofTheme.dp(
+                            context,
+                            12,
+                        ),
+                    )
+                },
+            )
+            panel.addView(
+                scroll,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams
+                        .MATCH_PARENT,
+                    LudoProofTheme.dp(
+                        context,
+                        260,
+                    ),
+                ),
+            )
+        }
+
+        dialog.setContentView(
+            panel,
+        )
+        sizeDialog(
+            dialog,
+            .94f,
         )
         dialog.show()
     }
@@ -209,6 +522,24 @@ object ArcadeDialogs {
         )
         dialog.show()
     }
+
+    private fun shortDigest(
+        value: String,
+    ): String =
+        if (
+            value.length <=
+                20
+        ) {
+            value
+        } else {
+            value.take(
+                10,
+            ) +
+                "…" +
+                value.takeLast(
+                    10,
+                )
+        }
 
     private fun dialogPanel(
         context: Context,
