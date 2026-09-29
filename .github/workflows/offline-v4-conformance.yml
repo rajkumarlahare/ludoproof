@@ -1,0 +1,57 @@
+name: Offline v4 Conformance
+
+on:
+  push:
+    paths:
+      - 'android/app/src/main/java/com/ludoproof/game/EntroNexV4Local.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/OfflineLudoV4Binding.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/OfflineRandomnessAudit.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/OfflineGameEngine.kt'
+      - 'android/app/src/test/java/com/ludoproof/game/EntroNexV4LocalConformanceTest.kt'
+      - 'android/app/src/test/java/com/ludoproof/game/OfflineLudoV4BindingTest.kt'
+      - '.github/workflows/offline-v4-conformance.yml'
+  pull_request:
+    paths:
+      - 'android/app/src/main/java/com/ludoproof/game/EntroNexV4Local.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/OfflineLudoV4Binding.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/OfflineRandomnessAudit.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/OfflineGameEngine.kt'
+      - 'android/app/src/test/java/com/ludoproof/game/EntroNexV4LocalConformanceTest.kt'
+      - 'android/app/src/test/java/com/ludoproof/game/OfflineLudoV4BindingTest.kt'
+      - '.github/workflows/offline-v4-conformance.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ludoproof-offline-v4-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Java 17
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: "8.9"
+      - name: Frozen EntroNex v4 vector
+        run: >
+          gradle -p android :app:testDebugUnitTest
+          --tests com.ludoproof.game.EntroNexV4LocalConformanceTest
+          --stacktrace
+      - name: LudoProof offline v4 binding
+        run: >
+          gradle -p android :app:testDebugUnitTest
+          --tests com.ludoproof.game.OfflineLudoV4BindingTest
+          --stacktrace
+      - name: Compile debug APK
+        run: gradle -p android :app:assembleDebug --stacktrace

@@ -457,7 +457,7 @@ class HomeActivity : Activity() {
                         .showProofHistory(
                             this@HomeActivity,
                             "PROOF MODE",
-                            "Online matches use the server-authoritative EntroNex v4 flow and verify accepted proofs locally on the device.\n\nOffline local matches are clearly separated and do not claim EntroNex verification.",
+                            "Online matches use server-authoritative EntroNex v4 commitments and attestations.\n\nOffline matches use the same v4 HKDF, rejection sampling and Natural World derivation locally, then recompute the local proof. Offline has no remote EntroNex attestation.",
                         )
                 },
                 weighted(),
@@ -682,7 +682,7 @@ class HomeActivity : Activity() {
                         .showProofHistory(
                             this@HomeActivity,
                             "FAIR PLAY",
-                            "LudoProof keeps online randomness verifiable and keeps offline play clearly labeled as local.",
+                            "LudoProof uses the same v4 derivation math online and offline. Online adds remote EntroNex authority; offline is locally reproducible only.",
                         )
                 },
                 weighted(),

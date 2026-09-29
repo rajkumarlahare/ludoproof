@@ -3,7 +3,7 @@ package com.ludoproof.game
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
-import java.security.SecureRandom
+import java.util.UUID
 
 class OfflineGameEngine(
     context: Context,
@@ -13,7 +13,7 @@ class OfflineGameEngine(
             PREFS_NAME,
             Context.MODE_PRIVATE,
         )
-    private val random = SecureRandom()
+
     private var state: LocalState? =
         loadState()
 
@@ -22,6 +22,10 @@ class OfflineGameEngine(
 
     fun snapshot(): MatchSnapshot? =
         state?.toSnapshot()
+
+    fun lastRandomnessAudit():
+        OfflineRandomnessAudit? =
+        state?.lastAudit
 
     fun activePlayerId(): String? =
         state
@@ -35,30 +39,52 @@ class OfflineGameEngine(
         playerCount: Int,
         preferredColor: String = "RED",
     ): MatchSnapshot {
-        require(playerCount in 2..4) {
+        require(
+            playerCount in
+                2..4,
+        ) {
             "Offline game supports 2 to 4 players"
         }
-        require(preferredColor in COLORS) {
+        require(
+            preferredColor in
+                COLORS,
+        ) {
             "Unsupported offline color"
         }
 
         val colorOrder =
-            listOf(preferredColor) +
+            listOf(
+                preferredColor,
+            ) +
                 COLORS.filter {
-                    it != preferredColor
+                    it !=
+                        preferredColor
                 }
 
         val players =
-            (0 until playerCount)
-                .map { seat ->
+            (
+                0 until
+                    playerCount
+                )
+                .map {
+                        seat ->
                     LocalPlayer(
                         playerId =
                             "offline-player-" +
-                                (seat + 1),
+                                (
+                                    seat +
+                                        1
+                                    ),
                         displayName =
                             "Player " +
-                                (seat + 1),
-                        color = colorOrder[seat],
+                                (
+                                    seat +
+                                        1
+                                    ),
+                        color =
+                            colorOrder[
+                                seat
+                            ],
                         tokens =
                             mutableListOf(
                                 -1,
@@ -72,95 +98,271 @@ class OfflineGameEngine(
 
         state =
             LocalState(
-                status = "ACTIVE",
-                players = players,
-                turnSeat = 0,
-                eventIndex = 0,
+                matchId =
+                    "offline-" +
+                        UUID.randomUUID()
+                            .toString(),
+                status =
+                    "ACTIVE",
+                players =
+                    players,
+                turnSeat =
+                    0,
+                eventIndex =
+                    0,
                 consecutiveSixes =
-                    MutableList(playerCount) { 0 },
-                pendingOutcome = null,
+                    MutableList(
+                        playerCount,
+                    ) {
+                        0
+                    },
+                pendingOutcome =
+                    null,
                 pendingLegal =
                     mutableSetOf(),
-                pendingEventIndex = null,
-                winnerPlayerId = null,
+                pendingEventIndex =
+                    null,
+                pendingRoundId =
+                    null,
+                pendingClientCommitment =
+                    null,
+                pendingProofDigest =
+                    null,
+                winnerPlayerId =
+                    null,
                 history =
                     mutableListOf(),
-                revision = 1,
+                lastAudit =
+                    null,
+                revision =
+                    1,
             )
         persist()
-        return requireNotNull(snapshot())
+        return requireNotNull(
+            snapshot(),
+        )
     }
 
     fun roll(): MatchSnapshot {
         val current =
             requireActiveState()
-        check(current.pendingOutcome == null) {
+        check(
+            current.pendingOutcome ==
+                null,
+        ) {
             "Move a highlighted token before rolling again"
         }
 
         val seat =
             current.turnSeat
-        val outcome =
-            random.nextInt(6) + 1
         val event =
             current.eventIndex
-        current.eventIndex += 1
 
-        if (outcome == 6) {
-            current.consecutiveSixes[seat] =
-                current.consecutiveSixes[seat] + 1
+        val result =
+            OfflineLudoV4Binding
+                .deriveRoll(
+                    matchId =
+                        current.matchId,
+                    status =
+                        current.status,
+                    players =
+                        current.players
+                            .map {
+                                    player ->
+                                OfflineBindingPlayer(
+                                    playerId =
+                                        player.playerId,
+                                    color =
+                                        player.color,
+                                    tokens =
+                                        player.tokens
+                                            .toList(),
+                                )
+                            },
+                    turnSeat =
+                        current.turnSeat,
+                    eventIndex =
+                        event,
+                    consecutiveSixes =
+                        current.consecutiveSixes
+                            .toList(),
+                    winnerPlayerId =
+                        current.winnerPlayerId,
+                    history =
+                        current.history
+                            .map {
+                                    history ->
+                                OfflineBindingHistory(
+                                    eventIndex =
+                                        history.eventIndex,
+                                    playerId =
+                                        history.playerId,
+                                    clientCommitment =
+                                        history.clientCommitment,
+                                    proofDigest =
+                                        history.proofDigest,
+                                    outcome =
+                                        history.outcome,
+                                    moveTokenIndex =
+                                        history.moveTokenIndex,
+                                    captures =
+                                        history.captures,
+                                )
+                            },
+                )
+
+        check(
+            result.outcome in
+                1..6,
+        ) {
+            "Local EntroNex v4 outcome is outside the locked Ludo range"
+        }
+        check(
+            EntroNexV4Local.verify(
+                result,
+            ),
+        ) {
+            "Local EntroNex v4 proof verification failed"
+        }
+
+        val audit =
+            OfflineRandomnessAudit
+                .fromResult(
+                    eventIndex =
+                        event,
+                    result =
+                        result,
+                )
+        check(
+            audit.verify(),
+        ) {
+            "Local EntroNex v4 audit verification failed"
+        }
+
+        val outcome =
+            result.outcome
+
+        current.eventIndex +=
+            1
+        current.lastAudit =
+            audit
+
+        if (
+            outcome ==
+            6
+        ) {
+            current.consecutiveSixes[
+                seat
+            ] =
+                current.consecutiveSixes[
+                    seat
+                ] +
+                    1
         } else {
-            current.consecutiveSixes[seat] = 0
+            current.consecutiveSixes[
+                seat
+            ] =
+                0
         }
 
         current.history +=
-            HistoryEventSnapshot(
-                eventIndex = event,
+            LocalHistoryEvent(
+                eventIndex =
+                    event,
                 playerId =
-                    current.players[seat].playerId,
-                roundId = null,
-                proofDigest = null,
-                outcome = outcome,
-                moveTokenIndex = null,
-                captures = 0,
+                    current.players[
+                        seat
+                    ].playerId,
+                roundId =
+                    result.roundId,
+                clientCommitment =
+                    result.clientCommitment,
+                proofDigest =
+                    result.proofDigest,
+                outcome =
+                    outcome,
+                moveTokenIndex =
+                    null,
+                captures =
+                    0,
             )
 
         if (
-            outcome == 6 &&
-            current.consecutiveSixes[seat] >= 3
+            outcome ==
+                6 &&
+            current.consecutiveSixes[
+                seat
+            ] >=
+                3
         ) {
-            current.consecutiveSixes[seat] = 0
-            advanceTurn(current)
-            current.revision += 1
+            current.consecutiveSixes[
+                seat
+            ] =
+                0
+            clearPending(
+                current,
+            )
+            advanceTurn(
+                current,
+            )
+            current.revision +=
+                1
             persist()
-            return current.toSnapshot()
+            return current
+                .toSnapshot()
         }
 
         val legal =
             legalTokenIndexes(
-                current.players[seat].tokens,
+                current.players[
+                    seat
+                ].tokens,
                 outcome,
             )
 
-        if (legal.isEmpty()) {
-            if (outcome != 6) {
-                advanceTurn(current)
+        if (
+            legal.isEmpty()
+        ) {
+            clearPending(
+                current,
+            )
+            if (
+                outcome !=
+                6
+            ) {
+                advanceTurn(
+                    current,
+                )
             }
-            current.revision += 1
+            current.revision +=
+                1
             persist()
-            return current.toSnapshot()
+            return current
+                .toSnapshot()
         }
 
-        current.pendingOutcome = outcome
+        current.pendingOutcome =
+            outcome
         current.pendingLegal =
             legal.toMutableSet()
-        current.pendingEventIndex = event
-        current.revision += 1
+        current.pendingEventIndex =
+            event
+        current.pendingRoundId =
+            result.roundId
+        current.pendingClientCommitment =
+            result.clientCommitment
+        current.pendingProofDigest =
+            result.proofDigest
+        current.revision +=
+            1
         persist()
-        return current.toSnapshot()
+        return current
+            .toSnapshot()
     }
 
-    fun move(tokenIndex: Int): MatchSnapshot {
+    fun move(
+        tokenIndex: Int,
+    ): MatchSnapshot {
         val current =
             requireActiveState()
         val outcome =
@@ -175,7 +377,8 @@ class OfflineGameEngine(
                 )
 
         require(
-            tokenIndex in current.pendingLegal,
+            tokenIndex in
+                current.pendingLegal,
         ) {
             "That token cannot use this roll"
         }
@@ -183,16 +386,26 @@ class OfflineGameEngine(
         val seat =
             current.turnSeat
         val player =
-            current.players[seat]
+            current.players[
+                seat
+            ]
         val oldPosition =
-            player.tokens[tokenIndex]
+            player.tokens[
+                tokenIndex
+            ]
         val destination =
-            if (oldPosition == -1) {
+            if (
+                oldPosition ==
+                -1
+            ) {
                 0
             } else {
-                oldPosition + outcome
+                oldPosition +
+                    outcome
             }
-        player.tokens[tokenIndex] =
+        player.tokens[
+            tokenIndex
+        ] =
             destination
 
         val captures =
@@ -205,63 +418,109 @@ class OfflineGameEngine(
         val historyIndex =
             current.history
                 .indexOfLast {
-                    it.eventIndex == event
+                    it.eventIndex ==
+                        event
                 }
-        if (historyIndex >= 0) {
+        if (
+            historyIndex >=
+            0
+        ) {
             val previous =
-                current.history[historyIndex]
-            current.history[historyIndex] =
+                current.history[
+                    historyIndex
+                ]
+            current.history[
+                historyIndex
+            ] =
                 previous.copy(
                     moveTokenIndex =
                         tokenIndex,
-                    captures = captures,
+                    captures =
+                        captures,
                 )
         }
 
-        current.pendingOutcome = null
-        current.pendingLegal.clear()
-        current.pendingEventIndex = null
+        clearPending(
+            current,
+        )
 
         if (
-            player.tokens.all {
-                it == HOME_POSITION
-            }
+            player.tokens
+                .all {
+                    it ==
+                        HOME_POSITION
+                }
         ) {
-            current.status = "FINISHED"
+            current.status =
+                "FINISHED"
             current.winnerPlayerId =
                 player.playerId
-            current.revision += 1
+            current.revision +=
+                1
             persist()
-            return current.toSnapshot()
+            return current
+                .toSnapshot()
         }
 
         val extraTurn =
-            outcome == 6 ||
-                captures > 0
-        if (!extraTurn) {
-            advanceTurn(current)
+            outcome ==
+                6 ||
+                captures >
+                0
+        if (
+            !extraTurn
+        ) {
+            advanceTurn(
+                current,
+            )
         }
 
-        current.revision += 1
+        current.revision +=
+            1
         persist()
-        return current.toSnapshot()
+        return current
+            .toSnapshot()
     }
 
     fun clear() {
-        state = null
-        prefs.edit().clear().apply()
+        state =
+            null
+        prefs.edit()
+            .clear()
+            .apply()
     }
 
-    private fun requireActiveState(): LocalState {
+    private fun requireActiveState():
+        LocalState {
         val current =
             state
                 ?: error(
                     "Start an offline game first",
                 )
-        check(current.status == "ACTIVE") {
+        check(
+            current.status ==
+                "ACTIVE",
+        ) {
             "Offline game is already finished"
         }
         return current
+    }
+
+    private fun clearPending(
+        current: LocalState,
+    ) {
+        current.pendingOutcome =
+            null
+        current.pendingLegal
+            .clear()
+        current.pendingEventIndex =
+            null
+        current.pendingRoundId =
+            null
+        current.pendingClientCommitment =
+            null
+        current.pendingProofDigest =
+            null
     }
 
     private fun legalTokenIndexes(
@@ -269,22 +528,31 @@ class OfflineGameEngine(
         roll: Int,
     ): Set<Int> =
         buildSet {
-            tokens.forEachIndexed {
-                    index,
-                    position,
-                ->
-                when {
-                    position == HOME_POSITION ->
-                        Unit
-                    position == -1 &&
-                        roll == 6 ->
-                        add(index)
-                    position in 0..56 &&
-                        position + roll <=
-                        HOME_POSITION ->
-                        add(index)
+            tokens
+                .forEachIndexed {
+                        index,
+                        position ->
+                    when {
+                        position ==
+                            HOME_POSITION ->
+                            Unit
+                        position ==
+                            -1 &&
+                            roll ==
+                            6 ->
+                            add(
+                                index,
+                            )
+                        position in
+                            0..56 &&
+                            position +
+                                roll <=
+                            HOME_POSITION ->
+                            add(
+                                index,
+                            )
+                    }
                 }
-            }
         }
 
     private fun captureOpponents(
@@ -292,47 +560,63 @@ class OfflineGameEngine(
         movingSeat: Int,
         destination: Int,
     ): Int {
-        if (destination !in 0..51) {
+        if (
+            destination !in
+            0..51
+        ) {
             return 0
         }
 
         val mover =
-            current.players[movingSeat]
+            current.players[
+                movingSeat
+            ]
         val global =
             globalCell(
                 mover.color,
                 destination,
-            ) ?: return 0
+            )
+                ?: return 0
 
-        if (global in SAFE_GLOBAL_CELLS) {
+        if (
+            global in
+            SAFE_GLOBAL_CELLS
+        ) {
             return 0
         }
 
-        var captures = 0
-        current.players.forEachIndexed {
-                seat,
-                opponent,
-            ->
-            if (seat == movingSeat) {
-                return@forEachIndexed
-            }
-            opponent.tokens =
-                opponent.tokens
-                    .map { position ->
-                        if (
-                            globalCell(
-                                opponent.color,
-                                position,
-                            ) == global
-                        ) {
-                            captures += 1
-                            -1
-                        } else {
-                            position
+        var captures =
+            0
+        current.players
+            .forEachIndexed {
+                    seat,
+                    opponent ->
+                if (
+                    seat ==
+                    movingSeat
+                ) {
+                    return@forEachIndexed
+                }
+                opponent.tokens =
+                    opponent.tokens
+                        .map {
+                                position ->
+                            if (
+                                globalCell(
+                                    opponent.color,
+                                    position,
+                                ) ==
+                                global
+                            ) {
+                                captures +=
+                                    1
+                                -1
+                            } else {
+                                position
+                            }
                         }
-                    }
-                    .toMutableList()
-        }
+                        .toMutableList()
+            }
         return captures
     }
 
@@ -340,16 +624,22 @@ class OfflineGameEngine(
         color: String,
         relativePosition: Int,
     ): Int? {
-        if (relativePosition !in 0..51) {
+        if (
+            relativePosition !in
+            0..51
+        ) {
             return null
         }
         val offset =
-            START_OFFSETS[color]
+            START_OFFSETS[
+                color
+            ]
                 ?: return null
         return (
             offset +
                 relativePosition
-            ) % 52
+            ) %
+            52
     }
 
     private fun advanceTurn(
@@ -357,16 +647,23 @@ class OfflineGameEngine(
     ) {
         current.turnSeat =
             (
-                current.turnSeat + 1
+                current.turnSeat +
+                    1
                 ) %
-                current.players.size
+                current.players
+                    .size
     }
 
     private fun persist() {
         val current =
-            state ?: return
+            state
+                ?: return
         val json =
             JSONObject()
+                .put(
+                    "matchId",
+                    current.matchId,
+                )
                 .put(
                     "status",
                     current.status,
@@ -392,7 +689,7 @@ class OfflineGameEngine(
                     JSONArray().apply {
                         current.players
                             .forEach {
-                                player ->
+                                    player ->
                                 put(
                                     JSONObject()
                                         .put(
@@ -431,7 +728,7 @@ class OfflineGameEngine(
                                 MAX_HISTORY,
                             )
                             .forEach {
-                                event ->
+                                    event ->
                                 put(
                                     JSONObject()
                                         .put(
@@ -441,6 +738,18 @@ class OfflineGameEngine(
                                         .put(
                                             "playerId",
                                             event.playerId,
+                                        )
+                                        .put(
+                                            "roundId",
+                                            event.roundId,
+                                        )
+                                        .put(
+                                            "clientCommitment",
+                                            event.clientCommitment,
+                                        )
+                                        .put(
+                                            "proofDigest",
+                                            event.proofDigest,
                                         )
                                         .put(
                                             "outcome",
@@ -458,10 +767,15 @@ class OfflineGameEngine(
                             }
                     },
                 )
+                .put(
+                    "lastAudit",
+                    current.lastAudit
+                        ?.toJson(),
+                )
 
         current.pendingOutcome
             ?.let {
-                outcome ->
+                    outcome ->
                 json.put(
                     "pending",
                     JSONObject()
@@ -472,6 +786,18 @@ class OfflineGameEngine(
                         .put(
                             "eventIndex",
                             current.pendingEventIndex,
+                        )
+                        .put(
+                            "roundId",
+                            current.pendingRoundId,
+                        )
+                        .put(
+                            "clientCommitment",
+                            current.pendingClientCommitment,
+                        )
+                        .put(
+                            "proofDigest",
+                            current.pendingProofDigest,
                         )
                         .put(
                             "legal",
@@ -491,16 +817,20 @@ class OfflineGameEngine(
             .commit()
     }
 
-    private fun loadState(): LocalState? {
+    private fun loadState():
+        LocalState? {
         val raw =
             prefs.getString(
                 KEY_STATE,
                 null,
-            ) ?: return null
+            )
+                ?: return null
 
         return runCatching {
             val json =
-                JSONObject(raw)
+                JSONObject(
+                    raw,
+                )
             val playersJson =
                 json.getJSONArray(
                     "players",
@@ -510,7 +840,8 @@ class OfflineGameEngine(
                     for (
                         index in
                         0 until
-                            playersJson.length()
+                            playersJson
+                                .length()
                     ) {
                         val value =
                             playersJson
@@ -518,17 +849,20 @@ class OfflineGameEngine(
                                     index,
                                 )
                         val tokensJson =
-                            value.getJSONArray(
-                                "tokens",
-                            )
+                            value
+                                .getJSONArray(
+                                    "tokens",
+                                )
                         val tokens =
                             MutableList(
-                                tokensJson.length(),
+                                tokensJson
+                                    .length(),
                             ) {
                                     tokenIndex ->
-                                tokensJson.getInt(
-                                    tokenIndex,
-                                )
+                                tokensJson
+                                    .getInt(
+                                        tokenIndex,
+                                    )
                             }
                         add(
                             LocalPlayer(
@@ -544,11 +878,13 @@ class OfflineGameEngine(
                                     value.getString(
                                         "color",
                                     ),
-                                tokens = tokens,
+                                tokens =
+                                    tokens,
                             ),
                         )
                     }
-                }.toMutableList()
+                }
+                    .toMutableList()
 
             val sixesJson =
                 json.getJSONArray(
@@ -556,27 +892,33 @@ class OfflineGameEngine(
                 )
             val sixes =
                 MutableList(
-                    sixesJson.length(),
+                    sixesJson
+                        .length(),
                 ) {
                         index ->
-                    sixesJson.getInt(
-                        index,
-                    )
+                    sixesJson
+                        .getInt(
+                            index,
+                        )
                 }
 
             val history =
                 mutableListOf<
-                    HistoryEventSnapshot
+                    LocalHistoryEvent
                     >()
             val historyJson =
                 json.optJSONArray(
                     "history",
                 )
-            if (historyJson != null) {
+            if (
+                historyJson !=
+                null
+            ) {
                 for (
                     index in
                     0 until
-                        historyJson.length()
+                        historyJson
+                            .length()
                 ) {
                     val value =
                         historyJson
@@ -584,7 +926,7 @@ class OfflineGameEngine(
                                 index,
                             )
                     history +=
-                        HistoryEventSnapshot(
+                        LocalHistoryEvent(
                             eventIndex =
                                 value.getInt(
                                     "eventIndex",
@@ -593,12 +935,36 @@ class OfflineGameEngine(
                                 value.getString(
                                     "playerId",
                                 ),
-                            roundId = null,
-                            proofDigest = null,
+                            roundId =
+                                value
+                                    .nullableString(
+                                        "roundId",
+                                    ),
+                            clientCommitment =
+                                value
+                                    .nullableString(
+                                        "clientCommitment",
+                                    ),
+                            proofDigest =
+                                value
+                                    .nullableString(
+                                        "proofDigest",
+                                    ),
                             outcome =
-                                value.optInt(
-                                    "outcome",
-                                ),
+                                if (
+                                    value.has(
+                                        "outcome",
+                                    ) &&
+                                    !value.isNull(
+                                        "outcome",
+                                    )
+                                ) {
+                                    value.getInt(
+                                        "outcome",
+                                    )
+                                } else {
+                                    null
+                                },
                             moveTokenIndex =
                                 if (
                                     value.has(
@@ -627,33 +993,62 @@ class OfflineGameEngine(
                 json.optJSONObject(
                     "pending",
                 )
+            val restoredProofDigest =
+                pending
+                    ?.nullableString(
+                        "proofDigest",
+                    )
+            val restorePending =
+                pending !=
+                    null &&
+                    restoredProofDigest !=
+                    null
             val legal =
-                mutableSetOf<Int>()
-            pending
-                ?.optJSONArray(
-                    "legal",
-                )
-                ?.let {
-                    values ->
-                    for (
-                        index in
-                        0 until
-                            values.length()
-                    ) {
-                        legal +=
-                            values.getInt(
-                                index,
-                            )
+                mutableSetOf<
+                    Int
+                    >()
+            if (
+                restorePending
+            ) {
+                pending
+                    ?.optJSONArray(
+                        "legal",
+                    )
+                    ?.let {
+                            values ->
+                        for (
+                            index in
+                            0 until
+                                values.length()
+                        ) {
+                            legal +=
+                                values.getInt(
+                                    index,
+                                )
+                        }
                     }
-                }
+            }
 
             LocalState(
+                matchId =
+                    json.optString(
+                        "matchId",
+                    )
+                        .takeIf {
+                            it.isNotBlank()
+                        }
+                        ?: (
+                            "offline-legacy-" +
+                                UUID.randomUUID()
+                                    .toString()
+                            ),
                 status =
                     json.optString(
                         "status",
                         "ACTIVE",
                     ),
-                players = players,
+                players =
+                    players,
                 turnSeat =
                     json.optInt(
                         "turnSeat",
@@ -667,27 +1062,81 @@ class OfflineGameEngine(
                 consecutiveSixes =
                     sixes,
                 pendingOutcome =
-                    pending
-                        ?.optInt(
+                    if (
+                        restorePending &&
+                        pending !=
+                        null &&
+                        pending.has(
                             "outcome",
-                        ),
+                        )
+                    ) {
+                        pending.optInt(
+                            "outcome",
+                        )
+                    } else {
+                        null
+                    },
                 pendingLegal =
                     legal,
                 pendingEventIndex =
-                    pending
-                        ?.optInt(
+                    if (
+                        restorePending &&
+                        pending !=
+                        null &&
+                        pending.has(
                             "eventIndex",
-                        ),
+                        )
+                    ) {
+                        pending.optInt(
+                            "eventIndex",
+                        )
+                    } else {
+                        null
+                    },
+                pendingRoundId =
+                    if (
+                        restorePending
+                    ) {
+                        pending
+                            ?.nullableString(
+                                "roundId",
+                            )
+                    } else {
+                        null
+                    },
+                pendingClientCommitment =
+                    if (
+                        restorePending
+                    ) {
+                        pending
+                            ?.nullableString(
+                                "clientCommitment",
+                            )
+                    } else {
+                        null
+                    },
+                pendingProofDigest =
+                    if (
+                        restorePending
+                    ) {
+                        restoredProofDigest
+                    } else {
+                        null
+                    },
                 winnerPlayerId =
-                    json.optString(
-                        "winnerPlayerId",
-                    )
-                        .takeIf {
-                            it.isNotBlank() &&
-                                it != "null"
-                        },
+                    json
+                        .nullableString(
+                            "winnerPlayerId",
+                        ),
                 history =
                     history,
+                lastAudit =
+                    OfflineRandomnessAudit
+                        .fromJson(
+                            json.optJSONObject(
+                                "lastAudit",
+                            ),
+                        ),
                 revision =
                     json.optInt(
                         "revision",
@@ -702,34 +1151,49 @@ class OfflineGameEngine(
         }
     }
 
+    private fun JSONObject.nullableString(
+        name: String,
+    ): String? =
+        optString(
+            name,
+        )
+            .takeIf {
+                it.isNotBlank() &&
+                    it !=
+                    "null"
+            }
+
     private fun LocalState.toSnapshot():
         MatchSnapshot =
         MatchSnapshot(
             matchId =
-                "OFFLINE",
+                matchId,
             status =
                 status,
             hostPlayerId =
-                players.firstOrNull()
+                players
+                    .firstOrNull()
                     ?.playerId
                     .orEmpty(),
             players =
-                players.mapIndexed {
-                        seat,
-                        player,
-                    ->
-                    PlayerSnapshot(
-                        playerId =
-                            player.playerId,
-                        displayName =
-                            player.displayName,
-                        color =
-                            player.color,
-                        seat = seat,
-                        tokens =
-                            player.tokens.toList(),
-                    )
-                },
+                players
+                    .mapIndexed {
+                            seat,
+                            player ->
+                        PlayerSnapshot(
+                            playerId =
+                                player.playerId,
+                            displayName =
+                                player.displayName,
+                            color =
+                                player.color,
+                            seat =
+                                seat,
+                            tokens =
+                                player.tokens
+                                    .toList(),
+                        )
+                    },
             turnSeat =
                 turnSeat,
             randomEventIndex =
@@ -737,7 +1201,7 @@ class OfflineGameEngine(
             pendingRoll =
                 pendingOutcome
                     ?.let {
-                        outcome ->
+                            outcome ->
                         PendingRollSnapshot(
                             status =
                                 "RESOLVED",
@@ -750,7 +1214,7 @@ class OfflineGameEngine(
                                             1
                                         ),
                             eventId =
-                                "offline:" +
+                                "roll:" +
                                     (
                                         pendingEventIndex
                                             ?: (
@@ -758,12 +1222,23 @@ class OfflineGameEngine(
                                                     1
                                                 )
                                         ),
-                            roundId = null,
-                            serverCommitment = null,
-                            clientCommitment = null,
-                            revealDeadlineAt = null,
-                            proofDigest = null,
-                            outcome = outcome,
+                            roundId =
+                                pendingRoundId,
+                            serverCommitment =
+                                lastAudit
+                                    ?.takeIf {
+                                        it.eventIndex ==
+                                            pendingEventIndex
+                                    }
+                                    ?.serverCommitment,
+                            clientCommitment =
+                                pendingClientCommitment,
+                            revealDeadlineAt =
+                                null,
+                            proofDigest =
+                                pendingProofDigest,
+                            outcome =
+                                outcome,
                             legalTokenIndexes =
                                 pendingLegal
                                     .toSet(),
@@ -772,9 +1247,12 @@ class OfflineGameEngine(
             winnerPlayerId =
                 winnerPlayerId,
             rulesetId =
-                "ludoproof-standard-v1-offline",
+                OfflineLudoV4Binding
+                    .RULESET_ID,
             history =
-                history.toList(),
+                history.map {
+                    it.toSnapshot()
+                },
         )
 
     private data class LocalPlayer(
@@ -784,18 +1262,66 @@ class OfflineGameEngine(
         var tokens: MutableList<Int>,
     )
 
+    private data class LocalHistoryEvent(
+        val eventIndex: Int,
+        val playerId: String,
+        val roundId: String?,
+        val clientCommitment: String?,
+        val proofDigest: String?,
+        val outcome: Int?,
+        val moveTokenIndex: Int?,
+        val captures: Int,
+    ) {
+        fun toSnapshot():
+            HistoryEventSnapshot =
+            HistoryEventSnapshot(
+                eventIndex =
+                    eventIndex,
+                playerId =
+                    playerId,
+                roundId =
+                    roundId,
+                proofDigest =
+                    proofDigest,
+                outcome =
+                    outcome,
+                moveTokenIndex =
+                    moveTokenIndex,
+                captures =
+                    captures,
+            )
+    }
+
     private data class LocalState(
+        val matchId: String,
         var status: String,
-        val players: MutableList<LocalPlayer>,
+        val players:
+            MutableList<
+                LocalPlayer
+                >,
         var turnSeat: Int,
         var eventIndex: Int,
-        val consecutiveSixes: MutableList<Int>,
+        val consecutiveSixes:
+            MutableList<Int>,
         var pendingOutcome: Int?,
-        var pendingLegal: MutableSet<Int>,
-        var pendingEventIndex: Int?,
-        var winnerPlayerId: String?,
+        var pendingLegal:
+            MutableSet<Int>,
+        var pendingEventIndex:
+            Int?,
+        var pendingRoundId:
+            String?,
+        var pendingClientCommitment:
+            String?,
+        var pendingProofDigest:
+            String?,
+        var winnerPlayerId:
+            String?,
         val history:
-            MutableList<HistoryEventSnapshot>,
+            MutableList<
+                LocalHistoryEvent
+                >,
+        var lastAudit:
+            OfflineRandomnessAudit?,
         var revision: Int,
     )
 
@@ -804,8 +1330,10 @@ class OfflineGameEngine(
             "ludoproof_offline_game"
         const val KEY_STATE =
             "state"
-        const val HOME_POSITION = 57
-        const val MAX_HISTORY = 100
+        const val HOME_POSITION =
+            57
+        const val MAX_HISTORY =
+            100
 
         val COLORS =
             listOf(
@@ -817,10 +1345,14 @@ class OfflineGameEngine(
 
         val START_OFFSETS =
             mapOf(
-                "RED" to 0,
-                "GREEN" to 13,
-                "YELLOW" to 26,
-                "BLUE" to 39,
+                "RED" to
+                    0,
+                "GREEN" to
+                    13,
+                "YELLOW" to
+                    26,
+                "BLUE" to
+                    39,
             )
 
         val SAFE_GLOBAL_CELLS =

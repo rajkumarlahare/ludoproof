@@ -149,7 +149,7 @@ class OfflineGameActivity : Activity() {
         content.addView(
             TextView(this).apply {
                 text =
-                    "Offline mode works without internet. Dice are generated locally on this device and are not EntroNex proofs."
+                    "Offline mode works without internet and uses the same EntroNex v4 outcome + Natural World derivation locally. It has no remote server attestation."
                 LudoProofTheme.body(this, 12f, centered = true)
                 setPadding(dp(18), dp(12), dp(18), dp(4))
             },
@@ -254,7 +254,7 @@ class OfflineGameActivity : Activity() {
         )
 
         statusText = TextView(this).apply {
-            text = "Offline local game"
+            text = "Offline v4 local engine ready"
             LudoProofTheme.body(this, 13f, centered = true, bright = true)
             setPadding(0, dp(4), 0, dp(10))
         }
@@ -287,6 +287,19 @@ class OfflineGameActivity : Activity() {
         )
         tools.addView(
             Button(this).apply {
+                text = "ENGINE MAP"
+                LudoProofTheme.secondary(this)
+                setOnClickListener {
+                    ArcadeDialogs.showNaturalWorldAudit(
+                        this@OfflineGameActivity,
+                        engine.lastRandomnessAudit(),
+                    )
+                }
+            },
+            toolParams(),
+        )
+        tools.addView(
+            Button(this).apply {
                 text = "NEW GAME"
                 LudoProofTheme.positive(this)
                 setOnClickListener {
@@ -300,7 +313,7 @@ class OfflineGameActivity : Activity() {
 
         actionPanel.addView(
             TextView(this).apply {
-                text = "LOCAL • Device SecureRandom • No EntroNex proof"
+                text = "LOCAL V4 • Same EntroNex derivation • No remote attestation"
                 LudoProofTheme.body(this, 11f, centered = true)
                 setPadding(0, dp(10), 0, 0)
             },
@@ -506,6 +519,11 @@ class OfflineGameActivity : Activity() {
                 append(event.eventIndex)
                 append("  dice=")
                 append(event.outcome ?: "?")
+                if (event.proofDigest != null) {
+                    append("  localV4=")
+                    append(event.proofDigest.take(8))
+                    append("…")
+                }
                 if (event.moveTokenIndex != null) {
                     append("  token=")
                     append(event.moveTokenIndex + 1)

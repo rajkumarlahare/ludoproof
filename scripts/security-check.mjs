@@ -272,6 +272,136 @@ for (const [name, expected] of [
   }
 }
 
+const offlineV4Files = {
+  core: "android/app/src/main/java/com/ludoproof/game/EntroNexV4Local.kt",
+  binding: "android/app/src/main/java/com/ludoproof/game/OfflineLudoV4Binding.kt",
+  engine: "android/app/src/main/java/com/ludoproof/game/OfflineGameEngine.kt",
+  conformance:
+    "android/app/src/test/java/com/ludoproof/game/EntroNexV4LocalConformanceTest.kt",
+};
+
+for (const file of Object.values(offlineV4Files)) {
+  if (!fs.existsSync(file)) {
+    findings.push(
+      file +
+        ": missing offline v4 invariant file",
+    );
+  }
+}
+
+if (
+  Object.values(offlineV4Files).every(
+    (file) =>
+      fs.existsSync(
+        file,
+      ),
+  )
+) {
+  const core =
+    fs.readFileSync(
+      offlineV4Files.core,
+      "utf8",
+    );
+  for (const invariant of [
+    "entronex-v4-dual-commit-hkdf-sha256-context-bound",
+    "entronex:v4:client-commit:",
+    "entronex:v4:server-commit:",
+    "entronex:v4:transcript:",
+    "entronex:v4:outcome",
+    "entronex:v4:natural-world",
+    "direct-outcome-selection",
+    "entronex:v1:stream:",
+    "281_474_976_710_656L",
+    "balanced-swap-witness",
+    "entronex:natural-world:v1:manifest:",
+  ]) {
+    if (!core.includes(invariant)) {
+      findings.push(
+        offlineV4Files.core +
+          ": missing frozen v4 invariant " +
+          invariant,
+      );
+    }
+  }
+
+  const binding =
+    fs.readFileSync(
+      offlineV4Files.binding,
+      "utf8",
+    );
+  for (const invariant of [
+    "cellsPerOutcome =",
+    "16",
+    "timelineTicks =",
+    "512",
+    "epochCount =",
+    "8",
+    "probeCount =",
+    "3",
+    "entronex:v4:game-state:",
+    "entronex:v4:game-ruleset:",
+    "ludoproof:actor:v1:",
+    '"DICE_ROLL"',
+  ]) {
+    if (!binding.includes(invariant)) {
+      findings.push(
+        offlineV4Files.binding +
+          ": missing Ludo v4 binding invariant " +
+          invariant,
+      );
+    }
+  }
+
+  const engine =
+    fs.readFileSync(
+      offlineV4Files.engine,
+      "utf8",
+    );
+  if (
+    !engine.includes(
+      "OfflineLudoV4Binding",
+    ) ||
+    !engine.includes(
+      "EntroNexV4Local.verify",
+    )
+  ) {
+    findings.push(
+      offlineV4Files.engine +
+        ": offline rolls do not fail closed through the v4 derivation/verifier",
+    );
+  }
+  for (const forbidden of [
+    "nextInt(6)",
+    "nextInt(6) + 1",
+  ]) {
+    if (engine.includes(forbidden)) {
+      findings.push(
+        offlineV4Files.engine +
+          ": direct local dice shortcut is forbidden: " +
+          forbidden,
+      );
+    }
+  }
+
+  const conformance =
+    fs.readFileSync(
+      offlineV4Files.conformance,
+      "utf8",
+    );
+  for (const invariant of [
+    "bb2b3f384f6a1ef71c2680402c30c01bbe23a5e7faf2b025553095d7ab36d27e",
+    "0cdf48f6a5c0afbf3837ff073a73963b57415397fb70339e3949be7e16caeffe",
+    "eabd09e6dad8342bb5cc8724c9bcbb90ae95263fb5dc847449739fa14ac102a3",
+  ]) {
+    if (!conformance.includes(invariant)) {
+      findings.push(
+        offlineV4Files.conformance +
+          ": frozen cross-language v4 vector drift",
+      );
+    }
+  }
+}
+
 if (findings.length > 0) {
   console.error(
     "LudoProof security gate failed:",

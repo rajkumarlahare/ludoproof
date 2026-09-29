@@ -119,6 +119,27 @@ applicationId + matchId + eventType + eventIndex
 
 A retry must resume the same pending round.
 
+## Offline randomness parity
+
+Offline mode must not use a separate simplified dice path.
+
+The Android offline engine is locked to:
+
+```text
+algorithm = entronex-v4-dual-commit-hkdf-sha256-context-bound
+outcomes = [1,2,3,4,5,6]
+cellsPerOutcome = 16
+timelineTicks = 512
+epochCount = 8
+probeCount = 3
+ruleset = ludoproof-standard-v1
+```
+
+It must preserve the same v4 commitment prefixes, context/config/event-binding digests, transcript construction, HKDF labels, HMAC stream namespace, 48-bit rejection sampling, balanced Natural World layout, probe motion, logical transforms, witness swap, field/world digests, and proof digest.
+
+A frozen cross-language EntroNex candidate vector is asserted by Android JVM tests. The offline engine must fail closed if local v4 recomputation does not reproduce the generated proof before the outcome is applied.
+
+The trust claim remains narrower than online mode: offline has **algorithmic parity**, not remote authority parity. Both offline seeds are generated on the same device; there is no remote EntroNex signed commitment/proof attestation.
 ## Ruleset
 
 Current ruleset:
