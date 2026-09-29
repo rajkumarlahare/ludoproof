@@ -34,6 +34,7 @@ class MainActivity : Activity() {
     private lateinit var turnText: TextView
     private lateinit var playersText: TextView
     private lateinit var verificationText: TextView
+    private lateinit var verificationPanel: LinearLayout
     private lateinit var proofDetailsText: TextView
     private lateinit var statusText: TextView
     private lateinit var connectionText: TextView
@@ -889,37 +890,182 @@ class MainActivity : Activity() {
         LudoProofTheme
             .panel(this)
             .apply {
-                diceView =
-                    DiceView(
-                        this@MainActivity,
-                    )
-                addView(
-                    diceView,
-                    LinearLayout.LayoutParams(
-                        dp(102),
-                        dp(102),
-                    ).apply {
-                        gravity =
-                            Gravity.CENTER_HORIZONTAL
-                    },
+                setPadding(
+                    dp(if (isCompactOnline()) 12 else 14),
+                    dp(if (isCompactOnline()) 12 else 14),
+                    dp(if (isCompactOnline()) 12 else 14),
+                    dp(if (isCompactOnline()) 12 else 14),
                 )
 
-                verificationText =
-                    infoText(
-                        "No verified roll yet.",
-                        13f,
+                verificationPanel =
+                    LinearLayout(
+                        this@MainActivity,
                     ).apply {
+                        orientation =
+                            LinearLayout.HORIZONTAL
                         gravity =
-                            Gravity.CENTER
+                            Gravity.CENTER_VERTICAL
                         setPadding(
-                            dp(8),
-                            dp(4),
-                            dp(8),
+                            dp(if (isCompactOnline()) 10 else 12),
+                            dp(10),
+                            dp(if (isCompactOnline()) 10 else 12),
                             dp(10),
                         )
+                        background =
+                            LudoProofTheme
+                                .hudPanelDrawable(
+                                    this@MainActivity,
+                                    goldBorder = true,
+                                )
+
+                        val diceDock =
+                            FrameLayout(
+                                this@MainActivity,
+                            ).apply {
+                                background =
+                                    LudoProofTheme
+                                        .rounded(
+                                            0xEE071A47.toInt(),
+                                            18f,
+                                            0xFF55E3FF.toInt(),
+                                            1.5f,
+                                            this@MainActivity,
+                                        )
+                                elevation =
+                                    dp(5)
+                                        .toFloat()
+                            }
+
+                        diceView =
+                            DiceView(
+                                this@MainActivity,
+                            )
+                        diceDock.addView(
+                            diceView,
+                            FrameLayout.LayoutParams(
+                                dp(
+                                    if (isCompactOnline()) 88 else 100,
+                                ),
+                                dp(
+                                    if (isCompactOnline()) 88 else 100,
+                                ),
+                                Gravity.CENTER,
+                            ),
+                        )
+
+                        addView(
+                            diceDock,
+                            LinearLayout.LayoutParams(
+                                dp(
+                                    if (isCompactOnline()) 104 else 116,
+                                ),
+                                dp(
+                                    if (isCompactOnline()) 104 else 116,
+                                ),
+                            ),
+                        )
+
+                        val proofColumn =
+                            LinearLayout(
+                                this@MainActivity,
+                            ).apply {
+                                orientation =
+                                    LinearLayout.VERTICAL
+                                gravity =
+                                    Gravity.CENTER_VERTICAL
+                                setPadding(
+                                    dp(12),
+                                    0,
+                                    0,
+                                    0,
+                                )
+
+                                addView(
+                                    TextView(
+                                        this@MainActivity,
+                                    ).apply {
+                                        text =
+                                            "REMOTE AUTHORITY"
+                                        LudoProofTheme.body(
+                                            this,
+                                            10f,
+                                            bright = true,
+                                        )
+                                        setTextColor(
+                                            0xFF68F053.toInt(),
+                                        )
+                                        setPadding(
+                                            dp(10),
+                                            dp(5),
+                                            dp(10),
+                                            dp(5),
+                                        )
+                                        background =
+                                            LudoProofTheme
+                                                .rounded(
+                                                    0xCC073A56.toInt(),
+                                                    999f,
+                                                    0xFF46E8A4.toInt(),
+                                                    1f,
+                                                    this@MainActivity,
+                                                )
+                                    },
+                                )
+
+                                addView(
+                                    TextView(
+                                        this@MainActivity,
+                                    ).apply {
+                                        text =
+                                            "ENTRONEX V4 VERIFIED DICE"
+                                        LudoProofTheme.body(
+                                            this,
+                                            if (isCompactOnline()) 11.5f else 12.5f,
+                                            bright = true,
+                                        )
+                                        setTextColor(
+                                            LudoProofTheme.GOLD,
+                                        )
+                                        setPadding(
+                                            0,
+                                            dp(7),
+                                            0,
+                                            0,
+                                        )
+                                    },
+                                )
+
+                                verificationText =
+                                    infoText(
+                                        "No verified roll yet.",
+                                        if (isCompactOnline()) 11f else 12f,
+                                    ).apply {
+                                        gravity =
+                                            Gravity.START
+                                        setPadding(
+                                            0,
+                                            dp(4),
+                                            0,
+                                            0,
+                                        )
+                                    }
+                                addView(
+                                    verificationText,
+                                )
+                            }
+
+                        addView(
+                            proofColumn,
+                            LinearLayout.LayoutParams(
+                                0,
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                                1f,
+                            ),
+                        )
                     }
+
                 addView(
-                    verificationText,
+                    verificationPanel,
                 )
 
                 rollButton =
@@ -929,7 +1075,7 @@ class MainActivity : Activity() {
                         rollVerifiedDice()
                     }.apply {
                         textSize =
-                            19f
+                            if (isCompactOnline()) 18f else 20f
                     }
                 LudoProofTheme
                     .primary(
@@ -939,8 +1085,13 @@ class MainActivity : Activity() {
                     rollButton,
                     LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(60),
-                    ),
+                        dp(
+                            if (isCompactOnline()) 58 else 62,
+                        ),
+                    ).apply {
+                        topMargin =
+                            dp(12)
+                    },
                 )
 
                 startButton =
@@ -968,7 +1119,7 @@ class MainActivity : Activity() {
 
                 refreshButton =
                     button(
-                        "REFRESH",
+                        "SYNC STATE",
                     ) {
                         refreshState()
                     }
@@ -988,7 +1139,7 @@ class MainActivity : Activity() {
                     }
                 proofButton =
                     button(
-                        "PROOF / HISTORY",
+                        "VERIFIED HISTORY",
                     ) {
                         toggleProofDetails()
                     }
@@ -1015,7 +1166,7 @@ class MainActivity : Activity() {
                             "Create or join a match to begin."
                         LudoProofTheme.body(
                             this,
-                            11.5f,
+                            if (isCompactOnline()) 11f else 11.5f,
                             centered = true,
                         )
                         setPadding(
@@ -1027,6 +1178,26 @@ class MainActivity : Activity() {
                     }
                 addView(
                     statusText,
+                )
+
+                addView(
+                    TextView(
+                        this@MainActivity,
+                    ).apply {
+                        text =
+                            "SERVER-AUTHORITATIVE ONLINE • COMMITTED ROLLS • RESUMABLE REVEAL"
+                        LudoProofTheme.body(
+                            this,
+                            9.5f,
+                            centered = true,
+                        )
+                        setPadding(
+                            dp(4),
+                            dp(10),
+                            dp(4),
+                            0,
+                        )
+                    },
                 )
             }
 
@@ -1573,7 +1744,7 @@ class MainActivity : Activity() {
                                 state.winnerPlayerId
                         }
                 turnText.text =
-                    "Winner: " +
+                    "WINNER • " +
                         (
                             winner
                                 ?.displayName
@@ -1594,14 +1765,15 @@ class MainActivity : Activity() {
                     if (
                         mine
                     ) {
-                        "Your turn"
+                        "YOUR TURN • ROLL OR MOVE"
                     } else {
-                        "Turn: " +
+                        "WAITING • " +
                             (
                                 active
                                     ?.displayName
                                     ?: "Player"
-                                )
+                                ) +
+                            "'S TURN"
                     }
             }
         }
@@ -1624,8 +1796,10 @@ class MainActivity : Activity() {
                 ?: latest?.proofDigest
         val eventIndex =
             if (
-                pending?.eventIndex != null &&
-                pending.eventIndex >= 0
+                pending?.eventIndex !=
+                null &&
+                pending.eventIndex >=
+                0
             ) {
                 pending.eventIndex
             } else {
@@ -1634,28 +1808,34 @@ class MainActivity : Activity() {
 
         verificationText.text =
             if (
-                outcome != null &&
-                digest != null
+                outcome !=
+                    null &&
+                digest !=
+                    null
             ) {
-                diceView.showOutcome(outcome)
+                diceView.showOutcome(
+                    outcome,
+                )
                 buildString {
                     append(
-                        "Dice: ",
+                        "✓ VERIFIED • Dice ",
                     )
-                    append(outcome)
                     append(
-                        "   ✓ EntroNex v4 proof verified locally",
+                        outcome,
                     )
                     if (
-                        eventIndex != null
+                        eventIndex !=
+                        null
                     ) {
                         append(
-                            "\nEvent: ",
+                            "\nEvent ",
                         )
-                        append(eventIndex)
+                        append(
+                            eventIndex,
+                        )
                     }
                     append(
-                        "  •  Proof: ",
+                        "  •  Proof ",
                     )
                     append(
                         shortDigest(
@@ -1668,13 +1848,13 @@ class MainActivity : Activity() {
                     pending?.status
                 ) {
                     "CREATING" ->
-                        "Preparing EntroNex commitment…"
+                        "COMMITTING • Preparing server commitment…"
 
                     "COMMITTED" ->
-                        "Server commitment received — reveal can resume safely."
+                        "COMMITTED • Server commitment secured. Reveal can resume safely."
 
                     "RESOLVING" ->
-                        "Resolving the committed EntroNex round…"
+                        "VERIFYING • Resolving committed EntroNex round…"
 
                     else ->
                         "No verified roll yet."
@@ -1778,24 +1958,20 @@ class MainActivity : Activity() {
         actionPanel.visibility =
             View.VISIBLE
 
+        verificationPanel.visibility =
+            if (
+                active ||
+                finished
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
         diceView.visibility =
-            if (
-                active ||
-                finished
-            ) {
-                View.VISIBLE
-            } else {
-                View.GONE
-            }
+            View.VISIBLE
         verificationText.visibility =
-            if (
-                active ||
-                finished
-            ) {
-                View.VISIBLE
-            } else {
-                View.GONE
-            }
+            View.VISIBLE
 
         startButton.visibility =
             if (
