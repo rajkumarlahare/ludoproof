@@ -25,95 +25,79 @@ object ArcadeDialogs {
             dialogPanel(
                 context,
                 "SETTINGS",
+                "CURRENT CONFIGURATION",
                 dialog,
             )
 
         panel.addView(
-            settingsRow(
+            statusChip(
                 context,
-                "Online sync",
-                "AUTO",
+                "READ-ONLY IN THIS BUILD",
+                0xFF70E7FF.toInt(),
             ),
-        )
-        panel.addView(
-            divider(
+            fullWidthParams(
                 context,
-            ),
-        )
-        panel.addView(
-            settingsRow(
-                context,
-                "Proof mode",
-                "ENTRONEX V4",
-            ),
-        )
-        panel.addView(
-            divider(
-                context,
-            ),
-        )
-        panel.addView(
-            settingsRow(
-                context,
-                "Offline rolls",
-                "V4 LOCAL",
-            ),
-        )
-        panel.addView(
-            divider(
-                context,
-            ),
-        )
-        panel.addView(
-            settingsRow(
-                context,
-                "Game speed",
-                "NORMAL",
-            ),
-        )
-        panel.addView(
-            divider(
-                context,
-            ),
-        )
-        panel.addView(
-            settingsRow(
-                context,
-                "Board",
-                "CLASSIC",
-            ),
-        )
-        panel.addView(
-            divider(
-                context,
-            ),
-        )
-        panel.addView(
-            settingsRow(
-                context,
-                "Dice",
-                "CLASSIC",
+                topDp = 8,
             ),
         )
 
+        listOf(
+            Triple(
+                "Online sync",
+                "AUTO",
+                "Reconnects and refreshes the current verified match.",
+            ),
+            Triple(
+                "Proof mode",
+                "ENTRONEX V4",
+                "Online rolls use server commitments and attestations.",
+            ),
+            Triple(
+                "Offline rolls",
+                "V4 LOCAL",
+                "Same v4 derivation recomputed on this device.",
+            ),
+            Triple(
+                "Game speed",
+                "NORMAL",
+                "Standard animation and interaction timing.",
+            ),
+            Triple(
+                "Board",
+                "CLASSIC",
+                "Classic Ludo board presentation.",
+            ),
+            Triple(
+                "Dice",
+                "CLASSIC",
+                "Standard six-sided dice presentation.",
+            ),
+        ).forEach {
+                item ->
+            panel.addView(
+                settingsRow(
+                    context,
+                    item.first,
+                    item.second,
+                    item.third,
+                ),
+                fullWidthParams(
+                    context,
+                    topDp = 9,
+                ),
+            )
+        }
+
         panel.addView(
-            TextView(
+            trustStrip(
                 context,
-            ).apply {
-                text =
-                    "Online uses EntroNex server commitments and attestations. Offline uses the same v4 derivation and Natural World logic locally, but has no remote server attestation."
-                LudoProofTheme.body(
-                    this,
-                    12f,
-                    centered = true,
-                )
-                setPadding(
-                    14,
-                    22,
-                    14,
-                    4,
-                )
-            },
+                "VERIFICATION MODEL",
+                "Online uses remote EntroNex authority. Offline uses the same v4 derivation locally and does not claim remote attestation.",
+            ),
+            fullWidthParams(
+                context,
+                topDp = 12,
+            ),
         )
 
         dialog.setContentView(
@@ -121,7 +105,7 @@ object ArcadeDialogs {
         )
         sizeDialog(
             dialog,
-            .90f,
+            .92f,
         )
         dialog.show()
     }
@@ -138,86 +122,105 @@ object ArcadeDialogs {
             dialogPanel(
                 context,
                 "V4 LOCAL ENGINE",
+                "NATURAL WORLD AUDIT",
                 dialog,
             )
 
         if (
-            audit == null
+            audit ==
+            null
         ) {
             panel.addView(
-                TextView(
+                emptyState(
                     context,
-                ).apply {
-                    text =
-                        "Roll the offline dice once to generate a local EntroNex v4 Natural World."
-                    LudoProofTheme.body(
-                        this,
-                        14f,
-                        centered = true,
-                        bright = true,
-                    )
-                    setPadding(
-                        LudoProofTheme.dp(
-                            context,
-                            16,
-                        ),
-                        LudoProofTheme.dp(
-                            context,
-                            24,
-                        ),
-                        LudoProofTheme.dp(
-                            context,
-                            16,
-                        ),
-                        LudoProofTheme.dp(
-                            context,
-                            24,
-                        ),
-                    )
-                },
+                    "◎",
+                    "NO LOCAL WORLD YET",
+                    "Roll the offline dice once to generate a local EntroNex v4 Natural World.",
+                ),
+                fullWidthParams(
+                    context,
+                    topDp = 12,
+                ),
             )
         } else {
             val verified =
                 audit.verify()
 
             panel.addView(
-                TextView(
+                statusChip(
+                    context,
+                    if (
+                        verified
+                    ) {
+                        "✓ LOCAL V4 RECOMPUTATION VALID"
+                    } else {
+                        "✕ LOCAL V4 RECOMPUTATION FAILED"
+                    },
+                    if (
+                        verified
+                    ) {
+                        LudoProofTheme.GREEN
+                    } else {
+                        LudoProofTheme.RED
+                    },
+                ),
+                fullWidthParams(
+                    context,
+                    topDp = 10,
+                ),
+            )
+
+            val metrics =
+                LinearLayout(
                     context,
                 ).apply {
-                    text =
-                        if (
-                            verified
-                        ) {
-                            "✓ LOCAL V4 RECOMPUTATION VALID"
-                        } else {
-                            "✕ LOCAL V4 RECOMPUTATION FAILED"
-                        }
-                    setTextColor(
-                        if (
-                            verified
-                        ) {
-                            LudoProofTheme.GREEN
-                        } else {
-                            LudoProofTheme.RED
-                        },
-                    )
-                    textSize =
-                        14f
+                    orientation =
+                        LinearLayout.HORIZONTAL
                     gravity =
                         Gravity.CENTER
-                    setPadding(
-                        0,
-                        LudoProofTheme.dp(
-                            context,
-                            10,
-                        ),
-                        0,
-                        LudoProofTheme.dp(
-                            context,
-                            10,
-                        ),
-                    )
-                },
+                }
+
+            metrics.addView(
+                metricCard(
+                    context,
+                    "OUTCOME",
+                    audit.outcome
+                        .toString(),
+                ),
+                metricParams(
+                    context,
+                ),
+            )
+            metrics.addView(
+                metricCard(
+                    context,
+                    "SAMPLE",
+                    audit.sampleIndex
+                        .toString(),
+                ),
+                metricParams(
+                    context,
+                ),
+            )
+            metrics.addView(
+                metricCard(
+                    context,
+                    "WORLD",
+                    audit.width
+                        .toString() +
+                        "×" +
+                        audit.height,
+                ),
+                metricParams(
+                    context,
+                ),
+            )
+            panel.addView(
+                metrics,
+                fullWidthParams(
+                    context,
+                    topDp = 10,
+                ),
             )
 
             val map =
@@ -229,97 +232,152 @@ object ArcadeDialogs {
                     )
                     background =
                         LudoProofTheme
-                            .darkPanelDrawable(
+                            .hudPanelDrawable(
                                 context,
                                 goldBorder =
                                     false,
                             )
+                    setPadding(
+                        dp(
+                            context,
+                            8,
+                        ),
+                        dp(
+                            context,
+                            8,
+                        ),
+                        dp(
+                            context,
+                            8,
+                        ),
+                        dp(
+                            context,
+                            8,
+                        ),
+                    )
                 }
             panel.addView(
                 map,
                 LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams
-                        .MATCH_PARENT,
-                    LudoProofTheme.dp(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    dp(
                         context,
-                        240,
+                        if (
+                            LudoProofTheme
+                                .isCompactWidth(
+                                    context,
+                                )
+                        ) {
+                            205
+                        } else {
+                            240
+                        },
                     ),
-                ),
+                ).apply {
+                    topMargin =
+                        dp(
+                            context,
+                            10,
+                        )
+                },
+            )
+
+            panel.addView(
+                TextView(
+                    context,
+                ).apply {
+                    text =
+                        "SELECTED CELL IS RINGED IN GOLD"
+                    LudoProofTheme.body(
+                        this,
+                        9.5f,
+                        centered = true,
+                        bright = true,
+                    )
+                    setTextColor(
+                        LudoProofTheme.GOLD,
+                    )
+                    setPadding(
+                        0,
+                        dp(
+                            context,
+                            6,
+                        ),
+                        0,
+                        0,
+                    )
+                },
             )
 
             val detail =
                 buildString {
                     append(
-                        "Outcome: ",
+                        "OUTCOME\n",
+                    )
+                    append(
+                        "Dice: ",
                     )
                     append(
                         audit.outcome,
                     )
                     append(
-                        "   Outcome index: ",
+                        "   •   Index: ",
                     )
                     append(
                         audit.outcomeIndex,
                     )
+
                     append(
-                        "\nWorld: ",
+                        "\n\nWORLD SAMPLE\n",
                     )
                     append(
-                        audit.width,
-                    )
-                    append(
-                        "×",
-                    )
-                    append(
-                        audit.height,
-                    )
-                    append(
-                        " = ",
+                        "Cells: ",
                     )
                     append(
                         audit.field.size,
                     )
                     append(
-                        " cells (16 of each 1–6)",
-                    )
-                    append(
-                        "\nSample cell: ",
+                        "   •   Sample: ",
                     )
                     append(
                         audit.sampleIndex,
                     )
                     append(
-                        "   Tick: ",
+                        "   •   Tick: ",
                     )
                     append(
                         audit.sampleTick,
                     )
                     append(
-                        "   Epoch: ",
+                        "\nEpoch: ",
                     )
                     append(
                         audit.layoutEpoch,
                     )
                     append(
-                        "\nMotion: ",
+                        "   •   Motion: ",
                     )
                     append(
                         audit.motionProfile,
                     )
                     append(
-                        "   Probe: ",
+                        "   •   Probe: ",
                     )
                     append(
                         audit.selectedProbe,
                     )
+
                     append(
-                        "\nWitness swap: ",
+                        "\n\nWITNESS\n",
+                    )
+                    append(
+                        "Swap: ",
                     )
                     append(
                         audit.witnessSwapped,
                     )
                     append(
-                        " (",
+                        "   •   ",
                     )
                     append(
                         audit.witnessSourceIndex,
@@ -330,11 +388,12 @@ object ArcadeDialogs {
                     append(
                         audit.witnessTargetIndex,
                     )
+
                     append(
-                        ")",
+                        "\n\nDIGESTS\n",
                     )
                     append(
-                        "\n\nProof: ",
+                        "Proof: ",
                     )
                     append(
                         shortDigest(
@@ -373,58 +432,38 @@ object ArcadeDialogs {
                             audit.eventBindingDigest,
                         ),
                     )
-                    append(
-                        "\n\nOffline uses the same v4 outcome/map derivation, but both seeds are generated on this device. It is not a remote EntroNex attestation."
-                    )
                 }
 
-            val scroll =
-                ScrollView(
-                    context,
-                )
-            scroll.addView(
-                TextView(
-                    context,
-                ).apply {
-                    text =
-                        detail
-                    setTextIsSelectable(
-                        true,
-                    )
-                    LudoProofTheme.body(
-                        this,
-                        12f,
-                        bright = true,
-                    )
-                    setPadding(
-                        LudoProofTheme.dp(
-                            context,
-                            12,
-                        ),
-                        LudoProofTheme.dp(
-                            context,
-                            12,
-                        ),
-                        LudoProofTheme.dp(
-                            context,
-                            12,
-                        ),
-                        LudoProofTheme.dp(
-                            context,
-                            12,
-                        ),
-                    )
-                },
-            )
             panel.addView(
-                scroll,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams
-                        .MATCH_PARENT,
-                    LudoProofTheme.dp(
-                        context,
-                        260,
-                    ),
+                evidenceScroll(
+                    context,
+                    detail,
+                    if (
+                        LudoProofTheme
+                            .isCompactWidth(
+                                context,
+                            )
+                    ) {
+                        220
+                    } else {
+                        260
+                    },
+                ),
+                fullWidthParams(
+                    context,
+                    topDp = 10,
+                ),
+            )
+
+            panel.addView(
+                trustStrip(
+                    context,
+                    "LOCAL AUDIT",
+                    "Both offline seeds are generated on this device. This verifies local recomputation; it is not a remote EntroNex attestation.",
+                ),
+                fullWidthParams(
+                    context,
+                    topDp = 10,
                 ),
             )
         }
@@ -452,65 +491,70 @@ object ArcadeDialogs {
             dialogPanel(
                 context,
                 title,
+                "SELECTABLE AUDIT TEXT",
                 dialog,
             )
 
-        val scroll =
-            ScrollView(
+        panel.addView(
+            statusChip(
                 context,
-            )
-        scroll.addView(
+                "LONG-PRESS TO SELECT / COPY",
+                0xFF70E7FF.toInt(),
+            ),
+            fullWidthParams(
+                context,
+                topDp = 8,
+            ),
+        )
+
+        panel.addView(
+            evidenceScroll(
+                context,
+                body,
+                if (
+                    LudoProofTheme
+                        .isCompactWidth(
+                            context,
+                        )
+                ) {
+                    330
+                } else {
+                    390
+                },
+            ),
+            fullWidthParams(
+                context,
+                topDp = 10,
+            ),
+        )
+
+        panel.addView(
             TextView(
                 context,
             ).apply {
                 text =
-                    body
-                setTextIsSelectable(
-                    true,
-                )
+                    "Evidence is shown exactly as stored by the current game flow."
                 LudoProofTheme.body(
                     this,
-                    13f,
-                    centered = false,
-                    bright = true,
+                    10f,
+                    centered = true,
                 )
                 setPadding(
-                    LudoProofTheme.dp(
+                    dp(
                         context,
-                        12,
+                        6,
                     ),
-                    LudoProofTheme.dp(
+                    dp(
                         context,
-                        12,
+                        8,
                     ),
-                    LudoProofTheme.dp(
+                    dp(
                         context,
-                        12,
+                        6,
                     ),
-                    LudoProofTheme.dp(
-                        context,
-                        12,
-                    ),
+                    0,
                 )
-                background =
-                    LudoProofTheme
-                        .darkPanelDrawable(
-                            context,
-                            goldBorder =
-                                false,
-                        )
             },
-        )
-        panel.addView(
-            scroll,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams
-                    .MATCH_PARENT,
-                LudoProofTheme.dp(
-                    context,
-                    360,
-                ),
-            ),
         )
 
         dialog.setContentView(
@@ -523,12 +567,464 @@ object ArcadeDialogs {
         dialog.show()
     }
 
+    private fun evidenceScroll(
+        context: Context,
+        body: String,
+        heightDp: Int,
+    ): ScrollView =
+        ScrollView(
+            context,
+        ).apply {
+            isVerticalScrollBarEnabled =
+                true
+            overScrollMode =
+                View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            background =
+                LudoProofTheme
+                    .hudPanelDrawable(
+                        context,
+                        goldBorder =
+                            false,
+                    )
+
+            addView(
+                TextView(
+                    context,
+                ).apply {
+                    text =
+                        body
+                    setTextIsSelectable(
+                        true,
+                    )
+                    LudoProofTheme.body(
+                        this,
+                        12f,
+                        centered = false,
+                        bright = true,
+                    )
+                    setPadding(
+                        dp(
+                            context,
+                            14,
+                        ),
+                        dp(
+                            context,
+                            14,
+                        ),
+                        dp(
+                            context,
+                            14,
+                        ),
+                        dp(
+                            context,
+                            14,
+                        ),
+                    )
+                    setLineSpacing(
+                        0f,
+                        1.12f,
+                    )
+                },
+            )
+
+            layoutParams =
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    dp(
+                        context,
+                        heightDp,
+                    ),
+                )
+        }
+
+    private fun emptyState(
+        context: Context,
+        icon: String,
+        title: String,
+        body: String,
+    ): LinearLayout =
+        LinearLayout(
+            context,
+        ).apply {
+            orientation =
+                LinearLayout.VERTICAL
+            gravity =
+                Gravity.CENTER
+            setPadding(
+                dp(
+                    context,
+                    16,
+                ),
+                dp(
+                    context,
+                    22,
+                ),
+                dp(
+                    context,
+                    16,
+                ),
+                dp(
+                    context,
+                    22,
+                ),
+            )
+            background =
+                LudoProofTheme
+                    .hudPanelDrawable(
+                        context,
+                        goldBorder =
+                            false,
+                    )
+
+            addView(
+                TextView(
+                    context,
+                ).apply {
+                    text =
+                        icon
+                    textSize =
+                        32f
+                    gravity =
+                        Gravity.CENTER
+                    setTextColor(
+                        0xFF70E7FF.toInt(),
+                    )
+                },
+            )
+            addView(
+                TextView(
+                    context,
+                ).apply {
+                    text =
+                        title
+                    LudoProofTheme.title(
+                        this,
+                        17f,
+                        gold = true,
+                    )
+                    setPadding(
+                        0,
+                        dp(
+                            context,
+                            6,
+                        ),
+                        0,
+                        0,
+                    )
+                },
+            )
+            addView(
+                TextView(
+                    context,
+                ).apply {
+                    text =
+                        body
+                    LudoProofTheme.body(
+                        this,
+                        12f,
+                        centered = true,
+                        bright = true,
+                    )
+                    setPadding(
+                        dp(
+                            context,
+                            8,
+                        ),
+                        dp(
+                            context,
+                            6,
+                        ),
+                        dp(
+                            context,
+                            8,
+                        ),
+                        0,
+                    )
+                },
+            )
+        }
+
+    private fun trustStrip(
+        context: Context,
+        title: String,
+        body: String,
+    ): LinearLayout =
+        LinearLayout(
+            context,
+        ).apply {
+            orientation =
+                LinearLayout.HORIZONTAL
+            gravity =
+                Gravity.CENTER_VERTICAL
+            setPadding(
+                dp(
+                    context,
+                    12,
+                ),
+                dp(
+                    context,
+                    11,
+                ),
+                dp(
+                    context,
+                    12,
+                ),
+                dp(
+                    context,
+                    11,
+                ),
+            )
+            background =
+                LudoProofTheme
+                    .hudPanelDrawable(
+                        context,
+                        goldBorder =
+                            true,
+                    )
+
+            addView(
+                TextView(
+                    context,
+                ).apply {
+                    text =
+                        "✓"
+                    textSize =
+                        22f
+                    gravity =
+                        Gravity.CENTER
+                    setTextColor(
+                        0xFF68F053.toInt(),
+                    )
+                },
+                LinearLayout.LayoutParams(
+                    dp(
+                        context,
+                        34,
+                    ),
+                    dp(
+                        context,
+                        34,
+                    ),
+                ),
+            )
+
+            addView(
+                LinearLayout(
+                    context,
+                ).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+
+                    addView(
+                        TextView(
+                            context,
+                        ).apply {
+                            text =
+                                title
+                            LudoProofTheme.body(
+                                this,
+                                11f,
+                                bright = true,
+                            )
+                            setTextColor(
+                                LudoProofTheme.GOLD,
+                            )
+                        },
+                    )
+                    addView(
+                        TextView(
+                            context,
+                        ).apply {
+                            text =
+                                body
+                            LudoProofTheme.body(
+                                this,
+                                10.5f,
+                                bright = true,
+                            )
+                            setPadding(
+                                0,
+                                dp(
+                                    context,
+                                    2,
+                                ),
+                                0,
+                                0,
+                            )
+                        },
+                    )
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f,
+                ).apply {
+                    marginStart =
+                        dp(
+                            context,
+                            8,
+                        )
+                },
+            )
+        }
+
+    private fun metricCard(
+        context: Context,
+        label: String,
+        value: String,
+    ): LinearLayout =
+        LinearLayout(
+            context,
+        ).apply {
+            orientation =
+                LinearLayout.VERTICAL
+            gravity =
+                Gravity.CENTER
+            setPadding(
+                dp(
+                    context,
+                    5,
+                ),
+                dp(
+                    context,
+                    8,
+                ),
+                dp(
+                    context,
+                    5,
+                ),
+                dp(
+                    context,
+                    8,
+                ),
+            )
+            background =
+                LudoProofTheme
+                    .rounded(
+                        0xE807204E.toInt(),
+                        14f,
+                        0x6655E3FF,
+                        1f,
+                        context,
+                    )
+
+            addView(
+                TextView(
+                    context,
+                ).apply {
+                    text =
+                        value
+                    LudoProofTheme.title(
+                        this,
+                        15f,
+                        gold = true,
+                    )
+                },
+            )
+            addView(
+                TextView(
+                    context,
+                ).apply {
+                    text =
+                        label
+                    LudoProofTheme.body(
+                        this,
+                        9f,
+                        centered = true,
+                        bright = true,
+                    )
+                    setPadding(
+                        0,
+                        dp(
+                            context,
+                            2,
+                        ),
+                        0,
+                        0,
+                    )
+                },
+            )
+        }
+
+    private fun metricParams(
+        context: Context,
+    ):
+        LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(
+            0,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            1f,
+        ).apply {
+            setMargins(
+                dp(
+                    context,
+                    4,
+                ),
+                0,
+                dp(
+                    context,
+                    4,
+                ),
+                0,
+            )
+        }
+
+    private fun statusChip(
+        context: Context,
+        value: String,
+        color: Int,
+    ): TextView =
+        TextView(
+            context,
+        ).apply {
+            text =
+                value
+            LudoProofTheme.body(
+                this,
+                10.5f,
+                centered = true,
+                bright = true,
+            )
+            setTextColor(
+                color,
+            )
+            gravity =
+                Gravity.CENTER
+            setPadding(
+                dp(
+                    context,
+                    12,
+                ),
+                dp(
+                    context,
+                    7,
+                ),
+                dp(
+                    context,
+                    12,
+                ),
+                dp(
+                    context,
+                    7,
+                ),
+            )
+            background =
+                LudoProofTheme
+                    .rounded(
+                        0xDD061B42.toInt(),
+                        999f,
+                        color,
+                        1f,
+                        context,
+                    )
+        }
+
     private fun shortDigest(
         value: String,
     ): String =
         if (
             value.length <=
-                20
+            20
         ) {
             value
         } else {
@@ -544,6 +1040,7 @@ object ArcadeDialogs {
     private fun dialogPanel(
         context: Context,
         title: String,
+        subtitle: String,
         dialog: Dialog,
     ): LinearLayout =
         LinearLayout(
@@ -552,28 +1049,47 @@ object ArcadeDialogs {
             orientation =
                 LinearLayout.VERTICAL
             setPadding(
-                LudoProofTheme.dp(
+                dp(
                     context,
-                    16,
+                    if (
+                        LudoProofTheme
+                            .isCompactWidth(
+                                context,
+                            )
+                    ) {
+                        12
+                    } else {
+                        16
+                    },
                 ),
-                LudoProofTheme.dp(
+                dp(
                     context,
                     12,
                 ),
-                LudoProofTheme.dp(
+                dp(
+                    context,
+                    if (
+                        LudoProofTheme
+                            .isCompactWidth(
+                                context,
+                            )
+                    ) {
+                        12
+                    } else {
+                        16
+                    },
+                ),
+                dp(
                     context,
                     16,
-                ),
-                LudoProofTheme.dp(
-                    context,
-                    18,
                 ),
             )
             background =
                 LudoProofTheme
-                    .darkPanelDrawable(
+                    .hudPanelDrawable(
                         context,
-                        goldBorder = true,
+                        goldBorder =
+                            true,
                     )
 
             val header =
@@ -591,22 +1107,103 @@ object ArcadeDialogs {
                     context,
                 ).apply {
                     text =
-                        title
+                        "LP"
                     LudoProofTheme.title(
                         this,
-                        22f,
+                        13f,
                         gold = true,
                     )
                     gravity =
-                        Gravity.START or
-                            Gravity.CENTER_VERTICAL
+                        Gravity.CENTER
+                    background =
+                        LudoProofTheme
+                            .brandBadgeDrawable(
+                                context,
+                            )
+                },
+                LinearLayout.LayoutParams(
+                    dp(
+                        context,
+                        44,
+                    ),
+                    dp(
+                        context,
+                        44,
+                    ),
+                ),
+            )
+
+            header.addView(
+                LinearLayout(
+                    context,
+                ).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+                    gravity =
+                        Gravity.CENTER_VERTICAL
+
+                    addView(
+                        TextView(
+                            context,
+                        ).apply {
+                            text =
+                                title
+                            LudoProofTheme.title(
+                                this,
+                                if (
+                                    LudoProofTheme
+                                        .isCompactWidth(
+                                            context,
+                                        )
+                                ) {
+                                    18f
+                                } else {
+                                    21f
+                                },
+                                gold = true,
+                            )
+                            gravity =
+                                Gravity.START or
+                                    Gravity.CENTER_VERTICAL
+                        },
+                    )
+                    addView(
+                        TextView(
+                            context,
+                        ).apply {
+                            text =
+                                subtitle
+                            LudoProofTheme.body(
+                                this,
+                                9.5f,
+                                bright = true,
+                            )
+                            setTextColor(
+                                0xFF70E7FF.toInt(),
+                            )
+                            setPadding(
+                                0,
+                                dp(
+                                    context,
+                                    2,
+                                ),
+                                0,
+                                0,
+                            )
+                        },
+                    )
                 },
                 LinearLayout.LayoutParams(
                     0,
-                    LinearLayout.LayoutParams
-                        .WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
                     1f,
-                ),
+                ).apply {
+                    marginStart =
+                        dp(
+                            context,
+                            10,
+                        )
+                },
             )
 
             header.addView(
@@ -614,154 +1211,214 @@ object ArcadeDialogs {
                     context,
                 ).apply {
                     LudoProofTheme
-                        .circularAction(
+                        .homeCircularAction(
                             this,
                             "×",
                         )
+                    contentDescription =
+                        "Close"
                     setOnClickListener {
                         dialog.dismiss()
                     }
                 },
                 LinearLayout.LayoutParams(
-                    LudoProofTheme.dp(
+                    dp(
                         context,
-                        48,
+                        44,
                     ),
-                    LudoProofTheme.dp(
+                    dp(
                         context,
-                        48,
+                        44,
                     ),
                 ),
             )
-            addView(header)
+            addView(
+                header,
+            )
         }
 
     private fun settingsRow(
         context: Context,
         name: String,
         value: String,
+        detail: String,
     ): LinearLayout =
         LinearLayout(
             context,
         ).apply {
             orientation =
-                LinearLayout.HORIZONTAL
-            gravity =
-                Gravity.CENTER_VERTICAL
+                LinearLayout.VERTICAL
             setPadding(
-                LudoProofTheme.dp(
+                dp(
                     context,
-                    4,
+                    12,
                 ),
-                LudoProofTheme.dp(
+                dp(
                     context,
-                    13,
+                    10,
                 ),
-                LudoProofTheme.dp(
+                dp(
                     context,
-                    4,
+                    12,
                 ),
-                LudoProofTheme.dp(
+                dp(
                     context,
-                    13,
+                    10,
                 ),
             )
+            background =
+                LudoProofTheme
+                    .rounded(
+                        0xE807204E.toInt(),
+                        16f,
+                        0x6655E3FF,
+                        1f,
+                        context,
+                    )
 
-            addView(
+            val top =
+                LinearLayout(
+                    context,
+                ).apply {
+                    orientation =
+                        LinearLayout.HORIZONTAL
+                    gravity =
+                        Gravity.CENTER_VERTICAL
+                }
+
+            top.addView(
                 TextView(
                     context,
                 ).apply {
-                    text = name
+                    text =
+                        name
                     LudoProofTheme.body(
                         this,
-                        16f,
+                        14f,
                         bright = true,
                     )
                 },
                 LinearLayout.LayoutParams(
                     0,
-                    LinearLayout.LayoutParams
-                        .WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
                     1f,
                 ),
             )
-            addView(
+
+            top.addView(
                 TextView(
                     context,
                 ).apply {
-                    text = value
+                    text =
+                        value
                     LudoProofTheme.body(
                         this,
-                        13f,
+                        10.5f,
                         bright = true,
                     )
+                    setTextColor(
+                        LudoProofTheme.GOLD,
+                    )
                     setPadding(
-                        LudoProofTheme.dp(
+                        dp(
                             context,
-                            13,
+                            10,
                         ),
-                        LudoProofTheme.dp(
+                        dp(
                             context,
-                            8,
+                            5,
                         ),
-                        LudoProofTheme.dp(
+                        dp(
                             context,
-                            13,
+                            10,
                         ),
-                        LudoProofTheme.dp(
+                        dp(
                             context,
-                            8,
+                            5,
                         ),
                     )
                     background =
                         LudoProofTheme
-                            .darkPanelDrawable(
+                            .rounded(
+                                0xDD07183D.toInt(),
+                                999f,
+                                0x88FFD45E.toInt(),
+                                1f,
                                 context,
-                                goldBorder =
-                                    true,
                             )
+                },
+            )
+            addView(
+                top,
+            )
+
+            addView(
+                TextView(
+                    context,
+                ).apply {
+                    text =
+                        detail
+                    LudoProofTheme.body(
+                        this,
+                        10f,
+                        bright = true,
+                    )
+                    setPadding(
+                        0,
+                        dp(
+                            context,
+                            5,
+                        ),
+                        0,
+                        0,
+                    )
                 },
             )
         }
 
-    private fun divider(
+    private fun fullWidthParams(
         context: Context,
-    ): View =
-        View(context).apply {
-            setBackgroundColor(
-                0x304FA1FF,
-            )
-            layoutParams =
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams
-                        .MATCH_PARENT,
-                    LudoProofTheme.dp(
-                        context,
-                        1,
-                    ),
+        topDp: Int,
+    ):
+        LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply {
+            topMargin =
+                dp(
+                    context,
+                    topDp,
                 )
         }
 
     private fun baseDialog(
         context: Context,
     ): Dialog =
-        Dialog(context).apply {
+        Dialog(
+            context,
+        ).apply {
             requestWindowFeature(
                 Window.FEATURE_NO_TITLE,
             )
-            window?.setBackgroundDrawable(
-                ColorDrawable(
-                    Color.TRANSPARENT,
-                ),
-            )
-            window?.addFlags(
-                WindowManager.LayoutParams
-                    .FLAG_DIM_BEHIND,
-            )
-            window?.attributes =
-                window?.attributes
+            window
+                ?.setBackgroundDrawable(
+                    ColorDrawable(
+                        Color.TRANSPARENT,
+                    ),
+                )
+            window
+                ?.addFlags(
+                    WindowManager.LayoutParams
+                        .FLAG_DIM_BEHIND,
+                )
+            window
+                ?.attributes =
+                window
+                    ?.attributes
                     ?.apply {
-                        dimAmount = .74f
+                        dimAmount =
+                            .78f
                     }
         }
 
@@ -770,19 +1427,44 @@ object ArcadeDialogs {
         widthFraction: Float,
     ) {
         dialog.setOnShowListener {
-            dialog.window?.setLayout(
+            val context =
+                dialog.context
+            val metrics =
+                context.resources
+                    .displayMetrics
+            val desired =
                 (
-                    dialog
-                        .context
-                        .resources
-                        .displayMetrics
-                        .widthPixels *
+                    metrics.widthPixels *
                         widthFraction
-                    ).toInt(),
-                WindowManager
-                    .LayoutParams
-                    .WRAP_CONTENT,
-            )
+                    ).toInt()
+            val maxWidth =
+                dp(
+                    context,
+                    LudoProofTheme
+                        .pageMaxContentWidthDp(
+                            context,
+                        ),
+                )
+
+            dialog.window
+                ?.setLayout(
+                    minOf(
+                        desired,
+                        maxWidth,
+                    ),
+                    WindowManager
+                        .LayoutParams
+                        .WRAP_CONTENT,
+                )
         }
     }
+
+    private fun dp(
+        context: Context,
+        value: Int,
+    ): Int =
+        LudoProofTheme.dp(
+            context,
+            value,
+        )
 }

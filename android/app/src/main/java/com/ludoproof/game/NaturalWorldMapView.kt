@@ -25,10 +25,10 @@ class NaturalWorldMapView @JvmOverloads constructor(
                 Paint.Style.STROKE
             strokeWidth =
                 dp(
-                    1f,
+                    .8f,
                 )
             color =
-                0xAAFFFFFF.toInt()
+                0x66FFFFFF
         }
     private val samplePaint =
         Paint(
@@ -44,11 +44,11 @@ class NaturalWorldMapView @JvmOverloads constructor(
                 LudoProofTheme.GOLD
             setShadowLayer(
                 dp(
-                    5f,
+                    6f,
                 ),
                 0f,
                 0f,
-                0xAAFFC000.toInt(),
+                0xCCFFC000.toInt(),
             )
         }
     private val textPaint =
@@ -61,11 +61,30 @@ class NaturalWorldMapView @JvmOverloads constructor(
                 Paint.Align.CENTER
             isFakeBoldText =
                 true
+            setShadowLayer(
+                dp(
+                    1.5f,
+                ),
+                0f,
+                dp(
+                    1f,
+                ),
+                0x77000000,
+            )
         }
 
     private var audit:
         OfflineRandomnessAudit? =
         null
+
+    init {
+        setLayerType(
+            LAYER_TYPE_SOFTWARE,
+            null,
+        )
+        importantForAccessibility =
+            IMPORTANT_FOR_ACCESSIBILITY_YES
+    }
 
     fun bind(
         value: OfflineRandomnessAudit,
@@ -157,7 +176,7 @@ class NaturalWorldMapView @JvmOverloads constructor(
 
         val pad =
             dp(
-                4f,
+                8f,
             )
         val availableWidth =
             width -
@@ -173,6 +192,14 @@ class NaturalWorldMapView @JvmOverloads constructor(
                     current.width,
                 availableHeight /
                     current.height,
+            )
+        val gap =
+            min(
+                dp(
+                    1.4f,
+                ),
+                cell *
+                    .08f,
             )
         val mapWidth =
             cell *
@@ -195,7 +222,7 @@ class NaturalWorldMapView @JvmOverloads constructor(
 
         textPaint.textSize =
             cell *
-                0.42f
+                0.40f
 
         current.field
             .forEachIndexed {
@@ -207,7 +234,7 @@ class NaturalWorldMapView @JvmOverloads constructor(
                 val y =
                     index /
                         current.width
-                val rect =
+                val raw =
                     RectF(
                         left +
                             x *
@@ -228,17 +255,36 @@ class NaturalWorldMapView @JvmOverloads constructor(
                                 ) *
                             cell,
                     )
+                val rect =
+                    RectF(
+                        raw.left +
+                            gap,
+                        raw.top +
+                            gap,
+                        raw.right -
+                            gap,
+                        raw.bottom -
+                            gap,
+                    )
 
                 fillPaint.color =
                     colorFor(
                         outcome,
                     )
-                canvas.drawRect(
+                canvas.drawRoundRect(
                     rect,
+                    cell *
+                        .12f,
+                    cell *
+                        .12f,
                     fillPaint,
                 )
-                canvas.drawRect(
+                canvas.drawRoundRect(
                     rect,
+                    cell *
+                        .12f,
+                    cell *
+                        .12f,
                     strokePaint,
                 )
 
@@ -260,8 +306,27 @@ class NaturalWorldMapView @JvmOverloads constructor(
                     index ==
                     current.sampleIndex
                 ) {
-                    canvas.drawRect(
-                        rect,
+                    val sampleRect =
+                        RectF(
+                            rect.left -
+                                gap *
+                                .8f,
+                            rect.top -
+                                gap *
+                                .8f,
+                            rect.right +
+                                gap *
+                                .8f,
+                            rect.bottom +
+                                gap *
+                                .8f,
+                        )
+                    canvas.drawRoundRect(
+                        sampleRect,
+                        cell *
+                            .14f,
+                        cell *
+                            .14f,
                         samplePaint,
                     )
                 }
