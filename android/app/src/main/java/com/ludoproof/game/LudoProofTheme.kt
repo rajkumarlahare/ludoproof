@@ -327,6 +327,58 @@ object LudoProofTheme {
             }
         }
 
+    fun hudPanelDrawable(
+        context: Context,
+        goldBorder: Boolean = false,
+    ): GradientDrawable =
+        GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                0xE90A2A68.toInt(),
+                0xE7061A48.toInt(),
+            ),
+        ).apply {
+            cornerRadius = dp(context, 20f).toFloat()
+            setStroke(
+                dp(context, 1.5f),
+                if (goldBorder) GOLD else 0xFF47D7FF.toInt(),
+            )
+        }
+
+    fun screenWidthDp(context: Context): Int {
+        val configuredWidth =
+            context.resources.configuration.screenWidthDp
+        if (configuredWidth > 0) {
+            return configuredWidth
+        }
+
+        val metrics =
+            context.resources.displayMetrics
+        return (
+            metrics.widthPixels /
+                metrics.density
+            ).toInt()
+    }
+
+    fun isCompactWidth(context: Context): Boolean =
+        screenWidthDp(context) < 370
+
+    fun isExpandedWidth(context: Context): Boolean =
+        screenWidthDp(context) >= 600
+
+    fun pageHorizontalPaddingDp(context: Context): Int =
+        when {
+            isCompactWidth(context) -> 14
+            isExpandedWidth(context) -> 24
+            else -> 18
+        }
+
+    fun pageMaxContentWidthDp(context: Context): Int =
+        if (isExpandedWidth(context)) 720 else 680
+
+    fun sectionGapDp(context: Context): Int =
+        if (isCompactWidth(context)) 14 else 18
+
     fun dp(context: Context, value: Int): Int =
         (value * context.resources.displayMetrics.density).toInt()
 
