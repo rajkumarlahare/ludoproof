@@ -993,27 +993,41 @@ class OfflineGameEngine(
                 json.optJSONObject(
                     "pending",
                 )
+            val restoredProofDigest =
+                pending
+                    ?.nullableString(
+                        "proofDigest",
+                    )
+            val restorePending =
+                pending !=
+                    null &&
+                    restoredProofDigest !=
+                    null
             val legal =
                 mutableSetOf<
                     Int
                     >()
-            pending
-                ?.optJSONArray(
-                    "legal",
-                )
-                ?.let {
-                        values ->
-                    for (
-                        index in
-                        0 until
-                            values.length()
-                    ) {
-                        legal +=
-                            values.getInt(
-                                index,
-                            )
+            if (
+                restorePending
+            ) {
+                pending
+                    ?.optJSONArray(
+                        "legal",
+                    )
+                    ?.let {
+                            values ->
+                        for (
+                            index in
+                            0 until
+                                values.length()
+                        ) {
+                            legal +=
+                                values.getInt(
+                                    index,
+                                )
+                        }
                     }
-                }
+            }
 
             LocalState(
                 matchId =
@@ -1049,6 +1063,7 @@ class OfflineGameEngine(
                     sixes,
                 pendingOutcome =
                     if (
+                        restorePending &&
                         pending !=
                         null &&
                         pending.has(
@@ -1065,6 +1080,7 @@ class OfflineGameEngine(
                     legal,
                 pendingEventIndex =
                     if (
+                        restorePending &&
                         pending !=
                         null &&
                         pending.has(
@@ -1078,20 +1094,35 @@ class OfflineGameEngine(
                         null
                     },
                 pendingRoundId =
-                    pending
-                        ?.nullableString(
-                            "roundId",
-                        ),
+                    if (
+                        restorePending
+                    ) {
+                        pending
+                            ?.nullableString(
+                                "roundId",
+                            )
+                    } else {
+                        null
+                    },
                 pendingClientCommitment =
-                    pending
-                        ?.nullableString(
-                            "clientCommitment",
-                        ),
+                    if (
+                        restorePending
+                    ) {
+                        pending
+                            ?.nullableString(
+                                "clientCommitment",
+                            )
+                    } else {
+                        null
+                    },
                 pendingProofDigest =
-                    pending
-                        ?.nullableString(
-                            "proofDigest",
-                        ),
+                    if (
+                        restorePending
+                    ) {
+                        restoredProofDigest
+                    } else {
+                        null
+                    },
                 winnerPlayerId =
                     json
                         .nullableString(
