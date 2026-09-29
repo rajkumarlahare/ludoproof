@@ -26,6 +26,9 @@ class MainActivity : Activity() {
 
     private lateinit var lobbyPanel: LinearLayout
     private lateinit var matchStatusPanel: LinearLayout
+    private lateinit var resultPanel: FrameLayout
+    private lateinit var resultTitleText: TextView
+    private lateinit var resultSubtitleText: TextView
     private lateinit var boardFrame: FrameLayout
     private lateinit var actionPanel: LinearLayout
     private lateinit var nameInput: EditText
@@ -261,6 +264,19 @@ class MainActivity : Activity() {
                 }
         content.addView(
             matchStatusPanel,
+            onlineSectionParams(
+                if (isCompactOnline()) 12 else 16,
+            ),
+        )
+
+        resultPanel =
+            onlineResultPanel()
+                .apply {
+                    visibility =
+                        View.GONE
+                }
+        content.addView(
+            resultPanel,
             onlineSectionParams(
                 if (isCompactOnline()) 12 else 16,
             ),
@@ -882,6 +898,122 @@ class MainActivity : Activity() {
                 }
             addView(
                 playersText,
+            )
+        }
+
+    private fun onlineResultPanel():
+        FrameLayout =
+        FrameLayout(this).apply {
+            val height =
+                dp(
+                    if (isCompactOnline()) {
+                        164
+                    } else {
+                        184
+                    },
+                )
+
+            addView(
+                GameResultArtView(
+                    this@MainActivity,
+                ).apply {
+                    mode =
+                        GameResultArtView.Mode.ONLINE
+                },
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    height,
+                ),
+            )
+
+            val copy =
+                LinearLayout(
+                    this@MainActivity,
+                ).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+                    gravity =
+                        Gravity.CENTER_VERTICAL
+                    setPadding(
+                        dp(if (isCompactOnline()) 118 else 154),
+                        dp(14),
+                        dp(14),
+                        dp(14),
+                    )
+
+                    addView(
+                        TextView(
+                            this@MainActivity,
+                        ).apply {
+                            text =
+                                "MATCH COMPLETE"
+                            LudoProofTheme.body(
+                                this,
+                                10f,
+                                bright = true,
+                            )
+                            setTextColor(
+                                0xFF68E8FF.toInt(),
+                            )
+                        },
+                    )
+
+                    resultTitleText =
+                        TextView(
+                            this@MainActivity,
+                        ).apply {
+                            text =
+                                "WINNER"
+                            LudoProofTheme.title(
+                                this,
+                                if (isCompactOnline()) 21f else 25f,
+                                gold = true,
+                            )
+                            gravity =
+                                Gravity.START or
+                                    Gravity.CENTER_VERTICAL
+                            setPadding(
+                                0,
+                                dp(4),
+                                0,
+                                0,
+                            )
+                        }
+                    addView(
+                        resultTitleText,
+                    )
+
+                    resultSubtitleText =
+                        TextView(
+                            this@MainActivity,
+                        ).apply {
+                            text =
+                                "Server-authoritative result • verified history available"
+                            LudoProofTheme.body(
+                                this,
+                                if (isCompactOnline()) 10.5f else 11.5f,
+                                bright = true,
+                            )
+                            gravity =
+                                Gravity.START
+                            setPadding(
+                                0,
+                                dp(5),
+                                0,
+                                0,
+                            )
+                        }
+                    addView(
+                        resultSubtitleText,
+                    )
+                }
+
+            addView(
+                copy,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    height,
+                ),
             )
         }
 
@@ -1743,13 +1875,35 @@ class MainActivity : Activity() {
                             it.playerId ==
                                 state.winnerPlayerId
                         }
+                val winnerName =
+                    winner
+                        ?.displayName
+                        ?: "Player"
+
                 turnText.text =
-                    "WINNER • " +
-                        (
-                            winner
-                                ?.displayName
-                                ?: "Player"
-                            )
+                    "MATCH COMPLETE"
+
+                resultTitleText.text =
+                    if (
+                        winner?.playerId ==
+                        playerId
+                    ) {
+                        "YOU WON"
+                    } else {
+                        "WINNER • " +
+                            winnerName
+                    }
+
+                resultSubtitleText.text =
+                    if (
+                        winner?.playerId ==
+                        playerId
+                    ) {
+                        winnerName +
+                            " • server-authoritative result • proof history available"
+                    } else {
+                        "Server-authoritative result • verified history available"
+                    }
             }
 
             else -> {
@@ -1946,6 +2100,14 @@ class MainActivity : Activity() {
 
         matchStatusPanel.visibility =
             View.VISIBLE
+        resultPanel.visibility =
+            if (
+                finished
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
         boardFrame.visibility =
             if (
                 active ||

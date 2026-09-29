@@ -28,6 +28,9 @@ class OfflineGameActivity : Activity() {
     private var infoText: TextView? = null
     private var statusText: TextView? = null
     private var rollButton: Button? = null
+    private lateinit var resultPanel: FrameLayout
+    private lateinit var resultTitleText: TextView
+    private lateinit var resultSubtitleText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -726,6 +729,19 @@ class OfflineGameActivity : Activity() {
             ),
         )
 
+        resultPanel =
+            offlineResultPanel()
+                .apply {
+                    visibility =
+                        View.GONE
+                }
+        content.addView(
+            resultPanel,
+            gameplaySectionParams(
+                if (isCompactSetup()) 12 else 14,
+            ),
+        )
+
         boardView =
             LudoBoardView(this).apply {
                 onTokenSelected = {
@@ -866,6 +882,122 @@ class OfflineGameActivity : Activity() {
             addView(
                 requireNotNull(
                     infoText,
+                ),
+            )
+        }
+
+    private fun offlineResultPanel():
+        FrameLayout =
+        FrameLayout(this).apply {
+            val height =
+                dp(
+                    if (isCompactSetup()) {
+                        160
+                    } else {
+                        180
+                    },
+                )
+
+            addView(
+                GameResultArtView(
+                    this@OfflineGameActivity,
+                ).apply {
+                    mode =
+                        GameResultArtView.Mode.OFFLINE
+                },
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    height,
+                ),
+            )
+
+            val copy =
+                LinearLayout(
+                    this@OfflineGameActivity,
+                ).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+                    gravity =
+                        Gravity.CENTER_VERTICAL
+                    setPadding(
+                        dp(if (isCompactSetup()) 116 else 150),
+                        dp(14),
+                        dp(14),
+                        dp(14),
+                    )
+
+                    addView(
+                        TextView(
+                            this@OfflineGameActivity,
+                        ).apply {
+                            text =
+                                "LOCAL GAME COMPLETE"
+                            LudoProofTheme.body(
+                                this,
+                                10f,
+                                bright = true,
+                            )
+                            setTextColor(
+                                0xFF68E8FF.toInt(),
+                            )
+                        },
+                    )
+
+                    resultTitleText =
+                        TextView(
+                            this@OfflineGameActivity,
+                        ).apply {
+                            text =
+                                "WINNER"
+                            LudoProofTheme.title(
+                                this,
+                                if (isCompactSetup()) 21f else 25f,
+                                gold = true,
+                            )
+                            gravity =
+                                Gravity.START or
+                                    Gravity.CENTER_VERTICAL
+                            setPadding(
+                                0,
+                                dp(4),
+                                0,
+                                0,
+                            )
+                        }
+                    addView(
+                        resultTitleText,
+                    )
+
+                    resultSubtitleText =
+                        TextView(
+                            this@OfflineGameActivity,
+                        ).apply {
+                            text =
+                                "Local v4 result • history and engine map remain available"
+                            LudoProofTheme.body(
+                                this,
+                                if (isCompactSetup()) 10.5f else 11.5f,
+                                bright = true,
+                            )
+                            gravity =
+                                Gravity.START
+                            setPadding(
+                                0,
+                                dp(5),
+                                0,
+                                0,
+                            )
+                        }
+                    addView(
+                        resultSubtitleText,
+                    )
+                }
+
+            addView(
+                copy,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    height,
                 ),
             )
         }
@@ -1240,25 +1372,35 @@ class OfflineGameActivity : Activity() {
                         player.displayName
                 }
 
-        turnText?.text =
-            if (
-                state.status ==
-                "FINISHED"
-            ) {
+        if (
+            state.status ==
+            "FINISHED"
+        ) {
+            val winnerName =
+                winner
+                    ?.displayName
+                    ?: "Player"
+
+            turnText?.text =
+                "MATCH COMPLETE"
+            resultPanel.visibility =
+                View.VISIBLE
+            resultTitleText.text =
                 "WINNER • " +
-                    (
-                        winner
-                            ?.displayName
-                            ?: "Player"
-                        )
-            } else {
+                    winnerName
+            resultSubtitleText.text =
+                "Local v4 result • history and engine map remain available"
+        } else {
+            turnText?.text =
                 "TURN • " +
                     (
                         active
                             ?.displayName
                             ?: "Player"
                         )
-            }
+            resultPanel.visibility =
+                View.GONE
+        }
 
         boardView?.bind(
             state,
@@ -1287,6 +1429,16 @@ class OfflineGameActivity : Activity() {
                 "ACTIVE" &&
                 pending ==
                 null
+
+        rollButton?.visibility =
+            if (
+                state.status ==
+                "FINISHED"
+            ) {
+                View.GONE
+            } else {
+                View.VISIBLE
+            }
 
         rollButton?.text =
             when {
