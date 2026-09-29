@@ -88,7 +88,7 @@ class DiceView @JvmOverloads constructor(
         removeCallbacks(ticker)
         face = outcome
         contentDescription =
-            "Verified dice outcome $outcome."
+            "Dice outcome $outcome."
         invalidate()
     }
 
