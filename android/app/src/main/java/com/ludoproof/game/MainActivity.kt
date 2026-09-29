@@ -25,6 +25,9 @@ class MainActivity : Activity() {
         Handler(Looper.getMainLooper())
 
     private lateinit var lobbyPanel: LinearLayout
+    private lateinit var matchStatusPanel: LinearLayout
+    private lateinit var boardFrame: FrameLayout
+    private lateinit var actionPanel: LinearLayout
     private lateinit var nameInput: EditText
     private lateinit var matchInput: EditText
     private lateinit var matchInfoText: TextView
@@ -139,38 +142,88 @@ class MainActivity : Activity() {
     override fun onCreate(
         savedInstanceState: Bundle?,
     ) {
-        super.onCreate(savedInstanceState)
-        LudoProofTheme.configureWindow(this)
+        super.onCreate(
+            savedInstanceState,
+        )
+        LudoProofTheme.configureWindow(
+            this,
+        )
 
-        secureSessionStore.load()?.let { session ->
-            matchId = session.matchId
-            playerToken = session.playerToken
-            playerId = session.playerId
-        }
+        secureSessionStore
+            .load()
+            ?.let {
+                    session ->
+                matchId =
+                    session.matchId
+                playerToken =
+                    session.playerToken
+                playerId =
+                    session.playerId
+            }
         pendingSecret =
             pendingRollStore.load()
 
         val (root, host) =
-            LudoProofTheme.arcadeRoot(this)
+            LudoProofTheme
+                .arcadeRoot(this)
 
         val scroll =
             ScrollView(this).apply {
-                isFillViewport = true
+                isFillViewport =
+                    true
                 overScrollMode =
                     View.OVER_SCROLL_NEVER
             }
+
+        val contentHost =
+            FrameLayout(this)
+        scroll.addView(
+            contentHost,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+
+        val horizontalPaddingDp =
+            LudoProofTheme
+                .pageHorizontalPaddingDp(this)
+        val availableWidth =
+            (
+                resources.displayMetrics.widthPixels -
+                    dp(horizontalPaddingDp * 2)
+                ).coerceAtLeast(1)
+        val contentWidth =
+            minOf(
+                availableWidth,
+                dp(
+                    LudoProofTheme
+                        .pageMaxContentWidthDp(this),
+                ),
+            )
+
         val content =
             LinearLayout(this).apply {
                 orientation =
                     LinearLayout.VERTICAL
                 setPadding(
+                    0,
                     dp(14),
-                    dp(14),
-                    dp(14),
+                    0,
                     dp(28),
                 )
             }
-        scroll.addView(content)
+
+        contentHost.addView(
+            content,
+            FrameLayout.LayoutParams(
+                contentWidth,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP or
+                    Gravity.CENTER_HORIZONTAL,
+            ),
+        )
+
         host.addView(
             scroll,
             FrameLayout.LayoutParams(
@@ -179,282 +232,38 @@ class MainActivity : Activity() {
             ),
         )
 
-        val topBar =
-            LinearLayout(this).apply {
-                orientation =
-                    LinearLayout.HORIZONTAL
-                gravity =
-                    Gravity.CENTER_VERTICAL
-            }
+        content.addView(
+            onlineTopBar(),
+        )
 
-        topBar.addView(
-            Button(this).apply {
-                LudoProofTheme.circularAction(
-                    this,
-                    "‹",
-                )
-                setOnClickListener {
-                    finish()
-                }
-            },
-            LinearLayout.LayoutParams(
-                dp(52),
-                dp(52),
+        content.addView(
+            onlineHero(),
+            onlineSectionParams(
+                if (isCompactOnline()) 12 else 16,
             ),
         )
-
-        connectionText =
-            TextView(this).apply {
-                text = "● CHECKING"
-                LudoProofTheme.body(
-                    this,
-                    12f,
-                    centered = true,
-                    bright = true,
-                )
-                setPadding(
-                    dp(12),
-                    dp(8),
-                    dp(12),
-                    dp(8),
-                )
-                background =
-                    LudoProofTheme.darkPanelDrawable(
-                        this@MainActivity,
-                        goldBorder = true,
-                    )
-            }
-        topBar.addView(
-            connectionText,
-            LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f,
-            ).apply {
-                setMargins(
-                    dp(12),
-                    0,
-                    dp(12),
-                    0,
-                )
-            },
-        )
-
-        topBar.addView(
-            Button(this).apply {
-                LudoProofTheme.circularAction(
-                    this,
-                    "⚙",
-                )
-                setOnClickListener {
-                    ArcadeDialogs.showSettings(
-                        this@MainActivity,
-                    )
-                }
-            },
-            LinearLayout.LayoutParams(
-                dp(52),
-                dp(52),
-            ),
-        )
-        content.addView(topBar)
 
         lobbyPanel =
-            LudoProofTheme.panel(this).apply {
-                addView(
-                    TextView(
-                        this@MainActivity,
-                    ).apply {
-                        text =
-                            "SELECT ONLINE MATCH"
-                        LudoProofTheme.title(
-                            this,
-                            21f,
-                        )
-                        setPadding(
-                            0,
-                            0,
-                            0,
-                            dp(12),
-                        )
-                    },
-                )
-
-                nameInput =
-                    EditText(
-                        this@MainActivity,
-                    ).apply {
-                        hint =
-                            "Player name"
-                        setText(
-                            "Player",
-                        )
-                        inputType =
-                            InputType
-                                .TYPE_CLASS_TEXT
-                        LudoProofTheme.input(
-                            this,
-                        )
-                    }
-                addView(
-                    nameInput,
-                    LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                    ).apply {
-                        bottomMargin =
-                            dp(10)
-                    },
-                )
-
-                matchInput =
-                    EditText(
-                        this@MainActivity,
-                    ).apply {
-                        hint =
-                            "Match code for Join"
-                        setText(
-                            matchId
-                                .orEmpty(),
-                        )
-                        inputType =
-                            InputType.TYPE_CLASS_TEXT or
-                                InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
-                        LudoProofTheme.input(
-                            this,
-                        )
-                    }
-                addView(
-                    matchInput,
-                )
-
-                val actions =
-                    LinearLayout(
-                        this@MainActivity,
-                    ).apply {
-                        orientation =
-                            LinearLayout.HORIZONTAL
-                    }
-
-                createButton =
-                    Button(
-                        this@MainActivity,
-                    ).apply {
-                        text =
-                            "＋\nCREATE"
-                        LudoProofTheme.selectedTile(
-                            this,
-                        )
-                        setTextColor(
-                            LudoProofTheme.WHITE,
-                        )
-                        textSize = 17f
-                        setOnClickListener {
-                            createMatch()
-                        }
-                    }
-                joinButton =
-                    Button(
-                        this@MainActivity,
-                    ).apply {
-                        text =
-                            "⇥\nJOIN"
-                        LudoProofTheme.normalTile(
-                            this,
-                        )
-                        setTextColor(
-                            LudoProofTheme.WHITE,
-                        )
-                        textSize = 17f
-                        setOnClickListener {
-                            joinMatch()
-                        }
-                    }
-                actions.addView(
-                    createButton,
-                    LinearLayout.LayoutParams(
-                        0,
-                        dp(96),
-                        1f,
-                    ).apply {
-                        setMargins(
-                            dp(6),
-                            dp(14),
-                            dp(6),
-                            0,
-                        )
-                    },
-                )
-                actions.addView(
-                    joinButton,
-                    LinearLayout.LayoutParams(
-                        0,
-                        dp(96),
-                        1f,
-                    ).apply {
-                        setMargins(
-                            dp(6),
-                            dp(14),
-                            dp(6),
-                            0,
-                        )
-                    },
-                )
-                addView(actions)
-            }
+            onlineLobbyPanel()
         content.addView(
             lobbyPanel,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                setMargins(
-                    0,
-                    dp(18),
-                    0,
-                    dp(16),
-                )
-            },
+            onlineSectionParams(
+                if (isCompactOnline()) 12 else 16,
+            ),
         )
 
-        matchInfoText =
-            infoText(
-                "No active match",
-                14f,
-            ).apply {
-                gravity =
-                    Gravity.CENTER
-            }
-        content.addView(matchInfoText)
-
-        playersText =
-            infoText(
-                "Players will appear here.",
-                13f,
-            ).apply {
-                gravity =
-                    Gravity.CENTER
-            }
-        content.addView(playersText)
-
-        turnText =
-            infoText(
-                "Waiting for a match.",
-                22f,
-            ).apply {
-                gravity =
-                    Gravity.CENTER
-                setTextColor(
-                    LudoProofTheme.GOLD,
-                )
-                setPadding(
-                    dp(8),
-                    dp(8),
-                    dp(8),
-                    dp(10),
-                )
-            }
-        content.addView(turnText)
+        matchStatusPanel =
+            onlineMatchStatusPanel()
+                .apply {
+                    visibility =
+                        View.GONE
+                }
+        content.addView(
+            matchStatusPanel,
+            onlineSectionParams(
+                if (isCompactOnline()) 12 else 16,
+            ),
+        )
 
         boardView =
             LudoBoardView(this).apply {
@@ -465,10 +274,14 @@ class MainActivity : Activity() {
                     )
                 }
             }
-        val boardFrame =
-            LudoProofTheme.boardFrame(
-                this,
-            )
+
+        boardFrame =
+            LudoProofTheme
+                .boardFrame(this)
+                .apply {
+                    visibility =
+                        View.GONE
+                }
         boardFrame.addView(
             boardView,
             FrameLayout.LayoutParams(
@@ -478,165 +291,27 @@ class MainActivity : Activity() {
         )
         content.addView(
             boardFrame,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
+            onlineSectionParams(
+                if (isCompactOnline()) 12 else 14,
             ).apply {
-                setMargins(
-                    dp(2),
-                    0,
-                    dp(2),
-                    dp(14),
-                )
+                leftMargin =
+                    dp(2)
+                rightMargin =
+                    dp(2)
             },
         )
 
-        val actionPanel =
-            LudoProofTheme.panel(
-                this,
-            )
-
-        diceView =
-            DiceView(this)
-        actionPanel.addView(
-            diceView,
-            LinearLayout.LayoutParams(
-                dp(102),
-                dp(102),
-            ).apply {
-                gravity =
-                    Gravity.CENTER_HORIZONTAL
-            },
-        )
-
-        verificationText =
-            infoText(
-                "No verified roll yet.",
-                14f,
-            ).apply {
-                gravity =
-                    Gravity.CENTER
-                setPadding(
-                    dp(8),
-                    dp(4),
-                    dp(8),
-                    dp(10),
-                )
-            }
-        actionPanel.addView(
-            verificationText,
-        )
-
-        rollButton =
-            button(
-                "ROLL VERIFIED DICE",
-            ) {
-                rollVerifiedDice()
-            }.apply {
-                textSize =
-                    20f
-            }
-        LudoProofTheme.primary(
-            rollButton,
-        )
-        actionPanel.addView(
-            rollButton,
-        )
-
-        startButton =
-            button(
-                "START MATCH",
-            ) {
-                withSession {
-                        code,
-                        token,
-                    ->
-                    runNetwork(
-                        action = {
-                            api.start(
-                                code,
-                                token,
-                            )
-                        },
-                    )
+        actionPanel =
+            onlineActionPanel()
+                .apply {
+                    visibility =
+                        View.GONE
                 }
-            }
-        LudoProofTheme.primary(
-            startButton,
-        )
-
-        refreshButton =
-            button(
-                "REFRESH",
-            ) {
-                refreshState()
-            }
-
-        actionPanel.addView(
-            row(
-                startButton,
-                refreshButton,
-            ),
-        )
-
-        shareButton =
-            button(
-                "SHARE CODE",
-            ) {
-                shareMatch()
-            }
-        proofButton =
-            button(
-                "PROOF / HISTORY",
-            ) {
-                toggleProofDetails()
-            }
-        actionPanel.addView(
-            row(
-                shareButton,
-                proofButton,
-            ),
-        )
-
-        proofDetailsText =
-            TextView(this).apply {
-                visibility =
-                    View.GONE
-            }
-
-        statusText =
-            TextView(this).apply {
-                text =
-                    "Create or join a match to begin."
-                LudoProofTheme.body(
-                    this,
-                    12f,
-                    centered = true,
-                )
-                setPadding(
-                    dp(8),
-                    dp(10),
-                    dp(8),
-                    0,
-                )
-            }
-        actionPanel.addView(
-            statusText,
-        )
-
         content.addView(
             actionPanel,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                setMargins(
-                    dp(6),
-                    0,
-                    dp(6),
-                    0,
-                )
-            },
+            onlineSectionParams(
+                if (isCompactOnline()) 12 else 14,
+            ),
         )
 
         setContentView(root)
@@ -659,6 +334,766 @@ class MainActivity : Activity() {
                 }
         }
     }
+
+    private fun onlineTopBar():
+        LinearLayout =
+        LinearLayout(this).apply {
+            orientation =
+                LinearLayout.HORIZONTAL
+            gravity =
+                Gravity.CENTER_VERTICAL
+
+            addView(
+                Button(
+                    this@MainActivity,
+                ).apply {
+                    LudoProofTheme
+                        .homeCircularAction(
+                            this,
+                            "‹",
+                        )
+                    contentDescription =
+                        "Back"
+                    setOnClickListener {
+                        finish()
+                    }
+                },
+                LinearLayout.LayoutParams(
+                    dp(50),
+                    dp(50),
+                ),
+            )
+
+            addView(
+                LinearLayout(
+                    this@MainActivity,
+                ).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+                    gravity =
+                        Gravity.CENTER
+                    setPadding(
+                        dp(8),
+                        0,
+                        dp(8),
+                        0,
+                    )
+
+                    addView(
+                        TextView(
+                            this@MainActivity,
+                        ).apply {
+                            text =
+                                "ONLINE MATCH"
+                            LudoProofTheme.title(
+                                this,
+                                if (isCompactOnline()) 17f else 19f,
+                            )
+                        },
+                    )
+
+                    connectionText =
+                        TextView(
+                            this@MainActivity,
+                        ).apply {
+                            text =
+                                "● CHECKING"
+                            LudoProofTheme.body(
+                                this,
+                                10.5f,
+                                centered = true,
+                                bright = true,
+                            )
+                            setPadding(
+                                dp(10),
+                                dp(3),
+                                dp(10),
+                                dp(3),
+                            )
+                            background =
+                                LudoProofTheme
+                                    .rounded(
+                                        0xCC071C49.toInt(),
+                                        999f,
+                                        0x6647D7FF,
+                                        1f,
+                                        this@MainActivity,
+                                    )
+                            accessibilityLiveRegion =
+                                View.ACCESSIBILITY_LIVE_REGION_POLITE
+                        }
+                    addView(
+                        connectionText,
+                    )
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f,
+                ),
+            )
+
+            addView(
+                Button(
+                    this@MainActivity,
+                ).apply {
+                    LudoProofTheme
+                        .homeCircularAction(
+                            this,
+                            "⚙",
+                        )
+                    contentDescription =
+                        "Settings"
+                    setOnClickListener {
+                        ArcadeDialogs
+                            .showSettings(
+                                this@MainActivity,
+                            )
+                    }
+                },
+                LinearLayout.LayoutParams(
+                    dp(50),
+                    dp(50),
+                ),
+            )
+        }
+
+    private fun onlineHero():
+        FrameLayout =
+        FrameLayout(this).apply {
+            val heroHeight =
+                dp(
+                    if (isCompactOnline()) {
+                        160
+                    } else {
+                        182
+                    },
+                )
+
+            addView(
+                OnlineLobbyArtView(
+                    this@MainActivity,
+                ),
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    heroHeight,
+                ),
+            )
+
+            val copy =
+                LinearLayout(
+                    this@MainActivity,
+                ).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+                    gravity =
+                        Gravity.CENTER_VERTICAL
+                    setPadding(
+                        dp(if (isCompactOnline()) 104 else 146),
+                        dp(14),
+                        dp(if (isCompactOnline()) 12 else 24),
+                        dp(14),
+                    )
+
+                    addView(
+                        TextView(
+                            this@MainActivity,
+                        ).apply {
+                            text =
+                                "VERIFIED ONLINE"
+                            LudoProofTheme.title(
+                                this,
+                                if (isCompactOnline()) 21f else 27f,
+                                gold = true,
+                            )
+                            gravity =
+                                Gravity.START or
+                                    Gravity.CENTER_VERTICAL
+                        },
+                    )
+
+                    addView(
+                        TextView(
+                            this@MainActivity,
+                        ).apply {
+                            text =
+                                "Create a room or join with a match code"
+                            LudoProofTheme.body(
+                                this,
+                                if (isCompactOnline()) 11f else 12.5f,
+                                bright = true,
+                            )
+                            gravity =
+                                Gravity.START
+                            setPadding(
+                                0,
+                                dp(4),
+                                0,
+                                0,
+                            )
+                        },
+                    )
+
+                    addView(
+                        TextView(
+                            this@MainActivity,
+                        ).apply {
+                            text =
+                                "Remote EntroNex authority • resumable verified rolls"
+                            LudoProofTheme.body(
+                                this,
+                                if (isCompactOnline()) 9.5f else 10.5f,
+                            )
+                            gravity =
+                                Gravity.START
+                            setPadding(
+                                0,
+                                dp(3),
+                                0,
+                                0,
+                            )
+                        },
+                    )
+                }
+
+            addView(
+                copy,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    heroHeight,
+                ),
+            )
+        }
+
+    private fun onlineLobbyPanel():
+        LinearLayout =
+        LudoProofTheme
+            .panel(this)
+            .apply {
+                setPadding(
+                    dp(if (isCompactOnline()) 12 else 15),
+                    dp(if (isCompactOnline()) 12 else 15),
+                    dp(if (isCompactOnline()) 12 else 15),
+                    dp(if (isCompactOnline()) 12 else 15),
+                )
+
+                addView(
+                    TextView(
+                        this@MainActivity,
+                    ).apply {
+                        text =
+                            "CREATE OR JOIN"
+                        LudoProofTheme.title(
+                            this,
+                            if (isCompactOnline()) 19f else 21f,
+                        )
+                    },
+                )
+
+                addView(
+                    TextView(
+                        this@MainActivity,
+                    ).apply {
+                        text =
+                            "Use your name, then create a new match or enter an existing code."
+                        LudoProofTheme.body(
+                            this,
+                            11f,
+                            centered = true,
+                        )
+                        setPadding(
+                            dp(4),
+                            dp(3),
+                            dp(4),
+                            dp(12),
+                        )
+                    },
+                )
+
+                addView(
+                    inputLabel(
+                        "PLAYER NAME",
+                    ),
+                )
+
+                nameInput =
+                    EditText(
+                        this@MainActivity,
+                    ).apply {
+                        hint =
+                            "Your display name"
+                        setText(
+                            "Player",
+                        )
+                        inputType =
+                            InputType.TYPE_CLASS_TEXT or
+                                InputType.TYPE_TEXT_FLAG_CAP_WORDS
+                        LudoProofTheme
+                            .input(this)
+                        singleLine =
+                            true
+                    }
+                addView(
+                    nameInput,
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dp(54),
+                    ).apply {
+                        bottomMargin =
+                            dp(11)
+                    },
+                )
+
+                addView(
+                    inputLabel(
+                        "MATCH CODE",
+                    ),
+                )
+
+                matchInput =
+                    EditText(
+                        this@MainActivity,
+                    ).apply {
+                        hint =
+                            "LPXXXXXXXX"
+                        setText(
+                            matchId
+                                .orEmpty(),
+                        )
+                        inputType =
+                            InputType.TYPE_CLASS_TEXT or
+                                InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+                        LudoProofTheme
+                            .input(this)
+                        singleLine =
+                            true
+                    }
+                addView(
+                    matchInput,
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dp(54),
+                    ),
+                )
+
+                val actions =
+                    LinearLayout(
+                        this@MainActivity,
+                    ).apply {
+                        orientation =
+                            if (isCompactOnline()) {
+                                LinearLayout.VERTICAL
+                            } else {
+                                LinearLayout.HORIZONTAL
+                            }
+                    }
+
+                createButton =
+                    Button(
+                        this@MainActivity,
+                    ).apply {
+                        text =
+                            "＋  CREATE MATCH"
+                        LudoProofTheme
+                            .positive(this)
+                        textSize =
+                            if (isCompactOnline()) 16f else 17f
+                        setOnClickListener {
+                            createMatch()
+                        }
+                    }
+
+                joinButton =
+                    Button(
+                        this@MainActivity,
+                    ).apply {
+                        text =
+                            "⇥  JOIN MATCH"
+                        LudoProofTheme
+                            .primary(this)
+                        textSize =
+                            if (isCompactOnline()) 16f else 17f
+                        setOnClickListener {
+                            joinMatch()
+                        }
+                    }
+
+                if (isCompactOnline()) {
+                    actions.addView(
+                        createButton,
+                        LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            dp(56),
+                        ).apply {
+                            topMargin =
+                                dp(13)
+                        },
+                    )
+                    actions.addView(
+                        joinButton,
+                        LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            dp(56),
+                        ).apply {
+                            topMargin =
+                                dp(9)
+                        },
+                    )
+                } else {
+                    actions.addView(
+                        createButton,
+                        LinearLayout.LayoutParams(
+                            0,
+                            dp(60),
+                            1f,
+                        ).apply {
+                            setMargins(
+                                0,
+                                dp(13),
+                                dp(6),
+                                0,
+                            )
+                        },
+                    )
+                    actions.addView(
+                        joinButton,
+                        LinearLayout.LayoutParams(
+                            0,
+                            dp(60),
+                            1f,
+                        ).apply {
+                            setMargins(
+                                dp(6),
+                                dp(13),
+                                0,
+                                0,
+                            )
+                        },
+                    )
+                }
+
+                addView(actions)
+            }
+
+    private fun inputLabel(
+        label: String,
+    ):
+        TextView =
+        TextView(this).apply {
+            text =
+                label
+            LudoProofTheme.body(
+                this,
+                10.5f,
+                bright = true,
+            )
+            setTextColor(
+                0xFF70E7FF.toInt(),
+            )
+            setPadding(
+                dp(4),
+                0,
+                dp(4),
+                dp(5),
+            )
+        }
+
+    private fun onlineMatchStatusPanel():
+        LinearLayout =
+        LinearLayout(this).apply {
+            orientation =
+                LinearLayout.VERTICAL
+            gravity =
+                Gravity.CENTER
+            setPadding(
+                dp(if (isCompactOnline()) 12 else 16),
+                dp(12),
+                dp(if (isCompactOnline()) 12 else 16),
+                dp(12),
+            )
+            background =
+                LudoProofTheme
+                    .hudPanelDrawable(
+                        this@MainActivity,
+                        goldBorder = true,
+                    )
+            elevation =
+                dp(6).toFloat()
+
+            matchInfoText =
+                TextView(
+                    this@MainActivity,
+                ).apply {
+                    text =
+                        "No active match"
+                    LudoProofTheme.body(
+                        this,
+                        11f,
+                        centered = true,
+                        bright = true,
+                    )
+                    setTextColor(
+                        0xFF6EE7FF.toInt(),
+                    )
+                }
+            addView(
+                matchInfoText,
+            )
+
+            turnText =
+                TextView(
+                    this@MainActivity,
+                ).apply {
+                    text =
+                        "Waiting for a match."
+                    LudoProofTheme.title(
+                        this,
+                        if (isCompactOnline()) 20f else 23f,
+                        gold = true,
+                    )
+                    setPadding(
+                        dp(6),
+                        dp(5),
+                        dp(6),
+                        dp(5),
+                    )
+                }
+            addView(
+                turnText,
+            )
+
+            playersText =
+                TextView(
+                    this@MainActivity,
+                ).apply {
+                    text =
+                        "Players will appear here."
+                    LudoProofTheme.body(
+                        this,
+                        if (isCompactOnline()) 11f else 12f,
+                        centered = true,
+                        bright = true,
+                    )
+                    setPadding(
+                        dp(4),
+                        0,
+                        dp(4),
+                        0,
+                    )
+                }
+            addView(
+                playersText,
+            )
+        }
+
+    private fun onlineActionPanel():
+        LinearLayout =
+        LudoProofTheme
+            .panel(this)
+            .apply {
+                diceView =
+                    DiceView(
+                        this@MainActivity,
+                    )
+                addView(
+                    diceView,
+                    LinearLayout.LayoutParams(
+                        dp(102),
+                        dp(102),
+                    ).apply {
+                        gravity =
+                            Gravity.CENTER_HORIZONTAL
+                    },
+                )
+
+                verificationText =
+                    infoText(
+                        "No verified roll yet.",
+                        13f,
+                    ).apply {
+                        gravity =
+                            Gravity.CENTER
+                        setPadding(
+                            dp(8),
+                            dp(4),
+                            dp(8),
+                            dp(10),
+                        )
+                    }
+                addView(
+                    verificationText,
+                )
+
+                rollButton =
+                    button(
+                        "ROLL VERIFIED DICE",
+                    ) {
+                        rollVerifiedDice()
+                    }.apply {
+                        textSize =
+                            19f
+                    }
+                LudoProofTheme
+                    .primary(
+                        rollButton,
+                    )
+                addView(
+                    rollButton,
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dp(60),
+                    ),
+                )
+
+                startButton =
+                    button(
+                        "START MATCH",
+                    ) {
+                        withSession {
+                                code,
+                                token,
+                            ->
+                            runNetwork(
+                                action = {
+                                    api.start(
+                                        code,
+                                        token,
+                                    )
+                                },
+                            )
+                        }
+                    }
+                LudoProofTheme
+                    .positive(
+                        startButton,
+                    )
+
+                refreshButton =
+                    button(
+                        "REFRESH",
+                    ) {
+                        refreshState()
+                    }
+
+                addView(
+                    responsiveControlRow(
+                        startButton,
+                        refreshButton,
+                    ),
+                )
+
+                shareButton =
+                    button(
+                        "SHARE CODE",
+                    ) {
+                        shareMatch()
+                    }
+                proofButton =
+                    button(
+                        "PROOF / HISTORY",
+                    ) {
+                        toggleProofDetails()
+                    }
+                addView(
+                    responsiveControlRow(
+                        shareButton,
+                        proofButton,
+                    ),
+                )
+
+                proofDetailsText =
+                    TextView(
+                        this@MainActivity,
+                    ).apply {
+                        visibility =
+                            View.GONE
+                    }
+
+                statusText =
+                    TextView(
+                        this@MainActivity,
+                    ).apply {
+                        text =
+                            "Create or join a match to begin."
+                        LudoProofTheme.body(
+                            this,
+                            11.5f,
+                            centered = true,
+                        )
+                        setPadding(
+                            dp(8),
+                            dp(11),
+                            dp(8),
+                            0,
+                        )
+                    }
+                addView(
+                    statusText,
+                )
+            }
+
+    private fun responsiveControlRow(
+        vararg views: View,
+    ):
+        LinearLayout =
+        LinearLayout(this).apply {
+            orientation =
+                if (isCompactOnline()) {
+                    LinearLayout.VERTICAL
+                } else {
+                    LinearLayout.HORIZONTAL
+                }
+
+            for (
+                view in
+                views
+            ) {
+                addView(
+                    view,
+                    if (isCompactOnline()) {
+                        LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            dp(54),
+                        ).apply {
+                            topMargin =
+                                dp(9)
+                        }
+                    } else {
+                        LinearLayout.LayoutParams(
+                            0,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            1f,
+                        ).apply {
+                            setMargins(
+                                dp(4),
+                                dp(10),
+                                dp(4),
+                                0,
+                            )
+                        }
+                    },
+                )
+            }
+        }
+
+    private fun onlineSectionParams(
+        topMarginDp: Int,
+    ):
+        LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply {
+            topMargin =
+                dp(
+                    topMarginDp,
+                )
+        }
+
+    private fun isCompactOnline():
+        Boolean =
+        LudoProofTheme
+            .isCompactWidth(this)
 
     private fun createMatch() {
         val displayName =
@@ -938,43 +1373,66 @@ class MainActivity : Activity() {
                 response,
             )
 
-        envelope.playerId?.let { resolvedPlayerId ->
-            playerId = resolvedPlayerId
-            val code = matchId
-            val token = playerToken
-            if (code != null && token != null) {
-                persistSessionSecurely(
-                    code = code,
-                    id = resolvedPlayerId,
-                    token = token,
-                )
+        envelope.playerId
+            ?.let {
+                    resolvedPlayerId ->
+                playerId =
+                    resolvedPlayerId
+                val code =
+                    matchId
+                val token =
+                    playerToken
+                if (
+                    code != null &&
+                    token != null
+                ) {
+                    persistSessionSecurely(
+                        code =
+                            code,
+                        id =
+                            resolvedPlayerId,
+                        token =
+                            token,
+                    )
+                }
             }
-        }
 
         val state =
             envelope.state
-        if (state == null) {
+        if (
+            state ==
+            null
+        ) {
             showStatus(
-                response.toString(2),
+                response
+                    .toString(2),
             )
             updateRollButton()
             return
         }
 
-        currentState = state
-        matchId = state.matchId
+        currentState =
+            state
+        matchId =
+            state.matchId
 
-        response.optJSONObject(
-            "state",
-        )?.let {
-            safeState ->
-            cachedMatchStore.save(
-                envelope.playerId
-                    ?: playerId,
-                safeState,
+        response
+            .optJSONObject(
+                "state",
             )
-        }
-        reconcilePendingSecret(state)
+            ?.let {
+                    safeState ->
+                cachedMatchStore
+                    .save(
+                        envelope.playerId
+                            ?: playerId,
+                        safeState,
+                    )
+            }
+
+        reconcilePendingSecret(
+            state,
+        )
         boardView.bind(
             state,
             playerId,
@@ -982,15 +1440,25 @@ class MainActivity : Activity() {
 
         matchInfoText.text =
             buildString {
-                append("Match: ")
-                append(state.matchId)
-                append("  •  ")
-                append(state.status)
+                append(
+                    "MATCH • ",
+                )
+                append(
+                    state.matchId,
+                )
+                append(
+                    "   •   ",
+                )
+                append(
+                    state.status,
+                )
                 if (
                     state.rulesetId
                         .isNotBlank()
                 ) {
-                    append("\nRules: ")
+                    append(
+                        "   •   ",
+                    )
                     append(
                         state.rulesetId,
                     )
@@ -1000,7 +1468,8 @@ class MainActivity : Activity() {
         playersText.text =
             state.players
                 .joinToString(
-                    separator = "   ",
+                    separator =
+                        "\n",
                 ) {
                     player ->
                     val marker =
@@ -1008,28 +1477,44 @@ class MainActivity : Activity() {
                             player.playerId ==
                             playerId
                         ) {
-                            " (You)"
+                            "  •  YOU"
                         } else {
                             ""
                         }
                     player.color +
-                        ": " +
+                        "  •  " +
                         player.displayName +
                         marker
                 }
 
-        updateTurnBanner(state)
-        updateVerification(state)
+        updateTurnBanner(
+            state,
+        )
+        updateVerification(
+            state,
+        )
         proofDetailsText.text =
-            proofDetails(state)
-        updateControls(state)
+            proofDetails(
+                state,
+            )
+        updateControls(
+            state,
+        )
         updateRollButton()
 
-        if (announce) {
+        if (
+            announce
+        ) {
             showStatus(
-                "State revision updated. " +
-                    "Event index: " +
-                    state.randomEventIndex,
+                if (
+                    state.status ==
+                    "WAITING"
+                ) {
+                    "Room synced • share the code and wait for players."
+                } else {
+                    "State revision updated. Event index: " +
+                        state.randomEventIndex
+                },
             )
         }
     }
@@ -1062,24 +1547,33 @@ class MainActivity : Activity() {
     private fun updateTurnBanner(
         state: MatchSnapshot,
     ) {
-        when (state.status) {
+        when (
+            state.status
+        ) {
             "WAITING" -> {
                 turnText.text =
                     if (
-                        state.players.size < 2
+                        state.players.size <
+                        2
                     ) {
-                        "Waiting for another player"
+                        "WAITING FOR PLAYER"
+                    } else if (
+                        state.hostPlayerId ==
+                        playerId
+                    ) {
+                        "READY • START THE MATCH"
                     } else {
-                        "Ready — host can start"
+                        "READY • WAITING FOR HOST"
                     }
             }
 
             "FINISHED" -> {
                 val winner =
-                    state.players.find {
-                        it.playerId ==
-                            state.winnerPlayerId
-                    }
+                    state.players
+                        .find {
+                            it.playerId ==
+                                state.winnerPlayerId
+                        }
                 turnText.text =
                     "Winner: " +
                         (
@@ -1091,14 +1585,17 @@ class MainActivity : Activity() {
 
             else -> {
                 val active =
-                    state.players.getOrNull(
-                        state.turnSeat,
-                    )
+                    state.players
+                        .getOrNull(
+                            state.turnSeat,
+                        )
                 val mine =
                     active?.playerId ==
                         playerId
                 turnText.text =
-                    if (mine) {
+                    if (
+                        mine
+                    ) {
                         "Your turn"
                     } else {
                         "Turn: " +
@@ -1191,44 +1688,68 @@ class MainActivity : Activity() {
         state: MatchSnapshot,
     ) {
         val mySeat =
-            state.players.indexOfFirst {
-                it.playerId == playerId
-            }
+            state.players
+                .indexOfFirst {
+                    it.playerId ==
+                        playerId
+                }
         val myTurn =
-            state.status == "ACTIVE" &&
-                mySeat >= 0 &&
-                state.turnSeat == mySeat
+            state.status ==
+                "ACTIVE" &&
+                mySeat >=
+                0 &&
+                state.turnSeat ==
+                mySeat
 
+        val waiting =
+            state.status ==
+                "WAITING"
+        val active =
+            state.status ==
+                "ACTIVE"
+        val finished =
+            state.status ==
+                "FINISHED"
         val canEnterAnotherMatch =
-            state.status == "FINISHED"
+            finished
 
         lobbyPanel.visibility =
-            if (canEnterAnotherMatch) {
+            if (
+                canEnterAnotherMatch
+            ) {
                 View.VISIBLE
             } else {
                 View.GONE
             }
 
         nameInput.visibility =
-            if (canEnterAnotherMatch) {
+            if (
+                canEnterAnotherMatch
+            ) {
                 View.VISIBLE
             } else {
                 View.GONE
             }
         matchInput.visibility =
-            if (canEnterAnotherMatch) {
+            if (
+                canEnterAnotherMatch
+            ) {
                 View.VISIBLE
             } else {
                 View.GONE
             }
         createButton.visibility =
-            if (canEnterAnotherMatch) {
+            if (
+                canEnterAnotherMatch
+            ) {
                 View.VISIBLE
             } else {
                 View.GONE
             }
         joinButton.visibility =
-            if (canEnterAnotherMatch) {
+            if (
+                canEnterAnotherMatch
+            ) {
                 View.VISIBLE
             } else {
                 View.GONE
@@ -1245,20 +1766,87 @@ class MainActivity : Activity() {
         matchInput.isEnabled =
             canEnterAnotherMatch
 
+        matchStatusPanel.visibility =
+            View.VISIBLE
+        boardFrame.visibility =
+            if (
+                active ||
+                finished
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+        actionPanel.visibility =
+            View.VISIBLE
+
+        diceView.visibility =
+            if (
+                active ||
+                finished
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+        verificationText.visibility =
+            if (
+                active ||
+                finished
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
         startButton.visibility =
-            if (state.status == "WAITING") {
+            if (
+                waiting
+            ) {
                 View.VISIBLE
             } else {
                 View.GONE
             }
         startButton.isEnabled =
             isOnline &&
-                state.status == "WAITING" &&
-                state.players.size >= 2 &&
-                state.hostPlayerId == playerId
+                waiting &&
+                state.players.size >=
+                2 &&
+                state.hostPlayerId ==
+                playerId
+
+        refreshButton.visibility =
+            if (
+                finished
+            ) {
+                View.GONE
+            } else {
+                View.VISIBLE
+            }
+        refreshButton.isEnabled =
+            isOnline &&
+                !finished
+
+        shareButton.visibility =
+            View.VISIBLE
+        shareButton.isEnabled =
+            state.matchId
+                .isNotBlank()
+
+        proofButton.visibility =
+            if (
+                active ||
+                finished
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
 
         rollButton.visibility =
-            if (state.status == "ACTIVE") {
+            if (
+                active
+            ) {
                 View.VISIBLE
             } else {
                 View.GONE
@@ -1269,11 +1857,6 @@ class MainActivity : Activity() {
                 state.pendingRoll
                     ?.status !=
                 "RESOLVED"
-
-        refreshButton.isEnabled =
-            isOnline
-        shareButton.isEnabled =
-            state.matchId.isNotBlank()
     }
 
     private fun updateRollButton() {
@@ -1673,24 +2256,7 @@ class MainActivity : Activity() {
             }
         }
 
-    private fun row(
-        vararg views: View,
-    ): LinearLayout =
-        LinearLayout(this).apply {
-            orientation =
-                LinearLayout.HORIZONTAL
-            for (view in views) {
-                addView(
-                    view,
-                    LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams
-                            .WRAP_CONTENT,
-                        1f,
-                    ),
-                )
-            }
-        }
+
 
     private fun shortDigest(
         value: String?,
