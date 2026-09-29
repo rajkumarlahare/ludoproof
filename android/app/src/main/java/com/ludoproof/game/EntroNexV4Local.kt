@@ -237,6 +237,11 @@ object EntroNexV4Local {
     const val NATURAL_WORLD_V1 =
         "entronex-natural-world-v1"
 
+    private const val OUTCOME_KDF_INFO =
+        "entronex:v4:outcome"
+    private const val NATURAL_WORLD_KDF_INFO =
+        "entronex:v4:natural-world"
+
     private const val TWO_POW_48 =
         281_474_976_710_656L
     private const val JS_SAFE_INTEGER_MAX =
@@ -430,7 +435,7 @@ object EntroNexV4Local {
                 normalizedServerSeed,
                 normalizedClientSeed,
                 transcriptDigest,
-                "outcome",
+                OUTCOME_KDF_INFO,
             )
         val outcomeRng =
             HmacStream(
@@ -451,7 +456,7 @@ object EntroNexV4Local {
                 normalizedServerSeed,
                 normalizedClientSeed,
                 transcriptDigest,
-                "natural-world",
+                NATURAL_WORLD_KDF_INFO,
             )
         val world =
             sampleNaturalWorld(
@@ -1521,7 +1526,7 @@ object EntroNexV4Local {
         serverSeed: String,
         clientSeed: String,
         transcriptDigest: String,
-        label: String,
+        infoLabel: String,
     ): ByteArray {
         val ikm =
             serverSeed.hexToBytes() +
@@ -1534,10 +1539,7 @@ object EntroNexV4Local {
                 transcriptDigest
                     .hexToBytes(),
             info =
-                (
-                    "entronex:v4:" +
-                        label
-                    ).toByteArray(
+                infoLabel.toByteArray(
                     Charsets.UTF_8,
                 ),
             length =
