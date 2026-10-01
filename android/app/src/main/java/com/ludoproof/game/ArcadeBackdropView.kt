@@ -37,10 +37,10 @@ class ArcadeBackdropView @JvmOverloads constructor(
                 0f,
                 h,
                 intArrayOf(
-                    Color.rgb(5, 38, 126),
-                    Color.rgb(8, 82, 202),
-                    Color.rgb(3, 50, 145),
-                    Color.rgb(2, 25, 82),
+                    Color.rgb(3, 23, 97),
+                    Color.rgb(5, 63, 182),
+                    Color.rgb(4, 48, 155),
+                    Color.rgb(3, 24, 91),
                 ),
                 floatArrayOf(
                     0f,
@@ -109,7 +109,7 @@ class ArcadeBackdropView @JvmOverloads constructor(
                 255,
             )
         linePaint.strokeWidth =
-            dp(9f)
+            dp(3f)
 
         val positions =
             listOf(
@@ -262,6 +262,11 @@ class ArcadeBackdropView @JvmOverloads constructor(
                     207,
                     255,
                 )
+            paint.color = Color.WHITE
+            paint.shader = RadialGradient(cx, cy, radius * 5f, 0xAA269FFF.toInt(), Color.TRANSPARENT, Shader.TileMode.CLAMP)
+            canvas.drawCircle(cx, cy, radius * 5f, paint)
+            paint.shader = null
+            paint.color = 0xC08BE9FF.toInt()
             val path =
                 Path().apply {
                     moveTo(

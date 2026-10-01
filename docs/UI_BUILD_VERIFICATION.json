@@ -1,0 +1,24 @@
+{
+  "verifiedAt": "2026-10-01T09:10:53.6845107Z",
+  "androidTests": 15,
+  "backendTests": 54,
+  "releaseLintErrors": 0,
+  "releaseLintWarnings": 55,
+  "artifacts": [
+    {
+      "path": "android/app/build/outputs/apk/debug/app-debug.apk",
+      "bytes": 8146325,
+      "sha256": "dea617a3d87896a19eb7415d2acf8e418c3ec70ada83514d45335b9679ead04a"
+    },
+    {
+      "path": "android/app/build/outputs/apk/release/app-release-unsigned.apk",
+      "bytes": 4638049,
+      "sha256": "8e4d98ad04bbfb86fd1dbfa051f0f3890f28ea682a00a3bce911855581672c2d"
+    },
+    {
+      "path": "android/app/build/outputs/bundle/release/app-release.aab",
+      "bytes": 4663827,
+      "sha256": "40f0410ed6cc50f3e5c17ed0afcdb99ae4f15f9cb31367e7acb954894e813c31"
+    }
+  ]
+}

@@ -59,6 +59,7 @@ class DiceView @JvmOverloads constructor(
 
     private var face = 1
     private var rolling = false
+    private var tickIntervalMs = 85L
 
     private val ticker =
         object : Runnable {
@@ -68,7 +69,7 @@ class DiceView @JvmOverloads constructor(
                 invalidate()
                 postDelayed(
                     this,
-                    85L,
+                    tickIntervalMs,
                 )
             }
         }
@@ -79,7 +80,14 @@ class DiceView @JvmOverloads constructor(
         contentDescription =
             "Dice verification in progress."
         removeCallbacks(ticker)
-        post(ticker)
+        val preferences = GamePreferences(context)
+        tickIntervalMs = when (preferences.speed) {
+            "Relaxed" -> 140L
+            "Fast" -> 55L
+            else -> 85L
+        }
+        if (preferences.animations && android.animation.ValueAnimator.areAnimatorsEnabled()) post(ticker)
+        invalidate()
     }
 
     fun showOutcome(outcome: Int) {
@@ -101,6 +109,7 @@ class DiceView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
+        rolling = false
         removeCallbacks(ticker)
         super.onDetachedFromWindow()
     }
@@ -174,6 +183,7 @@ class DiceView @JvmOverloads constructor(
                 size - inset,
                 size - inset,
             )
+        facePaint.color = Color.WHITE
         facePaint.shader =
             LinearGradient(
                 rect.left,

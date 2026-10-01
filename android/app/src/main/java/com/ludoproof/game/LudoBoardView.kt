@@ -11,6 +11,7 @@ import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import kotlin.math.hypot
 import kotlin.math.min
 
@@ -30,7 +31,12 @@ class LudoBoardView @JvmOverloads constructor(
 
     private var snapshot: MatchSnapshot? = null
     private var localPlayerId: String? = null
+    private val tokenArt = mutableMapOf<Int, TokenArt>()
     private val tokenHits = mutableListOf<TokenHit>()
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private var pressedToken: TokenHit? = null
+    private var touchStartX = 0f
+    private var touchStartY = 0f
 
     private val fillPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -67,15 +73,16 @@ class LudoBoardView @JvmOverloads constructor(
     ) {
         snapshot = state
         localPlayerId = playerId
+        // A response can arrive between touch-down and touch-up.
+        pressedToken = null
+        tokenHits.clear()
 
         val localPlayer =
             state?.players?.find {
                 it.playerId == playerId
             }
         val legalTokens =
-            state?.pendingRoll
-                ?.legalTokenIndexes
-                .orEmpty()
+            selectableTokenIndexes(state, playerId)
                 .sorted()
                 .joinToString(", ") {
                     (it + 1).toString()
@@ -128,27 +135,38 @@ class LudoBoardView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action != MotionEvent.ACTION_UP) {
-            return true
+        if (!isEnabled) {
+            pressedToken = null
+            return false
         }
-
-        val hit =
-            tokenHits.minByOrNull {
-                hypot(
-                    (event.x - it.x).toDouble(),
-                    (event.y - it.y).toDouble(),
-                )
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                touchStartX = event.x
+                touchStartY = event.y
+                pressedToken = tokenHits.minByOrNull {
+                    hypot(event.x - it.x, event.y - it.y)
+                }?.takeIf {
+                    hypot(event.x - it.x, event.y - it.y) <= it.radius
+                }
+                return pressedToken != null
             }
-
-        if (
-            hit != null &&
-            hypot(
-                (event.x - hit.x).toDouble(),
-                (event.y - hit.y).toDouble(),
-            ) <= hit.radius
-        ) {
-            performClick()
-            onTokenSelected?.invoke(hit.tokenIndex)
+            MotionEvent.ACTION_MOVE -> {
+                if (hypot(event.x - touchStartX, event.y - touchStartY) > touchSlop) {
+                    pressedToken = null
+                }
+            }
+            MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_POINTER_DOWN -> pressedToken = null
+            MotionEvent.ACTION_UP -> {
+                val hit = pressedToken
+                pressedToken = null
+                if (hit != null &&
+                    hypot(event.x - touchStartX, event.y - touchStartY) <= touchSlop &&
+                    hypot(event.x - hit.x, event.y - hit.y) <= hit.radius
+                ) {
+                    performClick()
+                    onTokenSelected?.invoke(hit.tokenIndex)
+                }
+            }
         }
         return true
     }
@@ -406,9 +424,7 @@ class LudoBoardView @JvmOverloads constructor(
     ) {
         val state = snapshot ?: return
         val legal =
-            state.pendingRoll
-                ?.legalTokenIndexes
-                .orEmpty()
+            selectableTokenIndexes(state, localPlayerId)
         val localId = localPlayerId
 
         state.players.forEach { player ->
@@ -436,7 +452,7 @@ class LudoBoardView @JvmOverloads constructor(
 
                 val x = base.first + offset.first
                 val y = base.second + offset.second
-                val radius = cell * 0.27f
+                val radius = cell * 0.39f
                 val isLegal =
                     player.playerId == localId &&
                         tokenIndex in legal &&
@@ -516,75 +532,8 @@ class LudoBoardView @JvmOverloads constructor(
         radius: Float,
         color: Int,
     ) {
-        fillPaint.shader = null
-        fillPaint.color =
-            Color.argb(
-                80,
-                0,
-                0,
-                0,
-            )
-        canvas.drawOval(
-            x - radius * 0.8f,
-            y + radius * 0.62f,
-            x + radius * 0.8f,
-            y + radius * 1.02f,
-            fillPaint,
-        )
-
-        fillPaint.shader =
-            RadialGradient(
-                x - radius * 0.28f,
-                y - radius * 0.35f,
-                radius * 1.25f,
-                intArrayOf(
-                    Color.WHITE,
-                    color,
-                    darken(color),
-                ),
-                floatArrayOf(
-                    0f,
-                    0.30f,
-                    1f,
-                ),
-                Shader.TileMode.CLAMP,
-            )
-        canvas.drawCircle(
-            x,
-            y - radius * 0.18f,
-            radius * 0.72f,
-            fillPaint,
-        )
-        fillPaint.shader = null
-        fillPaint.color = color
-        canvas.drawRoundRect(
-            x - radius * 0.58f,
-            y + radius * 0.16f,
-            x + radius * 0.58f,
-            y + radius * 0.72f,
-            radius * 0.28f,
-            radius * 0.28f,
-            fillPaint,
-        )
-        canvas.drawCircle(
-            x,
-            y - radius * 0.18f,
-            radius * 0.72f,
-            tokenStrokePaint,
-        )
+        tokenArt.getOrPut(color) { TokenArt(color) }.draw(canvas, x, y, radius * 3.1f)
     }
-
-    private fun darken(
-        color: Int,
-    ): Int =
-        Color.rgb(
-            (Color.red(color) * 0.56f)
-                .toInt(),
-            (Color.green(color) * 0.56f)
-                .toInt(),
-            (Color.blue(color) * 0.56f)
-                .toInt(),
-        )
 
     private fun tokenCenter(
         player: PlayerSnapshot,

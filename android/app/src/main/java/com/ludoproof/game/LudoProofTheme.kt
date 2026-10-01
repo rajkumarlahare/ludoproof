@@ -7,8 +7,11 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
+import android.graphics.drawable.RippleDrawable
+import android.os.Build
 import android.view.Gravity
 import android.view.View
+import android.view.WindowInsets
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -35,10 +38,19 @@ object LudoProofTheme {
         activity.window.statusBarColor = NAVY_DARK
         activity.window.navigationBarColor = NAVY_DARK
         activity.window.decorView.systemUiVisibility = 0
+        if (Build.VERSION.SDK_INT >= 30) activity.window.setDecorFitsSystemWindows(false)
     }
 
     fun arcadeRoot(context: Context): Pair<FrameLayout, FrameLayout> {
         val root = FrameLayout(context)
+        root.setBackgroundColor(NAVY_DARK)
+        if (Build.VERSION.SDK_INT >= 30) {
+            root.setOnApplyWindowInsetsListener { view, insets ->
+                val safe = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout() or WindowInsets.Type.ime())
+                view.setPadding(safe.left, safe.top, safe.right, safe.bottom)
+                insets
+            }
+        }
         root.addView(
             ArcadeBackdropView(context),
             FrameLayout.LayoutParams(
@@ -62,19 +74,19 @@ object LudoProofTheme {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(context, 14), dp(context, 14), dp(context, 14), dp(context, 14))
             background = panelDrawable(context)
-            elevation = dp(context, 8).toFloat()
+            elevation = dp(context, 3).toFloat()
         }
 
     fun panelDrawable(context: Context): GradientDrawable =
         GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
             intArrayOf(
-                0xEC1B66C7.toInt(),
-                0xE8103F9C.toInt(),
+                0xDB215BBC.toInt(),
+                0xD51A4B9F.toInt(),
             ),
         ).apply {
-            cornerRadius = dp(context, 18f).toFloat()
-            setStroke(dp(context, 2), CYAN_BORDER)
+            cornerRadius = dp(context, 12f).toFloat()
+            setStroke(dp(context, 2), 0xFF3B82DB.toInt())
         }
 
     fun darkPanelDrawable(
@@ -88,8 +100,8 @@ object LudoProofTheme {
                 0xF3071C4E.toInt(),
             ),
         ).apply {
-            cornerRadius = dp(context, 18f).toFloat()
-            setStroke(dp(context, 2), if (goldBorder) GOLD else CYAN_BORDER)
+            cornerRadius = dp(context, 12f).toFloat()
+            setStroke(dp(context, 1), if (goldBorder) GOLD else 0xFF397CC9.toInt())
         }
 
     fun primary(button: Button) =
@@ -142,18 +154,7 @@ object LudoProofTheme {
         button.setTypeface(Typeface.DEFAULT_BOLD)
         button.gravity = Gravity.CENTER
         button.setTextColor(WHITE)
-        button.background =
-            GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(
-                    0xFFFFC442.toInt(),
-                    0xFFFF8B00.toInt(),
-                    0xFFE76A00.toInt(),
-                ),
-            ).apply {
-                shape = GradientDrawable.OVAL
-                setStroke(dp(button.context, 2), 0xFFFFE884.toInt())
-            }
+        button.background = GameButtonDrawable(intArrayOf(0xFFFFE77B.toInt(), 0xFFFFB719.toInt(), 0xFFE87900.toInt()), 27f)
         button.elevation = dp(button.context, 6).toFloat()
         button.minWidth = dp(button.context, 48)
         button.minHeight = dp(button.context, 48)
@@ -309,32 +310,17 @@ object LudoProofTheme {
     }
 
     fun selectedTile(view: View) {
-        view.background =
-            GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(
-                    0xFFFFE34D.toInt(),
-                    0xFFF2B212.toInt(),
-                ),
-            ).apply {
-                cornerRadius = dp(view.context, 14f).toFloat()
-                setStroke(dp(view.context, 2), 0xFFFFEE92.toInt())
-            }
+        if (view is TextView) {
+            view.setTextColor(NAVY_DARK)
+            view.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+        }
+        view.background = GameButtonDrawable(intArrayOf(0xFFFFE96A.toInt(), 0xFFF1BE26.toInt(), 0xFFD58C05.toInt()), 11f)
         view.elevation = dp(view.context, 5).toFloat()
     }
 
     fun normalTile(view: View) {
-        view.background =
-            GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(
-                    0xFF2B8CF7.toInt(),
-                    0xFF1262D1.toInt(),
-                ),
-            ).apply {
-                cornerRadius = dp(view.context, 14f).toFloat()
-                setStroke(dp(view.context, 1), 0xFF5BC2FF.toInt())
-            }
+        if (view is TextView) view.setTextColor(WHITE)
+        view.background = GameButtonDrawable(intArrayOf(0xFF438EF1.toInt(), 0xFF216AD1.toInt(), 0xFF1350A7.toInt()), 11f, 0xFF58A9F4.toInt())
         view.elevation = dp(view.context, 4).toFloat()
     }
 
@@ -384,31 +370,8 @@ object LudoProofTheme {
                 intArrayOf(0xFFAAC1E0.toInt(), WHITE),
             ),
         )
-        button.setShadowLayer(2f, 0f, 1f, 0x70000000)
-        val enabled =
-            GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                colors,
-            ).apply {
-                cornerRadius = dp(button.context, 26f).toFloat()
-                setStroke(dp(button.context, 2), strokeColor)
-            }
-        val disabled =
-            GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(
-                    0xFF4D6FA1.toInt(),
-                    0xFF34547F.toInt(),
-                ),
-            ).apply {
-                cornerRadius = dp(button.context, 26f).toFloat()
-                setStroke(dp(button.context, 1), 0xFF7D9BC4.toInt())
-            }
-        button.background =
-            StateListDrawable().apply {
-                addState(intArrayOf(-android.R.attr.state_enabled), disabled)
-                addState(intArrayOf(), enabled)
-            }
+        button.setShadowLayer(2f, 0f, dp(button.context, 1).toFloat(), 0xBB392700.toInt())
+        button.background = GameButtonDrawable(colors)
         button.minHeight = dp(button.context, 54)
         button.setPadding(
             dp(button.context, 16),

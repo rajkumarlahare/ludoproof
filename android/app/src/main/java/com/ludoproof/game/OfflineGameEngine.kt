@@ -38,6 +38,7 @@ class OfflineGameEngine(
     fun start(
         playerCount: Int,
         preferredColor: String = "RED",
+        displayNames: List<String> = emptyList(),
     ): MatchSnapshot {
         require(
             playerCount in
@@ -50,6 +51,10 @@ class OfflineGameEngine(
                 COLORS,
         ) {
             "Unsupported offline color"
+        }
+        require(displayNames.isEmpty() ||
+            (displayNames.size == playerCount && displayNames.all { it.trim().length in 2..24 })) {
+            "Each player name must contain 2 to 24 characters"
         }
 
         val colorOrder =
@@ -75,12 +80,7 @@ class OfflineGameEngine(
                                     seat +
                                         1
                                     ),
-                        displayName =
-                            "Player " +
-                                (
-                                    seat +
-                                        1
-                                    ),
+                        displayName = displayNames.getOrNull(seat)?.trim() ?: "Player ${seat + 1}",
                         color =
                             colorOrder[
                                 seat

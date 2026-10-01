@@ -12,22 +12,23 @@ class ConnectivityMonitor(
     private val manager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    private var registered = false
+    @Volatile private var registered = false
 
     private val callback =
         object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                onChanged(true)
+                if (registered) onChanged(isOnline())
             }
 
             override fun onLost(network: Network) {
-                onChanged(isOnline())
+                if (registered) onChanged(isOnline())
             }
 
             override fun onCapabilitiesChanged(
                 network: Network,
                 networkCapabilities: NetworkCapabilities,
             ) {
+                if (!registered) return
                 onChanged(
                     networkCapabilities.hasCapability(
                         NetworkCapabilities.NET_CAPABILITY_INTERNET,

@@ -14,102 +14,82 @@ import android.widget.ScrollView
 import android.widget.TextView
 
 object ArcadeDialogs {
-    fun showSettings(
-        context: Context,
-    ) {
-        val dialog =
-            baseDialog(
-                context,
-            )
-        val panel =
-            dialogPanel(
-                context,
-                "SETTINGS",
-                "CURRENT CONFIGURATION",
-                dialog,
-            )
-
-        panel.addView(
-            statusChip(
-                context,
-                "READ-ONLY IN THIS BUILD",
-                0xFF70E7FF.toInt(),
-            ),
-            fullWidthParams(
-                context,
-                topDp = 8,
-            ),
-        )
-
-        listOf(
-            Triple(
-                "Online sync",
-                "AUTO",
-                "Reconnects and refreshes the current verified match.",
-            ),
-            Triple(
-                "Proof mode",
-                "ENTRONEX V4",
-                "Online rolls use server commitments and attestations.",
-            ),
-            Triple(
-                "Offline rolls",
-                "V4 LOCAL",
-                "Same v4 derivation recomputed on this device.",
-            ),
-            Triple(
-                "Game speed",
-                "NORMAL",
-                "Standard animation and interaction timing.",
-            ),
-            Triple(
-                "Board",
-                "CLASSIC",
-                "Classic Ludo board presentation.",
-            ),
-            Triple(
-                "Dice",
-                "CLASSIC",
-                "Standard six-sided dice presentation.",
-            ),
-        ).forEach {
-                item ->
-            panel.addView(
-                settingsRow(
-                    context,
-                    item.first,
-                    item.second,
-                    item.third,
-                ),
-                fullWidthParams(
-                    context,
-                    topDp = 9,
-                ),
-            )
+    fun showSettings(context: Context) {
+        val preferences = GamePreferences(context)
+        val dialog = baseDialog(context)
+        val panel = dialogPanel(context, "SETTINGS", "MAKE YOURSELF AT HOME", dialog)
+        val speedGroup = android.widget.RadioGroup(context)
+        GamePreferences.SPEEDS.forEach { speed ->
+            speedGroup.addView(android.widget.RadioButton(context).apply {
+                id = View.generateViewId()
+                text = speed
+                textSize = 15f
+                setTextColor(LudoProofTheme.WHITE)
+                buttonTintList = android.content.res.ColorStateList.valueOf(LudoProofTheme.GOLD)
+                minHeight = dp(context, 48)
+                isChecked = preferences.speed == speed
+                setOnCheckedChangeListener { _, checked -> if (checked) preferences.speed = speed }
+            })
         }
-
-        panel.addView(
-            trustStrip(
-                context,
-                "VERIFICATION MODEL",
-                "Online uses remote EntroNex authority. Offline uses the same v4 derivation locally and does not claim remote attestation.",
-            ),
-            fullWidthParams(
-                context,
-                topDp = 12,
-            ),
-        )
-
-        dialog.setContentView(
-            panel,
-        )
-        sizeDialog(
-            dialog,
-            .92f,
-        )
+        // Restore selection after the buttons belong to the RadioGroup.
+        val selectedSpeed = GamePreferences.SPEEDS.indexOf(preferences.speed)
+        speedGroup.check(speedGroup.getChildAt(selectedSpeed).id)
+        ArcadeUi.add(panel, ArcadeUi.text(context, "Dice animation speed", 15f), 14)
+        ArcadeUi.add(panel, speedGroup, 2)
+        fun toggle(label: String, checked: Boolean, save: (Boolean) -> Unit) {
+            ArcadeUi.add(panel, android.widget.Switch(context).apply {
+                text = label
+                textSize = 15f
+                setTextColor(LudoProofTheme.WHITE)
+                minHeight = dp(context, 56)
+                isChecked = checked
+                thumbTintList = android.content.res.ColorStateList.valueOf(LudoProofTheme.GOLD)
+                setOnCheckedChangeListener { _, value -> save(value) }
+            }, 4)
+        }
+        toggle("Dice animation", preferences.animations) { preferences.animations = it }
+        toggle("Touch feedback", preferences.haptics) { preferences.haptics = it }
+        ArcadeUi.add(panel, ArcadeUi.text(context,
+            "Saved automatically. Speed changes presentation only; dice outcomes and game rules stay the same. System motion and vibration settings are respected.", 12f), 14)
+        ArcadeUi.add(panel, ArcadeUi.button(context, "Done", primary = true) { dialog.dismiss() }, 16)
+        dialog.setContentView(scrollablePanel(context, panel))
+        sizeDialog(dialog, .92f)
         dialog.show()
     }
 
+    fun showInfo(context: Context, title: String, body: String) {
+        val dialog = baseDialog(context)
+        val panel = dialogPanel(context, title, "LUDOPROOF", dialog)
+        ArcadeUi.add(panel, ArcadeUi.text(context, body, 15f), 16)
+        ArcadeUi.add(panel, ArcadeUi.button(context, "Got it", primary = true) { dialog.dismiss() }, 20)
+        dialog.setContentView(scrollablePanel(context, panel))
+        sizeDialog(dialog, .92f)
+        dialog.show()
+    }
+
+    fun confirm(context: Context, title: String, body: String, actionLabel: String, action: () -> Unit) {
+        val dialog = baseDialog(context)
+        val panel = dialogPanel(context, title, "LOCAL GAME", dialog)
+        ArcadeUi.add(panel, ArcadeUi.text(context, body, 15f), 14)
+        ArcadeUi.add(panel, ArcadeUi.button(context, actionLabel, primary = true) {
+            dialog.dismiss()
+            action()
+        }, 18)
+        ArcadeUi.add(panel, ArcadeUi.button(context, "Keep playing") { dialog.dismiss() }, 8)
+        dialog.setContentView(scrollablePanel(context, panel))
+        sizeDialog(dialog, .92f)
+        dialog.show()
+    }
+
+    private fun scrollablePanel(context: Context, panel: View): ScrollView =
+        object : ScrollView(context) {
+            override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                val limit = (resources.displayMetrics.heightPixels * .85f).toInt()
+                val available = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.UNSPECIFIED) limit
+                    else minOf(limit, MeasureSpec.getSize(heightMeasureSpec))
+                super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(available, MeasureSpec.AT_MOST))
+            }
+        }.apply { addView(panel) }
     fun showNaturalWorldAudit(
         context: Context,
         audit: OfflineRandomnessAudit?,
@@ -468,9 +448,7 @@ object ArcadeDialogs {
             )
         }
 
-        dialog.setContentView(
-            panel,
-        )
+        dialog.setContentView(scrollablePanel(context, panel))
         sizeDialog(
             dialog,
             .94f,
@@ -557,9 +535,7 @@ object ArcadeDialogs {
             },
         )
 
-        dialog.setContentView(
-            panel,
-        )
+        dialog.setContentView(scrollablePanel(context, panel))
         sizeDialog(
             dialog,
             .92f,
