@@ -140,6 +140,16 @@ internal fun MainActivity.updateControls(
             View.GONE
         }
 
+    if (
+        canEnterAnotherMatch
+    ) {
+        restorePublicMatchmakingUi()
+    } else {
+        setPublicSearchUi(
+            searching = false,
+        )
+    }
+
     nameInput.visibility =
         if (
             canEnterAnotherMatch
