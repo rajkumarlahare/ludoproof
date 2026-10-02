@@ -48,19 +48,27 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
     val horizontalPaddingDp =
         LudoProofTheme
             .pageHorizontalPaddingDp(this)
-    val availableWidth =
-        (
-            resources.displayMetrics.widthPixels -
-                dp(horizontalPaddingDp * 2)
-            ).coerceAtLeast(1)
+    val isExpandedWidth =
+        LudoProofTheme
+            .isExpandedWidth(this)
     val contentWidth =
-        minOf(
-            availableWidth,
-            dp(
-                LudoProofTheme
-                    .pageMaxContentWidthDp(this),
-            ),
-        )
+        if (isExpandedWidth) {
+            minOf(
+                resources.displayMetrics.widthPixels,
+                dp(
+                    LudoProofTheme
+                        .pageMaxContentWidthDp(this),
+                ),
+            )
+        } else {
+            resources.displayMetrics.widthPixels
+        }
+    val sectionSideMargin =
+        if (isExpandedWidth) {
+            0
+        } else {
+            dp(horizontalPaddingDp)
+        }
 
     val content =
         LinearLayout(this).apply {
@@ -96,13 +104,27 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         backHeader(
             "LOCAL • CLASSIC",
         ),
+        LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply {
+            leftMargin =
+                sectionSideMargin
+            rightMargin =
+                sectionSideMargin
+        },
     )
 
     content.addView(
         gameplayHud(),
         gameplaySectionParams(
             if (isCompactSetup()) 12 else 16,
-        ),
+        ).apply {
+            leftMargin =
+                sectionSideMargin
+            rightMargin =
+                sectionSideMargin
+        },
     )
 
     resultPanel =
@@ -115,7 +137,12 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         resultPanel,
         gameplaySectionParams(
             if (isCompactSetup()) 12 else 14,
-        ),
+        ).apply {
+            leftMargin =
+                sectionSideMargin
+            rightMargin =
+                sectionSideMargin
+        },
     )
 
     boardView =
@@ -142,34 +169,23 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
             }
         }
 
-    val frame =
-        LudoProofTheme
-            .boardFrame(this)
-    frame.addView(
-        boardView,
-        FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-        ),
-    )
-
     content.addView(
-        frame,
+        boardView,
         gameplaySectionParams(
             if (isCompactSetup()) 12 else 14,
-        ).apply {
-            leftMargin =
-                dp(2)
-            rightMargin =
-                dp(2)
-        },
+        ),
     )
 
     content.addView(
         gameplayActionPanel(),
         gameplaySectionParams(
             if (isCompactSetup()) 12 else 14,
-        ),
+        ).apply {
+            leftMargin =
+                sectionSideMargin
+            rightMargin =
+                sectionSideMargin
+        },
     )
 
     setContentView(root)
