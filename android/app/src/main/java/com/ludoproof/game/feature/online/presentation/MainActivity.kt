@@ -49,6 +49,13 @@ class MainActivity : Activity() {
     internal lateinit var connectionText: TextView
     internal lateinit var boardView: LudoBoardView
     internal lateinit var diceView: DiceView
+    internal lateinit var findMatchButton: Button
+    internal lateinit var cancelMatchmakingButton: Button
+    internal lateinit var twoPlayerButton: Button
+    internal lateinit var fourPlayerButton: Button
+    internal lateinit var matchmakingStatusText: TextView
+    internal lateinit var matchmakingSlotsText: TextView
+    internal lateinit var matchmakingTimerText: TextView
     internal lateinit var createButton: Button
     internal lateinit var joinButton: Button
     internal lateinit var startButton: Button
@@ -96,6 +103,75 @@ class MainActivity : Activity() {
         get() = uiStateHolder.value.isOnline
         set(value) { uiStateHolder.update { it.copy(isOnline = value) } }
 
+    internal var selectedPublicPlayerCount =
+        2
+
+    @Volatile
+    internal var matchmakingRequestInFlight =
+        false
+
+    @Volatile
+    internal var realtimeConnected =
+        false
+
+    internal var lastRealtimeRevision =
+        -1
+
+    internal val realtimeRefreshRunnable =
+        Runnable {
+            if (
+                canRenderUi() &&
+                isOnline &&
+                playerToken != null
+            ) {
+                refreshState(
+                    silent = true,
+                )
+            }
+        }
+
+    internal val matchmakingPollRunnable =
+        object : Runnable {
+            override fun run() {
+                if (
+                    canRenderUi() &&
+                    isOnline &&
+                    (
+                        matchId == null ||
+                        currentState
+                            ?.status ==
+                        "FINISHED"
+                    ) &&
+                    publicMatchmakingStore.load() !=
+                    null
+                ) {
+                    pollPublicMatchmaking()
+                }
+                mainHandler.postDelayed(
+                    this,
+                    MATCHMAKING_POLL_MS,
+                )
+            }
+        }
+
+    internal val realtimeReconnectRunnable =
+        object : Runnable {
+            override fun run() {
+                if (
+                    canRenderUi() &&
+                    isOnline &&
+                    playerToken != null &&
+                    !realtimeConnected
+                ) {
+                    connectRealtimeIfPossible()
+                }
+                mainHandler.postDelayed(
+                    this,
+                    REALTIME_RECONNECT_MS,
+                )
+            }
+        }
+
     internal val statePollRunnable =
         object : Runnable {
             override fun run() {
@@ -134,6 +210,55 @@ class MainActivity : Activity() {
         CachedMatchStore(this)
     }
 
+    internal val publicMatchmakingStore by lazy {
+        PublicMatchmakingStore(this)
+    }
+
+    internal val realtimeClient by lazy {
+        MatchRealtimeClient(
+            onRevision = {
+                    revision,
+                    _,
+                ->
+                mainHandler.post {
+                    if (
+                        !canRenderUi()
+                    ) {
+                        return@post
+                    }
+
+                    if (
+                        revision >
+                        lastRealtimeRevision
+                    ) {
+                        lastRealtimeRevision =
+                            revision
+                        mainHandler.removeCallbacks(
+                            realtimeRefreshRunnable,
+                        )
+                        mainHandler.postDelayed(
+                            realtimeRefreshRunnable,
+                            120L,
+                        )
+                    }
+                }
+            },
+            onConnectionChanged = {
+                    connected ->
+                mainHandler.post {
+                    if (
+                        !canRenderUi()
+                    ) {
+                        return@post
+                    }
+                    realtimeConnected =
+                        connected
+                    updateConnectionLabel()
+                }
+            },
+        )
+    }
+
     internal val connectivityMonitor by lazy {
         ConnectivityMonitor(this) { online ->
             mainHandler.post {
@@ -147,23 +272,12 @@ class MainActivity : Activity() {
                     isOnline != online
                 isOnline = online
 
-                if (
-                    ::connectionText.isInitialized
-                ) {
-                    connectionText.text =
-                        if (online) {
-                            "● ONLINE"
-                        } else {
-                            "● OFFLINE"
-                        }
-                    connectionText.setTextColor(
-                        if (online) {
-                            0xFF65EF55.toInt()
-                        } else {
-                            LudoProofTheme.GOLD
-                        },
-                    )
+                if (!online) {
+                    realtimeConnected =
+                        false
+                    realtimeClient.disconnect()
                 }
+                updateConnectionLabel()
 
                 currentState?.let {
                     updateControls(it)
@@ -182,6 +296,13 @@ class MainActivity : Activity() {
                     refreshState(
                         silent = true,
                     )
+                    connectRealtimeIfPossible()
+                } else if (
+                    changed &&
+                    publicMatchmakingStore.load() !=
+                    null
+                ) {
+                    pollPublicMatchmaking()
                 }
             }
         }
@@ -416,6 +537,7 @@ class MainActivity : Activity() {
 
         setContentView(root)
         updateRollButton()
+        restorePublicMatchmakingUi()
 
         if (
             matchId != null &&
@@ -445,6 +567,19 @@ class MainActivity : Activity() {
             statePollRunnable,
             STATE_POLL_MS,
         )
+        mainHandler.removeCallbacks(
+            matchmakingPollRunnable,
+        )
+        mainHandler.post(
+            matchmakingPollRunnable,
+        )
+        mainHandler.removeCallbacks(
+            realtimeReconnectRunnable,
+        )
+        mainHandler.post(
+            realtimeReconnectRunnable,
+        )
+        connectRealtimeIfPossible()
     }
 
     override fun onStop() {
@@ -452,6 +587,16 @@ class MainActivity : Activity() {
         mainHandler.removeCallbacks(
             statePollRunnable,
         )
+        mainHandler.removeCallbacks(
+            matchmakingPollRunnable,
+        )
+        mainHandler.removeCallbacks(
+            realtimeReconnectRunnable,
+        )
+        mainHandler.removeCallbacks(
+            realtimeRefreshRunnable,
+        )
+        realtimeClient.disconnect()
         super.onStop()
     }
 
@@ -463,12 +608,65 @@ class MainActivity : Activity() {
         mainHandler.removeCallbacksAndMessages(
             null,
         )
+        realtimeClient.shutdown()
         executor.shutdownNow()
         super.onDestroy()
+    }
+
+    internal fun isMatchmakingUiReady(): Boolean =
+        ::findMatchButton.isInitialized &&
+            ::cancelMatchmakingButton.isInitialized &&
+            ::matchmakingStatusText.isInitialized &&
+            ::matchmakingSlotsText.isInitialized &&
+            ::matchmakingTimerText.isInitialized &&
+            ::twoPlayerButton.isInitialized &&
+            ::fourPlayerButton.isInitialized
+
+    internal fun isPlayerCountUiReady(): Boolean =
+        ::twoPlayerButton.isInitialized &&
+            ::fourPlayerButton.isInitialized
+
+    internal fun updateConnectionLabel() {
+        if (
+            !::connectionText
+                .isInitialized
+        ) {
+            return
+        }
+
+        when {
+            !isOnline -> {
+                connectionText.text =
+                    "● OFFLINE"
+                connectionText.setTextColor(
+                    LudoProofTheme.GOLD,
+                )
+            }
+
+            realtimeConnected -> {
+                connectionText.text =
+                    "● LIVE"
+                connectionText.setTextColor(
+                    0xFF65EF55.toInt(),
+                )
+            }
+
+            else -> {
+                connectionText.text =
+                    "● ONLINE"
+                connectionText.setTextColor(
+                    0xFF6EE7FF.toInt(),
+                )
+            }
+        }
     }
 
     private companion object {
         const val STATE_POLL_MS =
             3_000L
+        const val MATCHMAKING_POLL_MS =
+            1_500L
+        const val REALTIME_RECONNECT_MS =
+            10_000L
     }
 }

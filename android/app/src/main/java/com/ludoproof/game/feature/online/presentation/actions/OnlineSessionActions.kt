@@ -240,7 +240,12 @@ internal fun MainActivity.resetInvalidSessionIfNeeded(
     playerToken = null
     playerId = null
     currentState = null
+    lastRealtimeRevision =
+        -1
     cachedMatchStore.clear()
+    realtimeClient.disconnect()
+    realtimeConnected =
+        false
 
     matchInput.setText("")
     boardView.bind(
@@ -275,10 +280,25 @@ internal fun MainActivity.resetInvalidSessionIfNeeded(
     rollButton.visibility =
         View.GONE
 
-    nameInput.isEnabled = true
-    matchInput.isEnabled = true
-    createButton.isEnabled = true
-    joinButton.isEnabled = true
+    restorePublicMatchmakingUi()
+    nameInput.isEnabled =
+        isOnline
+    matchInput.isEnabled =
+        isOnline
+    createButton.isEnabled =
+        isOnline
+    joinButton.isEnabled =
+        isOnline
+    findMatchButton.isEnabled =
+        isOnline
+    twoPlayerButton.isEnabled =
+        isOnline
+    fourPlayerButton.isEnabled =
+        isOnline
+    cancelMatchmakingButton.isEnabled =
+        isOnline &&
+            publicMatchmakingStore.load() !=
+            null
     refreshButton.isEnabled = false
     shareButton.isEnabled = false
 
@@ -292,6 +312,10 @@ internal fun MainActivity.setNetworkControls(
     enabled: Boolean,
 ) {
     if (!enabled) {
+        findMatchButton.isEnabled = false
+        cancelMatchmakingButton.isEnabled = false
+        twoPlayerButton.isEnabled = false
+        fourPlayerButton.isEnabled = false
         createButton.isEnabled = false
         joinButton.isEnabled = false
         refreshButton.isEnabled = false
@@ -304,12 +328,26 @@ internal fun MainActivity.setNetworkControls(
     if (state != null) {
         updateControls(state)
     } else {
-        createButton.isEnabled =
-            isOnline
-        joinButton.isEnabled =
-            isOnline
-        nameInput.isEnabled = true
-        matchInput.isEnabled = true
+        val searching =
+            publicMatchmakingStore.load() !=
+                null
+        setPublicSearchUi(
+            searching =
+                searching,
+            queuedPlayers =
+                if (
+                    searching
+                ) {
+                    1
+                } else {
+                    0
+                },
+            targetPlayerCount =
+                publicMatchmakingStore
+                    .load()
+                    ?.playerCount
+                    ?: selectedPublicPlayerCount,
+        )
         refreshButton.isEnabled =
             isOnline &&
                 playerToken != null

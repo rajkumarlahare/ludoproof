@@ -14,6 +14,7 @@ import {
 export { MatchRoom } from "./match-room.js";
 export { ApiGate } from "./api-gate.js";
 export { LeaderboardRoom } from "./leaderboard-room.js";
+export { MatchmakerQueue } from "./matchmaker-queue.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const RATE_WINDOW_MS = 60 * 1000;
@@ -23,6 +24,7 @@ const RATE_POLICIES = Object.freeze({
   state: 120,
   mutation: 90,
   leaderboard: 60,
+  matchmaking: 90,
 });
 
 export default {
@@ -60,7 +62,8 @@ export default {
           checks.entronexConfigured &&
           checks.matchStoreConfigured &&
           checks.rateGateConfigured &&
-          checks.leaderboardConfigured;
+          checks.leaderboardConfigured &&
+          checks.matchmakerConfigured;
         const entronexReachable =
           configured
             ? await probeEntroNex(env)
@@ -129,6 +132,64 @@ export default {
               },
             ),
           );
+        return withSecurityHeaders(
+          response,
+        );
+      }
+
+      const matchmakingRoute =
+        url.pathname.match(
+          /^\/api\/matchmaking\/(search|status|cancel)$/,
+        );
+      if (matchmakingRoute) {
+        requireMethod(
+          request,
+          "POST",
+        );
+        const body =
+          await readJsonRequest(
+            request,
+          );
+        const playerCount =
+          requireMatchmakingPlayerCount(
+            body.playerCount,
+          );
+
+        await enforceRateLimit(
+          env,
+          request,
+          "matchmaking:" +
+            matchmakingRoute[1] +
+            ":" +
+            playerCount,
+          RATE_POLICIES.matchmaking,
+        );
+
+        const target =
+          matchmaker(
+            env,
+            playerCount,
+          );
+        const response =
+          await target.fetch(
+            new Request(
+              "https://matchmaker/" +
+                matchmakingRoute[1],
+              {
+                method:
+                  "POST",
+                headers: {
+                  "content-type":
+                    "application/json",
+                },
+                body:
+                  JSON.stringify(
+                    body,
+                  ),
+              },
+            ),
+          );
+
         return withSecurityHeaders(
           response,
         );
@@ -220,6 +281,11 @@ export default {
           path: "/move",
           method: "POST",
         },
+        events: {
+          path: "/events",
+          method: "GET",
+          websocket: true,
+        },
       };
 
       const route = routeMap[action];
@@ -252,6 +318,14 @@ export default {
         "content-type",
         "application/json",
       );
+      if (
+        route.websocket
+      ) {
+        headers.set(
+          "upgrade",
+          "websocket",
+        );
+      }
 
       let body;
       if (route.method !== "GET") {
@@ -264,7 +338,10 @@ export default {
       const policyKey =
         action === "join"
           ? "join"
-          : action === "state"
+          : (
+              action === "state" ||
+              action === "events"
+            )
             ? "state"
             : "mutation";
       await enforceRateLimit(
@@ -286,6 +363,12 @@ export default {
           ),
         );
 
+      if (
+        route.websocket &&
+        response.status === 101
+      ) {
+        return response;
+      }
       return withSecurityHeaders(response);
     } catch (error) {
       return errorResponse(error);
@@ -406,6 +489,32 @@ function room(env, matchId) {
   return env.LUDOPROOF_MATCHES.get(id);
 }
 
+function matchmaker(
+  env,
+  playerCount,
+) {
+  if (
+    !env.LUDOPROOF_MATCHMAKER
+  ) {
+    throw httpError(
+      503,
+      "MATCHMAKER_NOT_CONFIGURED",
+      "public matchmaking is not configured",
+    );
+  }
+
+  const id =
+    env.LUDOPROOF_MATCHMAKER
+      .idFromName(
+        "ONLINE:" +
+          playerCount +
+          ":CLASSIC_V1",
+      );
+  return env
+    .LUDOPROOF_MATCHMAKER
+    .get(id);
+}
+
 function leaderboard(env) {
   if (!env.LUDOPROOF_LEADERBOARD) {
     throw httpError(
@@ -512,6 +621,8 @@ function configurationChecks(env) {
       Boolean(env.LUDOPROOF_API_GATE),
     leaderboardConfigured:
       Boolean(env.LUDOPROOF_LEADERBOARD),
+    matchmakerConfigured:
+      Boolean(env.LUDOPROOF_MATCHMAKER),
     sessionKeyConfigured:
       hasSessionKey(env),
   };
@@ -525,6 +636,24 @@ function hasEntroNexConfig(env) {
     env.ENTRONEX_API_TOKEN.length >= 20 &&
     hasPinnedEntroNexTrust(env)
   );
+}
+
+function requireMatchmakingPlayerCount(
+  value,
+) {
+  const count =
+    Number(value);
+  if (
+    count !== 2 &&
+    count !== 4
+  ) {
+    throw httpError(
+      400,
+      "INVALID_PLAYER_COUNT",
+      "public matchmaking supports 2 or 4 players",
+    );
+  }
+  return count;
 }
 
 function requireMethod(request, expected) {

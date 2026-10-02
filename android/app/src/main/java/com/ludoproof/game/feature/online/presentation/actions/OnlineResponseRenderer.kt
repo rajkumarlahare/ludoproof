@@ -74,6 +74,37 @@ internal fun MainActivity.applyResponse(
     matchId =
         state.matchId
 
+    val serverRevision =
+        response
+            .optJSONObject(
+                "state",
+            )
+            ?.optInt(
+                "revision",
+                -1,
+            )
+            ?: response.optInt(
+                "revision",
+                -1,
+            )
+    if (
+        serverRevision >
+        lastRealtimeRevision
+    ) {
+        lastRealtimeRevision =
+            serverRevision
+    }
+
+    if (
+        state.status ==
+        "FINISHED"
+    ) {
+        realtimeClient.disconnect()
+        realtimeConnected =
+            false
+        updateConnectionLabel()
+    }
+
     if (
         state.status ==
             "FINISHED"
