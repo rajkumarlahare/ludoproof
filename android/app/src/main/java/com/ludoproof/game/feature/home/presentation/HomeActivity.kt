@@ -21,6 +21,8 @@ class HomeActivity : Activity() {
         TextView? = null
     internal var homeProfileXpFill:
         View? = null
+    internal var homeGemBalanceText:
+        TextView? = null
     internal lateinit var connectivityMonitor:
         ConnectivityMonitor
 
@@ -180,6 +182,7 @@ class HomeActivity : Activity() {
     override fun onResume() {
         super.onResume()
         refreshHomeProfileSummary()
+        refreshHomeGemBalance()
     }
 
     override fun onStart() {
