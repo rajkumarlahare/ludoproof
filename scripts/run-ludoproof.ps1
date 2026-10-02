@@ -6,6 +6,37 @@ $androidDir = Join-Path $repoRoot "android"
 $packageName = "com.ludoproof.game"
 $activityName = "com.ludoproof.game.HomeActivity"
 $gradleVersion = "8.9"
+$requiredPlatform = "android-35"
+$requiredBuildTools = "34.0.0"
+
+function Use-SystemJava {
+    $javaExe = $null
+
+    if ($env:JAVA_HOME) {
+        $candidate = Join-Path $env:JAVA_HOME "bin\java.exe"
+        if (Test-Path $candidate) {
+            $javaExe = $candidate
+        }
+    }
+
+    if (!$javaExe) {
+        $java = Get-Command java.exe -ErrorAction SilentlyContinue
+        if (!$java) {
+            throw "Java was not found. LudoProof uses the same system Java setup as FinWorker."
+        }
+
+        $javaExe = $java.Source
+        $env:JAVA_HOME = Split-Path -Parent (Split-Path -Parent $javaExe)
+    }
+
+    $env:Path = (Join-Path $env:JAVA_HOME "bin") + ";" + $env:Path
+
+    Write-Host "Using system Java from $env:JAVA_HOME"
+    & $javaExe -version
+    if ($LASTEXITCODE -ne 0) {
+        throw "Java could not be started from $javaExe"
+    }
+}
 
 function Test-AndroidSdkRoot(
     [string]$sdkRoot
@@ -18,168 +49,88 @@ function Test-AndroidSdkRoot(
         return $false
     }
 
-    if (
-        $sdkRoot -match "Genymobile\.scrcpy" -or
-        $sdkRoot -match "Microsoft\.WinGet\\Packages\\Genymobile\.scrcpy"
-    ) {
-        return $false
-    }
+    $adb = Join-Path $sdkRoot "platform-tools\adb.exe"
+    $platform = Join-Path $sdkRoot ("platforms\" + $requiredPlatform)
+    $buildTools = Join-Path $sdkRoot ("build-tools\" + $requiredBuildTools)
 
-    $markers = @(
-        "platform-tools",
-        "platforms",
-        "build-tools",
-        "cmdline-tools"
+    return (
+        (Test-Path $adb) -and
+        (Test-Path $platform) -and
+        (Test-Path $buildTools)
     )
-
-    foreach ($marker in $markers) {
-        if (Test-Path (Join-Path $sdkRoot $marker)) {
-            return $true
-        }
-    }
-
-    return $false
-}
-
-function Read-LocalPropertiesSdkRoot {
-    $localProperties =
-        Join-Path $androidDir "local.properties"
-
-    if (!(Test-Path $localProperties)) {
-        return $null
-    }
-
-    foreach ($line in Get-Content -Path $localProperties) {
-        if ($line -match '^\s*sdk\.dir\s*=\s*(.+?)\s*$') {
-            $value =
-                $Matches[1]
-                    .Replace("\\:", ":")
-                    .Replace("\\\\", "\")
-                    .Replace("/", "\")
-            return $value
-        }
-    }
-
-    return $null
 }
 
 function Resolve-AndroidSdkRoot {
     $candidates = @()
 
+    if ($env:LUDOPROOF_ANDROID_SDK) {
+        $candidates += $env:LUDOPROOF_ANDROID_SDK
+    }
+
+    $repoDrive = [System.IO.Path]::GetPathRoot($repoRoot)
+    if ($repoDrive) {
+        $candidates += (Join-Path $repoDrive "Dev\finworkar-tools\android-sdk")
+    }
+
     if ($env:ANDROID_SDK_ROOT) {
         $candidates += $env:ANDROID_SDK_ROOT
     }
+
     if ($env:ANDROID_HOME) {
         $candidates += $env:ANDROID_HOME
     }
 
-    $localPropertiesSdk =
-        Read-LocalPropertiesSdkRoot
-    if ($localPropertiesSdk) {
-        $candidates +=
-            $localPropertiesSdk
-    }
-
     if ($env:LOCALAPPDATA) {
-        $candidates +=
-            (Join-Path $env:LOCALAPPDATA "Android\Sdk")
+        $candidates += (Join-Path $env:LOCALAPPDATA "Android\Sdk")
     }
-
-    if ($env:USERPROFILE) {
-        $candidates +=
-            (Join-Path $env:USERPROFILE "AppData\Local\Android\Sdk")
-    }
-
-    $candidates +=
-        "C:\Android\Sdk"
 
     foreach ($candidate in $candidates | Select-Object -Unique) {
         if (Test-AndroidSdkRoot $candidate) {
-            return (
-                Resolve-Path $candidate
-            ).Path
+            return (Resolve-Path $candidate).Path
         }
     }
 
+    $checked = ($candidates | Select-Object -Unique) -join [Environment]::NewLine
     throw @"
-Android SDK not found.
+A complete Android SDK for LudoProof was not found.
 
-Install Android Studio / Android SDK, or set ANDROID_SDK_ROOT.
-Expected default Windows location:
-$env:LOCALAPPDATA\Android\Sdk
+LudoProof requires:
+  platforms\$requiredPlatform
+  build-tools\$requiredBuildTools
+  platform-tools\adb.exe
 
-Important: scrcpy's bundled adb is not a complete Android SDK and cannot be used for Gradle builds.
+Checked:
+$checked
+
+You can explicitly set LUDOPROOF_ANDROID_SDK to your working Android SDK path.
 "@
-}
-
-function Resolve-Adb(
-    [string]$sdkRoot
-) {
-    if (
-        ![string]::IsNullOrWhiteSpace($sdkRoot)
-    ) {
-        $sdkAdb =
-            Join-Path $sdkRoot "platform-tools\adb.exe"
-        if (Test-Path $sdkAdb) {
-            return $sdkAdb
-        }
-    }
-
-    $command =
-        Get-Command adb.exe -ErrorAction SilentlyContinue
-    if ($command) {
-        return $command.Source
-    }
-
-    throw "ADB not found. Install Android SDK Platform-Tools or add adb.exe to PATH."
 }
 
 function Ensure-AndroidSdkProperties(
     [string]$sdkRoot
 ) {
-    $localProperties =
-        Join-Path $androidDir "local.properties"
-    $portableSdkPath =
-        $sdkRoot.Replace("\", "/")
-    $desiredLine =
-        "sdk.dir=$portableSdkPath"
+    $localProperties = Join-Path $androidDir "local.properties"
+    $portableSdkPath = $sdkRoot -replace '\\', '/'
+    $desired = "sdk.dir=$portableSdkPath"
 
-    $currentSdk =
-        Read-LocalPropertiesSdkRoot
+    Set-Content -Encoding ASCII -Path $localProperties -Value $desired
 
-    if (
-        !$currentSdk -or
-        !(
-            [System.StringComparer]::OrdinalIgnoreCase.Equals(
-                (
-                    [System.IO.Path]::GetFullPath(
-                        $currentSdk
-                    )
-                ).TrimEnd("\"),
-                (
-                    [System.IO.Path]::GetFullPath(
-                        $sdkRoot
-                    )
-                ).TrimEnd("\")
-            )
-        )
-    ) {
-        Set-Content -Encoding ASCII -Path $localProperties -Value $desiredLine
-        if ($currentSdk) {
-            Write-Host "Corrected android/local.properties SDK:"
-            Write-Host "  old: $currentSdk"
-            Write-Host "  new: $sdkRoot"
-        } else {
-            Write-Host "Created android/local.properties for $sdkRoot"
-        }
-    }
-
-    $env:ANDROID_SDK_ROOT =
-        $sdkRoot
-    $env:ANDROID_HOME =
-        $sdkRoot
+    $env:ANDROID_SDK_ROOT = $sdkRoot
+    $env:ANDROID_HOME = $sdkRoot
 
     Write-Host "Using Android SDK from $sdkRoot"
+    Write-Host "Updated android/local.properties"
+}
+
+function Resolve-Adb(
+    [string]$sdkRoot
+) {
+    $adb = Join-Path $sdkRoot "platform-tools\adb.exe"
+    if (!(Test-Path $adb)) {
+        throw "ADB was not found in the resolved Android SDK: $adb"
+    }
+
+    return $adb
 }
 
 function Download-GradleDistribution(
@@ -221,14 +172,13 @@ function Download-GradleDistribution(
             }
 
             Remove-Item -Force -ErrorAction SilentlyContinue $partialPath
-            Write-Host "Download attempt failed. Trying the next Gradle source..."
         }
     }
 
     foreach ($url in $urls) {
         for ($attempt = 1; $attempt -le 3; $attempt += 1) {
             try {
-                Write-Host "PowerShell download attempt $attempt from $url"
+                Write-Host "PowerShell Gradle download attempt $attempt from $url"
                 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
                 Invoke-WebRequest -UseBasicParsing -TimeoutSec 900 -Uri $url -OutFile $partialPath
 
@@ -240,7 +190,7 @@ function Download-GradleDistribution(
                     return
                 }
             } catch {
-                Write-Host ("Download attempt " + $attempt + " failed: " + $_.Exception.Message)
+                Write-Host ("Gradle download attempt " + $attempt + " failed: " + $_.Exception.Message)
             }
 
             Remove-Item -Force -ErrorAction SilentlyContinue $partialPath
@@ -248,15 +198,10 @@ function Download-GradleDistribution(
         }
     }
 
-    throw "Unable to download Gradle $gradleVersion. Check internet access and try Ctrl+Shift+B again."
+    throw "Unable to download Gradle $gradleVersion."
 }
 
 function Resolve-Gradle {
-    $command = Get-Command gradle -ErrorAction SilentlyContinue
-    if ($command) {
-        return $command.Source
-    }
-
     $toolsDir = Join-Path $repoRoot ".tools"
     $gradleHome = Join-Path $toolsDir "gradle-$gradleVersion"
     $gradleBat = Join-Path $gradleHome "bin\gradle.bat"
@@ -269,12 +214,10 @@ function Resolve-Gradle {
     $zipPath = Join-Path $toolsDir "gradle-$gradleVersion-bin.zip"
 
     Write-Host ""
-    Write-Host "Gradle $gradleVersion is not installed. Downloading it once for LudoProof..."
+    Write-Host "Gradle $gradleVersion is not cached. Downloading it once for LudoProof..."
     Download-GradleDistribution $zipPath
 
-    if (Test-Path $gradleHome) {
-        Remove-Item -Recurse -Force $gradleHome
-    }
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $gradleHome
 
     try {
         Expand-Archive -Path $zipPath -DestinationPath $toolsDir -Force
@@ -289,233 +232,11 @@ function Resolve-Gradle {
     return $gradleBat
 }
 
-function Test-Java17Home(
-    [string]$javaHome
-) {
-    if ([string]::IsNullOrWhiteSpace($javaHome)) {
-        return $false
-    }
-
-    $javaExe = Join-Path $javaHome "bin\java.exe"
-    $releaseFile = Join-Path $javaHome "release"
-
-    if (
-        !(Test-Path $javaExe) -or
-        !(Test-Path $releaseFile)
-    ) {
-        return $false
-    }
-
-    try {
-        $releaseText = Get-Content -Raw -Path $releaseFile
-        return $releaseText -match '(?m)^JAVA_VERSION="17(?:\.|")'
-    } catch {
-        return $false
-    }
-}
-
-function Find-Java17HomeUnder(
-    [string]$root
-) {
-    if ([string]::IsNullOrWhiteSpace($root)) {
-        return $null
-    }
-
-    if (Test-Java17Home $root) {
-        return $root
-    }
-
-    if (!(Test-Path $root)) {
-        return $null
-    }
-
-    $releaseFiles = @(
-        Get-ChildItem -Path $root -Filter "release" -File -Recurse -ErrorAction SilentlyContinue
-    )
-
-    foreach ($releaseFile in $releaseFiles) {
-        $candidate = $releaseFile.DirectoryName
-        if (Test-Java17Home $candidate) {
-            return $candidate
-        }
-    }
-
-    return $null
-}
-
-function Download-Java17Distribution(
-    [string]$destination
-) {
-    $urls = @(
-        "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse"
-    )
-    $partialPath = "$destination.part"
-
-    if (
-        (Test-Path $destination) -and
-        (Get-Item $destination).Length -gt 50MB
-    ) {
-        Write-Host "Reusing existing Temurin JDK 17 archive."
-        return
-    }
-
-    Remove-Item -Force -ErrorAction SilentlyContinue $destination
-    Remove-Item -Force -ErrorAction SilentlyContinue $partialPath
-
-    $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
-    if ($curl) {
-        foreach ($url in $urls) {
-            Write-Host "Downloading Temurin JDK 17..."
-            $curlArgs = @(
-                "--fail",
-                "--location",
-                "--retry", "4",
-                "--retry-delay", "2",
-                "--retry-all-errors",
-                "--connect-timeout", "20",
-                "--max-time", "1200",
-                "--output", $partialPath,
-                $url
-            )
-            & $curl.Source @curlArgs
-
-            if (
-                $LASTEXITCODE -eq 0 -and
-                (Test-Path $partialPath) -and
-                (Get-Item $partialPath).Length -gt 50MB
-            ) {
-                Move-Item -Force $partialPath $destination
-                return
-            }
-
-            Remove-Item -Force -ErrorAction SilentlyContinue $partialPath
-        }
-    }
-
-    foreach ($url in $urls) {
-        for ($attempt = 1; $attempt -le 3; $attempt += 1) {
-            try {
-                Write-Host "PowerShell JDK 17 download attempt $attempt..."
-                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                Invoke-WebRequest -UseBasicParsing -TimeoutSec 1200 -Uri $url -OutFile $partialPath
-
-                if (
-                    (Test-Path $partialPath) -and
-                    (Get-Item $partialPath).Length -gt 50MB
-                ) {
-                    Move-Item -Force $partialPath $destination
-                    return
-                }
-            } catch {
-                Write-Host ("JDK 17 download attempt " + $attempt + " failed: " + $_.Exception.Message)
-            }
-
-            Remove-Item -Force -ErrorAction SilentlyContinue $partialPath
-            Start-Sleep -Seconds ([Math]::Min(2 * $attempt, 6))
-        }
-    }
-
-    throw "Unable to download Temurin JDK 17. Check internet access and try Ctrl+Shift+B again."
-}
-
-function Resolve-Java17 {
-    $candidates = @()
-
-    if ($env:JAVA_HOME) {
-        $candidates += $env:JAVA_HOME
-    }
-
-    $currentJava = Get-Command java.exe -ErrorAction SilentlyContinue
-    if ($currentJava) {
-        $candidates += (
-            Split-Path -Parent (
-                Split-Path -Parent $currentJava.Source
-            )
-        )
-    }
-
-    $roots = @(
-        "C:\Program Files\Eclipse Adoptium",
-        "C:\Program Files\Java",
-        "C:\Program Files\Microsoft",
-        (Join-Path $env:USERPROFILE ".jdks")
-    )
-
-    foreach ($candidate in $candidates | Select-Object -Unique) {
-        $found = Find-Java17HomeUnder $candidate
-        if ($found) {
-            return $found
-        }
-    }
-
-    foreach ($root in $roots) {
-        $found = Find-Java17HomeUnder $root
-        if ($found) {
-            return $found
-        }
-    }
-
-    $toolsDir = Join-Path $repoRoot ".tools"
-    $javaCacheRoot = Join-Path $toolsDir "temurin-17"
-
-    $cached = Find-Java17HomeUnder $javaCacheRoot
-    if ($cached) {
-        Write-Host "Reusing cached Java 17 from $cached"
-        return $cached
-    }
-
-    New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
-
-    $legacyExtractRoot = Join-Path $toolsDir "temurin-17-extract"
-    $legacyCached = Find-Java17HomeUnder $legacyExtractRoot
-    if ($legacyCached) {
-        Write-Host "Reusing previously extracted Java 17 from $legacyCached"
-        return $legacyCached
-    }
-
-    $zipPath = Join-Path $toolsDir "temurin-17-jdk.zip"
-
-    Write-Host ""
-    Write-Host "Java 17 is required by LudoProof. Installing a private Temurin 17 copy once..."
-    Download-Java17Distribution $zipPath
-
-    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $javaCacheRoot
-    New-Item -ItemType Directory -Force -Path $javaCacheRoot | Out-Null
-
-    try {
-        Expand-Archive -Path $zipPath -DestinationPath $javaCacheRoot -Force
-        $installed = Find-Java17HomeUnder $javaCacheRoot
-
-        if (!$installed) {
-            throw "Temurin JDK 17 archive was extracted, but no valid JDK 17 home was found."
-        }
-
-        Write-Host "Java 17 installed at $installed"
-        return $installed
-    } catch {
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $javaCacheRoot
-        throw
-    } finally {
-        $validCache = Find-Java17HomeUnder $javaCacheRoot
-        if ($validCache) {
-            Remove-Item -Force -ErrorAction SilentlyContinue $zipPath
-        }
-    }
-}
-
-function Use-Java17 {
-    $javaHome = Resolve-Java17
-    $env:JAVA_HOME = $javaHome
-    $env:Path = (Join-Path $javaHome "bin") + ";" + $env:Path
-    Write-Host "Using Java 17 from $javaHome"
-    $javaExe = Join-Path $javaHome "bin\java.exe"
-    & $javaExe -version
-}
-
-Use-Java17
+Use-SystemJava
 
 $sdkRoot = Resolve-AndroidSdkRoot
 Ensure-AndroidSdkProperties $sdkRoot
+
 $adb = Resolve-Adb $sdkRoot
 
 $deviceLines = @(
