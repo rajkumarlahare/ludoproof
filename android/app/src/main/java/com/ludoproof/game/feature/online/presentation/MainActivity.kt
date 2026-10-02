@@ -120,6 +120,12 @@ class MainActivity : Activity() {
     internal val connectivityMonitor by lazy {
         ConnectivityMonitor(this) { online ->
             mainHandler.post {
+                if (
+                    !canRenderUi()
+                ) {
+                    return@post
+                }
+
                 val changed =
                     isOnline != online
                 isOnline = online
@@ -432,9 +438,13 @@ class MainActivity : Activity() {
         super.onStop()
     }
 
+    internal fun canRenderUi(): Boolean =
+        !isFinishing &&
+            !isDestroyed
+
     override fun onDestroy() {
-        mainHandler.removeCallbacks(
-            statePollRunnable,
+        mainHandler.removeCallbacksAndMessages(
+            null,
         )
         executor.shutdownNow()
         super.onDestroy()

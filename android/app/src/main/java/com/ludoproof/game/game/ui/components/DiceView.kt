@@ -121,7 +121,11 @@ class DiceView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
-        removeCallbacks(ticker)
+        rolling =
+            false
+        removeCallbacks(
+            ticker,
+        )
         super.onDetachedFromWindow()
     }
 

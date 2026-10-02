@@ -1394,12 +1394,199 @@ class OfflineGameEngine(
                         "revision",
                         1,
                     ),
-            )
+            ).also {
+                    restored ->
+                validateRestoredState(
+                    restored,
+                )
+            }
         }.getOrElse {
             prefs.edit()
                 .clear()
                 .apply()
             null
+        }
+    }
+
+    private fun validateRestoredState(
+        restored: LocalState,
+    ) {
+        check(
+            restored.players.size in
+                2..4,
+        ) {
+            "Offline save has an invalid player count"
+        }
+        check(
+            restored.turnSeat in
+                restored.players.indices,
+        ) {
+            "Offline save has an invalid turn seat"
+        }
+        check(
+            restored.eventIndex >=
+                0,
+        ) {
+            "Offline save has an invalid event index"
+        }
+        check(
+            restored.revision >=
+                1,
+        ) {
+            "Offline save has an invalid revision"
+        }
+        check(
+            restored.status ==
+                "ACTIVE" ||
+                restored.status ==
+                "FINISHED",
+        ) {
+            "Offline save has an invalid status"
+        }
+
+        val ids =
+            restored.players
+                .map {
+                    it.playerId
+                }
+        check(
+            ids.all {
+                it.isNotBlank()
+            } &&
+                ids.distinct()
+                    .size ==
+                ids.size,
+        ) {
+            "Offline save has invalid player identities"
+        }
+
+        val colors =
+            restored.players
+                .map {
+                    it.color
+                }
+        check(
+            colors.all {
+                it in
+                    OfflinePlayerLayout.COLORS
+            } &&
+                colors.distinct()
+                    .size ==
+                colors.size,
+        ) {
+            "Offline save has invalid player colors"
+        }
+
+        check(
+            restored.players
+                .all {
+                        player ->
+                    player.tokens.size ==
+                        4 &&
+                        player.tokens
+                            .all {
+                                    position ->
+                                position in
+                                    -1..HOME_POSITION
+                            }
+                },
+        ) {
+            "Offline save has invalid token positions"
+        }
+
+        check(
+            restored.consecutiveSixes.size ==
+                restored.players.size &&
+                restored.consecutiveSixes
+                    .all {
+                        it in
+                            0..3
+                    },
+        ) {
+            "Offline save has invalid consecutive-six state"
+        }
+
+        val pendingOutcome =
+            restored.pendingOutcome
+        val pendingEventIndex =
+            restored.pendingEventIndex
+
+        check(
+            pendingOutcome ==
+                null ||
+                pendingOutcome in
+                1..6,
+        ) {
+            "Offline save has an invalid pending dice outcome"
+        }
+        check(
+            restored.pendingLegal
+                .all {
+                    it in
+                        0..3
+                },
+        ) {
+            "Offline save has invalid legal token indexes"
+        }
+        check(
+            pendingEventIndex ==
+                null ||
+                pendingEventIndex >=
+                0,
+        ) {
+            "Offline save has an invalid pending event index"
+        }
+
+        if (
+            pendingOutcome !=
+            null
+        ) {
+            check(
+                pendingEventIndex !=
+                    null &&
+                    pendingEventIndex <
+                    restored.eventIndex &&
+                    restored.pendingLegal
+                        .isNotEmpty(),
+            ) {
+                "Offline save has an incomplete pending move"
+            }
+        } else {
+            check(
+                restored.pendingLegal
+                    .isEmpty(),
+            ) {
+                "Offline save has stale legal moves"
+            }
+        }
+
+        val winner =
+            restored.winnerPlayerId
+        check(
+            winner ==
+                null ||
+                winner in
+                ids,
+        ) {
+            "Offline save has an invalid winner"
+        }
+        if (
+            restored.status ==
+            "FINISHED"
+        ) {
+            check(
+                winner !=
+                    null,
+            ) {
+                "Finished offline save is missing a winner"
+            }
+        } else {
+            check(
+                winner ==
+                    null,
+            ) {
+                "Active offline save cannot already have a winner"
+            }
         }
     }
 

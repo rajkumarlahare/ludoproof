@@ -157,6 +157,13 @@ class HomeActivity : Activity() {
         connectivityMonitor =
             ConnectivityMonitor(this) { online ->
                 runOnUiThread {
+                    if (
+                        isFinishing ||
+                        isDestroyed
+                    ) {
+                        return@runOnUiThread
+                    }
+
                     connectivityText.text =
                         if (online) {
                             "● ONLINE"
@@ -197,4 +204,13 @@ class HomeActivity : Activity() {
         super.onStop()
     }
 
+    override fun onDestroy() {
+        if (
+            ::connectivityMonitor
+                .isInitialized
+        ) {
+            connectivityMonitor.stop()
+        }
+        super.onDestroy()
+    }
 }

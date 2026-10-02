@@ -120,6 +120,11 @@ class StoreActivity :
                 >,
     ) {
         runOnUiThread {
+            if (
+                !canRenderStoreUi()
+            ) {
+                return@runOnUiThread
+            }
             liveProducts =
                 products
             renderStore()
@@ -131,6 +136,11 @@ class StoreActivity :
         purchaseToken: String,
     ) {
         runOnUiThread {
+            if (
+                !canRenderStoreUi()
+            ) {
+                return@runOnUiThread
+            }
             showStoreMessage(
                 "Google Play returned a completed purchase for $productId. LudoProof will not grant gems or remove ads until the purchase token is verified by the secure backend.",
             )
@@ -141,6 +151,11 @@ class StoreActivity :
         productId: String,
     ) {
         runOnUiThread {
+            if (
+                !canRenderStoreUi()
+            ) {
+                return@runOnUiThread
+            }
             showStoreMessage(
                 "Your Google Play purchase for $productId is pending. Content will only be granted after Google confirms payment and the backend verifies it.",
             )
@@ -172,7 +187,17 @@ class StoreActivity :
                 value,
             )
 
+    private fun canRenderStoreUi(): Boolean =
+        !isFinishing &&
+            !isDestroyed
+
     internal fun renderStore() {
+        if (
+            !canRenderStoreUi()
+        ) {
+            return
+        }
+
         val (root, host) =
             LudoProofTheme
                 .arcadeRoot(
@@ -292,6 +317,12 @@ class StoreActivity :
     internal fun showStoreMessage(
         message: String,
     ) {
+        if (
+            !canRenderStoreUi()
+        ) {
+            return
+        }
+
         AlertDialog
             .Builder(this)
             .setTitle(

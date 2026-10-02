@@ -40,6 +40,13 @@ internal fun OfflineGameActivity.renderPlayerRails(
         bottomPlayerRail
             ?: return
 
+    diceView
+        ?.stopRolling()
+    diceView =
+        null
+    diceHost =
+        null
+
     top.removeAllViews()
     bottom.removeAllViews()
 
@@ -321,51 +328,44 @@ private fun OfflineGameActivity.playerProfile(
 private fun OfflineGameActivity.activeDiceControl(
     player: PlayerSnapshot,
 ): FrameLayout {
-    val existing =
-        diceHost
     val control =
-        if (existing != null) {
-            existing
-        } else {
-            FrameLayout(this).apply {
-                isClickable =
-                    true
-                isFocusable =
-                    true
-                background =
-                    LudoProofTheme
-                        .rounded(
-                            0xECF8FAFF.toInt(),
-                            12f,
-                            0xFF5FE1FF.toInt(),
-                            2f,
-                            this@activeDiceControl,
-                        )
-                elevation =
-                    dp(7).toFloat()
-                setOnClickListener {
-                    rollOffline()
-                }
-
-                val newDice =
-                    DiceView(
+        FrameLayout(this).apply {
+            isClickable =
+                true
+            isFocusable =
+                true
+            background =
+                LudoProofTheme
+                    .rounded(
+                        0xECF8FAFF.toInt(),
+                        12f,
+                        0xFF5FE1FF.toInt(),
+                        2f,
                         this@activeDiceControl,
                     )
-                diceView =
-                    newDice
-                addView(
-                    newDice,
-                    FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        Gravity.CENTER,
-                    ),
-                )
-            }.also {
-                diceHost =
-                    it
+            elevation =
+                dp(7).toFloat()
+            setOnClickListener {
+                rollOffline()
             }
+
+            val newDice =
+                DiceView(
+                    this@activeDiceControl,
+                )
+            diceView =
+                newDice
+            addView(
+                newDice,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    Gravity.CENTER,
+                ),
+            )
         }
+    diceHost =
+        control
 
     val cpuTurn =
         engine.isComputerPlayer(
