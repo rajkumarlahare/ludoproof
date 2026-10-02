@@ -237,7 +237,7 @@ private fun HomeActivity.homeLevelProgress():
                     "★" +
                         progress.level
                 textSize =
-                    if (isCompact()) 18f else 19f
+                    if (isCompact()) 19f else 21f
                 setTypeface(
                     Typeface.DEFAULT_BOLD,
                 )
@@ -386,7 +386,7 @@ private fun HomeActivity.homeCurrencyPill():
                         .balance()
                         .toString()
                 textSize =
-                    if (isCompact()) 19f else 21f
+                    if (isCompact()) 18f else 19f
                 setTypeface(
                     Typeface.DEFAULT_BOLD,
                 )
