@@ -106,6 +106,10 @@ class DiceView @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        reloadStyle()
+    }
+
+    fun reloadStyle() {
         diceStyleId =
             CosmeticInventoryStore(
                 context,
