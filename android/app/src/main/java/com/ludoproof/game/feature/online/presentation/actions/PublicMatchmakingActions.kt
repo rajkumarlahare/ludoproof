@@ -325,8 +325,7 @@ internal fun MainActivity.applyPublicMatchmakingResponse(
 
 internal fun MainActivity.restorePublicMatchmakingUi() {
     if (
-        !::findMatchButton
-            .isInitialized
+        !isMatchmakingUiReady()
     ) {
         return
     }
@@ -419,8 +418,7 @@ internal fun MainActivity.setPublicSearchUi(
         selectedPublicPlayerCount,
 ) {
     if (
-        !::findMatchButton
-            .isInitialized
+        !isMatchmakingUiReady()
     ) {
         return
     }
@@ -588,8 +586,7 @@ internal fun MainActivity.setPublicSearchUi(
 
 internal fun MainActivity.updatePublicPlayerCountButtons() {
     if (
-        !::twoPlayerButton
-            .isInitialized
+        !isPlayerCountUiReady()
     ) {
         return
     }
