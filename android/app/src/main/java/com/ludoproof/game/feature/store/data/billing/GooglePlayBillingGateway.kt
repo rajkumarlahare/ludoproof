@@ -132,6 +132,19 @@ class GooglePlayBillingGateway(
             return
         }
 
+        val offerToken =
+            offer.offerToken
+        if (
+            offerToken ==
+            null
+        ) {
+            listener
+                .onBillingUnavailable(
+                    "Google Play did not provide a usable offer token for this product.",
+                )
+            return
+        }
+
         val productParams =
             BillingFlowParams
                 .ProductDetailsParams
@@ -140,7 +153,7 @@ class GooglePlayBillingGateway(
                     details,
                 )
                 .setOfferToken(
-                    offer.offerToken,
+                    offerToken,
                 )
                 .build()
 
