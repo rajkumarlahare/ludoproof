@@ -113,6 +113,7 @@ class GameApi(
         friendToken: String,
         friendId: String,
         matchId: String,
+        roomPlayerToken: String,
         clientRequestId: String,
     ): JSONObject =
         request(
@@ -120,6 +121,8 @@ class GameApi(
             path = "/api/friends/invite",
             friendToken =
                 friendToken,
+            roomPlayerToken =
+                roomPlayerToken,
             body = JSONObject()
                 .put(
                     "friendId",
@@ -392,6 +395,7 @@ class GameApi(
         path: String,
         playerToken: String? = null,
         friendToken: String? = null,
+        roomPlayerToken: String? = null,
         body: JSONObject? = null,
     ): JSONObject {
         require(baseUrl.startsWith("https://")) {
@@ -423,6 +427,15 @@ class GameApi(
                 connection.setRequestProperty(
                     "Authorization",
                     "Bearer $bearerToken",
+                )
+            }
+            if (
+                roomPlayerToken !=
+                null
+            ) {
+                connection.setRequestProperty(
+                    "X-LudoProof-Room-Token",
+                    roomPlayerToken,
                 )
             }
 
