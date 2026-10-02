@@ -325,4 +325,5 @@ internal fun MainActivity.captureSession(
         id = id,
         token = token,
     )
+    connectRealtimeIfPossible()
 }
