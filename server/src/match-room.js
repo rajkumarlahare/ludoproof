@@ -340,7 +340,10 @@ export class MatchRoom {
       clientRequestId;
     state.players[0]
       .profileId =
-      profileId;
+      matchMode ===
+        "FRIENDS"
+        ? null
+        : profileId;
     state.history = [];
     await this.#persist(state);
 
@@ -365,10 +368,15 @@ export class MatchRoom {
       normalizeDisplayName(
         body?.displayName,
       );
-    const profileId =
+    const requestedProfileId =
       optionalLeaderboardProfileId(
         body?.profileId,
       );
+    const profileId =
+      state.matchMode ===
+        "FRIENDS"
+        ? null
+        : requestedProfileId;
     const clientRequestId =
       requireClientRequestId(
         body?.clientRequestId,
@@ -983,6 +991,22 @@ export class MatchRoom {
       state.leaderboardRecordedAt != null
     ) {
       return state;
+    }
+
+    if (
+      state.matchMode ===
+      "FRIENDS"
+    ) {
+      const next =
+        structuredClone(
+          state,
+        );
+      next.leaderboardRecordedAt =
+        Date.now();
+      await this.#persist(
+        next,
+      );
+      return next;
     }
 
     const players =
