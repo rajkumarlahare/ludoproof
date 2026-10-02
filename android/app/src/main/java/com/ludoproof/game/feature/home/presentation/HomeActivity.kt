@@ -93,13 +93,6 @@ class HomeActivity : Activity() {
         )
 
         content.addView(
-            heroPanel(),
-            fullWidthSection(
-                LudoProofTheme.sectionGapDp(this),
-            ),
-        )
-
-        content.addView(
             modeSection(),
             fullWidthSection(
                 if (isCompact()) 20 else 24,
