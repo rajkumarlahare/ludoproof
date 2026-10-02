@@ -18,6 +18,8 @@ import com.ludoproof.game.ui.offline.common.*
 import com.ludoproof.game.ui.offline.gameplay.*
 
 internal fun OfflineGameActivity.showSetup() {
+    prepareOfflineUiTransition()
+
     val (root, host) =
         LudoProofTheme.arcadeRoot(this)
 
