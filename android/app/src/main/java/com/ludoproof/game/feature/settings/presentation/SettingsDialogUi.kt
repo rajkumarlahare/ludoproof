@@ -1,5 +1,6 @@
 package com.ludoproof.game.ui.dialogs
 
+import android.app.Activity
 import android.content.Context
 import android.view.View
 import android.widget.LinearLayout
@@ -14,6 +15,16 @@ internal fun showSettingsDialog(
     context: Context,
     onChanged: (() -> Unit)? = null,
 ) {
+    val activity =
+        context as? Activity
+            ?: return
+    if (
+        activity.isFinishing ||
+        activity.isDestroyed
+    ) {
+        return
+    }
+
     val settingsStore =
         GameSettingsStore(
             context,
@@ -49,13 +60,38 @@ internal fun showSettingsDialog(
         change: () -> Unit,
     ) {
         change()
+        dialog.dismiss()
+
+        if (
+            activity.isFinishing ||
+            activity.isDestroyed
+        ) {
+            return
+        }
+
         onChanged
             ?.invoke()
-        dialog.dismiss()
-        showSettingsDialog(
-            context,
-            onChanged,
-        )
+
+        if (
+            activity.isFinishing ||
+            activity.isDestroyed
+        ) {
+            return
+        }
+
+        activity.window
+            .decorView
+            .post {
+                if (
+                    !activity.isFinishing &&
+                    !activity.isDestroyed
+                ) {
+                    showSettingsDialog(
+                        activity,
+                        onChanged,
+                    )
+                }
+            }
     }
 
     fun addClickableRow(
