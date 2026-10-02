@@ -23,8 +23,8 @@ class OfflineGameActivity : Activity() {
 
     internal var selectedPlayers = 2
     internal var selectedColor = "BLUE"
-    internal lateinit var playerButtons: Map<Int, Button>
-    internal lateinit var colorButtons: Map<String, Button>
+    internal var playerButtons: Map<Int, Button> = emptyMap()
+    internal var colorButtons: Map<String, Button> = emptyMap()
 
     internal var boardView: LudoBoardView? = null
     internal var diceView: DiceView? = null
