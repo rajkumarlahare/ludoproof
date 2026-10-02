@@ -102,7 +102,13 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
 
     content.addView(
         backHeader(
-            "LOCAL • CLASSIC",
+            if (
+                isComputerMode
+            ) {
+                "COMPUTER • CLASSIC"
+            } else {
+                "LOCAL • CLASSIC"
+            },
         ),
         LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -340,7 +346,13 @@ internal fun OfflineGameActivity.offlineResultPanel():
                         this@offlineResultPanel,
                     ).apply {
                         text =
-                            "LOCAL GAME COMPLETE"
+                            if (
+                                isComputerMode
+                            ) {
+                                "COMPUTER GAME COMPLETE"
+                            } else {
+                                "LOCAL GAME COMPLETE"
+                            }
                         LudoProofTheme.body(
                             this,
                             10f,
