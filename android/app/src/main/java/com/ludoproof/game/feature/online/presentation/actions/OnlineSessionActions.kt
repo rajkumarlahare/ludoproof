@@ -71,6 +71,8 @@ internal fun MainActivity.persistSessionSecurely(
                 matchId = code,
                 playerId = id,
                 playerToken = token,
+                modeWire =
+                    gameMode.wireValue,
             ),
         )
     } catch (_: Exception) {
