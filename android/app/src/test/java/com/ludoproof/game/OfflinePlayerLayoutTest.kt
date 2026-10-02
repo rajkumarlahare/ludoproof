@@ -60,6 +60,62 @@ class OfflinePlayerLayoutTest {
     }
 
     @Test
+    fun chosenColorAlwaysMapsToBottomLeft() {
+        listOf(
+            "RED",
+            "GREEN",
+            "YELLOW",
+            "BLUE",
+        ).forEach {
+                color ->
+            assertEquals(
+                OfflinePlayerLayout
+                    .Slot
+                    .BOTTOM_LEFT,
+                OfflinePlayerLayout
+                    .slotForColor(
+                        color =
+                            color,
+                        preferredBottomLeftColor =
+                            color,
+                    ),
+            )
+        }
+    }
+
+    @Test
+    fun boardRotationQuarterTurnsAreDeterministic() {
+        assertEquals(
+            3,
+            OfflinePlayerLayout
+                .rotationQuarterTurns(
+                    "RED",
+                ),
+        )
+        assertEquals(
+            2,
+            OfflinePlayerLayout
+                .rotationQuarterTurns(
+                    "GREEN",
+                ),
+        )
+        assertEquals(
+            1,
+            OfflinePlayerLayout
+                .rotationQuarterTurns(
+                    "YELLOW",
+                ),
+        )
+        assertEquals(
+            0,
+            OfflinePlayerLayout
+                .rotationQuarterTurns(
+                    "BLUE",
+                ),
+        )
+    }
+
+    @Test
     fun colorsMapToReferenceBoardCorners() {
         assertEquals(
             OfflinePlayerLayout
