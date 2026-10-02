@@ -117,18 +117,6 @@ class HomeActivity : Activity() {
                 )
             }
 
-        content.addView(
-            fairPlayStrip(),
-            fullWidthSection(
-                if (isCompact()) 16 else 20,
-            ),
-        )
-
-        content.addView(
-            footer(),
-            fullWidthSection(14),
-        )
-
         setContentView(root)
 
         connectivityMonitor =
