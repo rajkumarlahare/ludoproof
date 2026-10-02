@@ -11,6 +11,12 @@ val escapedApiBaseUrl =
     ludoProofApiBaseUrl
         .replace("\\", "\\\\")
         .replace("\"", "\\\"")
+val ludoProofBillingEnabled =
+    providers.gradleProperty("LUDOPROOF_BILLING_ENABLED")
+        .orElse("false")
+        .get()
+        .toBooleanStrictOrNull()
+        ?: false
 
 android {
     namespace = "com.ludoproof.game"
@@ -27,6 +33,11 @@ android {
             "String",
             "LUDOPROOF_API_BASE_URL",
             "\"$escapedApiBaseUrl\"",
+        )
+        buildConfigField(
+            "boolean",
+            "LUDOPROOF_BILLING_ENABLED",
+            ludoProofBillingEnabled.toString(),
         )
     }
 
@@ -66,5 +77,6 @@ android {
 }
 
 dependencies {
+    implementation("com.android.billingclient:billing:9.1.0")
     testImplementation("junit:junit:4.13.2")
 }

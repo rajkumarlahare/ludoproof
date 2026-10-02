@@ -22,6 +22,9 @@
             android:name=".feature.profile.presentation.ProfileActivity"
             android:exported="false" />
         <activity
+            android:name=".feature.store.presentation.StoreActivity"
+            android:exported="false" />
+        <activity
             android:name=".HomeActivity"
             android:exported="true">
             <intent-filter>

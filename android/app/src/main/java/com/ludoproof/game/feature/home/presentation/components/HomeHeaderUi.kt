@@ -16,6 +16,8 @@ import com.ludoproof.game.LudoProofTheme
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
 import com.ludoproof.game.feature.profile.domain.ProfileProgression
 import com.ludoproof.game.feature.profile.presentation.ProfileActivity
+import com.ludoproof.game.feature.store.data.local.GemWalletStore
+import com.ludoproof.game.feature.store.presentation.StoreActivity
 
 internal fun HomeActivity.profileHud():
     LinearLayout =
@@ -306,6 +308,20 @@ private fun HomeActivity.homeCurrencyPill():
             LinearLayout.HORIZONTAL
         gravity =
             Gravity.CENTER_VERTICAL
+        isClickable =
+            true
+        isFocusable =
+            true
+        contentDescription =
+            "Open gem store"
+        setOnClickListener {
+            startActivity(
+                Intent(
+                    this@homeCurrencyPill,
+                    StoreActivity::class.java,
+                ),
+            )
+        }
         background =
             LudoProofTheme.rounded(
                 0xF0071538.toInt(),
@@ -344,7 +360,13 @@ private fun HomeActivity.homeCurrencyPill():
             TextView(
                 this@homeCurrencyPill,
             ).apply {
-                text = "0"
+                homeGemBalanceText = this
+                text =
+                    GemWalletStore(
+                        this@homeCurrencyPill,
+                    )
+                        .balance()
+                        .toString()
                 textSize =
                     if (isCompact()) 19f else 21f
                 setTypeface(
@@ -386,7 +408,12 @@ private fun HomeActivity.homeCurrencyPill():
                 contentDescription =
                     "Add currency"
                 setOnClickListener {
-                    // Currency logic will be connected later.
+                    startActivity(
+                        Intent(
+                            this@homeCurrencyPill,
+                            StoreActivity::class.java,
+                        ),
+                    )
                 }
             },
             LinearLayout.LayoutParams(
@@ -463,7 +490,17 @@ private fun HomeActivity.homeShortcut(
             dp(5),
         )
         setOnClickListener {
-            // Header shortcut logic will be connected later.
+            if (
+                item.label ==
+                    "SHOP"
+            ) {
+                startActivity(
+                    Intent(
+                        this@homeShortcut,
+                        StoreActivity::class.java,
+                    ),
+                )
+            }
         }
 
         addView(
@@ -593,6 +630,14 @@ internal fun HomeActivity.refreshHomeProfileSummary() {
                             ),
                     )
             }
+}
+
+internal fun HomeActivity.refreshHomeGemBalance() {
+    homeGemBalanceText
+        ?.text =
+        GemWalletStore(this)
+            .balance()
+            .toString()
 }
 
 private data class HeaderShortcut(
