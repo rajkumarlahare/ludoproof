@@ -181,6 +181,20 @@ export default {
             authorization,
           );
         }
+        const roomToken =
+          request.headers.get(
+            "x-ludoproof-room-token",
+          );
+        if (
+          roomToken &&
+          action ===
+            "invite"
+        ) {
+          headers.set(
+            "x-ludoproof-room-token",
+            roomToken,
+          );
+        }
         if (!isSnapshot) {
           headers.set(
             "content-type",
