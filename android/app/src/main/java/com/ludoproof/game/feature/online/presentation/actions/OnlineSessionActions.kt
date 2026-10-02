@@ -249,6 +249,17 @@ internal fun MainActivity.resetInvalidSessionIfNeeded(
     realtimeConnected =
         false
 
+    if (
+        gameMode ==
+        GameMode.FRIENDS
+    ) {
+        showStatus(
+            "Private friend room is no longer available.",
+        )
+        finish()
+        return true
+    }
+
     matchInput.setText("")
     boardView.bind(
         null,
