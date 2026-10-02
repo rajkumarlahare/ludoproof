@@ -47,19 +47,17 @@ class OfflineGameEngine(
         }
         require(
             preferredColor in
-                COLORS,
+                OfflinePlayerLayout.COLORS,
         ) {
             "Unsupported offline color"
         }
 
         val colorOrder =
-            listOf(
-                preferredColor,
-            ) +
-                COLORS.filter {
-                    it !=
-                        preferredColor
-                }
+            OfflinePlayerLayout
+                .colorsFor(
+                    playerCount,
+                    preferredColor,
+                )
 
         val players =
             (
@@ -1557,14 +1555,6 @@ class OfflineGameEngine(
             57
         const val MAX_HISTORY =
             100
-
-        val COLORS =
-            listOf(
-                "RED",
-                "GREEN",
-                "YELLOW",
-                "BLUE",
-            )
 
         val START_OFFSETS =
             mapOf(

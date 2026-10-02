@@ -18,29 +18,35 @@ import com.ludoproof.game.ui.offline.setup.*
 import com.ludoproof.game.ui.offline.gameplay.*
 
 internal fun OfflineGameActivity.rollOffline() {
-    val button = rollButton ?: return
-    button.isEnabled = false
+    val control =
+        diceHost
+            ?: return
+    if (!control.isEnabled) {
+        return
+    }
+
+    control.isEnabled = false
+    control.alpha = .58f
     diceView?.startRolling()
     showStatus("Rolling locally…")
 
     handler.postDelayed(
         {
-            runCatching { engine.roll() }
-                .onSuccess { state ->
-                    renderGame(state)
-                    showStatus(
-                        if (state.pendingRoll != null) {
-                            "Move a highlighted token."
-                        } else {
-                            "Turn updated."
-                        },
-                    )
-                }
-                .onFailure { error ->
-                    diceView?.stopRolling()
-                    button.isEnabled = true
-                    showStatus(error.message ?: "Roll failed")
-                }
+            runCatching {
+                engine.roll()
+            }.onSuccess {
+                    state ->
+                renderGame(state)
+            }.onFailure {
+                    error ->
+                diceView?.stopRolling()
+                control.isEnabled = true
+                control.alpha = 1f
+                showStatus(
+                    error.message
+                        ?: "Roll failed",
+                )
+            }
         },
         430L,
     )
