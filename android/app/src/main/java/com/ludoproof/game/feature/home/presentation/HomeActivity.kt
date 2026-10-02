@@ -64,12 +64,14 @@ class HomeActivity : Activity() {
 
         val horizontalPaddingDp =
             LudoProofTheme.pageHorizontalPaddingDp(this)
+        val topHudInsetReductionDp =
+            if (isCompact()) 6 else 8
         val availableWidth =
             (
                 resources.displayMetrics.widthPixels -
                     dp(horizontalPaddingDp * 2)
                 ).coerceAtLeast(1)
-        val contentWidth =
+        val lowerContentWidth =
             minOf(
                 availableWidth,
                 dp(
@@ -77,6 +79,33 @@ class HomeActivity : Activity() {
                         .pageMaxContentWidthDp(this),
                 ),
             )
+        val topHudHorizontalPaddingDp =
+            (
+                horizontalPaddingDp -
+                    topHudInsetReductionDp
+                )
+                .coerceAtLeast(6)
+        val topHudWidth =
+            minOf(
+                resources.displayMetrics.widthPixels -
+                    dp(
+                        topHudHorizontalPaddingDp *
+                            2,
+                    ),
+                dp(
+                    LudoProofTheme
+                        .pageMaxContentWidthDp(this) +
+                        topHudInsetReductionDp *
+                        2,
+                ),
+            )
+        val lowerContentInsetPx =
+            (
+                topHudWidth -
+                    lowerContentWidth
+                )
+                .coerceAtLeast(0) /
+                2
 
         val content =
             LinearLayout(this).apply {
@@ -84,7 +113,7 @@ class HomeActivity : Activity() {
                     LinearLayout.VERTICAL
                 setPadding(
                     0,
-                    dp(16),
+                    dp(8),
                     0,
                     dp(26),
                 )
@@ -92,7 +121,7 @@ class HomeActivity : Activity() {
         contentHost.addView(
             content,
             FrameLayout.LayoutParams(
-                contentWidth,
+                topHudWidth,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.TOP or Gravity.CENTER_HORIZONTAL,
             ),
@@ -131,7 +160,12 @@ class HomeActivity : Activity() {
             modeSection(),
             fullWidthSection(
                 if (isCompact()) 20 else 24,
-            ),
+            ).apply {
+                leftMargin =
+                    lowerContentInsetPx
+                rightMargin =
+                    lowerContentInsetPx
+            },
         )
 
         continueButton()
@@ -143,9 +177,15 @@ class HomeActivity : Activity() {
                         dp(if (isCompact()) 58 else 62),
                     ).apply {
                         setMargins(
-                            if (isCompact()) dp(12) else dp(34),
+                            (
+                                if (isCompact()) dp(12) else dp(34)
+                                ) +
+                                lowerContentInsetPx,
                             dp(18),
-                            if (isCompact()) dp(12) else dp(34),
+                            (
+                                if (isCompact()) dp(12) else dp(34)
+                                ) +
+                                lowerContentInsetPx,
                             0,
                         )
                     },
