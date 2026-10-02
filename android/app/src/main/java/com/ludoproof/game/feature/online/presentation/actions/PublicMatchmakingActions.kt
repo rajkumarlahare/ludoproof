@@ -688,6 +688,15 @@ private fun MainActivity.runMatchmakingRequest(
         if (
             !quietFailure
         ) {
+            if (
+                isMatchmakingUiReady() &&
+                publicMatchmakingStore
+                    .load() !=
+                null
+            ) {
+                matchmakingStatusText.text =
+                    "WAITING FOR INTERNET…"
+            }
             showStatus(
                 "Internet connection is required for public matchmaking.",
             )
@@ -730,6 +739,15 @@ private fun MainActivity.runMatchmakingRequest(
                         if (
                             !quietFailure
                         ) {
+                            if (
+                                isMatchmakingUiReady() &&
+                                publicMatchmakingStore
+                                    .load() !=
+                                null
+                            ) {
+                                matchmakingStatusText.text =
+                                    "SEARCH CONNECTION ERROR • RETRYING…"
+                            }
                             showStatus(
                                 "Matchmaking error: " +
                                     (
