@@ -55,16 +55,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
     lint {
         abortOnError = true
         checkReleaseBuilds = true
     }
 }
-
-kotlin {
-    jvmToolchain(17)
-}
-
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
