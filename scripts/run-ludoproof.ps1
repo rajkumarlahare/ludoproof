@@ -360,6 +360,8 @@ function Use-Java17 {
     $env:JAVA_HOME = $javaHome
     $env:Path = (Join-Path $javaHome "bin") + ";" + $env:Path
     Write-Host "Using Java 17 from $javaHome"
+    $javaExe = Join-Path $javaHome "bin\java.exe"
+    & $javaExe -version
 }
 
 function Ensure-AndroidSdkProperties([string]$adbPath) {
@@ -400,7 +402,7 @@ $gradle = Resolve-Gradle
 
 Write-Host ""
 Write-Host "Building and installing LudoProof..."
-& $gradle -p $androidDir :app:installDebug --console=plain -Dorg.gradle.java.installations.paths="$env:JAVA_HOME"
+& $gradle -p $androidDir :app:installDebug --console=plain
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
