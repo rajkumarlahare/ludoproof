@@ -3,6 +3,7 @@ package com.ludoproof.game
 import android.app.Activity
 import android.content.Intent
 import com.ludoproof.game.feature.mode.presentation.RemoteModeEntryActivity
+import com.ludoproof.game.feature.friends.presentation.FriendsActivity
 
 fun Activity.openGameMode(
     mode: GameMode,
@@ -19,6 +20,9 @@ fun Activity.openGameMode(
 
             GameModeDestination.REMOTE_MODE_ENTRY ->
                 RemoteModeEntryActivity::class.java
+
+            GameModeDestination.FRIENDS_ACTIVITY ->
+                FriendsActivity::class.java
 
             GameModeDestination.OFFLINE_ACTIVITY ->
                 OfflineGameActivity::class.java
