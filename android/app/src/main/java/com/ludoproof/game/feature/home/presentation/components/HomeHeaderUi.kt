@@ -1,5 +1,6 @@
 package com.ludoproof.game.ui.home
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -12,6 +13,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.ludoproof.game.HomeActivity
 import com.ludoproof.game.LudoProofTheme
+import com.ludoproof.game.feature.profile.data.local.ProfileStore
+import com.ludoproof.game.feature.profile.domain.ProfileProgression
+import com.ludoproof.game.feature.profile.presentation.ProfileActivity
 
 internal fun HomeActivity.profileHud():
     LinearLayout =
@@ -108,6 +112,16 @@ private fun HomeActivity.homeAvatarPlaceholder():
         gravity = Gravity.CENTER
         contentDescription =
             "Guest user profile"
+        isClickable = true
+        isFocusable = true
+        setOnClickListener {
+            startActivity(
+                Intent(
+                    this@homeAvatarPlaceholder,
+                    ProfileActivity::class.java,
+                ),
+            )
+        }
         background =
             GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
@@ -140,7 +154,13 @@ private fun HomeActivity.homeIdentityBlock():
             TextView(
                 this@homeIdentityBlock,
             ).apply {
-                text = "Guest User"
+                homeProfileNameText = this
+                text =
+                    ProfileStore(
+                        this@homeIdentityBlock,
+                    )
+                        .snapshot()
+                        .displayName
                 textSize =
                     if (isCompact()) 18f else 21f
                 setTypeface(
@@ -182,7 +202,20 @@ private fun HomeActivity.homeLevelProgress():
             TextView(
                 this@homeLevelProgress,
             ).apply {
-                text = "★"
+                homeProfileLevelText = this
+                val profile =
+                    ProfileStore(
+                        this@homeLevelProgress,
+                    )
+                        .snapshot()
+                val progress =
+                    ProfileProgression
+                        .levelProgress(
+                            profile.totalXp,
+                        )
+                text =
+                    "★" +
+                        progress.level
                 textSize =
                     if (isCompact()) 21f else 24f
                 setTypeface(
@@ -196,7 +229,7 @@ private fun HomeActivity.homeLevelProgress():
                     "Level 0"
             },
             LinearLayout.LayoutParams(
-                dp(if (isCompact()) 30 else 34),
+                dp(if (isCompact()) 38 else 42),
                 dp(if (isCompact()) 30 else 34),
             ),
         )
@@ -215,10 +248,23 @@ private fun HomeActivity.homeLevelProgress():
                     )
             }
 
+        val trackWidthDp =
+            if (isCompact()) 118 else 138
+        val currentProgress =
+            ProfileProgression
+                .levelProgress(
+                    ProfileStore(
+                        this@homeLevelProgress,
+                    )
+                        .snapshot()
+                        .totalXp,
+                )
+
         track.addView(
             View(
                 this@homeLevelProgress,
             ).apply {
+                homeProfileXpFill = this
                 background =
                     GradientDrawable(
                         GradientDrawable.Orientation.LEFT_RIGHT,
@@ -232,7 +278,12 @@ private fun HomeActivity.homeLevelProgress():
                     }
             },
             FrameLayout.LayoutParams(
-                dp(if (isCompact()) 78 else 92),
+                dp(
+                    (trackWidthDp *
+                        currentProgress.fraction)
+                        .toInt()
+                        .coerceAtLeast(3),
+                ),
                 FrameLayout.LayoutParams.MATCH_PARENT,
             ),
         )
@@ -240,7 +291,7 @@ private fun HomeActivity.homeLevelProgress():
         addView(
             track,
             LinearLayout.LayoutParams(
-                dp(if (isCompact()) 118 else 138),
+                dp(trackWidthDp),
                 dp(10),
             ).apply {
                 marginStart = dp(2)
@@ -500,6 +551,49 @@ private fun HomeActivity.headerPressDrawable(
             },
         )
     }
+
+internal fun HomeActivity.refreshHomeProfileSummary() {
+    val profile =
+        ProfileStore(this)
+            .snapshot()
+    val progress =
+        ProfileProgression
+            .levelProgress(
+                profile.totalXp,
+            )
+
+    homeProfileNameText
+        ?.text =
+        profile.displayName
+    homeProfileLevelText
+        ?.text =
+        "★" +
+            progress.level
+
+    val trackWidthDp =
+        if (isCompact()) {
+            118
+        } else {
+            138
+        }
+    homeProfileXpFill
+        ?.layoutParams =
+        homeProfileXpFill
+            ?.layoutParams
+            ?.apply {
+                width =
+                    dp(
+                        (
+                            trackWidthDp *
+                                progress.fraction
+                            )
+                            .toInt()
+                            .coerceAtLeast(
+                                3,
+                            ),
+                    )
+            }
+}
 
 private data class HeaderShortcut(
     val symbol: String,

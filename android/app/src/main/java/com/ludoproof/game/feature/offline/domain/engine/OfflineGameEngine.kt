@@ -1,6 +1,9 @@
 package com.ludoproof.game
 
 import android.content.Context
+import com.ludoproof.game.feature.profile.data.local.ProfileStore
+import com.ludoproof.game.feature.profile.domain.model.ProfileGameMode
+import com.ludoproof.game.feature.profile.domain.model.ProfileMatchSource
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -8,6 +11,11 @@ import java.util.UUID
 class OfflineGameEngine(
     context: Context,
 ) {
+    private val profileStore =
+        ProfileStore(
+            context.applicationContext,
+        )
+
     private val prefs =
         context.getSharedPreferences(
             PREFS_NAME,
@@ -389,6 +397,22 @@ class OfflineGameEngine(
             current.revision +=
                 1
             persist()
+            runCatching {
+                profileStore
+                    .recordCompletedMatch(
+                        matchId =
+                            current.matchId,
+                        mode =
+                            ProfileGameMode.CLASSIC,
+                        source =
+                            ProfileMatchSource.LOCAL,
+                        won =
+                            player.playerId ==
+                                current.players
+                                    .firstOrNull()
+                                    ?.playerId,
+                    )
+            }
             return current
                 .toSnapshot()
         }
