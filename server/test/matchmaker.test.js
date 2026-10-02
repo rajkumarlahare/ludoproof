@@ -278,6 +278,9 @@ test(
     assert.equal(
       waiting.status,
       202,
+      JSON.stringify(
+        waiting.body,
+      ),
     );
     assert.equal(
       waiting.body.status,
