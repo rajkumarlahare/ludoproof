@@ -549,7 +549,7 @@ class FriendsActivity :
                     this@FriendsActivity,
                 ).apply {
                     text =
-                        "Enter a Friend ID like LPF-ABCD-EFGH."
+                        "Enter a Friend ID like LPF-ABCD-EFGH-JKLM."
                     LudoProofTheme.body(
                         this,
                         11f,
@@ -570,7 +570,7 @@ class FriendsActivity :
                     this@FriendsActivity,
                 ).apply {
                     hint =
-                        "LPF-ABCD-EFGH"
+                        "LPF-ABCD-EFGH-JKLM"
                     setSingleLine(
                         true,
                     )
@@ -1112,6 +1112,8 @@ class FriendsActivity :
                             friendId,
                             activeRoom
                                 .matchId,
+                            activeRoom
+                                .playerToken,
                         )
                     },
                     LinearLayout.LayoutParams(
@@ -1357,7 +1359,7 @@ class FriendsActivity :
             )
         ) {
             showStatus(
-                "Enter a valid Friend ID like LPF-ABCD-EFGH.",
+                "Enter a valid Friend ID like LPF-ABCD-EFGH-JKLM.",
             )
             return
         }
@@ -1547,6 +1549,7 @@ class FriendsActivity :
     private fun inviteFriend(
         friendId: String,
         matchId: String,
+        roomPlayerToken: String,
     ) {
         val auth =
             credential
@@ -1563,6 +1566,8 @@ class FriendsActivity :
                         friendId,
                     matchId =
                         matchId,
+                    roomPlayerToken =
+                        roomPlayerToken,
                     clientRequestId =
                         UUID.randomUUID()
                             .toString(),
@@ -2269,7 +2274,7 @@ class FriendsActivity :
 
         val FRIEND_ID =
             Regex(
-                "^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}$",
+                "^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$",
             )
     }
 }
