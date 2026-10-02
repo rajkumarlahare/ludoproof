@@ -930,17 +930,64 @@ test(
 );
 
 test(
-  "ranked matches reject client profile spoofing and bind the authenticated profile",
+  "legacy clients stay unranked while authenticated profiles cannot be spoofed",
   { concurrency: false },
   async () => {
+    const attackerProfileId =
+      "660e8400-e29b-41d4-a716-446655440000";
+
+    const legacyCtx =
+      makeContext();
+    const legacyEnv =
+      makeEnv();
+    const legacyRoom =
+      new MatchRoom(
+        legacyCtx,
+        legacyEnv,
+      );
+    const legacy =
+      await json(
+        await legacyRoom.fetch(
+          roomRequest(
+            "/create",
+            {
+              method:
+                "POST",
+              body: {
+                matchId:
+                  "LPABCDEFGH",
+                displayName:
+                  "Legacy Player",
+                clientRequestId:
+                  crypto.randomUUID(),
+                profileId:
+                  attackerProfileId,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      legacy.response.status,
+      201,
+    );
+    const legacyStored =
+      await legacyCtx.storage.get(
+        "match-state",
+      );
+    assert.equal(
+      legacyStored.players[0]
+        .profileId,
+      null,
+      "legacy client-supplied profile IDs must never receive leaderboard credit",
+    );
+
     const ctx =
       makeContext();
     const env =
       makeEnv();
     const authenticatedProfileId =
       "550e8400-e29b-41d4-a716-446655440000";
-    const attackerProfileId =
-      "660e8400-e29b-41d4-a716-446655440000";
     const profileToken =
       "lpp_" +
       "P".repeat(48);
@@ -997,38 +1044,6 @@ test(
         ctx,
         env,
       );
-    const matchId =
-      "LPABCDEFGH";
-    const missingAuth =
-      await json(
-        await room.fetch(
-          roomRequest(
-            "/create",
-            {
-              method:
-                "POST",
-              body: {
-                matchId,
-                displayName:
-                  "Alice",
-                clientRequestId:
-                  crypto.randomUUID(),
-                profileId:
-                  attackerProfileId,
-              },
-            },
-          ),
-        ),
-      );
-    assert.equal(
-      missingAuth.response.status,
-      401,
-    );
-    assert.equal(
-      missingAuth.body.error,
-      "PROFILE_AUTH_REQUIRED",
-    );
-
     const created =
       await json(
         await room.fetch(
@@ -1040,7 +1055,8 @@ test(
               token:
                 profileToken,
               body: {
-                matchId,
+                matchId:
+                  "LPBCDEFGHJ",
                 displayName:
                   "Alice",
                 clientRequestId:
