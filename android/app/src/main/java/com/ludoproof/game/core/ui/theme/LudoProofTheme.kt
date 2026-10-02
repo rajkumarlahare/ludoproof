@@ -36,31 +36,64 @@ object LudoProofTheme {
 
     fun configureWindow(activity: Activity) {
         val window = activity.window
+        val decorView = window.decorView
 
         window.statusBarColor = NAVY_DARK
         window.navigationBarColor = NAVY_DARK
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.setDecorFitsSystemWindows(false)
-            window.insetsController
-                ?.apply {
-                    hide(
-                        WindowInsets.Type.systemBars(),
-                    )
-                    systemBarsBehavior =
-                        WindowInsetsController
-                            .BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                }
+
+            // Some OEM builds can throw from Window#getInsetsController
+            // before PhoneWindow has created/attached its DecorView.
+            // Resolve the controller from the DecorView instead; it safely
+            // returns null until attachment, then retry on the UI queue.
+            applyImmersiveSystemBars(decorView)
+            decorView.post {
+                applyImmersiveSystemBars(
+                    decorView,
+                )
+            }
         } else {
-            @Suppress("DEPRECATION")
-            window.decorView.systemUiVisibility =
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-                    View.SYSTEM_UI_FLAG_FULLSCREEN or
-                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            applyLegacyImmersiveSystemBars(
+                decorView,
+            )
         }
+    }
+
+    private fun applyImmersiveSystemBars(
+        decorView: View,
+    ) {
+        if (
+            Build.VERSION.SDK_INT <
+            Build.VERSION_CODES.R
+        ) {
+            return
+        }
+
+        decorView
+            .windowInsetsController
+            ?.apply {
+                hide(
+                    WindowInsets.Type.systemBars(),
+                )
+                systemBarsBehavior =
+                    WindowInsetsController
+                        .BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun applyLegacyImmersiveSystemBars(
+        decorView: View,
+    ) {
+        decorView.systemUiVisibility =
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                View.SYSTEM_UI_FLAG_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
     }
 
     fun arcadeRoot(context: Context): Pair<FrameLayout, FrameLayout> {
