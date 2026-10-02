@@ -34,6 +34,75 @@ function Resolve-Adb {
     throw "ADB not found. Install Android SDK Platform-Tools or set ANDROID_SDK_ROOT."
 }
 
+function Download-GradleDistribution(
+    [string]$destination
+) {
+    $urls = @(
+        "https://downloads.gradle.org/distributions/gradle-$gradleVersion-bin.zip",
+        "https://services.gradle.org/distributions/gradle-$gradleVersion-bin.zip"
+    )
+    $partialPath = "$destination.part"
+
+    Remove-Item -Force -ErrorAction SilentlyContinue $destination
+    Remove-Item -Force -ErrorAction SilentlyContinue $partialPath
+
+    $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+    if ($curl) {
+        foreach ($url in $urls) {
+            Write-Host "Downloading Gradle from $url"
+            $curlArgs = @(
+                "--fail",
+                "--location",
+                "--retry", "4",
+                "--retry-delay", "2",
+                "--retry-all-errors",
+                "--connect-timeout", "20",
+                "--max-time", "900",
+                "--output", $partialPath,
+                $url
+            )
+            & $curl.Source @curlArgs
+
+            if (
+                $LASTEXITCODE -eq 0 -and
+                (Test-Path $partialPath) -and
+                (Get-Item $partialPath).Length -gt 50MB
+            ) {
+                Move-Item -Force $partialPath $destination
+                return
+            }
+
+            Remove-Item -Force -ErrorAction SilentlyContinue $partialPath
+            Write-Host "Download attempt failed. Trying the next Gradle source..."
+        }
+    }
+
+    foreach ($url in $urls) {
+        for ($attempt = 1; $attempt -le 3; $attempt += 1) {
+            try {
+                Write-Host "PowerShell download attempt $attempt from $url"
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                Invoke-WebRequest -UseBasicParsing -TimeoutSec 900 -Uri $url -OutFile $partialPath
+
+                if (
+                    (Test-Path $partialPath) -and
+                    (Get-Item $partialPath).Length -gt 50MB
+                ) {
+                    Move-Item -Force $partialPath $destination
+                    return
+                }
+            } catch {
+                Write-Host ("Download attempt " + $attempt + " failed: " + $_.Exception.Message)
+            }
+
+            Remove-Item -Force -ErrorAction SilentlyContinue $partialPath
+            Start-Sleep -Seconds ([Math]::Min(2 * $attempt, 6))
+        }
+    }
+
+    throw "Unable to download Gradle $gradleVersion. Check internet access and try Ctrl+Shift+B again."
+}
+
 function Resolve-Gradle {
     $command = Get-Command gradle -ErrorAction SilentlyContinue
     if ($command) {
@@ -50,19 +119,20 @@ function Resolve-Gradle {
 
     New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
     $zipPath = Join-Path $toolsDir "gradle-$gradleVersion-bin.zip"
-    $downloadUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-bin.zip"
 
     Write-Host ""
     Write-Host "Gradle $gradleVersion is not installed. Downloading it once for LudoProof..."
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-WebRequest -UseBasicParsing -Uri $downloadUrl -OutFile $zipPath
+    Download-GradleDistribution $zipPath
 
     if (Test-Path $gradleHome) {
         Remove-Item -Recurse -Force $gradleHome
     }
 
-    Expand-Archive -Path $zipPath -DestinationPath $toolsDir -Force
-    Remove-Item -Force $zipPath
+    try {
+        Expand-Archive -Path $zipPath -DestinationPath $toolsDir -Force
+    } finally {
+        Remove-Item -Force -ErrorAction SilentlyContinue $zipPath
+    }
 
     if (!(Test-Path $gradleBat)) {
         throw "Gradle bootstrap failed: $gradleBat was not created."
