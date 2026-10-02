@@ -148,11 +148,12 @@ export async function deriveFriendIdentity(
     "LPF-";
   for (
     let index = 0;
-    index < 8;
+    index < 12;
     index += 1
   ) {
     if (
-      index === 4
+      index === 4 ||
+      index === 8
     ) {
       friendId +=
         "-";
