@@ -54,6 +54,8 @@ class MainActivity : Activity() {
     internal lateinit var twoPlayerButton: Button
     internal lateinit var fourPlayerButton: Button
     internal lateinit var matchmakingStatusText: TextView
+    internal lateinit var matchmakingSlotsText: TextView
+    internal lateinit var matchmakingTimerText: TextView
     internal lateinit var createButton: Button
     internal lateinit var joinButton: Button
     internal lateinit var startButton: Button
