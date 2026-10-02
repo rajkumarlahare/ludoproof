@@ -113,7 +113,7 @@ function makeQueue() {
             ) ?? "";
           const match =
             authorization.match(
-              /^Bearer\\s+(lpp_[A-Za-z0-9_-]{32,})$/,
+              /^Bearer\s+(lpp_[A-Za-z0-9_-]{32,})$/,
             );
           if (
             !match
