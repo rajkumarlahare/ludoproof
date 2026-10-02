@@ -392,7 +392,7 @@ internal fun OfflineGameActivity.tileButton(
     }
 
 internal fun OfflineGameActivity.refreshSetupSelections() {
-    if (!::playerButtons.isInitialized || !::colorButtons.isInitialized) return
+    if (playerButtons.isEmpty() || colorButtons.isEmpty()) return
 
     playerButtons.forEach { entry ->
         if (entry.key == selectedPlayers) {
