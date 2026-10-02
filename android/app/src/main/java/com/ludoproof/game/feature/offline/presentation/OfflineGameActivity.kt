@@ -126,7 +126,7 @@ class OfflineGameActivity : Activity() {
 
     companion object {
         const val EXTRA_GAME_MODE =
-            "ludoproof_game_mode_v1"
+            GameModeIntent.EXTRA_GAME_MODE
 
         // Legacy extras remain readable so installed builds and old intents
         // can continue an existing local or computer session after upgrade.
