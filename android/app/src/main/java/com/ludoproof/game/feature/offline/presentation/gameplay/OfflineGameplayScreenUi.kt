@@ -105,13 +105,7 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
 
     content.addView(
         backHeader(
-            if (
-                isComputerMode
-            ) {
-                "COMPUTER • CLASSIC"
-            } else {
-                "LOCAL • CLASSIC"
-            },
+            null,
         ),
         LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -197,18 +191,6 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         ),
         gameplaySectionParams(
             if (isCompactSetup()) 6 else 8,
-        ).apply {
-            leftMargin =
-                sectionSideMargin
-            rightMargin =
-                sectionSideMargin
-        },
-    )
-
-    content.addView(
-        gameplayActionPanel(),
-        gameplaySectionParams(
-            if (isCompactSetup()) 4 else 6,
         ).apply {
             leftMargin =
                 sectionSideMargin
@@ -400,7 +382,7 @@ internal fun OfflineGameActivity.offlineResultPanel():
                         this@offlineResultPanel,
                     ).apply {
                         text =
-                            "Local v4 result • history and engine map remain available"
+                            "Game complete"
                         LudoProofTheme.body(
                             this,
                             if (isCompactSetup()) 10.5f else 11.5f,
