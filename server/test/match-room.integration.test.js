@@ -6,7 +6,9 @@ import {
   expectedDigests,
 } from "../src/match-room.js";
 import {
+  deriveLeaderboardIdentity,
   issueFriendRoomJoinToken,
+  issueLeaderboardProfileAssertion,
   sha256Hex,
 } from "../src/crypto.js";
 import {
@@ -80,6 +82,7 @@ function roomRequest(path, {
   method = "GET",
   token = null,
   friendJoinToken = null,
+  profileAssertion = null,
   body = null,
 } = {}) {
   const headers = new Headers();
@@ -90,6 +93,12 @@ function roomRequest(path, {
     headers.set(
       "x-ludoproof-friend-join-token",
       friendJoinToken,
+    );
+  }
+  if (profileAssertion) {
+    headers.set(
+      "x-ludoproof-profile-assertion",
+      profileAssertion,
     );
   }
   if (body !== null) {
@@ -111,10 +120,30 @@ async function createMatch(
   matchId = "LPABCDEFGH",
   clientRequestId = crypto.randomUUID(),
 ) {
+  const profile =
+    await deriveLeaderboardIdentity(
+      room.env,
+      clientRequestId,
+    );
+  const profileAssertion =
+    await issueLeaderboardProfileAssertion(
+      room.env,
+      {
+        matchId,
+        profileId:
+          profile.profileId,
+        clientRequestId,
+        expiresAt:
+          Date.now() +
+          10 * 60 * 1000,
+      },
+    );
+
   const { response, body } = await json(
     await room.fetch(
       roomRequest("/create", {
         method: "POST",
+        profileAssertion,
         body: {
           matchId,
           displayName: "Alice",
@@ -132,10 +161,36 @@ async function joinMatch(
   displayName,
   clientRequestId = crypto.randomUUID(),
 ) {
+  const state =
+    await room.ctx.storage.get(
+      "match-state",
+    );
+  const matchId =
+    state.matchId;
+  const profile =
+    await deriveLeaderboardIdentity(
+      room.env,
+      clientRequestId,
+    );
+  const profileAssertion =
+    await issueLeaderboardProfileAssertion(
+      room.env,
+      {
+        matchId,
+        profileId:
+          profile.profileId,
+        clientRequestId,
+        expiresAt:
+          Date.now() +
+          10 * 60 * 1000,
+      },
+    );
+
   const { response, body } = await json(
     await room.fetch(
       roomRequest("/join", {
         method: "POST",
+        profileAssertion,
         body: {
           displayName,
           clientRequestId,
