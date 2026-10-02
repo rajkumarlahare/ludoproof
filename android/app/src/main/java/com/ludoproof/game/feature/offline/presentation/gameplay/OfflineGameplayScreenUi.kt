@@ -151,7 +151,7 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
                 }.onSuccess {
                         next ->
                     GameSoundFeedback.move(
-                        this@apply,
+                        this@showGame,
                     )
                     renderGame(next)
                 }.onFailure {
