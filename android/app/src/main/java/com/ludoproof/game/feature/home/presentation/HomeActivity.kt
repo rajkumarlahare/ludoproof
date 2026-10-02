@@ -171,7 +171,7 @@ class HomeActivity : Activity() {
                     Gravity.CENTER_HORIZONTAL
                 topMargin =
                     dp(
-                        if (isCompact()) 20 else 24,
+                        if (isCompact()) 52 else 60,
                     )
             },
         )
