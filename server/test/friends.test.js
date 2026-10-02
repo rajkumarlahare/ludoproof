@@ -42,7 +42,7 @@ test(
     );
     assert.match(
       first.friendId,
-      /^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}$/,
+      /^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/,
     );
     assert.match(
       first.friendToken,
