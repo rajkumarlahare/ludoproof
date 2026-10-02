@@ -134,8 +134,8 @@ if (
 }
 
 for (const file of [
-  "android/app/src/main/java/com/ludoproof/game/PendingRollStore.kt",
-  "android/app/src/main/java/com/ludoproof/game/SecureSessionStore.kt",
+  "android/app/src/main/java/com/ludoproof/game/data/storage/PendingRollStore.kt",
+  "android/app/src/main/java/com/ludoproof/game/data/storage/SecureSessionStore.kt",
 ]) {
   const content =
     fs.readFileSync(
@@ -273,9 +273,9 @@ for (const [name, expected] of [
 }
 
 const offlineV4Files = {
-  core: "android/app/src/main/java/com/ludoproof/game/EntroNexV4Local.kt",
-  binding: "android/app/src/main/java/com/ludoproof/game/OfflineLudoV4Binding.kt",
-  engine: "android/app/src/main/java/com/ludoproof/game/OfflineGameEngine.kt",
+  core: "android/app/src/main/java/com/ludoproof/game/proof/core/EntroNexV4Local.kt",
+  binding: "android/app/src/main/java/com/ludoproof/game/proof/offline/OfflineLudoV4Binding.kt",
+  engine: "android/app/src/main/java/com/ludoproof/game/engine/offline/OfflineGameEngine.kt",
   conformance:
     "android/app/src/test/java/com/ludoproof/game/EntroNexV4LocalConformanceTest.kt",
 };
