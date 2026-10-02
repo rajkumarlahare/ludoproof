@@ -18,6 +18,7 @@ import org.json.JSONObject
 import java.util.concurrent.Executors
 import com.ludoproof.game.*
 import com.ludoproof.game.feature.online.*
+import com.ludoproof.game.feature.profile.data.local.ProfileStore
 
 internal fun MainActivity.onlineLobbyPanel():
     LinearLayout =
@@ -77,7 +78,11 @@ internal fun MainActivity.onlineLobbyPanel():
                     hint =
                         "Your display name"
                     setText(
-                        "Player",
+                        ProfileStore(
+                            this@onlineLobbyPanel,
+                        )
+                            .snapshot()
+                            .displayName,
                     )
                     inputType =
                         InputType.TYPE_CLASS_TEXT or
