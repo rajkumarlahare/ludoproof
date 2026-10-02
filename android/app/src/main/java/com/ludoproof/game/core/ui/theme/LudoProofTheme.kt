@@ -7,8 +7,11 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
+import android.os.Build
 import android.view.Gravity
 import android.view.View
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -32,9 +35,32 @@ object LudoProofTheme {
     const val YELLOW = 0xFFFFD324.toInt()
 
     fun configureWindow(activity: Activity) {
-        activity.window.statusBarColor = NAVY_DARK
-        activity.window.navigationBarColor = NAVY_DARK
-        activity.window.decorView.systemUiVisibility = 0
+        val window = activity.window
+
+        window.statusBarColor = NAVY_DARK
+        window.navigationBarColor = NAVY_DARK
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(false)
+            window.insetsController
+                ?.apply {
+                    hide(
+                        WindowInsets.Type.systemBars(),
+                    )
+                    systemBarsBehavior =
+                        WindowInsetsController
+                            .BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+        } else {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility =
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                    View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        }
     }
 
     fun arcadeRoot(context: Context): Pair<FrameLayout, FrameLayout> {
