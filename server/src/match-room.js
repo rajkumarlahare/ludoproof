@@ -413,7 +413,13 @@ export class MatchRoom {
         existing.createRequestId ===
           clientRequestId &&
         existing.hostPlayerId ===
-          identity.playerId
+          identity.playerId &&
+        (
+          existing.matchMode !==
+            "FRIENDS" ||
+          existing.hostFriendId ===
+            hostFriend?.friendId
+        )
       ) {
         return json(200, {
           replayed: true,
