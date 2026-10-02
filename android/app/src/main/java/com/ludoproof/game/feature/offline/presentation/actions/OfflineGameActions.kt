@@ -6,7 +6,6 @@ import com.ludoproof.game.PlayerSnapshot
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.ui.offline.gameplay.renderGame
-import com.ludoproof.game.ui.offline.gameplay.showStatus
 
 internal fun OfflineGameActivity.rollOffline() {
     val control =
