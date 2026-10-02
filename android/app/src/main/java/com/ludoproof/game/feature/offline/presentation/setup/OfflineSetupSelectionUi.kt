@@ -21,7 +21,13 @@ internal fun OfflineGameActivity.playersPanel():
     LinearLayout =
     selectionPanel(
         "SELECT PLAYERS",
-        "2–4 players on this device",
+        if (
+            isComputerMode
+        ) {
+            "You + 1–3 computer players"
+        } else {
+            "2–4 players on this device"
+        },
     ).apply {
         val playersRow =
             LinearLayout(
@@ -71,7 +77,7 @@ internal fun OfflineGameActivity.colorPanel():
     LinearLayout =
     selectionPanel(
         "CHOOSE YOUR COLOR",
-        "Your seat starts with this color",
+        "Your color will rotate to the bottom-left side",
     ).apply {
         val colorRow =
             LinearLayout(
