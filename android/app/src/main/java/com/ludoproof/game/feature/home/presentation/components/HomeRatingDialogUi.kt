@@ -436,7 +436,7 @@ private fun openPlayStoreRating(
 private class RatingStarView(
     context: Context,
 ) : View(context) {
-    var isSelected:
+    var isFilled:
         Boolean =
         false
         set(value) {
