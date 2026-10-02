@@ -32,25 +32,10 @@ class FriendIdentityStore(
     @Synchronized
     fun registrationRequestId():
         String {
-        val existing =
-            prefs.getString(
-                KEY_REGISTRATION_REQUEST_ID,
-                null,
-            )
-                ?.trim()
-                ?.lowercase(
-                    Locale.ROOT,
-                )
-
-        if (
-            existing !=
-                null &&
-            UUID_V4.matches(
-                existing,
-            )
-        ) {
-            return existing
-        }
+        loadRegistrationRequestId()
+            ?.let {
+                return it
+            }
 
         val generated =
             UUID.randomUUID()
@@ -58,18 +43,9 @@ class FriendIdentityStore(
                 .lowercase(
                     Locale.ROOT,
                 )
-
-        check(
-            prefs.edit()
-                .putString(
-                    KEY_REGISTRATION_REQUEST_ID,
-                    generated,
-                )
-                .commit(),
-        ) {
-            "Friend registration request could not be persisted"
-        }
-
+        persistRegistrationRequestId(
+            generated,
+        )
         return generated
     }
 
@@ -93,6 +69,15 @@ class FriendIdentityStore(
             ),
         )
 
+        val protectedRequestId =
+            registrationRequestId()
+        require(
+            protectedRequestId ==
+                credential.registrationRequestId,
+        ) {
+            "Friend credential registration identity does not match this device"
+        }
+
         val cipher =
             Cipher.getInstance(
                 TRANSFORMATION,
@@ -102,9 +87,9 @@ class FriendIdentityStore(
             secretKey(),
         )
         cipher.updateAAD(
-            aad(
+            credentialAad(
                 credential.friendId,
-                credential.registrationRequestId,
+                protectedRequestId,
             ),
         )
         val ciphertext =
@@ -123,11 +108,7 @@ class FriendIdentityStore(
                     credential.friendId,
                 )
                 .putString(
-                    KEY_REGISTRATION_REQUEST_ID,
-                    credential.registrationRequestId,
-                )
-                .putString(
-                    KEY_IV,
+                    KEY_TOKEN_IV,
                     Base64.encodeToString(
                         cipher.iv,
                         Base64.NO_WRAP,
@@ -156,14 +137,14 @@ class FriendIdentityStore(
             )
                 ?: return null
         val requestId =
-            prefs.getString(
-                KEY_REGISTRATION_REQUEST_ID,
-                null,
-            )
-                ?: return null
+            loadRegistrationRequestId()
+                ?: run {
+                    clearCredentialOnly()
+                    return null
+                }
         val ivText =
             prefs.getString(
-                KEY_IV,
+                KEY_TOKEN_IV,
                 null,
             )
                 ?: return null
@@ -203,7 +184,7 @@ class FriendIdentityStore(
                 ),
             )
             cipher.updateAAD(
-                aad(
+                credentialAad(
                     friendId,
                     requestId,
                 ),
@@ -249,11 +230,133 @@ class FriendIdentityStore(
                 KEY_FRIEND_ID,
             )
             .remove(
-                KEY_IV,
+                KEY_TOKEN_IV,
             )
             .remove(
                 KEY_TOKEN_CIPHERTEXT,
             )
+            .apply()
+    }
+
+    private fun persistRegistrationRequestId(
+        requestId: String,
+    ) {
+        require(
+            UUID_V4.matches(
+                requestId,
+            ),
+        )
+
+        val cipher =
+            Cipher.getInstance(
+                TRANSFORMATION,
+            )
+        cipher.init(
+            Cipher.ENCRYPT_MODE,
+            secretKey(),
+        )
+        cipher.updateAAD(
+            REGISTRATION_AAD,
+        )
+
+        val ciphertext =
+            cipher.doFinal(
+                requestId
+                    .toByteArray(
+                        Charsets.UTF_8,
+                    ),
+            )
+
+        check(
+            prefs.edit()
+                .putString(
+                    KEY_REGISTRATION_IV,
+                    Base64.encodeToString(
+                        cipher.iv,
+                        Base64.NO_WRAP,
+                    ),
+                )
+                .putString(
+                    KEY_REGISTRATION_CIPHERTEXT,
+                    Base64.encodeToString(
+                        ciphertext,
+                        Base64.NO_WRAP,
+                    ),
+                )
+                .commit(),
+        ) {
+            "Friend registration recovery secret could not be persisted"
+        }
+    }
+
+    private fun loadRegistrationRequestId():
+        String? {
+        val ivText =
+            prefs.getString(
+                KEY_REGISTRATION_IV,
+                null,
+            )
+                ?: return null
+        val ciphertextText =
+            prefs.getString(
+                KEY_REGISTRATION_CIPHERTEXT,
+                null,
+            )
+                ?: return null
+
+        return try {
+            val cipher =
+                Cipher.getInstance(
+                    TRANSFORMATION,
+                )
+            cipher.init(
+                Cipher.DECRYPT_MODE,
+                secretKey(),
+                GCMParameterSpec(
+                    128,
+                    Base64.decode(
+                        ivText,
+                        Base64.NO_WRAP,
+                    ),
+                ),
+            )
+            cipher.updateAAD(
+                REGISTRATION_AAD,
+            )
+            val requestId =
+                cipher.doFinal(
+                    Base64.decode(
+                        ciphertextText,
+                        Base64.NO_WRAP,
+                    ),
+                )
+                    .toString(
+                        Charsets.UTF_8,
+                    )
+                    .trim()
+                    .lowercase(
+                        Locale.ROOT,
+                    )
+
+            requestId
+                .takeIf {
+                    UUID_V4.matches(
+                        it,
+                    )
+                }
+                ?: run {
+                    clearAllIdentity()
+                    null
+                }
+        } catch (_: Exception) {
+            clearAllIdentity()
+            null
+        }
+    }
+
+    private fun clearAllIdentity() {
+        prefs.edit()
+            .clear()
             .apply()
     }
 
@@ -313,7 +416,7 @@ class FriendIdentityStore(
             .generateKey()
     }
 
-    private fun aad(
+    private fun credentialAad(
         friendId: String,
         requestId: String,
     ):
@@ -339,12 +442,20 @@ class FriendIdentityStore(
             "AES/GCM/NoPadding"
         const val KEY_FRIEND_ID =
             "friend_id"
-        const val KEY_REGISTRATION_REQUEST_ID =
-            "registration_request_id"
-        const val KEY_IV =
+        const val KEY_REGISTRATION_IV =
+            "registration_request_iv"
+        const val KEY_REGISTRATION_CIPHERTEXT =
+            "registration_request_ciphertext"
+        const val KEY_TOKEN_IV =
             "friend_token_iv"
         const val KEY_TOKEN_CIPHERTEXT =
             "friend_token_ciphertext"
+
+        val REGISTRATION_AAD =
+            "ludoproof:friend-registration:v1"
+                .toByteArray(
+                    Charsets.UTF_8,
+                )
 
         val FRIEND_ID =
             Regex(
