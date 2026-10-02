@@ -1,150 +1,134 @@
 package com.ludoproof.game.ui.home
 
-import android.app.Activity
-import android.content.Intent
-import android.os.Bundle
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
-import com.ludoproof.game.*
+import com.ludoproof.game.HomeActivity
+import com.ludoproof.game.LudoProofTheme
 
 internal fun HomeActivity.profileHud():
-    LinearLayout =
-    if (isCompact()) {
-        compactProfileHud()
-    } else {
-        regularProfileHud()
-    }
-
-internal fun HomeActivity.compactProfileHud():
     LinearLayout =
     LinearLayout(this).apply {
         orientation =
             LinearLayout.VERTICAL
         setPadding(
-            dp(14),
-            dp(14),
-            dp(14),
-            dp(12),
+            dp(if (isCompact()) 4 else 6),
+            dp(4),
+            dp(if (isCompact()) 4 else 6),
+            dp(4),
         )
-        background =
-            LudoProofTheme
-                .hudPanelDrawable(this@compactProfileHud)
-        elevation =
-            dp(5).toFloat()
-
-        val identityRow =
-            LinearLayout(this@compactProfileHud).apply {
-                orientation =
-                    LinearLayout.HORIZONTAL
-                gravity =
-                    Gravity.CENTER_VERTICAL
-            }
-        identityRow.addView(
-            avatar(),
-            LinearLayout.LayoutParams(
-                dp(52),
-                dp(52),
-            ),
-        )
-        identityRow.addView(
-            identityBlock(),
-            LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f,
-            ).apply {
-                marginStart =
-                    dp(11)
-            },
-        )
-        addView(identityRow)
 
         addView(
-            connectivityChip(),
+            homeIdentityRow(),
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(42),
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+
+        addView(
+            homeShortcutRow(),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
                 topMargin =
-                    dp(10)
+                    dp(if (isCompact()) 18 else 22)
             },
         )
+
+        connectivityText =
+            TextView(this@profileHud).apply {
+                text = "● CHECKING"
+                visibility = View.GONE
+                importantForAccessibility =
+                    View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }
+        addView(connectivityText)
     }
 
-internal fun HomeActivity.regularProfileHud():
+private fun HomeActivity.homeIdentityRow():
     LinearLayout =
     LinearLayout(this).apply {
         orientation =
             LinearLayout.HORIZONTAL
         gravity =
             Gravity.CENTER_VERTICAL
-        setPadding(
-            dp(15),
-            dp(14),
-            dp(15),
-            dp(14),
-        )
-        background =
-            LudoProofTheme
-                .hudPanelDrawable(this@regularProfileHud)
-        elevation =
-            dp(5).toFloat()
+        minimumHeight =
+            dp(if (isCompact()) 72 else 80)
 
         addView(
-            avatar(),
+            homeAvatarPlaceholder(),
             LinearLayout.LayoutParams(
-                dp(58),
-                dp(58),
+                dp(if (isCompact()) 58 else 64),
+                dp(if (isCompact()) 58 else 64),
             ),
         )
+
         addView(
-            identityBlock(),
+            homeIdentityBlock(),
             LinearLayout.LayoutParams(
                 0,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 1f,
             ).apply {
                 marginStart =
-                    dp(12)
+                    dp(if (isCompact()) 10 else 12)
+                marginEnd =
+                    dp(if (isCompact()) 8 else 12)
             },
         )
+
         addView(
-            connectivityChip(),
+            homeCurrencyPill(),
             LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                dp(42),
+                dp(if (isCompact()) 112 else 126),
+                dp(if (isCompact()) 44 else 48),
             ),
         )
     }
 
-internal fun HomeActivity.avatar():
+private fun HomeActivity.homeAvatarPlaceholder():
     TextView =
     TextView(this).apply {
-        text = "LP"
-        LudoProofTheme.title(
-            this,
-            17f,
-            gold = true,
+        text = "GU"
+        textSize =
+            if (isCompact()) 17f else 19f
+        setTypeface(
+            Typeface.DEFAULT_BOLD,
         )
-        gravity =
-            Gravity.CENTER
+        setTextColor(Color.WHITE)
+        gravity = Gravity.CENTER
         contentDescription =
-            "LudoProof"
+            "Guest user profile"
         background =
-            LudoProofTheme
-                .brandBadgeDrawable(
-                    this@avatar,
+            GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    0xFF1679DD.toInt(),
+                    0xFF0A4BA8.toInt(),
+                    0xFF062A72.toInt(),
+                ),
+            ).apply {
+                cornerRadius =
+                    dp(12).toFloat()
+                setStroke(
+                    dp(2),
+                    0xFF53DFFF.toInt(),
                 )
+            }
         elevation =
-            dp(7).toFloat()
+            dp(5).toFloat()
     }
 
-internal fun HomeActivity.identityBlock():
+private fun HomeActivity.homeIdentityBlock():
     LinearLayout =
     LinearLayout(this).apply {
         orientation =
@@ -152,97 +136,373 @@ internal fun HomeActivity.identityBlock():
         gravity =
             Gravity.CENTER_VERTICAL
 
-        val brandRow =
-            LinearLayout(
-                this@identityBlock,
+        addView(
+            TextView(
+                this@homeIdentityBlock,
             ).apply {
-                orientation =
-                    LinearLayout.HORIZONTAL
-                gravity =
-                    Gravity.CENTER_VERTICAL
-            }
-
-        brandRow.addView(
-            TextView(this@identityBlock).apply {
-                text =
-                    "LUDO"
-                LudoProofTheme.title(
-                    this,
-                    if (isCompact()) 18f else 21f,
+                text = "Guest User"
+                textSize =
+                    if (isCompact()) 18f else 21f
+                setTypeface(
+                    Typeface.DEFAULT_BOLD,
                 )
+                setTextColor(Color.WHITE)
                 gravity =
                     Gravity.START or
                         Gravity.CENTER_VERTICAL
-            },
-        )
-        brandRow.addView(
-            TextView(this@identityBlock).apply {
-                text =
-                    "PROOF"
-                LudoProofTheme.title(
-                    this,
-                    if (isCompact()) 18f else 21f,
-                    gold = true,
+                setShadowLayer(
+                    2f,
+                    0f,
+                    dp(1).toFloat(),
+                    0x99000000.toInt(),
                 )
-                gravity =
-                    Gravity.START or
-                        Gravity.CENTER_VERTICAL
             },
         )
-        addView(brandRow)
 
         addView(
-            TextView(this@identityBlock).apply {
-                text =
-                    "VERIFIABLE PLAY • ENTRONEX V4"
-                LudoProofTheme.body(
-                    this,
-                    if (isCompact()) 9.5f else 11f,
-                    bright = true,
-                )
-                setTextColor(
-                    0xFF5FE4FF.toInt(),
-                )
-                setPadding(
-                    0,
-                    dp(2),
-                    0,
-                    0,
-                )
+            homeLevelProgress(),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                dp(if (isCompact()) 30 else 34),
+            ).apply {
+                topMargin = dp(3)
             },
         )
     }
 
-internal fun HomeActivity.connectivityChip():
-    TextView =
-    TextView(this).apply {
-        connectivityText =
-            this
-        text =
-            "● CHECKING"
-        LudoProofTheme.body(
-            this,
-            11f,
-            centered = true,
-            bright = true,
+private fun HomeActivity.homeLevelProgress():
+    LinearLayout =
+    LinearLayout(this).apply {
+        orientation =
+            LinearLayout.HORIZONTAL
+        gravity =
+            Gravity.CENTER_VERTICAL
+
+        addView(
+            TextView(
+                this@homeLevelProgress,
+            ).apply {
+                text = "★"
+                textSize =
+                    if (isCompact()) 21f else 24f
+                setTypeface(
+                    Typeface.DEFAULT_BOLD,
+                )
+                setTextColor(
+                    LudoProofTheme.GOLD,
+                )
+                gravity = Gravity.CENTER
+                contentDescription =
+                    "Level 0"
+            },
+            LinearLayout.LayoutParams(
+                dp(if (isCompact()) 30 else 34),
+                dp(if (isCompact()) 30 else 34),
+            ),
         )
+
+        val track =
+            FrameLayout(
+                this@homeLevelProgress,
+            ).apply {
+                background =
+                    LudoProofTheme.rounded(
+                        0xD908245B.toInt(),
+                        999f,
+                        0xFF4A91D9.toInt(),
+                        1f,
+                        this@homeLevelProgress,
+                    )
+            }
+
+        track.addView(
+            View(
+                this@homeLevelProgress,
+            ).apply {
+                background =
+                    GradientDrawable(
+                        GradientDrawable.Orientation.LEFT_RIGHT,
+                        intArrayOf(
+                            0xFFFFD43B.toInt(),
+                            0xFFFFB20F.toInt(),
+                        ),
+                    ).apply {
+                        cornerRadius =
+                            dp(999).toFloat()
+                    }
+            },
+            FrameLayout.LayoutParams(
+                dp(if (isCompact()) 78 else 92),
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+
+        addView(
+            track,
+            LinearLayout.LayoutParams(
+                dp(if (isCompact()) 118 else 138),
+                dp(10),
+            ).apply {
+                marginStart = dp(2)
+            },
+        )
+    }
+
+private fun HomeActivity.homeCurrencyPill():
+    LinearLayout =
+    LinearLayout(this).apply {
+        orientation =
+            LinearLayout.HORIZONTAL
+        gravity =
+            Gravity.CENTER_VERTICAL
+        background =
+            LudoProofTheme.rounded(
+                0xF0071538.toInt(),
+                999f,
+                0x33000000,
+                1f,
+                this@homeCurrencyPill,
+            )
+        elevation =
+            dp(4).toFloat()
+
+        addView(
+            TextView(
+                this@homeCurrencyPill,
+            ).apply {
+                text = "◆"
+                textSize =
+                    if (isCompact()) 23f else 26f
+                setTypeface(
+                    Typeface.DEFAULT_BOLD,
+                )
+                setTextColor(
+                    0xFF43F36B.toInt(),
+                )
+                gravity = Gravity.CENTER
+                contentDescription =
+                    "Currency"
+            },
+            LinearLayout.LayoutParams(
+                dp(if (isCompact()) 38 else 42),
+                LinearLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+
+        addView(
+            TextView(
+                this@homeCurrencyPill,
+            ).apply {
+                text = "0"
+                textSize =
+                    if (isCompact()) 19f else 21f
+                setTypeface(
+                    Typeface.DEFAULT_BOLD,
+                )
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+            },
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                1f,
+            ),
+        )
+
+        addView(
+            Button(
+                this@homeCurrencyPill,
+            ).apply {
+                text = "+"
+                textSize =
+                    if (isCompact()) 25f else 28f
+                setTypeface(
+                    Typeface.DEFAULT_BOLD,
+                )
+                setTextColor(
+                    0xFF7B5510.toInt(),
+                )
+                gravity = Gravity.CENTER
+                minWidth = 0
+                minHeight = 0
+                setPadding(0, 0, 0, 0)
+                background =
+                    headerPressDrawable(
+                        0xFFFFD03B.toInt(),
+                        0xFFFFB81F.toInt(),
+                        10f,
+                    )
+                contentDescription =
+                    "Add currency"
+                setOnClickListener {
+                    // Currency logic will be connected later.
+                }
+            },
+            LinearLayout.LayoutParams(
+                dp(if (isCompact()) 38 else 42),
+                LinearLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+    }
+
+private fun HomeActivity.homeShortcutRow():
+    LinearLayout =
+    LinearLayout(this).apply {
+        orientation =
+            LinearLayout.HORIZONTAL
         gravity =
             Gravity.CENTER
-        setPadding(
-            dp(13),
-            0,
-            dp(13),
-            0,
-        )
-        background =
-            LudoProofTheme
-                .rounded(
-                    0xE4071739.toInt(),
-                    18f,
-                    0x6647D7FF,
+
+        listOf(
+            HeaderShortcut(
+                symbol = "★",
+                label = "LEADERBOARD",
+                tint = 0xFFFFC928.toInt(),
+            ),
+            HeaderShortcut(
+                symbol = "▣",
+                label = "SHOP",
+                tint = 0xFFFFC928.toInt(),
+            ),
+            HeaderShortcut(
+                symbol = "◆",
+                label = "BADGES",
+                tint = 0xFFFFB51E.toInt(),
+            ),
+            HeaderShortcut(
+                symbol = "AD",
+                label = "REMOVE ADS",
+                tint = 0xFF72E8FF.toInt(),
+            ),
+        ).forEach {
+                item ->
+            addView(
+                homeShortcut(item),
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
                     1f,
-                    this@connectivityChip,
-                )
-        accessibilityLiveRegion =
-            View.ACCESSIBILITY_LIVE_REGION_POLITE
+                ),
+            )
+        }
     }
+
+private fun HomeActivity.homeShortcut(
+    item: HeaderShortcut,
+): LinearLayout =
+    LinearLayout(this).apply {
+        orientation =
+            LinearLayout.VERTICAL
+        gravity =
+            Gravity.CENTER
+        isClickable = true
+        isFocusable = true
+        contentDescription =
+            item.label.lowercase()
+        background =
+            headerPressDrawable(
+                Color.TRANSPARENT,
+                0x2217A4FF,
+                12f,
+            )
+        setPadding(
+            dp(2),
+            dp(5),
+            dp(2),
+            dp(5),
+        )
+        setOnClickListener {
+            // Header shortcut logic will be connected later.
+        }
+
+        addView(
+            TextView(
+                this@homeShortcut,
+            ).apply {
+                text = item.symbol
+                textSize =
+                    if (item.symbol.length > 1) {
+                        if (isCompact()) 17f else 19f
+                    } else {
+                        if (isCompact()) 30f else 34f
+                    }
+                setTypeface(
+                    Typeface.DEFAULT_BOLD,
+                )
+                setTextColor(item.tint)
+                gravity = Gravity.CENTER
+                background =
+                    LudoProofTheme.rounded(
+                        0xA80A2D72.toInt(),
+                        13f,
+                        0x665ED8FF,
+                        1f,
+                        this@homeShortcut,
+                    )
+            },
+            LinearLayout.LayoutParams(
+                dp(if (isCompact()) 50 else 56),
+                dp(if (isCompact()) 50 else 56),
+            ),
+        )
+
+        addView(
+            TextView(
+                this@homeShortcut,
+            ).apply {
+                text = item.label
+                textSize =
+                    if (isCompact()) 8.5f else 9.5f
+                setTypeface(
+                    Typeface.DEFAULT_BOLD,
+                )
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+                maxLines = 1
+                setPadding(
+                    0,
+                    dp(5),
+                    0,
+                    0,
+                )
+            },
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+    }
+
+private fun HomeActivity.headerPressDrawable(
+    normalColor: Int,
+    pressedColor: Int,
+    radiusDp: Float,
+): StateListDrawable =
+    StateListDrawable().apply {
+        addState(
+            intArrayOf(
+                android.R.attr.state_pressed,
+            ),
+            GradientDrawable().apply {
+                setColor(pressedColor)
+                cornerRadius =
+                    dp(radiusDp.toInt())
+                        .toFloat()
+            },
+        )
+        addState(
+            intArrayOf(),
+            GradientDrawable().apply {
+                setColor(normalColor)
+                cornerRadius =
+                    dp(radiusDp.toInt())
+                        .toFloat()
+            },
+        )
+    }
+
+private data class HeaderShortcut(
+    val symbol: String,
+    val label: String,
+    val tint: Int,
+)
