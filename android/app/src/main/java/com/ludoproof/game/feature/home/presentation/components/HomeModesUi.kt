@@ -18,35 +18,6 @@ internal fun HomeActivity.modeSection():
         orientation =
             LinearLayout.VERTICAL
 
-        addView(
-            TextView(this@modeSection).apply {
-                text =
-                    "CHOOSE YOUR MODE"
-                LudoProofTheme.title(
-                    this,
-                    if (isCompact()) 20f else 22f,
-                )
-            },
-        )
-
-        addView(
-            TextView(this@modeSection).apply {
-                text =
-                    "Remote verified play or local pass-and-play"
-                LudoProofTheme.body(
-                    this,
-                    12f,
-                    centered = true,
-                )
-                setPadding(
-                    0,
-                    dp(4),
-                    0,
-                    dp(13),
-                )
-            },
-        )
-
         val modes =
             LinearLayout(this@modeSection).apply {
                 orientation =
