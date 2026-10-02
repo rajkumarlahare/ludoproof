@@ -276,6 +276,7 @@ const offlineV4Files = {
   core: "android/app/src/main/java/com/ludoproof/game/feature/proof/domain/core/EntroNexV4Local.kt",
   binding: "android/app/src/main/java/com/ludoproof/game/feature/proof/domain/offline/OfflineLudoV4Binding.kt",
   engine: "android/app/src/main/java/com/ludoproof/game/feature/offline/domain/engine/OfflineGameEngine.kt",
+  fairness: "android/app/src/main/java/com/ludoproof/game/feature/proof/domain/offline/OfflineFairnessChain.kt",
   conformance:
     "android/app/src/test/java/com/ludoproof/game/EntroNexV4LocalConformanceTest.kt",
 };
@@ -379,6 +380,26 @@ if (
         offlineV4Files.engine +
           ": direct local dice shortcut is forbidden: " +
           forbidden,
+      );
+    }
+  }
+
+  const fairness =
+    fs.readFileSync(
+      offlineV4Files.fairness,
+      "utf8",
+    );
+  for (const invariant of [
+    "ludoproof-roll-chain-v1",
+    "ludoproof:fairness-receipt:v1:",
+    "previousFairnessDigest",
+    "fairnessDigest",
+  ]) {
+    if (!fairness.includes(invariant)) {
+      findings.push(
+        offlineV4Files.fairness +
+          ": missing offline fairness-chain invariant " +
+          invariant,
       );
     }
   }

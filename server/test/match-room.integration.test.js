@@ -1265,3 +1265,122 @@ test(
     );
   },
 );
+
+test(
+  "client commitment reuse is rejected after a completed roll",
+  { concurrency: false },
+  async (t) => {
+    installEntroNexMock(t, {
+      outcomes: [6],
+      clientSeeds: [
+        "a".repeat(64),
+      ],
+    });
+    const {
+      room,
+      host,
+    } =
+      await setupActiveMatch(2);
+
+    const clientSeed =
+      "a".repeat(64);
+    const clientCommitment =
+      await sha256Hex(
+        "entronex:v4:client-commit:" +
+          clientSeed,
+      );
+
+    const committed =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/roll/commit",
+            {
+              method: "POST",
+              token:
+                host.playerToken,
+              body: {
+                clientCommitment,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      committed.response.status,
+      201,
+    );
+
+    const revealed =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/roll/reveal",
+            {
+              method: "POST",
+              token:
+                host.playerToken,
+              body: {
+                clientSeed,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      revealed.response.status,
+      200,
+    );
+    assert.equal(
+      revealed.body.outcome,
+      6,
+    );
+
+    const moved =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/move",
+            {
+              method: "POST",
+              token:
+                host.playerToken,
+              body: {
+                tokenIndex: 0,
+                eventIndex: 0,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      moved.response.status,
+      200,
+    );
+
+    const reused =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/roll/commit",
+            {
+              method: "POST",
+              token:
+                host.playerToken,
+              body: {
+                clientCommitment,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      reused.response.status,
+      409,
+    );
+    assert.equal(
+      reused.body.error,
+      "CLIENT_COMMITMENT_REUSED",
+    );
+  },
+);

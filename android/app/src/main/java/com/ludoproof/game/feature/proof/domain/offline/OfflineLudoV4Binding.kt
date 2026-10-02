@@ -14,6 +14,7 @@ data class OfflineBindingHistory(
     val outcome: Int?,
     val moveTokenIndex: Int?,
     val captures: Int,
+    val fairnessDigest: String? = null,
 )
 
 object OfflineLudoV4Binding {
@@ -108,6 +109,8 @@ object OfflineLudoV4Binding {
                                 event.moveTokenIndex,
                             "captures" to
                                 event.captures,
+                            "fairnessDigest" to
+                                event.fairnessDigest,
                         )
                     },
             )

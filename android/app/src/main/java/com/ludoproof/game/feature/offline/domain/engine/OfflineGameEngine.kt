@@ -207,6 +207,8 @@ class OfflineGameEngine(
                                         history.moveTokenIndex,
                                     captures =
                                         history.captures,
+                                    fairnessDigest =
+                                        history.fairnessDigest,
                                 )
                             },
                 )
@@ -265,6 +267,60 @@ class OfflineGameEngine(
                 0
         }
 
+        val fairnessMaterial =
+            OfflineFairnessChain
+                .seal(
+                    OfflineFairnessMaterial(
+                        eventIndex =
+                            event,
+                        playerId =
+                            current.players[
+                                seat
+                            ].playerId,
+                        color =
+                            current.players[
+                                seat
+                            ].color,
+                        roundId =
+                            result.roundId,
+                        serverCommitment =
+                            result.serverCommitment,
+                        clientCommitment =
+                            result.clientCommitment,
+                        actorHash =
+                            result.config
+                                .context
+                                .subjectHash,
+                        previousStateHash =
+                            result.config
+                                .context
+                                .previousStateHash,
+                        rulesetHash =
+                            result.config
+                                .context
+                                .metadataDigest,
+                        proofDigest =
+                            result.proofDigest,
+                        outcome =
+                            outcome,
+                    ),
+                    current.history
+                        .asReversed()
+                        .firstOrNull {
+                            it.fairnessDigest !=
+                                null
+                        }
+                        ?.fairnessDigest,
+                )
+        check(
+            OfflineFairnessChain
+                .verify(
+                    fairnessMaterial,
+                ),
+        ) {
+            "Local fairness receipt verification failed"
+        }
+
         current.history +=
             LocalHistoryEvent(
                 eventIndex =
@@ -273,12 +329,39 @@ class OfflineGameEngine(
                     current.players[
                         seat
                     ].playerId,
+                color =
+                    current.players[
+                        seat
+                    ].color,
                 roundId =
                     result.roundId,
+                serverCommitment =
+                    result.serverCommitment,
                 clientCommitment =
                     result.clientCommitment,
+                actorHash =
+                    result.config
+                        .context
+                        .subjectHash,
+                previousStateHash =
+                    result.config
+                        .context
+                        .previousStateHash,
+                rulesetHash =
+                    result.config
+                        .context
+                        .metadataDigest,
                 proofDigest =
                     result.proofDigest,
+                fairnessProtocol =
+                    fairnessMaterial
+                        .fairnessProtocol,
+                previousFairnessDigest =
+                    fairnessMaterial
+                        .previousFairnessDigest,
+                fairnessDigest =
+                    fairnessMaterial
+                        .fairnessDigest,
                 outcome =
                     outcome,
                 moveTokenIndex =
@@ -740,16 +823,48 @@ class OfflineGameEngine(
                                             event.playerId,
                                         )
                                         .put(
+                                            "color",
+                                            event.color,
+                                        )
+                                        .put(
                                             "roundId",
                                             event.roundId,
+                                        )
+                                        .put(
+                                            "serverCommitment",
+                                            event.serverCommitment,
                                         )
                                         .put(
                                             "clientCommitment",
                                             event.clientCommitment,
                                         )
                                         .put(
+                                            "actorHash",
+                                            event.actorHash,
+                                        )
+                                        .put(
+                                            "previousStateHash",
+                                            event.previousStateHash,
+                                        )
+                                        .put(
+                                            "rulesetHash",
+                                            event.rulesetHash,
+                                        )
+                                        .put(
                                             "proofDigest",
                                             event.proofDigest,
+                                        )
+                                        .put(
+                                            "fairnessProtocol",
+                                            event.fairnessProtocol,
+                                        )
+                                        .put(
+                                            "previousFairnessDigest",
+                                            event.previousFairnessDigest,
+                                        )
+                                        .put(
+                                            "fairnessDigest",
+                                            event.fairnessDigest,
                                         )
                                         .put(
                                             "outcome",
@@ -935,20 +1050,60 @@ class OfflineGameEngine(
                                 value.getString(
                                     "playerId",
                                 ),
+                            color =
+                                value
+                                    .nullableString(
+                                        "color",
+                                    ),
                             roundId =
                                 value
                                     .nullableString(
                                         "roundId",
+                                    ),
+                            serverCommitment =
+                                value
+                                    .nullableString(
+                                        "serverCommitment",
                                     ),
                             clientCommitment =
                                 value
                                     .nullableString(
                                         "clientCommitment",
                                     ),
+                            actorHash =
+                                value
+                                    .nullableString(
+                                        "actorHash",
+                                    ),
+                            previousStateHash =
+                                value
+                                    .nullableString(
+                                        "previousStateHash",
+                                    ),
+                            rulesetHash =
+                                value
+                                    .nullableString(
+                                        "rulesetHash",
+                                    ),
                             proofDigest =
                                 value
                                     .nullableString(
                                         "proofDigest",
+                                    ),
+                            fairnessProtocol =
+                                value
+                                    .nullableString(
+                                        "fairnessProtocol",
+                                    ),
+                            previousFairnessDigest =
+                                value
+                                    .nullableString(
+                                        "previousFairnessDigest",
+                                    ),
+                            fairnessDigest =
+                                value
+                                    .nullableString(
+                                        "fairnessDigest",
                                     ),
                             outcome =
                                 if (
@@ -987,6 +1142,17 @@ class OfflineGameEngine(
                                 ),
                         )
                 }
+            }
+
+            check(
+                OfflineFairnessChain
+                    .verifyHistory(
+                        history.map {
+                            it.toFairnessMaterial()
+                        },
+                    ),
+            ) {
+                "Offline fairness history chain verification failed"
             }
 
             val pending =
@@ -1265,9 +1431,17 @@ class OfflineGameEngine(
     private data class LocalHistoryEvent(
         val eventIndex: Int,
         val playerId: String,
+        val color: String?,
         val roundId: String?,
+        val serverCommitment: String?,
         val clientCommitment: String?,
+        val actorHash: String?,
+        val previousStateHash: String?,
+        val rulesetHash: String?,
         val proofDigest: String?,
+        val fairnessProtocol: String?,
+        val previousFairnessDigest: String?,
+        val fairnessDigest: String?,
         val outcome: Int?,
         val moveTokenIndex: Int?,
         val captures: Int,
@@ -1289,6 +1463,55 @@ class OfflineGameEngine(
                     moveTokenIndex,
                 captures =
                     captures,
+                serverCommitment =
+                    serverCommitment,
+                clientCommitment =
+                    clientCommitment,
+                previousStateHash =
+                    previousStateHash,
+                rulesetHash =
+                    rulesetHash,
+                fairnessProtocol =
+                    fairnessProtocol,
+                previousFairnessDigest =
+                    previousFairnessDigest,
+                fairnessDigest =
+                    fairnessDigest,
+                status =
+                    "RESOLVED",
+            )
+
+        fun toFairnessMaterial():
+            OfflineFairnessMaterial =
+            OfflineFairnessMaterial(
+                eventIndex =
+                    eventIndex,
+                playerId =
+                    playerId,
+                color =
+                    color,
+                roundId =
+                    roundId,
+                serverCommitment =
+                    serverCommitment,
+                clientCommitment =
+                    clientCommitment,
+                actorHash =
+                    actorHash,
+                previousStateHash =
+                    previousStateHash,
+                rulesetHash =
+                    rulesetHash,
+                proofDigest =
+                    proofDigest,
+                outcome =
+                    outcome,
+                fairnessProtocol =
+                    fairnessProtocol,
+                previousFairnessDigest =
+                    previousFairnessDigest,
+                fairnessDigest =
+                    fairnessDigest,
             )
     }
 

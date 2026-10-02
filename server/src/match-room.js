@@ -32,6 +32,10 @@ import {
   requireDigest,
   sha256Hex,
 } from "./crypto.js";
+import {
+  fairnessSummary,
+  sealFairnessEvent,
+} from "./fairness.js";
 
 const STATE_KEY = "match-state";
 const APP_ID = "ludoproof";
@@ -420,6 +424,21 @@ export class MatchRoom {
     let state = await this.#requireState();
     const player = await this.#authorize(state, request);
 
+    if (
+      !state.pendingRoll &&
+      (state.history ?? []).some(
+        (event) =>
+          event.clientCommitment ===
+          clientCommitment,
+      )
+    ) {
+      throw httpError(
+        409,
+        "CLIENT_COMMITMENT_REUSED",
+        "client commitment was already consumed by an earlier roll",
+      );
+    }
+
     if (state.pendingRoll) {
       const pending = state.pendingRoll;
       if (
@@ -646,25 +665,31 @@ export class MatchRoom {
       now: Date.now(),
     });
     latest = result.state;
+    const fairnessEvent =
+      sealFairnessEvent(
+        state.history ?? [],
+        {
+          eventIndex: pending.eventIndex,
+          eventId: pending.eventId,
+          playerId: pending.playerId,
+          color: state.players[pending.seat].color,
+          roundId: pending.roundId,
+          serverCommitment: pending.serverCommitment,
+          clientCommitment: pending.clientCommitment,
+          actorHash: pending.actorHash,
+          previousStateHash: pending.previousStateHash,
+          rulesetHash: pending.rulesetHash,
+          proofDigest: proof.proofDigest,
+          outcome: proof.outcome,
+          moveTokenIndex: null,
+          captures: 0,
+          status: "RESOLVED",
+          resolvedAt: Date.now(),
+        },
+      );
     latest.history = [
       ...(state.history ?? []),
-      {
-        eventIndex: pending.eventIndex,
-        eventId: pending.eventId,
-        playerId: pending.playerId,
-        color: state.players[pending.seat].color,
-        roundId: pending.roundId,
-        serverCommitment: pending.serverCommitment,
-        clientCommitment: pending.clientCommitment,
-        actorHash: pending.actorHash,
-        previousStateHash: pending.previousStateHash,
-        rulesetHash: pending.rulesetHash,
-        proofDigest: proof.proofDigest,
-        outcome: proof.outcome,
-        moveTokenIndex: null,
-        captures: 0,
-        resolvedAt: Date.now(),
-      },
+      fairnessEvent,
     ].slice(-200);
     await this.#persist(latest);
 
@@ -979,34 +1004,39 @@ export class MatchRoom {
     const player =
       state.players[timedOut.seat];
 
+    const fairnessEvent =
+      sealFairnessEvent(
+        state.history ?? [],
+        {
+          eventIndex: timedOut.eventIndex,
+          eventId: timedOut.eventId,
+          playerId: timedOut.playerId,
+          color: player?.color ?? null,
+          roundId: timedOut.roundId,
+          serverCommitment:
+            timedOut.serverCommitment,
+          clientCommitment:
+            timedOut.clientCommitment,
+          actorHash: timedOut.actorHash,
+          previousStateHash:
+            timedOut.previousStateHash,
+          rulesetHash:
+            timedOut.rulesetHash,
+          proofDigest: null,
+          outcome: null,
+          moveTokenIndex: null,
+          captures: 0,
+          status: "TIMED_OUT",
+          timeoutReason:
+            timedOut.timeoutReason,
+          timedOutAt:
+            timedOut.timedOutAt,
+          replacementRoundAllowed: false,
+        },
+      );
     result.state.history = [
       ...(state.history ?? []),
-      {
-        eventIndex: timedOut.eventIndex,
-        eventId: timedOut.eventId,
-        playerId: timedOut.playerId,
-        color: player?.color ?? null,
-        roundId: timedOut.roundId,
-        serverCommitment:
-          timedOut.serverCommitment,
-        clientCommitment:
-          timedOut.clientCommitment,
-        actorHash: timedOut.actorHash,
-        previousStateHash:
-          timedOut.previousStateHash,
-        rulesetHash:
-          timedOut.rulesetHash,
-        proofDigest: null,
-        outcome: null,
-        moveTokenIndex: null,
-        captures: 0,
-        status: "TIMED_OUT",
-        timeoutReason:
-          timedOut.timeoutReason,
-        timedOutAt:
-          timedOut.timedOutAt,
-        replacementRoundAllowed: false,
-      },
+      fairnessEvent,
     ].slice(-200);
 
     return {
@@ -1148,13 +1178,23 @@ function historyForHash(history) {
     outcome: event.outcome,
     moveTokenIndex: event.moveTokenIndex,
     captures: event.captures,
+    fairnessProtocol:
+      event.fairnessProtocol ?? null,
+    previousFairnessDigest:
+      event.previousFairnessDigest ?? null,
+    fairnessDigest:
+      event.fairnessDigest ?? null,
   }));
 }
 
 function publicStateWithHistory(state) {
+  const history =
+    (state.history ?? []).slice(-100);
   return {
     ...publicState(state),
-    history: (state.history ?? []).slice(-100),
+    history,
+    fairness:
+      fairnessSummary(history),
   };
 }
 
