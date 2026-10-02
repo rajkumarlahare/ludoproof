@@ -112,6 +112,9 @@ class MainActivity : Activity() {
     internal var realtimeConnected =
         false
 
+    internal var lastRealtimeRevision =
+        -1
+
     internal val realtimeRefreshRunnable =
         Runnable {
             if (
@@ -222,14 +225,12 @@ class MainActivity : Activity() {
                         return@post
                     }
 
-                    val localRevision =
-                        currentState
-                            ?.revision
-                            ?: -1
                     if (
                         revision >
-                        localRevision
+                        lastRealtimeRevision
                     ) {
+                        lastRealtimeRevision =
+                            revision
                         mainHandler.removeCallbacks(
                             realtimeRefreshRunnable,
                         )
