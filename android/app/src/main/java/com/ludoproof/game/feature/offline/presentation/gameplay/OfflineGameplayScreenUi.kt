@@ -25,6 +25,8 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
             return
         }
 
+    prepareOfflineUiTransition()
+
     val (root, host) =
         LudoProofTheme.arcadeRoot(this)
 
