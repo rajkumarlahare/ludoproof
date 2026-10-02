@@ -2,6 +2,8 @@ export const COLORS = ["RED", "GREEN", "YELLOW", "BLUE"];
 
 export const ROLL_REVEAL_TIMEOUT_MS = 4 * 60 * 1000;
 
+export const RULESET_KEY = "CLASSIC_V1";
+
 export const RULESET = Object.freeze({
   id: "ludoproof-standard-v1",
   boardTrackCells: 52,
