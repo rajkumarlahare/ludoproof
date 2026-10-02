@@ -1506,10 +1506,15 @@ class OfflineGameEngine(
             "Offline save has invalid consecutive-six state"
         }
 
+        val pendingOutcome =
+            restored.pendingOutcome
+        val pendingEventIndex =
+            restored.pendingEventIndex
+
         check(
-            restored.pendingOutcome ==
+            pendingOutcome ==
                 null ||
-                restored.pendingOutcome in
+                pendingOutcome in
                 1..6,
         ) {
             "Offline save has an invalid pending dice outcome"
@@ -1524,22 +1529,22 @@ class OfflineGameEngine(
             "Offline save has invalid legal token indexes"
         }
         check(
-            restored.pendingEventIndex ==
+            pendingEventIndex ==
                 null ||
-                restored.pendingEventIndex >=
+                pendingEventIndex >=
                 0,
         ) {
             "Offline save has an invalid pending event index"
         }
 
         if (
-            restored.pendingOutcome !=
+            pendingOutcome !=
             null
         ) {
             check(
-                restored.pendingEventIndex !=
+                pendingEventIndex !=
                     null &&
-                    restored.pendingEventIndex <
+                    pendingEventIndex <
                     restored.eventIndex &&
                     restored.pendingLegal
                         .isNotEmpty(),
