@@ -18,6 +18,9 @@ import org.json.JSONObject
 import java.util.concurrent.Executors
 import com.ludoproof.game.*
 import com.ludoproof.game.ui.online.*
+import com.ludoproof.game.feature.profile.data.local.ProfileStore
+import com.ludoproof.game.feature.profile.domain.model.ProfileGameMode
+import com.ludoproof.game.feature.profile.domain.model.ProfileMatchSource
 
 internal fun MainActivity.applyResponse(
     response: JSONObject,
@@ -70,6 +73,27 @@ internal fun MainActivity.applyResponse(
         state
     matchId =
         state.matchId
+
+    if (
+        state.status ==
+            "FINISHED"
+    ) {
+        runCatching {
+            ProfileStore(
+                this,
+            ).recordCompletedMatch(
+                matchId =
+                    state.matchId,
+                mode =
+                    ProfileGameMode.CLASSIC,
+                source =
+                    ProfileMatchSource.ONLINE,
+                won =
+                    state.winnerPlayerId ==
+                        playerId,
+            )
+        }
+    }
 
     response
         .optJSONObject(

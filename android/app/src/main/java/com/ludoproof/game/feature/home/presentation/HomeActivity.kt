@@ -15,6 +15,12 @@ import com.ludoproof.game.ui.home.*
 class HomeActivity : Activity() {
     internal lateinit var connectivityText:
         TextView
+    internal var homeProfileNameText:
+        TextView? = null
+    internal var homeProfileLevelText:
+        TextView? = null
+    internal var homeProfileXpFill:
+        View? = null
     internal lateinit var connectivityMonitor:
         ConnectivityMonitor
 
@@ -169,6 +175,11 @@ class HomeActivity : Activity() {
                         }
                 }
             }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshHomeProfileSummary()
     }
 
     override fun onStart() {
