@@ -451,9 +451,11 @@ private fun HomeActivity.homeShortcutRow():
 
         listOf(
             HeaderShortcut(
-                symbol = "★",
+                symbol = "",
                 label = "LEADERBOARD",
                 tint = 0xFFFFC928.toInt(),
+                iconKind =
+                    HomeIconKind.LEADERBOARD,
             ),
             HeaderShortcut(
                 symbol = "",

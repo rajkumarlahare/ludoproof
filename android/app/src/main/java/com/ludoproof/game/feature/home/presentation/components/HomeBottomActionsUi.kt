@@ -21,11 +21,13 @@ internal fun HomeActivity.homeBottomActions():
 
         addView(
             bottomActionButton(
-                symbol = "★",
+                symbol = "",
                 description =
-                    "Favorites",
+                    "Rate LudoProof",
+                iconKind =
+                    HomeIconKind.RATING,
             ) {
-                // Favorites logic will be connected later.
+                showHomeRatingDialog()
             },
             bottomActionParams(),
         )
@@ -86,7 +88,14 @@ private fun HomeActivity.bottomActionButton(
             kind =
                 iconKind
             iconColor =
-                Color.WHITE
+                if (
+                    iconKind ==
+                    HomeIconKind.RATING
+                ) {
+                    0xFFFFE04B.toInt()
+                } else {
+                    Color.WHITE
+                }
             isClickable =
                 true
             isFocusable =
