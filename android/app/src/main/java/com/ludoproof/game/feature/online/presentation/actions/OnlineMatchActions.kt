@@ -18,6 +18,8 @@ import org.json.JSONObject
 import java.util.concurrent.Executors
 import com.ludoproof.game.*
 import com.ludoproof.game.ui.online.*
+import com.ludoproof.game.feature.leaderboard.data.local.LeaderboardIdentityStore
+import com.ludoproof.game.feature.profile.data.local.ProfileStore
 
 internal fun MainActivity.createMatch() {
     val displayName =
@@ -30,6 +32,20 @@ internal fun MainActivity.createMatch() {
             )
             return
         }
+    runCatching {
+        ProfileStore(
+            this,
+        ).updateDisplayName(
+            displayName,
+        )
+    }
+    val leaderboardProfileId =
+        runCatching {
+            LeaderboardIdentityStore(
+                this,
+            ).profileId()
+        }.getOrNull()
+
     val operationKey =
         "create:" + displayName
     val requestId =
@@ -50,8 +66,12 @@ internal fun MainActivity.createMatch() {
     runNetwork(
         action = {
             api.createMatch(
-                displayName,
-                requestId,
+                displayName =
+                    displayName,
+                clientRequestId =
+                    requestId,
+                profileId =
+                    leaderboardProfileId,
             )
         },
         onSuccess = {
@@ -76,6 +96,20 @@ internal fun MainActivity.joinMatch() {
             )
             return
         }
+
+    runCatching {
+        ProfileStore(
+            this,
+        ).updateDisplayName(
+            displayName,
+        )
+    }
+    val leaderboardProfileId =
+        runCatching {
+            LeaderboardIdentityStore(
+                this,
+            ).profileId()
+        }.getOrNull()
 
     val code =
         matchInput.text
@@ -117,9 +151,14 @@ internal fun MainActivity.joinMatch() {
     runNetwork(
         action = {
             api.joinMatch(
-                code,
-                displayName,
-                requestId,
+                matchId =
+                    code,
+                displayName =
+                    displayName,
+                clientRequestId =
+                    requestId,
+                profileId =
+                    leaderboardProfileId,
             )
         },
         onSuccess = {
