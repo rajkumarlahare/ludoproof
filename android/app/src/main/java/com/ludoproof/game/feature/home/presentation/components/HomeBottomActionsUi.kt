@@ -101,12 +101,7 @@ private fun HomeActivity.bottomActionButton(
     }
 
 private fun HomeActivity.bottomActionDrawable():
-    StateListDrawable {
-    }
-
-private fun HomeActivity.StateListDrawable(
-    block: StateListDrawable.() -> Unit,
-): StateListDrawable =
+    StateListDrawable =
     StateListDrawable().apply {
         addState(
             intArrayOf(
