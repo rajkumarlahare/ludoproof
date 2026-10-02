@@ -930,6 +930,151 @@ test(
 );
 
 test(
+  "ranked matches reject client profile spoofing and bind the authenticated profile",
+  { concurrency: false },
+  async () => {
+    const ctx =
+      makeContext();
+    const env =
+      makeEnv();
+    const authenticatedProfileId =
+      "550e8400-e29b-41d4-a716-446655440000";
+    const attackerProfileId =
+      "660e8400-e29b-41d4-a716-446655440000";
+    const profileToken =
+      "lpp_" +
+      "P".repeat(48);
+
+    env.LUDOPROOF_LEADERBOARD = {
+      idFromName(name) {
+        assert.equal(
+          name,
+          "global",
+        );
+        return name;
+      },
+      get() {
+        return {
+          async fetch(request) {
+            assert.equal(
+              new URL(
+                request.url,
+              ).pathname,
+              "/profile/identity",
+            );
+            if (
+              request.headers.get(
+                "authorization",
+              ) !==
+              "Bearer " +
+                profileToken
+            ) {
+              return Response.json(
+                {
+                  error:
+                    "PROFILE_AUTH_INVALID",
+                  message:
+                    "leaderboard profile credential is invalid",
+                },
+                {
+                  status:
+                    401,
+                },
+              );
+            }
+            return Response.json({
+              ok: true,
+              profileId:
+                authenticatedProfileId,
+            });
+          },
+        };
+      },
+    };
+
+    const room =
+      new MatchRoom(
+        ctx,
+        env,
+      );
+    const matchId =
+      "LPABCDEFGH";
+    const missingAuth =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/create",
+            {
+              method:
+                "POST",
+              body: {
+                matchId,
+                displayName:
+                  "Alice",
+                clientRequestId:
+                  crypto.randomUUID(),
+                profileId:
+                  attackerProfileId,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      missingAuth.response.status,
+      401,
+    );
+    assert.equal(
+      missingAuth.body.error,
+      "PROFILE_AUTH_REQUIRED",
+    );
+
+    const created =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/create",
+            {
+              method:
+                "POST",
+              token:
+                profileToken,
+              body: {
+                matchId,
+                displayName:
+                  "Alice",
+                clientRequestId:
+                  crypto.randomUUID(),
+                profileId:
+                  attackerProfileId,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      created.response.status,
+      201,
+    );
+
+    const stored =
+      await ctx.storage.get(
+        "match-state",
+      );
+    assert.equal(
+      stored.players[0]
+        .profileId,
+      authenticatedProfileId,
+    );
+    assert.notEqual(
+      stored.players[0]
+        .profileId,
+      attackerProfileId,
+    );
+  },
+);
+
+test(
   "player bearer auth rejects an invalid session token",
   { concurrency: false },
   async () => {
