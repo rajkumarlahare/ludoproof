@@ -3,6 +3,7 @@ package com.ludoproof.game.feature.online
 import android.view.View
 import com.ludoproof.game.*
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
+import com.ludoproof.game.ui.online.stylePublicPlayerCountButton
 import org.json.JSONObject
 import java.util.UUID
 
@@ -247,11 +248,34 @@ internal fun MainActivity.applyPublicMatchmakingResponse(
         )
     ) {
         "MATCHED" -> {
+            val count =
+                response.optInt(
+                    "targetPlayerCount",
+                    selectedPublicPlayerCount,
+                )
+                .coerceIn(
+                    2,
+                    4,
+                )
+
+            if (
+                isMatchmakingUiReady()
+            ) {
+                matchmakingOpponentRail
+                    .updateState(
+                        queuedPlayers =
+                            count,
+                        targetPlayerCount =
+                            count,
+                        searching =
+                            true,
+                    )
+                matchmakingStatusText.text =
+                    "MATCH FOUND • STARTING…"
+            }
+
             publicMatchmakingStore
                 .clear()
-            setPublicSearchUi(
-                searching = false,
-            )
             captureSession(
                 response,
             )
@@ -261,23 +285,10 @@ internal fun MainActivity.applyPublicMatchmakingResponse(
             )
             connectRealtimeIfPossible()
 
-            val count =
-                response.optInt(
-                    "targetPlayerCount",
-                    currentState
-                        ?.players
-                        ?.size
-                        ?: 0,
-                )
             showStatus(
-                if (
-                    count >
-                    0
-                ) {
-                    "Match found • $count players • live sync connected when available."
-                } else {
-                    "Match found • live sync connected when available."
-                },
+                "Match found • " +
+                    count +
+                    " real players • game started.",
             )
         }
 
@@ -312,7 +323,7 @@ internal fun MainActivity.applyPublicMatchmakingResponse(
                 searching = false,
             )
             showStatus(
-                "Search expired. Tap Find Match to search again.",
+                "Search expired. Choose players and tap PLAY to search again.",
             )
         }
 
@@ -427,6 +438,23 @@ internal fun MainActivity.setPublicSearchUi(
 
     updatePublicPlayerCountButtons()
 
+    matchmakingSetupPanel.visibility =
+        if (
+            searching
+        ) {
+            View.GONE
+        } else {
+            View.VISIBLE
+        }
+    matchmakingSearchPanel.visibility =
+        if (
+            searching
+        ) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
+
     findMatchButton.visibility =
         if (
             searching
@@ -443,15 +471,8 @@ internal fun MainActivity.setPublicSearchUi(
         } else {
             View.GONE
         }
+
     matchmakingStatusText.visibility =
-        if (
-            searching
-        ) {
-            View.VISIBLE
-        } else {
-            View.GONE
-        }
-    matchmakingSlotsText.visibility =
         if (
             searching
         ) {
@@ -467,61 +488,98 @@ internal fun MainActivity.setPublicSearchUi(
         } else {
             View.GONE
         }
+    matchmakingSlotsText.visibility =
+        View.GONE
+
+    val safeTarget =
+        if (
+            targetPlayerCount ==
+            4
+        ) {
+            4
+        } else {
+            2
+        }
+    val safeQueued =
+        if (
+            searching
+        ) {
+            queuedPlayers.coerceIn(
+                1,
+                safeTarget,
+            )
+        } else {
+            1
+        }
+
+    matchmakingOpponentRail
+        .updateState(
+            queuedPlayers =
+                safeQueued,
+            targetPlayerCount =
+                safeTarget,
+            searching =
+                searching,
+        )
 
     if (
         searching
     ) {
+        val opponentsFound =
+            (
+                safeQueued -
+                    1
+                )
+                .coerceAtLeast(
+                    0,
+                )
+        val opponentsNeeded =
+            safeTarget -
+                1
+        val remaining =
+            (
+                opponentsNeeded -
+                    opponentsFound
+                )
+                .coerceAtLeast(
+                    0,
+                )
+
         matchmakingStatusText.text =
-            "SEARCHING FOR PLAYERS…  " +
-                queuedPlayers +
-                "/" +
-                targetPlayerCount
+            when {
+                remaining <=
+                    0 ->
+                    "MATCH FOUND • STARTING…"
+
+                opponentsFound ==
+                    0 ->
+                    "SEARCHING FOR " +
+                        opponentsNeeded +
+                        if (
+                            opponentsNeeded ==
+                            1
+                        ) {
+                            " PLAYER…"
+                        } else {
+                            " PLAYERS…"
+                        }
+
+                else ->
+                    opponentsFound
+                        .toString() +
+                        "/" +
+                        opponentsNeeded +
+                        " PLAYERS FOUND • " +
+                        remaining +
+                        " MORE…"
+            }
 
         matchmakingSlotsText.text =
-            buildString {
-                for (
-                    seat in
-                    1..targetPlayerCount
-                ) {
-                    if (
-                        seat >
-                        1
-                    ) {
-                        append(
-                            "\n",
-                        )
-                    }
-
-                    if (
-                        seat ==
-                        1
-                    ) {
-                        append(
-                            "YOU   •   READY ✓",
-                        )
-                    } else {
-                        append(
-                            "PLAYER ",
-                        )
-                        append(
-                            seat,
-                        )
-                        append(
-                            "   •   ",
-                        )
-                        append(
-                            if (
-                                seat <=
-                                queuedPlayers
-                            ) {
-                                "FOUND ✓"
-                            } else {
-                                "SEARCHING…"
-                            },
-                        )
-                    }
-                }
-            }
+            "You ready • " +
+                opponentsFound +
+                "/" +
+                opponentsNeeded +
+                " opponents found"
 
         val startedAt =
             publicMatchmakingStore
@@ -597,40 +655,16 @@ internal fun MainActivity.updatePublicPlayerCountButtons() {
         selectedPublicPlayerCount ==
             2
 
-    twoPlayerButton.text =
-        if (
-            twoSelected
-        ) {
-            "✓  2 PLAYERS"
-        } else {
-            "2 PLAYERS"
-        }
-    fourPlayerButton.text =
-        if (
-            twoSelected
-        ) {
-            "4 PLAYERS"
-        } else {
-            "✓  4 PLAYERS"
-        }
-
-    if (
-        twoSelected
-    ) {
-        LudoProofTheme.positive(
-            twoPlayerButton,
-        )
-        LudoProofTheme.secondary(
-            fourPlayerButton,
-        )
-    } else {
-        LudoProofTheme.secondary(
-            twoPlayerButton,
-        )
-        LudoProofTheme.positive(
-            fourPlayerButton,
-        )
-    }
+    stylePublicPlayerCountButton(
+        twoPlayerButton,
+        selected =
+            twoSelected,
+    )
+    stylePublicPlayerCountButton(
+        fourPlayerButton,
+        selected =
+            !twoSelected,
+    )
 }
 
 private fun MainActivity.runMatchmakingRequest(
@@ -654,6 +688,15 @@ private fun MainActivity.runMatchmakingRequest(
         if (
             !quietFailure
         ) {
+            if (
+                isMatchmakingUiReady() &&
+                publicMatchmakingStore
+                    .load() !=
+                null
+            ) {
+                matchmakingStatusText.text =
+                    "WAITING FOR INTERNET…"
+            }
             showStatus(
                 "Internet connection is required for public matchmaking.",
             )
@@ -696,6 +739,15 @@ private fun MainActivity.runMatchmakingRequest(
                         if (
                             !quietFailure
                         ) {
+                            if (
+                                isMatchmakingUiReady() &&
+                                publicMatchmakingStore
+                                    .load() !=
+                                null
+                            ) {
+                                matchmakingStatusText.text =
+                                    "SEARCH CONNECTION ERROR • RETRYING…"
+                            }
                             showStatus(
                                 "Matchmaking error: " +
                                     (
