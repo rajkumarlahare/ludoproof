@@ -111,6 +111,8 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
         false,
       rateGateConfigured:
         false,
+      leaderboardConfigured:
+        false,
       sessionKeyConfigured:
         false,
     },
@@ -132,6 +134,7 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
             "lp_test_session_hmac_key_1234567890abcdef",
           LUDOPROOF_MATCHES: {},
           LUDOPROOF_API_GATE: {},
+          LUDOPROOF_LEADERBOARD: {},
         },
       ),
     );
@@ -167,6 +170,11 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
   assert.equal(
     ready.json.checks
       .rateGateConfigured,
+    true,
+  );
+  assert.equal(
+    ready.json.checks
+      .leaderboardConfigured,
     true,
   );
   assert.equal(
@@ -209,6 +217,7 @@ test(
               "lp_test_session_hmac_key_1234567890abcdef",
             LUDOPROOF_MATCHES: {},
             LUDOPROOF_API_GATE: {},
+          LUDOPROOF_LEADERBOARD: {},
             ENTRONEX_SERVICE: {
               async fetch(request) {
                 serviceCalls += 1;
@@ -373,6 +382,7 @@ test(
               "lp_test_session_hmac_key_1234567890abcdef",
             LUDOPROOF_MATCHES: {},
             LUDOPROOF_API_GATE: {},
+          LUDOPROOF_LEADERBOARD: {},
           },
         ),
       );
