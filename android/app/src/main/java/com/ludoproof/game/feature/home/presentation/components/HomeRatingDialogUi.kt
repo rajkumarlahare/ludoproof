@@ -181,8 +181,9 @@ internal fun HomeActivity.showHomeRatingDialog() {
 
     var selectedRating =
         5
-    lateinit var rateButton:
-        Button
+    var rateButton:
+        Button? =
+        null
 
     val stars =
         mutableListOf<
@@ -214,22 +215,18 @@ internal fun HomeActivity.showHomeRatingDialog() {
                 index <
                 selectedRating
         }
-        if (
-            ::rateButton
-                .isInitialized
-        ) {
-            rateButton.text =
-                if (
-                    selectedRating ==
-                    1
-                ) {
-                    "Rate 1 Star on Play Store"
-                } else {
-                    "Rate " +
-                        selectedRating +
-                        " Stars on Play Store"
-                }
-        }
+        rateButton
+            ?.text =
+            if (
+                selectedRating ==
+                1
+            ) {
+                "Rate 1 Star on Play Store"
+            } else {
+                "Rate " +
+                    selectedRating +
+                    " Stars on Play Store"
+            }
     }
 
     repeat(
@@ -323,7 +320,9 @@ internal fun HomeActivity.showHomeRatingDialog() {
             }
         }
     panel.addView(
-        rateButton,
+        requireNotNull(
+            rateButton,
+        ),
         LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             dp(
