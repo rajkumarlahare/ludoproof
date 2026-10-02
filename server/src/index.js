@@ -17,7 +17,7 @@ export { LeaderboardRoom } from "./leaderboard-room.js";
 export { MatchmakerQueue } from "./matchmaker-queue.js";
 export { FriendDirectory } from "./friend-directory.js";
 
-const RELEASE_PHASE = "phase4-friends";
+const RELEASE_PHASE = "phase5-friend-security";
 const MAX_BODY_BYTES = 8 * 1024;
 const RATE_WINDOW_MS = 60 * 1000;
 const RATE_POLICIES = Object.freeze({
