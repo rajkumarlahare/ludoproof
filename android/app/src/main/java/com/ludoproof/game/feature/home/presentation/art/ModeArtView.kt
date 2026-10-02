@@ -12,7 +12,10 @@ class ModeArtView @JvmOverloads constructor(
 ) : View(context, attrs) {
     enum class Mode {
         ONLINE,
-        LOCAL,
+        TEAM_UP,
+        FRIENDS,
+        COMPUTER,
+        PASS_AND_PLAY,
     }
 
     var mode: Mode =
@@ -130,21 +133,43 @@ class ModeArtView @JvmOverloads constructor(
                 grid
         }
 
-        if (
-            mode ==
-            Mode.ONLINE
+        when (
+            mode
         ) {
-            drawOnline(
-                canvas,
-                w,
-                h,
-            )
-        } else {
-            drawLocal(
-                canvas,
-                w,
-                h,
-            )
+            Mode.ONLINE ->
+                drawOnline(
+                    canvas,
+                    w,
+                    h,
+                )
+
+            Mode.TEAM_UP ->
+                drawTeamUp(
+                    canvas,
+                    w,
+                    h,
+                )
+
+            Mode.FRIENDS ->
+                drawFriends(
+                    canvas,
+                    w,
+                    h,
+                )
+
+            Mode.COMPUTER ->
+                drawComputer(
+                    canvas,
+                    w,
+                    h,
+                )
+
+            Mode.PASS_AND_PLAY ->
+                drawLocal(
+                    canvas,
+                    w,
+                    h,
+                )
         }
     }
 
@@ -472,6 +497,297 @@ class ModeArtView @JvmOverloads constructor(
             size * .20f,
             0xFFF4F7FF.toInt(),
             8f,
+            5,
+            0xFF073B91.toInt(),
+        )
+    }
+
+    private fun drawTeamUp(
+        canvas: Canvas,
+        w: Float,
+        h: Float,
+    ) {
+        val cx =
+            w *
+                .5f
+        val cy =
+            h *
+                .48f
+        val radius =
+            min(
+                w,
+                h,
+            ) *
+                .12f
+
+        val points =
+            listOf(
+                Triple(
+                    w * .28f,
+                    h * .30f,
+                    0xFFE9323C.toInt(),
+                ),
+                Triple(
+                    w * .72f,
+                    h * .30f,
+                    0xFF29B557.toInt(),
+                ),
+                Triple(
+                    w * .28f,
+                    h * .70f,
+                    0xFF238CFF.toInt(),
+                ),
+                Triple(
+                    w * .72f,
+                    h * .70f,
+                    0xFFFFD12C.toInt(),
+                ),
+            )
+
+        stroke.strokeWidth =
+            dp(3f)
+        stroke.color =
+            0x99FFFFFF.toInt()
+        canvas.drawLine(
+            points[0].first,
+            points[0].second,
+            points[3].first,
+            points[3].second,
+            stroke,
+        )
+        canvas.drawLine(
+            points[1].first,
+            points[1].second,
+            points[2].first,
+            points[2].second,
+            stroke,
+        )
+
+        points.forEach {
+                point ->
+            drawNode(
+                canvas,
+                point.first,
+                point.second,
+                point.third,
+            )
+        }
+
+        paint.color =
+            0xFFFFC62E.toInt()
+        canvas.drawCircle(
+            cx,
+            cy,
+            radius,
+            paint,
+        )
+        stroke.color =
+            Color.WHITE
+        stroke.strokeWidth =
+            dp(2f)
+        canvas.drawCircle(
+            cx,
+            cy,
+            radius,
+            stroke,
+        )
+        paint.color =
+            0xFF073B91.toInt()
+        paint.textAlign =
+            Paint.Align.CENTER
+        paint.textSize =
+            radius *
+                .82f
+        paint.typeface =
+            Typeface.DEFAULT_BOLD
+        canvas.drawText(
+            "2V2",
+            cx,
+            cy +
+                radius *
+                .28f,
+            paint,
+        )
+    }
+
+    private fun drawFriends(
+        canvas: Canvas,
+        w: Float,
+        h: Float,
+    ) {
+        val centerY =
+            h *
+                .5f
+        val size =
+            min(
+                w,
+                h,
+            ) *
+                .15f
+
+        drawPawn(
+            canvas,
+            w * .36f,
+            centerY,
+            size,
+            0xFF28C7FF.toInt(),
+        )
+        drawPawn(
+            canvas,
+            w * .64f,
+            centerY,
+            size,
+            0xFFFF6B8A.toInt(),
+        )
+
+        val heart =
+            Path().apply {
+                moveTo(
+                    w * .50f,
+                    h * .66f,
+                )
+                cubicTo(
+                    w * .37f,
+                    h * .56f,
+                    w * .39f,
+                    h * .43f,
+                    w * .50f,
+                    h * .49f,
+                )
+                cubicTo(
+                    w * .61f,
+                    h * .43f,
+                    w * .63f,
+                    h * .56f,
+                    w * .50f,
+                    h * .66f,
+                )
+                close()
+            }
+        paint.color =
+            0xFFFF4E70.toInt()
+        canvas.drawPath(
+            heart,
+            paint,
+        )
+
+        stroke.color =
+            0xAAFFFFFF.toInt()
+        stroke.strokeWidth =
+            dp(2f)
+        canvas.drawLine(
+            w * .30f,
+            h * .24f,
+            w * .70f,
+            h * .24f,
+            stroke,
+        )
+        drawNode(
+            canvas,
+            w * .30f,
+            h * .24f,
+            0xFF28C7FF.toInt(),
+        )
+        drawNode(
+            canvas,
+            w * .70f,
+            h * .24f,
+            0xFFFF6B8A.toInt(),
+        )
+    }
+
+    private fun drawComputer(
+        canvas: Canvas,
+        w: Float,
+        h: Float,
+    ) {
+        val size =
+            min(
+                w,
+                h,
+            )
+        val rect =
+            RectF(
+                w * .22f,
+                h * .20f,
+                w * .78f,
+                h * .66f,
+            )
+
+        paint.color =
+            0xFF0A3D8C.toInt()
+        canvas.drawRoundRect(
+            rect,
+            dp(12f),
+            dp(12f),
+            paint,
+        )
+        stroke.color =
+            0xFF8CEAFF.toInt()
+        stroke.strokeWidth =
+            dp(2f)
+        canvas.drawRoundRect(
+            rect,
+            dp(12f),
+            dp(12f),
+            stroke,
+        )
+
+        paint.color =
+            0xFF70D82F.toInt()
+        canvas.drawCircle(
+            w * .43f,
+            h * .41f,
+            size * .035f,
+            paint,
+        )
+        canvas.drawCircle(
+            w * .57f,
+            h * .41f,
+            size * .035f,
+            paint,
+        )
+
+        stroke.color =
+            0xFFFFFFFF.toInt()
+        stroke.strokeWidth =
+            dp(2.4f)
+        canvas.drawLine(
+            w * .42f,
+            h * .53f,
+            w * .58f,
+            h * .53f,
+            stroke,
+        )
+
+        paint.color =
+            0xFFFFC62E.toInt()
+        canvas.drawRoundRect(
+            w * .43f,
+            h * .67f,
+            w * .57f,
+            h * .73f,
+            dp(3f),
+            dp(3f),
+            paint,
+        )
+        canvas.drawRoundRect(
+            w * .34f,
+            h * .73f,
+            w * .66f,
+            h * .78f,
+            dp(3f),
+            dp(3f),
+            paint,
+        )
+
+        drawDie(
+            canvas,
+            w * .77f,
+            h * .70f,
+            size * .18f,
+            0xFFF4F7FF.toInt(),
+            9f,
             5,
             0xFF073B91.toInt(),
         )
