@@ -9,6 +9,8 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.View
+import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
+import com.ludoproof.game.feature.store.domain.model.CosmeticCategory
 
 class DiceView @JvmOverloads constructor(
     context: Context,
@@ -57,6 +59,8 @@ class DiceView @JvmOverloads constructor(
             )
         }
 
+    private var diceStyleId =
+        "dice_classic"
     private var face = 1
     private var rolling = false
 
@@ -97,6 +101,18 @@ class DiceView @JvmOverloads constructor(
         removeCallbacks(ticker)
         contentDescription =
             "Dice verification stopped."
+        invalidate()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        diceStyleId =
+            CosmeticInventoryStore(
+                context,
+            )
+                .selectedId(
+                    CosmeticCategory.DICE,
+                )
         invalidate()
     }
 
@@ -174,17 +190,15 @@ class DiceView @JvmOverloads constructor(
                 size - inset,
                 size - inset,
             )
+        val palette =
+            dicePalette()
         facePaint.shader =
             LinearGradient(
                 rect.left,
                 rect.top,
                 rect.right,
                 rect.bottom,
-                intArrayOf(
-                    Color.WHITE,
-                    0xFFF3F6FA.toInt(),
-                    0xFFD5DDE8.toInt(),
-                ),
+                palette.faceColors,
                 null,
                 Shader.TileMode.CLAMP,
             )
@@ -196,6 +210,10 @@ class DiceView @JvmOverloads constructor(
         )
         facePaint.shader = null
 
+        borderPaint.color =
+            palette.borderColor
+        pipPaint.color =
+            palette.pipColor
         canvas.drawRoundRect(
             rect,
             size * .17f,
@@ -262,6 +280,97 @@ class DiceView @JvmOverloads constructor(
             }
         }
     }
+
+    private fun dicePalette():
+        DicePalette =
+        when (diceStyleId) {
+            "dice_pumpkin" ->
+                DicePalette(
+                    intArrayOf(
+                        0xFFF6A24D.toInt(),
+                        0xFFD16D25.toInt(),
+                        0xFFA84819.toInt(),
+                    ),
+                    0xFF5B2B18.toInt(),
+                    0xFF2E1A12.toInt(),
+                )
+            "dice_diwali" ->
+                DicePalette(
+                    intArrayOf(
+                        0xFFE2463D.toInt(),
+                        0xFFB51E39.toInt(),
+                        0xFF7C1930.toInt(),
+                    ),
+                    0xFFFFD44A.toInt(),
+                    Color.WHITE,
+                )
+            "dice_football" ->
+                DicePalette(
+                    intArrayOf(
+                        Color.WHITE,
+                        0xFFE6E6E6.toInt(),
+                        0xFFCFCFCF.toInt(),
+                    ),
+                    0xFF1A1A1A.toInt(),
+                    0xFF111111.toInt(),
+                )
+            "dice_cricket" ->
+                DicePalette(
+                    intArrayOf(
+                        0xFFE6F5DA.toInt(),
+                        0xFF73B86A.toInt(),
+                        0xFF2F6F47.toInt(),
+                    ),
+                    0xFF174D35.toInt(),
+                    Color.WHITE,
+                )
+            "dice_summers" ->
+                DicePalette(
+                    intArrayOf(
+                        0xFFFFF7DE.toInt(),
+                        0xFFFFE1AE.toInt(),
+                        0xFFF3B08E.toInt(),
+                    ),
+                    0xFFAD5A44.toInt(),
+                    0xFFD92B32.toInt(),
+                )
+            "dice_colors" ->
+                DicePalette(
+                    intArrayOf(
+                        0xFFFFD83D.toInt(),
+                        0xFFEF4F9A.toInt(),
+                        0xFF45C7D8.toInt(),
+                    ),
+                    0xFF6A267D.toInt(),
+                    0xFF3C235A.toInt(),
+                )
+            "dice_heart" ->
+                DicePalette(
+                    intArrayOf(
+                        Color.WHITE,
+                        0xFFF9ECEC.toInt(),
+                        0xFFE5D7D7.toInt(),
+                    ),
+                    0xFFB62534.toInt(),
+                    0xFFD82E3D.toInt(),
+                )
+            else ->
+                DicePalette(
+                    intArrayOf(
+                        Color.WHITE,
+                        0xFFF3F6FA.toInt(),
+                        0xFFD5DDE8.toInt(),
+                    ),
+                    0xFF20344F.toInt(),
+                    0xFF111827.toInt(),
+                )
+        }
+
+    private data class DicePalette(
+        val faceColors: IntArray,
+        val borderColor: Int,
+        val pipColor: Int,
+    )
 
     private fun dp(
         value: Float,

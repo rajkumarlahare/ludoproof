@@ -7,13 +7,13 @@ class GemWalletStore(
 ) {
     private val prefs =
         context.getSharedPreferences(
-            PREFS_NAME,
+            StorePreferences.PREFS_NAME,
             Context.MODE_PRIVATE,
         )
 
     fun balance(): Int =
         prefs.getInt(
-            KEY_BALANCE,
+            StorePreferences.KEY_BALANCE,
             0,
         )
             .coerceAtLeast(
@@ -22,7 +22,7 @@ class GemWalletStore(
 
     fun adsRemoved(): Boolean =
         prefs.getBoolean(
-            KEY_ADS_REMOVED,
+            StorePreferences.KEY_ADS_REMOVED,
             false,
         )
 
@@ -41,7 +41,7 @@ class GemWalletStore(
 
         val applied =
             prefs.getStringSet(
-                KEY_APPLIED_TOKENS,
+                StorePreferences.KEY_APPLIED_TOKENS,
                 emptySet(),
             )
                 ?.toMutableSet()
@@ -75,29 +75,19 @@ class GemWalletStore(
         return prefs
             .edit()
             .putInt(
-                KEY_BALANCE,
+                StorePreferences.KEY_BALANCE,
                 nextBalance,
             )
             .putBoolean(
-                KEY_ADS_REMOVED,
+                StorePreferences.KEY_ADS_REMOVED,
                 adsRemoved() ||
                     removeAds,
             )
             .putStringSet(
-                KEY_APPLIED_TOKENS,
+                StorePreferences.KEY_APPLIED_TOKENS,
                 applied,
             )
             .commit()
     }
 
-    private companion object {
-        const val PREFS_NAME =
-            "ludoproof_wallet"
-        const val KEY_BALANCE =
-            "gem_balance"
-        const val KEY_ADS_REMOVED =
-            "ads_removed"
-        const val KEY_APPLIED_TOKENS =
-            "verified_purchase_tokens"
-    }
 }

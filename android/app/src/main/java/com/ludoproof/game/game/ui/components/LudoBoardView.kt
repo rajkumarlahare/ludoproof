@@ -13,6 +13,8 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.ViewOutlineProvider
 import android.view.View
+import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
+import com.ludoproof.game.feature.store.domain.model.CosmeticCategory
 import kotlin.math.hypot
 import kotlin.math.min
 
@@ -46,6 +48,8 @@ class LudoBoardView @JvmOverloads constructor(
         clipToOutline = true
     }
 
+    private var boardThemeId =
+        "board_classic"
     private var snapshot: MatchSnapshot? = null
     private var localPlayerId: String? = null
     private val tokenHits = mutableListOf<TokenHit>()
@@ -116,6 +120,18 @@ class LudoBoardView @JvmOverloads constructor(
         invalidate()
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        boardThemeId =
+            CosmeticInventoryStore(
+                context,
+            )
+                .selectedId(
+                    CosmeticCategory.BOARD,
+                )
+        invalidate()
+    }
+
     override fun onMeasure(
         widthMeasureSpec: Int,
         heightMeasureSpec: Int,
@@ -137,7 +153,7 @@ class LudoBoardView @JvmOverloads constructor(
         if (size <= 0f) return
         val cell = size / 15f
 
-        canvas.drawColor(Color.rgb(248, 248, 248))
+        canvas.drawColor(boardSurfaceColor())
         drawYards(canvas, cell)
         drawTrack(canvas, cell)
         drawHomeLanes(canvas, cell)
@@ -226,7 +242,7 @@ class LudoBoardView @JvmOverloads constructor(
             fillPaint,
         )
 
-        fillPaint.color = Color.WHITE
+        fillPaint.color = neutralCellColor()
         canvas.drawRoundRect(
             RectF(
                 (col + 1) * cell,
@@ -272,7 +288,7 @@ class LudoBoardView @JvmOverloads constructor(
                     13 -> colorFor("GREEN")
                     26 -> colorFor("YELLOW")
                     39 -> colorFor("BLUE")
-                    else -> Color.WHITE
+                    else -> neutralCellColor()
                 }
             drawCell(
                 canvas,
@@ -707,14 +723,129 @@ class LudoBoardView @JvmOverloads constructor(
         (col + 0.5f) * cell to
             (row + 0.5f) * cell
 
-    private fun colorFor(name: String): Int =
-        when (name) {
-            "RED" -> Color.rgb(241, 37, 47)
-            "GREEN" -> Color.rgb(0, 169, 80)
-            "YELLOW" -> Color.rgb(255, 216, 27)
-            "BLUE" -> Color.rgb(48, 151, 215)
-            else -> Color.rgb(108, 117, 125)
+    private fun colorFor(
+        name: String,
+    ): Int {
+        val classic =
+            when (name) {
+                "RED" -> Color.rgb(241, 37, 47)
+                "GREEN" -> Color.rgb(0, 169, 80)
+                "YELLOW" -> Color.rgb(255, 216, 27)
+                "BLUE" -> Color.rgb(48, 151, 215)
+                else -> Color.rgb(108, 117, 125)
+            }
+
+        return when (boardThemeId) {
+            "board_diwali" ->
+                brighten(
+                    classic,
+                    1.08f,
+                )
+            "board_denim" ->
+                mixWith(
+                    classic,
+                    0xFF2D83C5.toInt(),
+                    .20f,
+                )
+            "board_neon" ->
+                brighten(
+                    classic,
+                    1.22f,
+                )
+            "board_pirate" ->
+                mixWith(
+                    classic,
+                    0xFFC9A86A.toInt(),
+                    .18f,
+                )
+            "board_alien" ->
+                mixWith(
+                    classic,
+                    0xFF4EDA73.toInt(),
+                    .20f,
+                )
+            "board_penguin" ->
+                mixWith(
+                    classic,
+                    0xFFBDEBFF.toInt(),
+                    .24f,
+                )
+            else ->
+                classic
         }
+    }
+
+    private fun boardSurfaceColor(): Int =
+        when (boardThemeId) {
+            "board_checkers" -> 0xFFF5EEE2.toInt()
+            "board_chess" -> 0xFFF1E3C4.toInt()
+            "board_diwali" -> 0xFFFFE7A0.toInt()
+            "board_denim" -> 0xFFD8EEFA.toInt()
+            "board_neon" -> 0xFF10131C.toInt()
+            "board_pirate" -> 0xFFE8D5A9.toInt()
+            "board_alien" -> 0xFF18243B.toInt()
+            "board_penguin" -> 0xFFE5F8FF.toInt()
+            else -> 0xFFF8F8F8.toInt()
+        }
+
+    private fun neutralCellColor(): Int =
+        when (boardThemeId) {
+            "board_neon" -> 0xFF1E2638.toInt()
+            "board_alien" -> 0xFF24324A.toInt()
+            "board_diwali" -> 0xFFFFF6DC.toInt()
+            "board_pirate" -> 0xFFFFF2D2.toInt()
+            "board_penguin" -> 0xFFF5FCFF.toInt()
+            else -> Color.WHITE
+        }
+
+    private fun brighten(
+        color: Int,
+        factor: Float,
+    ): Int =
+        Color.rgb(
+            (Color.red(color) * factor)
+                .toInt()
+                .coerceIn(0,255),
+            (Color.green(color) * factor)
+                .toInt()
+                .coerceIn(0,255),
+            (Color.blue(color) * factor)
+                .toInt()
+                .coerceIn(0,255),
+        )
+
+    private fun mixWith(
+        base: Int,
+        tint: Int,
+        amount: Float,
+    ): Int {
+        val keep =
+            1f -
+                amount
+        return Color.rgb(
+            (
+                Color.red(base) *
+                    keep +
+                    Color.red(tint) *
+                    amount
+                )
+                .toInt(),
+            (
+                Color.green(base) *
+                    keep +
+                    Color.green(tint) *
+                    amount
+                )
+                .toInt(),
+            (
+                Color.blue(base) *
+                    keep +
+                    Color.blue(tint) *
+                    amount
+                )
+                .toInt(),
+        )
+    }
 
     private fun density(value: Float): Float =
         value * resources.displayMetrics.density

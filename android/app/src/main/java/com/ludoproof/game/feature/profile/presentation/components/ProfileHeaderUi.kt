@@ -12,6 +12,9 @@ import com.ludoproof.game.LudoProofTheme
 import com.ludoproof.game.feature.profile.domain.ProfileProgression
 import com.ludoproof.game.feature.profile.domain.model.ProfileSnapshot
 import com.ludoproof.game.feature.profile.presentation.ProfileActivity
+import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
+import com.ludoproof.game.feature.store.domain.StoreCosmeticCatalog
+import com.ludoproof.game.feature.store.domain.model.CosmeticCategory
 
 internal fun ProfileActivity.profileTopBar():
     LinearLayout =
@@ -187,28 +190,20 @@ internal fun ProfileActivity.profileIdentityPanel(
                     TextView(
                         this@profileIdentityPanel,
                     ).apply {
+                        val avatarId =
+                            CosmeticInventoryStore(
+                                this@profileIdentityPanel,
+                            )
+                                .selectedId(
+                                    CosmeticCategory.AVATAR,
+                                )
                         text =
-                            profile.displayName
-                                .split(
-                                    " ",
+                            StoreCosmeticCatalog
+                                .find(
+                                    avatarId,
                                 )
-                                .filter {
-                                    it.isNotBlank()
-                                }
-                                .take(
-                                    2,
-                                )
-                                .joinToString(
-                                    "",
-                                ) {
-                                    it.take(
-                                        1,
-                                    )
-                                }
-                                .uppercase()
-                                .ifBlank {
-                                    "GU"
-                                }
+                                ?.previewSymbol
+                                ?: "GU"
                         textSize =
                             28f
                         setTypeface(
