@@ -16,6 +16,7 @@ export { ApiGate } from "./api-gate.js";
 export { LeaderboardRoom } from "./leaderboard-room.js";
 export { MatchmakerQueue } from "./matchmaker-queue.js";
 
+const RELEASE_PHASE = "phase3-matchmaking";
 const MAX_BODY_BYTES = 8 * 1024;
 const RATE_WINDOW_MS = 60 * 1000;
 const RATE_POLICIES = Object.freeze({
@@ -36,6 +37,7 @@ export default {
         return json(200, {
           ok: true,
           service: "ludoproof-game-api",
+          releasePhase: RELEASE_PHASE,
           production: false,
           game: "LudoProof",
           ruleset: "ludoproof-standard-v1",
@@ -49,6 +51,7 @@ export default {
         return json(200, {
           ok: true,
           service: "ludoproof-game-api",
+          releasePhase: RELEASE_PHASE,
           entronexConfigured:
             checks.entronexConfigured,
           checks,
@@ -76,6 +79,7 @@ export default {
           ok: ready,
           ready,
           service: "ludoproof-game-api",
+          releasePhase: RELEASE_PHASE,
           ruleset: "ludoproof-standard-v1",
           entronex: "v4-evaluation",
           entronexReachable,
