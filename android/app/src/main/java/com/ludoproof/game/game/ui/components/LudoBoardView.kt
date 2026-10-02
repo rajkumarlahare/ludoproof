@@ -2,6 +2,7 @@ package com.ludoproof.game
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Outline
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
@@ -10,6 +11,7 @@ import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.ViewOutlineProvider
 import android.view.View
 import kotlin.math.hypot
 import kotlin.math.min
@@ -26,6 +28,22 @@ class LudoBoardView @JvmOverloads constructor(
         importantForAccessibility =
             IMPORTANT_FOR_ACCESSIBILITY_YES
         contentDescription = "Ludo board"
+        outlineProvider =
+            object : ViewOutlineProvider() {
+                override fun getOutline(
+                    view: View,
+                    outline: Outline,
+                ) {
+                    outline.setRoundRect(
+                        0,
+                        0,
+                        view.width,
+                        view.height,
+                        density(3f),
+                    )
+                }
+            }
+        clipToOutline = true
     }
 
     private var snapshot: MatchSnapshot? = null

@@ -213,19 +213,27 @@ class MainActivity : Activity() {
         val horizontalPaddingDp =
             LudoProofTheme
                 .pageHorizontalPaddingDp(this)
-        val availableWidth =
-            (
-                resources.displayMetrics.widthPixels -
-                    dp(horizontalPaddingDp * 2)
-                ).coerceAtLeast(1)
+        val isExpandedWidth =
+            LudoProofTheme
+                .isExpandedWidth(this)
         val contentWidth =
-            minOf(
-                availableWidth,
-                dp(
-                    LudoProofTheme
-                        .pageMaxContentWidthDp(this),
-                ),
-            )
+            if (isExpandedWidth) {
+                minOf(
+                    resources.displayMetrics.widthPixels,
+                    dp(
+                        LudoProofTheme
+                            .pageMaxContentWidthDp(this),
+                    ),
+                )
+            } else {
+                resources.displayMetrics.widthPixels
+            }
+        val sectionSideMargin =
+            if (isExpandedWidth) {
+                0
+            } else {
+                dp(horizontalPaddingDp)
+            }
 
         val content =
             LinearLayout(this).apply {
@@ -259,13 +267,27 @@ class MainActivity : Activity() {
 
         content.addView(
             onlineTopBar(),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                leftMargin =
+                    sectionSideMargin
+                rightMargin =
+                    sectionSideMargin
+            },
         )
 
         content.addView(
             onlineHero(),
             onlineSectionParams(
                 if (isCompactOnline()) 12 else 16,
-            ),
+            ).apply {
+                leftMargin =
+                    sectionSideMargin
+                rightMargin =
+                    sectionSideMargin
+            },
         )
 
         lobbyPanel =
@@ -274,7 +296,12 @@ class MainActivity : Activity() {
             lobbyPanel,
             onlineSectionParams(
                 if (isCompactOnline()) 12 else 16,
-            ),
+            ).apply {
+                leftMargin =
+                    sectionSideMargin
+                rightMargin =
+                    sectionSideMargin
+            },
         )
 
         matchStatusPanel =
@@ -287,7 +314,12 @@ class MainActivity : Activity() {
             matchStatusPanel,
             onlineSectionParams(
                 if (isCompactOnline()) 12 else 16,
-            ),
+            ).apply {
+                leftMargin =
+                    sectionSideMargin
+                rightMargin =
+                    sectionSideMargin
+            },
         )
 
         resultPanel =
@@ -300,7 +332,12 @@ class MainActivity : Activity() {
             resultPanel,
             onlineSectionParams(
                 if (isCompactOnline()) 12 else 16,
-            ),
+            ).apply {
+                leftMargin =
+                    sectionSideMargin
+                rightMargin =
+                    sectionSideMargin
+            },
         )
 
         boardView =
@@ -314,12 +351,14 @@ class MainActivity : Activity() {
             }
 
         boardFrame =
-            LudoProofTheme
-                .boardFrame(this)
-                .apply {
-                    visibility =
-                        View.GONE
-                }
+            FrameLayout(this).apply {
+                visibility =
+                    View.GONE
+                clipChildren =
+                    false
+                clipToPadding =
+                    false
+            }
         boardFrame.addView(
             boardView,
             FrameLayout.LayoutParams(
@@ -333,9 +372,9 @@ class MainActivity : Activity() {
                 if (isCompactOnline()) 12 else 14,
             ).apply {
                 leftMargin =
-                    dp(2)
+                    sectionSideMargin
                 rightMargin =
-                    dp(2)
+                    sectionSideMargin
             },
         )
 
