@@ -76,6 +76,9 @@ class MainActivity : Activity() {
     internal lateinit var cancelMatchmakingButton: Button
     internal lateinit var twoPlayerButton: Button
     internal lateinit var fourPlayerButton: Button
+    internal lateinit var matchmakingSetupPanel: LinearLayout
+    internal lateinit var matchmakingSearchPanel: LinearLayout
+    internal lateinit var matchmakingOpponentRail: MatchmakingOpponentRailView
     internal lateinit var matchmakingStatusText: TextView
     internal lateinit var matchmakingSlotsText: TextView
     internal lateinit var matchmakingTimerText: TextView
@@ -445,17 +448,22 @@ class MainActivity : Activity() {
             },
         )
 
-        content.addView(
-            onlineHero(),
-            onlineSectionParams(
-                if (isCompactOnline()) 12 else 16,
-            ).apply {
-                leftMargin =
-                    sectionSideMargin
-                rightMargin =
-                    sectionSideMargin
-            },
-        )
+        if (
+            gameMode !=
+            GameMode.ONLINE
+        ) {
+            content.addView(
+                onlineHero(),
+                onlineSectionParams(
+                    if (isCompactOnline()) 12 else 16,
+                ).apply {
+                    leftMargin =
+                        sectionSideMargin
+                    rightMargin =
+                        sectionSideMargin
+                },
+            )
+        }
 
         lobbyPanel =
             onlineLobbyPanel()
@@ -639,6 +647,9 @@ class MainActivity : Activity() {
     internal fun isMatchmakingUiReady(): Boolean =
         ::findMatchButton.isInitialized &&
             ::cancelMatchmakingButton.isInitialized &&
+            ::matchmakingSetupPanel.isInitialized &&
+            ::matchmakingSearchPanel.isInitialized &&
+            ::matchmakingOpponentRail.isInitialized &&
             ::matchmakingStatusText.isInitialized &&
             ::matchmakingSlotsText.isInitialized &&
             ::matchmakingTimerText.isInitialized &&
