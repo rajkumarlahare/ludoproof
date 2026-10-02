@@ -1570,6 +1570,26 @@ test(
     );
     const requestId =
       "11111111-1111-4111-8111-111111111111";
+    const profile =
+      await deriveLeaderboardIdentity(
+        env,
+        requestId,
+      );
+    const profileAssertion =
+      await issueLeaderboardProfileAssertion(
+        env,
+        {
+          matchId:
+            "LPABCDEFGH",
+          profileId:
+            profile.profileId,
+          clientRequestId:
+            requestId,
+          expiresAt:
+            Date.now() +
+            10 * 60 * 1000,
+        },
+      );
 
     const first =
       await json(
@@ -1578,6 +1598,7 @@ test(
             "/create",
             {
               method: "POST",
+              profileAssertion,
               body: {
                 matchId:
                   "LPABCDEFGH",
@@ -1597,6 +1618,7 @@ test(
             "/create",
             {
               method: "POST",
+              profileAssertion,
               body: {
                 matchId:
                   "LPABCDEFGH",
@@ -1651,6 +1673,26 @@ test(
 
     const requestId =
       "22222222-2222-4222-8222-222222222222";
+    const profile =
+      await deriveLeaderboardIdentity(
+        env,
+        requestId,
+      );
+    const profileAssertion =
+      await issueLeaderboardProfileAssertion(
+        env,
+        {
+          matchId:
+            "LPABCDEFGH",
+          profileId:
+            profile.profileId,
+          clientRequestId:
+            requestId,
+          expiresAt:
+            Date.now() +
+            10 * 60 * 1000,
+        },
+      );
     const first =
       await json(
         await room.fetch(
@@ -1658,6 +1700,7 @@ test(
             "/join",
             {
               method: "POST",
+              profileAssertion,
               body: {
                 displayName:
                   "Bob",
@@ -1675,6 +1718,7 @@ test(
             "/join",
             {
               method: "POST",
+              profileAssertion,
               body: {
                 displayName:
                   "Bob",
