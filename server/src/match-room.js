@@ -36,6 +36,9 @@ import {
   fairnessSummary,
   sealFairnessEvent,
 } from "./fairness.js";
+import {
+  normalizeLeaderboardProfileId,
+} from "./leaderboard-core.js";
 
 const STATE_KEY = "match-state";
 const APP_ID = "ludoproof";
@@ -182,6 +185,10 @@ export class MatchRoom {
       normalizeDisplayName(
         body?.displayName,
       );
+    const profileId =
+      optionalLeaderboardProfileId(
+        body?.profileId,
+      );
     const matchId =
       String(
         body?.matchId ?? "",
@@ -266,6 +273,9 @@ export class MatchRoom {
     state.players[0]
       .joinRequestId =
       clientRequestId;
+    state.players[0]
+      .profileId =
+      profileId;
     state.history = [];
     await this.#persist(state);
 
@@ -289,6 +299,10 @@ export class MatchRoom {
     const displayName =
       normalizeDisplayName(
         body?.displayName,
+      );
+    const profileId =
+      optionalLeaderboardProfileId(
+        body?.profileId,
       );
     const clientRequestId =
       requireClientRequestId(
@@ -325,6 +339,21 @@ export class MatchRoom {
       });
     }
 
+    if (
+      profileId != null &&
+      state.players.some(
+        (candidate) =>
+          candidate.profileId ===
+            profileId,
+      )
+    ) {
+      throw httpError(
+        409,
+        "PROFILE_ALREADY_JOINED",
+        "this leaderboard profile is already in the match",
+      );
+    }
+
     const tokenAuthHash =
       await sha256Hex(
         "ludoproof:player-token:v1:" +
@@ -345,6 +374,10 @@ export class MatchRoom {
       next.players.length - 1
     ].joinRequestId =
       clientRequestId;
+    next.players[
+      next.players.length - 1
+    ].profileId =
+      profileId;
     next.history =
       state.history ?? [];
     await this.#persist(next);
@@ -365,8 +398,12 @@ export class MatchRoom {
   }
 
   async #state(request) {
-    const state = await this.#requireState();
+    let state = await this.#requireState();
     const player = await this.#authorize(state, request);
+    state =
+      await this.#recordFinishedMatchIfNeeded(
+        state,
+      );
     return json(200, {
       playerId: player.playerId,
       state: publicStateWithHistory(state),
@@ -767,6 +804,10 @@ export class MatchRoom {
           "this verified roll was already applied to another token",
         );
       }
+      state =
+        await this.#recordFinishedMatchIfNeeded(
+          state,
+        );
       return json(200, {
         replayed: true,
         captures:
@@ -851,6 +892,10 @@ export class MatchRoom {
     };
     state.history = history;
     await this.#persist(state);
+    state =
+      await this.#recordFinishedMatchIfNeeded(
+        state,
+      );
 
     return json(200, {
       replayed: false,
@@ -863,6 +908,88 @@ export class MatchRoom {
           state,
         ),
     });
+  }
+
+  async #recordFinishedMatchIfNeeded(
+    state,
+  ) {
+    if (
+      state.status !== "FINISHED" ||
+      state.leaderboardRecordedAt != null
+    ) {
+      return state;
+    }
+
+    const players =
+      state.players
+        .map((player) => ({
+          profileId:
+            normalizeLeaderboardProfileId(
+              player.profileId,
+            ),
+          displayName:
+            player.displayName,
+          won:
+            player.playerId ===
+              state.winnerPlayerId,
+        }))
+        .filter(
+          (player) =>
+            player.profileId != null,
+        );
+
+    if (players.length === 0) {
+      const next =
+        structuredClone(state);
+      next.leaderboardRecordedAt =
+        Date.now();
+      await this.#persist(next);
+      return next;
+    }
+
+    if (!this.env.LUDOPROOF_LEADERBOARD) {
+      return state;
+    }
+
+    try {
+      const id =
+        this.env.LUDOPROOF_LEADERBOARD
+          .idFromName("global");
+      const target =
+        this.env.LUDOPROOF_LEADERBOARD
+          .get(id);
+      const response =
+        await target.fetch(
+          new Request(
+            "https://leaderboard/record",
+            {
+              method: "POST",
+              headers: {
+                "content-type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                matchId:
+                  state.matchId,
+                players,
+              }),
+            },
+          ),
+        );
+
+      if (!response.ok) {
+        return state;
+      }
+
+      const next =
+        structuredClone(state);
+      next.leaderboardRecordedAt =
+        Date.now();
+      await this.#persist(next);
+      return next;
+    } catch {
+      return state;
+    }
   }
 
   async #replayHistoricalReveal(
@@ -1368,6 +1495,30 @@ function requireEntroNex(env) {
       "game backend is not configured with EntroNex",
     );
   }
+}
+
+function optionalLeaderboardProfileId(
+  value,
+) {
+  if (
+    value == null ||
+    String(value).trim() === ""
+  ) {
+    return null;
+  }
+
+  const normalized =
+    normalizeLeaderboardProfileId(
+      value,
+    );
+  if (!normalized) {
+    throw httpError(
+      400,
+      "INVALID_PROFILE_ID",
+      "leaderboard profile ID must be a UUID v4",
+    );
+  }
+  return normalized;
 }
 
 async function readJson(request) {
