@@ -1287,23 +1287,36 @@ class FriendsActivity :
                 activeFriendSession()
                     ?.let {
                             session ->
-                        runCatching {
+                        try {
                             api.state(
                                 session.matchId,
                                 session.playerToken,
                             )
-                        }
-                            .getOrNull()
-                            ?.optJSONObject(
-                                "state",
-                            )
-                            ?.let {
-                                    roomState ->
+                                .optJSONObject(
+                                    "state",
+                                )
+                                ?.let {
+                                        roomState ->
+                                    result.put(
+                                        "_roomState",
+                                        roomState,
+                                    )
+                                }
+                        } catch (
+                            error: GameApiException,
+                        ) {
+                            if (
+                                error.code ==
+                                    "MATCH_NOT_FOUND" ||
+                                error.code ==
+                                    "AUTH_INVALID"
+                            ) {
                                 result.put(
-                                    "_roomState",
-                                    roomState,
+                                    "_roomUnavailable",
+                                    true,
                                 )
                             }
+                        }
                     }
                 result
             },
@@ -1316,6 +1329,10 @@ class FriendsActivity :
                         "_roomState",
                     )
                 if (
+                    it.optBoolean(
+                        "_roomUnavailable",
+                        false,
+                    ) ||
                     roomState
                         ?.optString(
                             "status",
