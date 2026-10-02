@@ -51,7 +51,7 @@ internal fun OfflineGameActivity.rollOffline() {
     handler.postDelayed(
         {
             runCatching {
-                engine.roll()
+                session.roll()
             }.onSuccess {
                     state ->
                 renderGame(
@@ -148,7 +148,7 @@ internal fun OfflineGameActivity.scheduleComputerTurnIfNeeded(
         handler.postDelayed(
             {
                 val latest =
-                    engine.snapshot()
+                    session.snapshot()
                 val latestActive =
                     latest
                         ?.players
@@ -170,7 +170,7 @@ internal fun OfflineGameActivity.scheduleComputerTurnIfNeeded(
                 }
 
                 runCatching {
-                    engine.roll()
+                    session.roll()
                 }.onSuccess {
                         next ->
                     renderGame(
@@ -228,7 +228,7 @@ internal fun OfflineGameActivity.scheduleComputerTurnIfNeeded(
     handler.postDelayed(
         {
             val latest =
-                engine.snapshot()
+                session.snapshot()
             val latestActive =
                 latest
                     ?.players
@@ -254,7 +254,7 @@ internal fun OfflineGameActivity.scheduleComputerTurnIfNeeded(
             }
 
             runCatching {
-                engine.move(
+                session.move(
                     token,
                 )
             }.onSuccess {

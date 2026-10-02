@@ -20,6 +20,10 @@ import com.ludoproof.game.ui.online.*
 import com.ludoproof.game.feature.online.*
 
 class MainActivity : Activity() {
+    internal val gameMode:
+        GameMode =
+        GameMode.ONLINE
+
     internal val api = GameApi()
     internal val executor =
         Executors.newSingleThreadExecutor()
@@ -54,6 +58,19 @@ class MainActivity : Activity() {
     internal lateinit var proofButton: Button
 
     internal val uiStateHolder = OnlineGameStateHolder()
+
+    internal val session by lazy {
+        RemoteMatchSession(
+            mode =
+                gameMode,
+            snapshotProvider = {
+                currentState
+            },
+            playerIdProvider = {
+                playerId
+            },
+        )
+    }
 
     internal var matchId: String?
         get() = uiStateHolder.value.matchId

@@ -86,8 +86,8 @@ internal fun HomeActivity.modeSection():
                         this@modeSection,
                         OfflineGameActivity::class.java,
                     ).putExtra(
-                        OfflineGameActivity.EXTRA_PLAY_MODE,
-                        OfflineGameActivity.PLAY_MODE_COMPUTER,
+                        OfflineGameActivity.EXTRA_GAME_MODE,
+                        GameMode.COMPUTER.wireValue,
                     ),
                 )
             },
@@ -119,8 +119,8 @@ internal fun HomeActivity.modeSection():
                         this@modeSection,
                         OfflineGameActivity::class.java,
                     ).putExtra(
-                        OfflineGameActivity.EXTRA_PLAY_MODE,
-                        OfflineGameActivity.PLAY_MODE_LOCAL,
+                        OfflineGameActivity.EXTRA_GAME_MODE,
+                        GameMode.PASS_AND_PLAY.wireValue,
                     ),
                 )
             },
@@ -286,17 +286,19 @@ internal fun HomeActivity.continueButton():
             this,
         ).load()
     val local =
-        OfflineGameEngine(
-            this,
-            computerMode =
-                false,
+        LocalMatchSession(
+            context =
+                this,
+            mode =
+                GameMode.PASS_AND_PLAY,
         )
             .hasSavedGame()
     val computer =
-        OfflineGameEngine(
-            this,
-            computerMode =
-                true,
+        LocalMatchSession(
+            context =
+                this,
+            mode =
+                GameMode.COMPUTER,
         )
             .hasSavedGame()
 
@@ -352,13 +354,13 @@ internal fun HomeActivity.continueButton():
                     this@continueButton,
                     OfflineGameActivity::class.java,
                 ).putExtra(
-                    OfflineGameActivity.EXTRA_PLAY_MODE,
+                    OfflineGameActivity.EXTRA_GAME_MODE,
                     if (
                         local
                     ) {
-                        OfflineGameActivity.PLAY_MODE_LOCAL
+                        GameMode.PASS_AND_PLAY.wireValue
                     } else {
-                        OfflineGameActivity.PLAY_MODE_COMPUTER
+                        GameMode.COMPUTER.wireValue
                     },
                 ),
             )

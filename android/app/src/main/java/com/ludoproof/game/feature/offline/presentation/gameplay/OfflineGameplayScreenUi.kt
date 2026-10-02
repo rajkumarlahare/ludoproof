@@ -147,7 +147,7 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
             onTokenSelected = {
                     tokenIndex ->
                 runCatching {
-                    engine.move(
+                    session.move(
                         tokenIndex,
                     )
                 }.onSuccess {

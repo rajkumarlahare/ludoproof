@@ -20,31 +20,41 @@ import com.ludoproof.game.feature.offline.*
 class OfflineGameActivity : Activity() {
     internal val handler = Handler(Looper.getMainLooper())
 
-    internal val playMode: String by lazy {
-        intent.getStringExtra(
-            EXTRA_PLAY_MODE,
-        )
+    internal val gameMode:
+        GameMode by lazy {
+        GameMode
+            .fromWireValue(
+                intent.getStringExtra(
+                    EXTRA_GAME_MODE,
+                )
+                    ?: intent.getStringExtra(
+                        EXTRA_PLAY_MODE,
+                    ),
+            )
             ?.takeIf {
-                it ==
-                    PLAY_MODE_LOCAL ||
-                    it ==
-                    PLAY_MODE_COMPUTER
+                it.isLocal
             }
-            ?: PLAY_MODE_LOCAL
+            ?: GameMode.PASS_AND_PLAY
     }
 
     internal val isComputerMode: Boolean
         get() =
-            playMode ==
-                PLAY_MODE_COMPUTER
+            gameMode ==
+                GameMode.COMPUTER
 
-    internal val engine by lazy {
-        OfflineGameEngine(
-            this,
-            computerMode =
-                isComputerMode,
+    internal val session by lazy {
+        LocalMatchSession(
+            context =
+                this,
+            mode =
+                gameMode,
         )
     }
+
+    internal val engine:
+        OfflineGameEngine
+        get() =
+            session.engine
 
     internal val setupStateHolder = OfflineSetupStateHolder()
 
@@ -74,7 +84,15 @@ class OfflineGameActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         LudoProofTheme.configureWindow(this)
-        if (engine.hasSavedGame()) showGame(engine.snapshot()) else showSetup()
+        if (
+            session.hasSavedGame()
+        ) {
+            showGame(
+                session.snapshot(),
+            )
+        } else {
+            showSetup()
+        }
     }
 
     internal fun prepareOfflineUiTransition() {
@@ -107,6 +125,11 @@ class OfflineGameActivity : Activity() {
     }
 
     companion object {
+        const val EXTRA_GAME_MODE =
+            "ludoproof_game_mode_v1"
+
+        // Legacy extras remain readable so installed builds and old intents
+        // can continue an existing local or computer session after upgrade.
         const val EXTRA_PLAY_MODE =
             "ludoproof_play_mode"
         const val PLAY_MODE_LOCAL =

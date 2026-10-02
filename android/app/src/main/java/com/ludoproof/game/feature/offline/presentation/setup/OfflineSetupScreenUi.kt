@@ -132,9 +132,11 @@ internal fun OfflineGameActivity.showSetup() {
                 .primary(this)
             setOnClickListener {
                 showGame(
-                    engine.start(
-                        selectedPlayers,
-                        selectedColor,
+                    session.start(
+                        playerCount =
+                            selectedPlayers,
+                        preferredColor =
+                            selectedColor,
                     ),
                 )
             }
