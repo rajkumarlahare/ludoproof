@@ -52,6 +52,7 @@ class LudoBoardView @JvmOverloads constructor(
         "board_classic"
     private var snapshot: MatchSnapshot? = null
     private var localPlayerId: String? = null
+    private var perspectiveColor: String? = null
     private val tokenHits = mutableListOf<TokenHit>()
 
     private val fillPaint =
@@ -86,9 +87,16 @@ class LudoBoardView @JvmOverloads constructor(
     fun bind(
         state: MatchSnapshot?,
         playerId: String?,
+        perspectiveColor: String? = null,
     ) {
         snapshot = state
         localPlayerId = playerId
+        this.perspectiveColor =
+            perspectiveColor
+                ?.takeIf {
+                    it in
+                        OfflinePlayerLayout.COLORS
+                }
 
         val localPlayer =
             state?.players?.find {
@@ -122,6 +130,10 @@ class LudoBoardView @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        reloadStyle()
+    }
+
+    fun reloadStyle() {
         boardThemeId =
             CosmeticInventoryStore(
                 context,
@@ -154,11 +166,44 @@ class LudoBoardView @JvmOverloads constructor(
         val cell = size / 15f
 
         canvas.drawColor(boardSurfaceColor())
+
+        val turns =
+            perspectiveColor
+                ?.let {
+                    OfflinePlayerLayout
+                        .rotationQuarterTurns(
+                            it,
+                        )
+                }
+                ?: 0
+
+        if (
+            turns !=
+            0
+        ) {
+            canvas.save()
+            canvas.rotate(
+                turns *
+                    90f,
+                size /
+                    2f,
+                size /
+                    2f,
+            )
+        }
+
         drawYards(canvas, cell)
         drawTrack(canvas, cell)
         drawHomeLanes(canvas, cell)
         drawCenter(canvas, cell)
         drawTokens(canvas, cell)
+
+        if (
+            turns !=
+            0
+        ) {
+            canvas.restore()
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -166,19 +211,53 @@ class LudoBoardView @JvmOverloads constructor(
             return true
         }
 
+        val size =
+            min(
+                width,
+                height,
+            ).toFloat()
+        val turns =
+            perspectiveColor
+                ?.let {
+                    OfflinePlayerLayout
+                        .rotationQuarterTurns(
+                            it,
+                        )
+                }
+                ?: 0
+        val logicalTouch =
+            unrotateTouch(
+                event.x,
+                event.y,
+                size,
+                turns,
+            )
+
         val hit =
             tokenHits.minByOrNull {
                 hypot(
-                    (event.x - it.x).toDouble(),
-                    (event.y - it.y).toDouble(),
+                    (
+                        logicalTouch.first -
+                            it.x
+                        ).toDouble(),
+                    (
+                        logicalTouch.second -
+                            it.y
+                        ).toDouble(),
                 )
             }
 
         if (
             hit != null &&
             hypot(
-                (event.x - hit.x).toDouble(),
-                (event.y - hit.y).toDouble(),
+                (
+                    logicalTouch.first -
+                        hit.x
+                    ).toDouble(),
+                (
+                    logicalTouch.second -
+                        hit.y
+                    ).toDouble(),
             ) <= hit.radius
         ) {
             performClick()
@@ -191,6 +270,46 @@ class LudoBoardView @JvmOverloads constructor(
         super.performClick()
         return true
     }
+
+    private fun unrotateTouch(
+        x: Float,
+        y: Float,
+        size: Float,
+        quarterTurns: Int,
+    ): Pair<Float, Float> =
+        when (
+            (
+                quarterTurns %
+                    4 +
+                    4
+                ) %
+                4
+        ) {
+            1 ->
+                y to
+                    (
+                        size -
+                            x
+                        )
+            2 ->
+                (
+                    size -
+                        x
+                    ) to
+                    (
+                        size -
+                            y
+                        )
+            3 ->
+                (
+                    size -
+                        y
+                    ) to
+                    x
+            else ->
+                x to
+                    y
+        }
 
     private fun drawYards(
         canvas: Canvas,
