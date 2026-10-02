@@ -251,111 +251,6 @@ export class MatchRoom {
       normalizeDisplayName(
         body?.displayName,
       );
-    let friendJoin =
-      null;
-    if (
-      state.matchMode ===
-        "FRIENDS"
-    ) {
-      const token =
-        request.headers.get(
-          "x-ludoproof-friend-join-token",
-        );
-      if (
-        typeof token !==
-          "string" ||
-        token.length ===
-          0
-      ) {
-        throw httpError(
-          401,
-          "FRIEND_JOIN_TOKEN_REQUIRED",
-          "accepted friend invite credential is required",
-        );
-      }
-
-      friendJoin =
-        await verifyFriendRoomJoinToken(
-          this.env,
-          token,
-        );
-      if (
-        friendJoin.matchId !==
-          state.matchId ||
-        friendJoin.hostFriendId !==
-          state.hostFriendId
-      ) {
-        throw httpError(
-          403,
-          "FRIEND_JOIN_TOKEN_MISMATCH",
-          "friend-room join credential is not valid for this room",
-        );
-      }
-
-      await this.#assertFriendInviteActive(
-        friendJoin,
-      );
-
-      const existingInvitePlayer =
-        state.players.find(
-          (candidate) =>
-            candidate.friendInviteId ===
-              friendJoin.inviteId &&
-            candidate.friendId ===
-              friendJoin.friendId,
-        );
-      if (
-        existingInvitePlayer
-      ) {
-        const replayIdentity =
-          await derivePlayerIdentity(
-            this.env,
-            state.matchId,
-            existingInvitePlayer
-              .joinRequestId,
-          );
-        return json(200, {
-          replayed: true,
-          matchId:
-            state.matchId,
-          playerId:
-            replayIdentity.playerId,
-          playerToken:
-            replayIdentity.playerToken,
-          state:
-            publicStateWithHistory(
-              state,
-            ),
-        });
-      }
-
-      if (
-        state.players.some(
-          (candidate) =>
-            candidate.friendId ===
-              friendJoin.friendId,
-        )
-      ) {
-        throw httpError(
-          409,
-          "FRIEND_ALREADY_JOINED",
-          "this friend is already seated in the room",
-        );
-      }
-      if (
-        state.players.some(
-          (candidate) =>
-            candidate.friendInviteId ===
-              friendJoin.inviteId,
-        )
-      ) {
-        throw httpError(
-          409,
-          "FRIEND_INVITE_ALREADY_USED",
-          "this friend invite already filled a room seat",
-        );
-      }
-    }
     const profileId =
       optionalLeaderboardProfileId(
         body?.profileId,
@@ -523,6 +418,112 @@ export class MatchRoom {
       requireClientRequestId(
         body?.clientRequestId,
       );
+    let friendJoin =
+      null;
+    if (
+      state.matchMode ===
+        "FRIENDS"
+    ) {
+      const token =
+        request.headers.get(
+          "x-ludoproof-friend-join-token",
+        );
+      if (
+        typeof token !==
+          "string" ||
+        token.length ===
+          0
+      ) {
+        throw httpError(
+          401,
+          "FRIEND_JOIN_TOKEN_REQUIRED",
+          "accepted friend invite credential is required",
+        );
+      }
+
+      friendJoin =
+        await verifyFriendRoomJoinToken(
+          this.env,
+          token,
+        );
+      if (
+        friendJoin.matchId !==
+          state.matchId ||
+        friendJoin.hostFriendId !==
+          state.hostFriendId
+      ) {
+        throw httpError(
+          403,
+          "FRIEND_JOIN_TOKEN_MISMATCH",
+          "friend-room join credential is not valid for this room",
+        );
+      }
+
+      await this.#assertFriendInviteActive(
+        friendJoin,
+      );
+
+      const existingInvitePlayer =
+        state.players.find(
+          (candidate) =>
+            candidate.friendInviteId ===
+              friendJoin.inviteId &&
+            candidate.friendId ===
+              friendJoin.friendId,
+        );
+      if (
+        existingInvitePlayer
+      ) {
+        const replayIdentity =
+          await derivePlayerIdentity(
+            this.env,
+            state.matchId,
+            existingInvitePlayer
+              .joinRequestId,
+          );
+        return json(200, {
+          replayed: true,
+          matchId:
+            state.matchId,
+          playerId:
+            replayIdentity.playerId,
+          playerToken:
+            replayIdentity.playerToken,
+          state:
+            publicStateWithHistory(
+              state,
+            ),
+        });
+      }
+
+      if (
+        state.players.some(
+          (candidate) =>
+            candidate.friendId ===
+              friendJoin.friendId,
+        )
+      ) {
+        throw httpError(
+          409,
+          "FRIEND_ALREADY_JOINED",
+          "this friend is already seated in the room",
+        );
+      }
+      if (
+        state.players.some(
+          (candidate) =>
+            candidate.friendInviteId ===
+              friendJoin.inviteId,
+        )
+      ) {
+        throw httpError(
+          409,
+          "FRIEND_INVITE_ALREADY_USED",
+          "this friend invite already filled a room seat",
+        );
+      }
+    }
+
     const identity =
       await derivePlayerIdentity(
         this.env,
