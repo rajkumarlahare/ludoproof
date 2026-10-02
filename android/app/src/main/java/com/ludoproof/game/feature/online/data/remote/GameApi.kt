@@ -142,6 +142,7 @@ class GameApi(
         friendToken: String,
         inviteId: String,
         accept: Boolean,
+        clientRequestId: String? = null,
     ): JSONObject =
         request(
             method = "POST",
@@ -157,10 +158,27 @@ class GameApi(
                 .put(
                     "accept",
                     accept,
-                ),
+                )
+                .apply {
+                    if (
+                        accept
+                    ) {
+                        require(
+                            !clientRequestId
+                                .isNullOrBlank(),
+                        ) {
+                            "clientRequestId is required when accepting a friend invite"
+                        }
+                        put(
+                            "clientRequestId",
+                            clientRequestId,
+                        )
+                    }
+                },
         )
 
     fun createFriendRoom(
+        friendToken: String,
         displayName: String,
         clientRequestId: String,
         playerCount: Int,
@@ -169,6 +187,8 @@ class GameApi(
         request(
             method = "POST",
             path = "/api/matches",
+            friendToken =
+                friendToken,
             body = JSONObject()
                 .put(
                     "displayName",
@@ -302,10 +322,13 @@ class GameApi(
         displayName: String,
         clientRequestId: String,
         profileId: String? = null,
+        friendJoinToken: String? = null,
     ): JSONObject =
         request(
             method = "POST",
             path = "/api/matches/${matchId.uppercase()}/join",
+            friendJoinToken =
+                friendJoinToken,
             body = JSONObject()
                 .put("displayName", displayName)
                 .put(
@@ -396,6 +419,7 @@ class GameApi(
         playerToken: String? = null,
         friendToken: String? = null,
         roomPlayerToken: String? = null,
+        friendJoinToken: String? = null,
         body: JSONObject? = null,
     ): JSONObject {
         require(baseUrl.startsWith("https://")) {
@@ -436,6 +460,15 @@ class GameApi(
                 connection.setRequestProperty(
                     "X-LudoProof-Room-Token",
                     roomPlayerToken,
+                )
+            }
+            if (
+                friendJoinToken !=
+                null
+            ) {
+                connection.setRequestProperty(
+                    "X-LudoProof-Friend-Join-Token",
+                    friendJoinToken,
                 )
             }
 

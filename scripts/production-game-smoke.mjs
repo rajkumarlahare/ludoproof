@@ -527,6 +527,8 @@ async function verifyFriendsFlow() {
         "POST",
         "/api/matches",
         {
+          token:
+            hostFriendToken,
           body: {
             displayName:
               "Smoke Friend A",
@@ -609,6 +611,47 @@ async function verifyFriendsFlow() {
       );
     }
 
+    let bypassBlocked =
+      false;
+    try {
+      await api(
+        "POST",
+        "/api/matches/" +
+          encodeURIComponent(
+            friendMatchId,
+          ) +
+          "/join",
+        {
+          body: {
+            displayName:
+              "Bypass Attempt",
+            clientRequestId:
+              randomUUID(),
+          },
+        },
+      );
+    } catch (error) {
+      bypassBlocked =
+        String(
+          error?.message ??
+            error,
+        )
+          .includes(
+            "FRIEND_JOIN_TOKEN_REQUIRED",
+          );
+    }
+
+    if (
+      !bypassBlocked
+    ) {
+      throw new Error(
+        "Production friends smoke allowed a private-room join without an accepted invite credential.",
+      );
+    }
+
+    const friendJoinRequestId =
+      randomUUID();
+
     const acceptedInvite =
       await api(
         "POST",
@@ -620,6 +663,8 @@ async function verifyFriendsFlow() {
             inviteId,
             accept:
               true,
+            clientRequestId:
+              friendJoinRequestId,
           },
         },
       );
@@ -635,6 +680,13 @@ async function verifyFriendsFlow() {
       );
     }
 
+    const friendJoinToken =
+      requireText(
+        acceptedInvite
+          .friendJoinToken,
+        "friends.friendJoinToken",
+      );
+
     const joined =
       await api(
         "POST",
@@ -644,11 +696,12 @@ async function verifyFriendsFlow() {
           ) +
           "/join",
         {
+          friendJoinToken,
           body: {
             displayName:
               "Smoke Friend B",
             clientRequestId:
-              randomUUID(),
+              friendJoinRequestId,
           },
         },
       );
@@ -736,6 +789,7 @@ async function api(
   {
     token = null,
     roomToken = null,
+    friendJoinToken = null,
     body = null,
   } = {},
 ) {
@@ -756,6 +810,13 @@ async function api(
       "x-ludoproof-room-token"
     ] =
       roomToken;
+  }
+
+  if (friendJoinToken) {
+    headers[
+      "x-ludoproof-friend-join-token"
+    ] =
+      friendJoinToken;
   }
 
   let payload;

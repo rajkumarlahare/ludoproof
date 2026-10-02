@@ -17,7 +17,7 @@ export { LeaderboardRoom } from "./leaderboard-room.js";
 export { MatchmakerQueue } from "./matchmaker-queue.js";
 export { FriendDirectory } from "./friend-directory.js";
 
-const RELEASE_PHASE = "phase4-friends";
+const RELEASE_PHASE = "phase5-friend-security";
 const MAX_BODY_BYTES = 8 * 1024;
 const RATE_WINDOW_MS = 60 * 1000;
 const RATE_POLICIES = Object.freeze({
@@ -314,12 +314,25 @@ export default {
               attempt,
             );
           const target = room(env, matchId);
+          const headers =
+            new Headers({
+              "content-type":
+                "application/json",
+            });
+          const authorization =
+            request.headers.get(
+              "authorization",
+            );
+          if (authorization) {
+            headers.set(
+              "authorization",
+              authorization,
+            );
+          }
           const response = await target.fetch(
             new Request("https://room/create", {
               method: "POST",
-              headers: {
-                "content-type": "application/json",
-              },
+              headers,
               body: JSON.stringify({
                 ...body,
                 matchId,
@@ -409,6 +422,19 @@ export default {
         headers.set(
           "authorization",
           authorization,
+        );
+      }
+      const friendJoinToken =
+        request.headers.get(
+          "x-ludoproof-friend-join-token",
+        );
+      if (
+        friendJoinToken &&
+        action === "join"
+      ) {
+        headers.set(
+          "x-ludoproof-friend-join-token",
+          friendJoinToken,
         );
       }
       headers.set(

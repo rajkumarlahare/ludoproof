@@ -31,6 +31,7 @@ import {
   requireClientRequestId,
   requireDigest,
   sha256Hex,
+  verifyFriendRoomJoinToken,
 } from "./crypto.js";
 import {
   fairnessSummary,
@@ -73,10 +74,18 @@ export class MatchRoom {
           : null;
 
       if (request.method === "POST" && url.pathname === "/create") {
-        return await this.#mutate(() => this.#create(body));
+        return await this.#mutate(() => this.#create(request, body));
       }
       if (request.method === "POST" && url.pathname === "/join") {
-        return await this.#mutate(() => this.#join(body));
+        return await this.#mutate(() => this.#join(request, body));
+      }
+      if (
+        request.method === "POST" &&
+        url.pathname === "/friend-host/assert"
+      ) {
+        return await this.#mutate(
+          () => this.#assertFriendHost(request, body),
+        );
       }
       if (request.method === "GET" && url.pathname === "/state") {
         return await this.#mutate(() => this.#state(request));
@@ -234,7 +243,10 @@ export class MatchRoom {
     }
   }
 
-  async #create(body) {
+  async #create(
+    request,
+    body,
+  ) {
     const displayName =
       normalizeDisplayName(
         body?.displayName,
@@ -260,6 +272,13 @@ export class MatchRoom {
         body?.matchMode,
         targetPlayerCount,
       );
+    const hostFriend =
+      matchMode ===
+        "FRIENDS"
+        ? await this.#friendIdentity(
+            request,
+          )
+        : null;
 
     if (
       !/^LP[A-Z2-9]{8}$/.test(
@@ -289,7 +308,13 @@ export class MatchRoom {
         existing.createRequestId ===
           clientRequestId &&
         existing.hostPlayerId ===
-          identity.playerId
+          identity.playerId &&
+        (
+          existing.matchMode !==
+            "FRIENDS" ||
+          existing.hostFriendId ===
+            hostFriend?.friendId
+        )
       ) {
         return json(200, {
           replayed: true,
@@ -344,6 +369,15 @@ export class MatchRoom {
         "FRIENDS"
         ? null
         : profileId;
+    if (
+      hostFriend
+    ) {
+      state.hostFriendId =
+        hostFriend.friendId;
+      state.players[0]
+        .friendId =
+        hostFriend.friendId;
+    }
     state.history = [];
     await this.#persist(state);
 
@@ -361,7 +395,10 @@ export class MatchRoom {
     });
   }
 
-  async #join(body) {
+  async #join(
+    request,
+    body,
+  ) {
     const state =
       await this.#requireState();
     const displayName =
@@ -381,6 +418,112 @@ export class MatchRoom {
       requireClientRequestId(
         body?.clientRequestId,
       );
+    let friendJoin =
+      null;
+    if (
+      state.matchMode ===
+        "FRIENDS"
+    ) {
+      const token =
+        request.headers.get(
+          "x-ludoproof-friend-join-token",
+        );
+      if (
+        typeof token !==
+          "string" ||
+        token.length ===
+          0
+      ) {
+        throw httpError(
+          401,
+          "FRIEND_JOIN_TOKEN_REQUIRED",
+          "accepted friend invite credential is required",
+        );
+      }
+
+      friendJoin =
+        await verifyFriendRoomJoinToken(
+          this.env,
+          token,
+        );
+      if (
+        friendJoin.matchId !==
+          state.matchId ||
+        friendJoin.hostFriendId !==
+          state.hostFriendId
+      ) {
+        throw httpError(
+          403,
+          "FRIEND_JOIN_TOKEN_MISMATCH",
+          "friend-room join credential is not valid for this room",
+        );
+      }
+
+      await this.#assertFriendInviteActive(
+        friendJoin,
+      );
+
+      const existingInvitePlayer =
+        state.players.find(
+          (candidate) =>
+            candidate.friendInviteId ===
+              friendJoin.inviteId &&
+            candidate.friendId ===
+              friendJoin.friendId,
+        );
+      if (
+        existingInvitePlayer
+      ) {
+        const replayIdentity =
+          await derivePlayerIdentity(
+            this.env,
+            state.matchId,
+            existingInvitePlayer
+              .joinRequestId,
+          );
+        return json(200, {
+          replayed: true,
+          matchId:
+            state.matchId,
+          playerId:
+            replayIdentity.playerId,
+          playerToken:
+            replayIdentity.playerToken,
+          state:
+            publicStateWithHistory(
+              state,
+            ),
+        });
+      }
+
+      if (
+        state.players.some(
+          (candidate) =>
+            candidate.friendId ===
+              friendJoin.friendId,
+        )
+      ) {
+        throw httpError(
+          409,
+          "FRIEND_ALREADY_JOINED",
+          "this friend is already seated in the room",
+        );
+      }
+      if (
+        state.players.some(
+          (candidate) =>
+            candidate.friendInviteId ===
+              friendJoin.inviteId,
+        )
+      ) {
+        throw httpError(
+          409,
+          "FRIEND_INVITE_ALREADY_USED",
+          "this friend invite already filled a room seat",
+        );
+      }
+    }
+
     const identity =
       await derivePlayerIdentity(
         this.env,
@@ -451,6 +594,18 @@ export class MatchRoom {
       next.players.length - 1
     ].profileId =
       profileId;
+    if (
+      friendJoin
+    ) {
+      next.players[
+        next.players.length - 1
+      ].friendId =
+        friendJoin.friendId;
+      next.players[
+        next.players.length - 1
+      ].friendInviteId =
+        friendJoin.inviteId;
+    }
     next.history =
       state.history ?? [];
     await this.#persist(next);
@@ -1296,6 +1451,263 @@ export class MatchRoom {
       );
     } catch {
       // Socket is already closed.
+    }
+  }
+
+  async #assertFriendHost(
+    request,
+    body,
+  ) {
+    const state =
+      await this.#requireState();
+    const player =
+      await this.#authorize(
+        state,
+        request,
+      );
+    const hostFriendId =
+      String(
+        body?.hostFriendId ??
+          "",
+      )
+        .trim()
+        .toUpperCase();
+
+    if (
+      !/^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/
+        .test(
+          hostFriendId,
+        )
+    ) {
+      throw httpError(
+        400,
+        "INVALID_FRIEND_ID",
+        "invalid host Friend ID",
+      );
+    }
+    if (
+      state.matchMode !==
+        "FRIENDS"
+    ) {
+      throw httpError(
+        409,
+        "NOT_FRIEND_ROOM",
+        "room is not a friends private room",
+      );
+    }
+    if (
+      state.status !==
+        "WAITING"
+    ) {
+      throw httpError(
+        409,
+        "ROOM_NOT_WAITING",
+        "room is no longer accepting invites",
+      );
+    }
+    if (
+      player.playerId !==
+        state.hostPlayerId
+    ) {
+      throw httpError(
+        403,
+        "HOST_ONLY",
+        "only the private room host can invite friends",
+      );
+    }
+    if (
+      state.hostFriendId !==
+        hostFriendId ||
+      player.friendId !==
+        hostFriendId
+    ) {
+      throw httpError(
+        403,
+        "FRIEND_HOST_MISMATCH",
+        "room host credential is not bound to this Friend ID",
+      );
+    }
+
+    return json(
+      200,
+      {
+        ok: true,
+        matchId:
+          state.matchId,
+      },
+    );
+  }
+
+  async #friendIdentity(
+    request,
+  ) {
+    const authorization =
+      request.headers.get(
+        "authorization",
+      );
+    if (
+      typeof authorization !==
+        "string" ||
+      !/^Bearer\s+lf_[A-Za-z0-9_-]{32,}$/i
+        .test(
+          authorization,
+        )
+    ) {
+      throw httpError(
+        401,
+        "FRIEND_AUTH_REQUIRED",
+        "friend credential is required to create a private room",
+      );
+    }
+    if (
+      !this.env
+        .LUDOPROOF_FRIENDS
+    ) {
+      throw httpError(
+        503,
+        "FRIENDS_NOT_CONFIGURED",
+        "friend directory is not configured",
+      );
+    }
+
+    const id =
+      this.env
+        .LUDOPROOF_FRIENDS
+        .idFromName(
+          "GLOBAL:V1",
+        );
+    const target =
+      this.env
+        .LUDOPROOF_FRIENDS
+        .get(id);
+    const response =
+      await target.fetch(
+        new Request(
+          "https://friends/identity",
+          {
+            method:
+              "GET",
+            headers: {
+              authorization,
+            },
+          },
+        ),
+      );
+
+    let value;
+    try {
+      value =
+        await response.json();
+    } catch {
+      throw httpError(
+        503,
+        "FRIEND_AUTH_BAD_RESPONSE",
+        "friend directory returned invalid authorization data",
+      );
+    }
+
+    if (
+      !response.ok ||
+      value?.ok !== true ||
+      !/^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/
+        .test(
+          String(
+            value?.friendId ??
+              "",
+          ),
+        )
+    ) {
+      throw httpError(
+        response.status ===
+          401
+          ? 401
+          : 403,
+        value?.error ??
+          "FRIEND_AUTH_INVALID",
+        value?.message ??
+          "friend credential is invalid",
+      );
+    }
+
+    return {
+      friendId:
+        String(
+          value.friendId,
+        ),
+      displayName:
+        String(
+          value.displayName ??
+            "",
+        ),
+    };
+  }
+
+  async #assertFriendInviteActive(
+    claims,
+  ) {
+    if (
+      !this.env
+        .LUDOPROOF_FRIENDS
+    ) {
+      throw httpError(
+        503,
+        "FRIENDS_NOT_CONFIGURED",
+        "friend directory is not configured",
+      );
+    }
+
+    const id =
+      this.env
+        .LUDOPROOF_FRIENDS
+        .idFromName(
+          "GLOBAL:V1",
+        );
+    const target =
+      this.env
+        .LUDOPROOF_FRIENDS
+        .get(id);
+    const response =
+      await target.fetch(
+        new Request(
+          "https://friends/invite/join-check",
+          {
+            method:
+              "POST",
+            headers: {
+              "content-type":
+                "application/json",
+            },
+            body:
+              JSON.stringify(
+                claims,
+              ),
+          },
+        ),
+      );
+
+    let value;
+    try {
+      value =
+        await response.json();
+    } catch {
+      throw httpError(
+        503,
+        "FRIEND_INVITE_BAD_RESPONSE",
+        "friend directory returned invalid invite authorization data",
+      );
+    }
+
+    if (
+      !response.ok ||
+      value?.ok !== true
+    ) {
+      throw httpError(
+        response.status,
+        value?.error ??
+          "FRIEND_INVITE_INVALID",
+        value?.message ??
+          "friend invite is not authorized for this room",
+      );
     }
   }
 

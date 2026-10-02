@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   deriveFriendIdentity,
+  issueFriendRoomJoinToken,
+  verifyFriendRoomJoinToken,
 } from "../src/crypto.js";
 import {
   addPlayer,
@@ -55,6 +57,72 @@ test(
     assert.notEqual(
       first.friendToken,
       other.friendToken,
+    );
+  },
+);
+
+
+test(
+  "friend-room join credentials are signed, scoped, and expire",
+  async () => {
+    const claims = {
+      matchId:
+        "LPABCDEFGH",
+      hostFriendId:
+        "LPF-ABCD-EFGH-JKLM",
+      friendId:
+        "LPF-MNPQ-RSTU-VWXY",
+      inviteId:
+        "FIV-0123456789ABCDEF0123",
+      expiresAt:
+        10_000,
+    };
+    const token =
+      await issueFriendRoomJoinToken(
+        ENV,
+        claims,
+      );
+
+    assert.match(
+      token,
+      /^lfj_[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
+    );
+    assert.deepEqual(
+      await verifyFriendRoomJoinToken(
+        ENV,
+        token,
+        9_000,
+      ),
+      claims,
+    );
+
+    const tampered =
+      token.slice(0, -1) +
+      (
+        token.endsWith("A")
+          ? "B"
+          : "A"
+      );
+    await assert.rejects(
+      verifyFriendRoomJoinToken(
+        ENV,
+        tampered,
+        9_000,
+      ),
+      (error) =>
+        error?.code ===
+          "FRIEND_JOIN_TOKEN_INVALID",
+    );
+
+    await assert.rejects(
+      verifyFriendRoomJoinToken(
+        ENV,
+        token,
+        10_000,
+      ),
+      (error) =>
+        error?.code ===
+          "FRIEND_JOIN_TOKEN_EXPIRED",
     );
   },
 );

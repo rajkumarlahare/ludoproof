@@ -2,6 +2,7 @@ import {
   bearerToken,
   deriveFriendIdentity,
   httpError,
+  issueFriendRoomJoinToken,
   normalizeDisplayName,
   requireClientRequestId,
   sha256Hex,
@@ -17,6 +18,8 @@ const PRESENCE_TTL_MS =
   75 * 1000;
 const INVITE_TTL_MS =
   24 * 60 * 60 * 1000;
+const JOIN_TOKEN_TTL_MS =
+  5 * 60 * 1000;
 
 export class FriendDirectory {
   constructor(ctx, env) {
@@ -137,6 +140,17 @@ export class FriendDirectory {
         request.method ===
           "GET" &&
         url.pathname ===
+          "/identity"
+      ) {
+        return await this.#identity(
+          request,
+        );
+      }
+
+      if (
+        request.method ===
+          "GET" &&
+        url.pathname ===
           "/snapshot"
       ) {
         return await this.#snapshot(
@@ -206,6 +220,17 @@ export class FriendDirectory {
           "/invite/respond"
       ) {
         return await this.#respondInvite(
+          request,
+        );
+      }
+
+      if (
+        request.method ===
+          "POST" &&
+        url.pathname ===
+          "/invite/join-check"
+      ) {
+        return await this.#checkInviteForJoin(
           request,
         );
       }
@@ -355,6 +380,26 @@ export class FriendDirectory {
         displayName,
         online:
           true,
+      },
+    );
+  }
+
+  async #identity(
+    request,
+  ) {
+    const me =
+      await this.#authorize(
+        request,
+      );
+
+    return json(
+      200,
+      {
+        ok: true,
+        friendId:
+          me.friendId,
+        displayName:
+          me.displayName,
       },
     );
   }
@@ -828,7 +873,10 @@ export class FriendDirectory {
                   status = 'REVOKED',
                   updated_at = ?
                 WHERE
-                  status = 'PENDING'
+                  status IN (
+                    'PENDING',
+                    'ACCEPTED'
+                  )
                   AND (
                     (
                       sender_id = ?
@@ -890,6 +938,7 @@ export class FriendDirectory {
       request.headers.get(
         "x-ludoproof-room-token",
       ),
+      me.friendId,
     );
 
     if (
@@ -1077,6 +1126,13 @@ export class FriendDirectory {
       body
         ?.accept ===
       true;
+    const joinRequestId =
+      accept
+        ? requireClientRequestId(
+            body
+              ?.clientRequestId,
+          )
+        : null;
     const now =
       Date.now();
 
@@ -1094,6 +1150,7 @@ export class FriendDirectory {
               receiver_id,
               match_id,
               status,
+              updated_at,
               expires_at
             FROM friend_invites
             WHERE invite_id = ?
@@ -1172,18 +1229,78 @@ export class FriendDirectory {
         );
       }
 
+      if (
+        status ===
+          "ACCEPTED"
+      ) {
+        const senderId =
+          String(
+            row.sender_id,
+          );
+        if (
+          !this.#areFriends(
+            senderId,
+            me.friendId,
+          )
+        ) {
+          throw httpError(
+            410,
+            "INVITE_REVOKED",
+            "friend invite is no longer valid",
+          );
+        }
+
+        const joinTokenExpiresAt =
+          Math.min(
+            Number(
+              row.expires_at,
+            ),
+            now +
+              JOIN_TOKEN_TTL_MS,
+          );
+        const friendJoinToken =
+          await issueFriendRoomJoinToken(
+            this.env,
+            {
+              matchId:
+                String(
+                  row.match_id,
+                ),
+              hostFriendId:
+                senderId,
+              friendId:
+                me.friendId,
+              inviteId,
+              expiresAt:
+                joinTokenExpiresAt,
+            },
+          );
+
+        return json(
+          200,
+          {
+            ok: true,
+            status,
+            matchId:
+              String(
+                row.match_id,
+              ),
+            friendJoinToken,
+            joinTokenExpiresAt,
+            joinRequestId,
+            replayed:
+              true,
+          },
+        );
+      }
+
       return json(
         200,
         {
           ok: true,
           status,
           matchId:
-            status ===
-            "ACCEPTED"
-              ? String(
-                  row.match_id,
-                )
-              : null,
+            null,
           replayed:
             true,
         },
@@ -1216,20 +1333,223 @@ export class FriendDirectory {
       now,
     );
 
+    if (
+      accept
+    ) {
+      const senderId =
+        String(
+          row.sender_id,
+        );
+      if (
+        !this.#areFriends(
+          senderId,
+          me.friendId,
+        )
+      ) {
+        throw httpError(
+          410,
+          "INVITE_REVOKED",
+          "friend invite is no longer valid",
+        );
+      }
+
+      const joinTokenExpiresAt =
+        Math.min(
+          Number(
+            row.expires_at,
+          ),
+          now +
+            JOIN_TOKEN_TTL_MS,
+        );
+      const friendJoinToken =
+        await issueFriendRoomJoinToken(
+          this.env,
+          {
+            matchId:
+              String(
+                row.match_id,
+              ),
+            hostFriendId:
+              senderId,
+            friendId:
+              me.friendId,
+            inviteId,
+            expiresAt:
+              joinTokenExpiresAt,
+          },
+        );
+
+      return json(
+        200,
+        {
+          ok: true,
+          status:
+            "ACCEPTED",
+          matchId:
+            String(
+              row.match_id,
+            ),
+          friendJoinToken,
+          joinTokenExpiresAt,
+          joinRequestId,
+        },
+      );
+    }
+
     return json(
       200,
       {
         ok: true,
         status:
-          accept
-            ? "ACCEPTED"
-            : "DECLINED",
+          "DECLINED",
         matchId:
-          accept
-            ? String(
-                row.match_id,
-              )
-            : null,
+          null,
+      },
+    );
+  }
+
+  async #checkInviteForJoin(
+    request,
+  ) {
+    const body =
+      await readJson(
+        request,
+      );
+    const inviteId =
+      normalizeActionId(
+        body
+          ?.inviteId,
+        "FIV",
+      );
+    const matchId =
+      normalizeMatchId(
+        body
+          ?.matchId,
+      );
+    const hostFriendId =
+      normalizeFriendId(
+        body
+          ?.hostFriendId,
+      );
+    const friendId =
+      normalizeFriendId(
+        body
+          ?.friendId,
+      );
+    const now =
+      Date.now();
+
+    this.#expireInvites(
+      now,
+    );
+
+    const rows = [
+      ...this.ctx.storage.sql
+        .exec(
+          `
+            SELECT
+              sender_id,
+              receiver_id,
+              match_id,
+              status,
+              expires_at
+            FROM friend_invites
+            WHERE invite_id = ?
+            LIMIT 1
+          `,
+          inviteId,
+        ),
+    ];
+
+    if (
+      rows.length !==
+      1
+    ) {
+      throw httpError(
+        404,
+        "INVITE_NOT_FOUND",
+        "friend invite was not found",
+      );
+    }
+
+    const row =
+      rows[0];
+    const status =
+      String(
+        row.status,
+      );
+    if (
+      status ===
+        "EXPIRED" ||
+      status ===
+        "REVOKED"
+    ) {
+      throw httpError(
+        410,
+        status ===
+          "REVOKED"
+          ? "INVITE_REVOKED"
+          : "INVITE_EXPIRED",
+        status ===
+          "REVOKED"
+          ? "friend invite was revoked"
+          : "friend invite expired",
+      );
+    }
+    if (
+      status !==
+        "ACCEPTED"
+    ) {
+      throw httpError(
+        403,
+        "INVITE_NOT_ACCEPTED",
+        "friend invite must be accepted before joining",
+      );
+    }
+    if (
+      String(
+        row.sender_id,
+      ) !==
+        hostFriendId ||
+      String(
+        row.receiver_id,
+      ) !==
+        friendId ||
+      String(
+        row.match_id,
+      ) !==
+        matchId
+    ) {
+      throw httpError(
+        403,
+        "INVITE_JOIN_MISMATCH",
+        "friend-room join credential does not match this invite",
+      );
+    }
+    if (
+      Number(
+        row.expires_at,
+      ) <= now ||
+      !this.#areFriends(
+        hostFriendId,
+        friendId,
+      )
+    ) {
+      throw httpError(
+        410,
+        "INVITE_REVOKED",
+        "friend invite is no longer valid",
+      );
+    }
+
+    return json(
+      200,
+      {
+        ok: true,
+        inviteId,
+        matchId,
+        hostFriendId,
+        friendId,
       },
     );
   }
@@ -1237,6 +1557,7 @@ export class FriendDirectory {
   async #assertFriendRoomHost(
     matchId,
     roomToken,
+    hostFriendId,
   ) {
     if (
       typeof roomToken !==
@@ -1279,15 +1600,21 @@ export class FriendDirectory {
     const response =
       await target.fetch(
         new Request(
-          "https://room/state",
+          "https://room/friend-host/assert",
           {
             method:
-              "GET",
+              "POST",
             headers: {
               authorization:
                 "Bearer " +
                 roomToken,
+              "content-type":
+                "application/json",
             },
+            body:
+              JSON.stringify({
+                hostFriendId,
+              }),
           },
         ),
       );
@@ -1305,53 +1632,22 @@ export class FriendDirectory {
     }
 
     if (
-      !response.ok
+      !response.ok ||
+      body
+        ?.ok !==
+        true
     ) {
       throw httpError(
         response.status ===
           401
           ? 401
-          : 403,
-        "ROOM_AUTH_INVALID",
-        "private room host credential is invalid",
-      );
-    }
-
-    const state =
-      body
-        ?.state;
-    if (
-      state
-        ?.matchMode !==
-        "FRIENDS"
-    ) {
-      throw httpError(
-        409,
-        "NOT_FRIEND_ROOM",
-        "room is not a friends private room",
-      );
-    }
-    if (
-      state
-        ?.status !==
-        "WAITING"
-    ) {
-      throw httpError(
-        409,
-        "ROOM_NOT_WAITING",
-        "room is no longer accepting invites",
-      );
-    }
-    if (
-      body
-        ?.playerId !==
-      state
-        ?.hostPlayerId
-    ) {
-      throw httpError(
-        403,
-        "HOST_ONLY",
-        "only the private room host can invite friends",
+          : response.status,
+        body
+          ?.error ??
+          "ROOM_AUTH_INVALID",
+        body
+          ?.message ??
+          "private room host credential is invalid",
       );
     }
   }
@@ -1674,7 +1970,10 @@ export class FriendDirectory {
             status = 'EXPIRED',
             updated_at = ?
           WHERE
-            status = 'PENDING'
+            status IN (
+              'PENDING',
+              'ACCEPTED'
+            )
             AND expires_at <= ?
         `,
         now,

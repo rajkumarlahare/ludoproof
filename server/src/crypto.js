@@ -182,6 +182,153 @@ export async function deriveFriendIdentity(
   };
 }
 
+export async function issueFriendRoomJoinToken(
+  env,
+  {
+    matchId,
+    hostFriendId,
+    friendId,
+    inviteId,
+    expiresAt,
+  },
+) {
+  const claims =
+    normalizeFriendJoinClaims({
+      matchId,
+      hostFriendId,
+      friendId,
+      inviteId,
+      expiresAt,
+    });
+  const encodedPayload =
+    base64Url(
+      new TextEncoder()
+        .encode(
+          canonicalJson({
+            v: 1,
+            ...claims,
+          }),
+        ),
+    );
+  const signature =
+    await hmacSha256(
+      requireSessionKey(env),
+      "ludoproof:friend-room-join:v1:" +
+        encodedPayload,
+    );
+
+  return (
+    "lfj_" +
+    encodedPayload +
+    "." +
+    base64Url(signature)
+  );
+}
+
+export async function verifyFriendRoomJoinToken(
+  env,
+  token,
+  now = Date.now(),
+) {
+  if (
+    typeof token !== "string" ||
+    token.length < 80 ||
+    token.length > 2048
+  ) {
+    throw httpError(
+      401,
+      "FRIEND_JOIN_TOKEN_INVALID",
+      "friend-room join credential is invalid",
+    );
+  }
+
+  const match =
+    token.match(
+      /^lfj_([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)$/,
+    );
+  if (!match) {
+    throw httpError(
+      401,
+      "FRIEND_JOIN_TOKEN_INVALID",
+      "friend-room join credential is invalid",
+    );
+  }
+
+  const encodedPayload =
+    match[1];
+  let signatureBytes;
+  let claims;
+  try {
+    signatureBytes =
+      base64UrlDecode(
+        match[2],
+      );
+    claims =
+      JSON.parse(
+        new TextDecoder()
+          .decode(
+            base64UrlDecode(
+              encodedPayload,
+            ),
+          ),
+      );
+  } catch {
+    throw httpError(
+      401,
+      "FRIEND_JOIN_TOKEN_INVALID",
+      "friend-room join credential is invalid",
+    );
+  }
+
+  const verified =
+    await verifyHmacSha256(
+      requireSessionKey(env),
+      "ludoproof:friend-room-join:v1:" +
+        encodedPayload,
+      signatureBytes,
+    );
+  if (!verified) {
+    throw httpError(
+      401,
+      "FRIEND_JOIN_TOKEN_INVALID",
+      "friend-room join credential is invalid",
+    );
+  }
+
+  if (
+    claims?.v !== 1
+  ) {
+    throw httpError(
+      401,
+      "FRIEND_JOIN_TOKEN_INVALID",
+      "friend-room join credential version is invalid",
+    );
+  }
+
+  const normalized =
+    normalizeFriendJoinClaims(
+      claims,
+    );
+  if (
+    !Number.isSafeInteger(now)
+  ) {
+    throw new TypeError(
+      "friend-room join verification time must be a safe integer",
+    );
+  }
+  if (
+    normalized.expiresAt <= now
+  ) {
+    throw httpError(
+      410,
+      "FRIEND_JOIN_TOKEN_EXPIRED",
+      "friend-room join credential expired",
+    );
+  }
+
+  return normalized;
+}
+
 export function requireClientRequestId(
   value,
 ) {
@@ -299,6 +446,72 @@ async function sha256Bytes(text) {
   return new Uint8Array(digest);
 }
 
+function normalizeFriendJoinClaims(
+  value,
+) {
+  const matchId =
+    String(
+      value?.matchId ??
+        "",
+    )
+      .trim()
+      .toUpperCase();
+  const hostFriendId =
+    String(
+      value?.hostFriendId ??
+        "",
+    )
+      .trim()
+      .toUpperCase();
+  const friendId =
+    String(
+      value?.friendId ??
+        "",
+    )
+      .trim()
+      .toUpperCase();
+  const inviteId =
+    String(
+      value?.inviteId ??
+        "",
+    )
+      .trim()
+      .toUpperCase();
+  const expiresAt =
+    Number(
+      value?.expiresAt,
+    );
+
+  if (
+    !/^LP[A-Z2-9]{8}$/
+      .test(matchId) ||
+    !/^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/
+      .test(hostFriendId) ||
+    !/^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/
+      .test(friendId) ||
+    !/^FIV-[A-F0-9]{20}$/
+      .test(inviteId) ||
+    !Number.isSafeInteger(
+      expiresAt,
+    ) ||
+    expiresAt <= 0
+  ) {
+    throw httpError(
+      401,
+      "FRIEND_JOIN_TOKEN_INVALID",
+      "friend-room join credential contains invalid claims",
+    );
+  }
+
+  return {
+    matchId,
+    hostFriendId,
+    friendId,
+    inviteId,
+    expiresAt,
+  };
+}
+
 async function hmacSha256(
   secret,
   message,
@@ -327,6 +540,33 @@ async function hmacSha256(
   );
 }
 
+async function verifyHmacSha256(
+  secret,
+  message,
+  signature,
+) {
+  const key =
+    await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder()
+        .encode(secret),
+      {
+        name: "HMAC",
+        hash: "SHA-256",
+      },
+      false,
+      ["verify"],
+    );
+
+  return crypto.subtle.verify(
+    "HMAC",
+    key,
+    signature,
+    new TextEncoder()
+      .encode(message),
+  );
+}
+
 function requireSessionKey(env) {
   if (!hasSessionKey(env)) {
     throw httpError(
@@ -345,4 +585,46 @@ function base64Url(bytes) {
     .replaceAll("+", "-")
     .replaceAll("/", "_")
     .replace(/=+$/g, "");
+}
+
+function base64UrlDecode(
+  value,
+) {
+  if (
+    typeof value !== "string" ||
+    !/^[A-Za-z0-9_-]+$/
+      .test(value)
+  ) {
+    throw new TypeError(
+      "invalid base64url",
+    );
+  }
+
+  const padded =
+    value
+      .replaceAll("-", "+")
+      .replaceAll("_", "/")
+      .padEnd(
+        Math.ceil(
+          value.length / 4,
+        ) * 4,
+        "=",
+      );
+  const binary =
+    atob(padded);
+  const bytes =
+    new Uint8Array(
+      binary.length,
+    );
+  for (
+    let index = 0;
+    index < binary.length;
+    index += 1
+  ) {
+    bytes[index] =
+      binary.charCodeAt(
+        index,
+      );
+  }
+  return bytes;
 }
