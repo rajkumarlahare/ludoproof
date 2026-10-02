@@ -1,3 +1,8 @@
+[CmdletBinding()]
+param(
+    [switch]$Verify
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
@@ -32,9 +37,11 @@ function Use-SystemJava {
     $env:Path = (Join-Path $env:JAVA_HOME "bin") + ";" + $env:Path
 
     Write-Host "Using system Java from $env:JAVA_HOME"
-    & $javaExe -version
-    if ($LASTEXITCODE -ne 0) {
-        throw "Java could not be started from $javaExe"
+    if ($Verify) {
+        & $javaExe -version
+        if ($LASTEXITCODE -ne 0) {
+            throw "Java could not be started from $javaExe"
+        }
     }
 }
 
@@ -113,13 +120,22 @@ function Ensure-AndroidSdkProperties(
     $portableSdkPath = $sdkRoot -replace '\\', '/'
     $desired = "sdk.dir=$portableSdkPath"
 
-    Set-Content -Encoding ASCII -Path $localProperties -Value $desired
+    $current =
+        if (Test-Path $localProperties) {
+            (Get-Content -Raw -Path $localProperties).Trim()
+        } else {
+            ""
+        }
+
+    if ($current -ne $desired) {
+        Set-Content -Encoding ASCII -Path $localProperties -Value $desired
+        Write-Host "Updated android/local.properties"
+    }
 
     $env:ANDROID_SDK_ROOT = $sdkRoot
     $env:ANDROID_HOME = $sdkRoot
 
     Write-Host "Using Android SDK from $sdkRoot"
-    Write-Host "Updated android/local.properties"
 }
 
 function Resolve-Adb(
@@ -259,8 +275,13 @@ if ($env:ANDROID_SERIAL) {
 $gradle = Resolve-Gradle
 
 Write-Host ""
-Write-Host "Building and installing LudoProof..."
-& $gradle -p $androidDir :app:installDebug --console=plain
+if ($Verify) {
+    Write-Host "Verifying, building and installing LudoProof..."
+    & $gradle -p $androidDir :app:testDebugUnitTest :app:lintDebug :app:installDebug --console=plain --build-cache --parallel
+} else {
+    Write-Host "Fast incremental build + install..."
+    & $gradle -p $androidDir :app:installDebug --console=plain --build-cache --parallel
+}
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
