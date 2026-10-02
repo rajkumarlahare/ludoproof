@@ -5,6 +5,7 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.view.Gravity
+import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import com.ludoproof.game.HomeActivity
@@ -31,9 +32,11 @@ internal fun HomeActivity.homeBottomActions():
 
         addView(
             bottomActionButton(
-                symbol = "↗",
+                symbol = "",
                 description =
                     "Share",
+                iconKind =
+                    HomeIconKind.SHARE,
             ) {
                 shareLudoProof()
             },
@@ -70,43 +73,71 @@ private fun HomeActivity.bottomActionParams():
 private fun HomeActivity.bottomActionButton(
     symbol: String,
     description: String,
+    iconKind: HomeIconKind? = null,
     action: () -> Unit,
-): Button =
-    Button(this).apply {
-        text =
-            symbol
-        textSize =
-            if (isCompact()) {
-                23f
-            } else {
-                26f
+): View =
+    if (
+        iconKind !=
+        null
+    ) {
+        HomeIconView(
+            this,
+        ).apply {
+            kind =
+                iconKind
+            iconColor =
+                Color.WHITE
+            isClickable =
+                true
+            isFocusable =
+                true
+            contentDescription =
+                description
+            background =
+                bottomActionDrawable()
+            elevation =
+                dp(6).toFloat()
+            setOnClickListener {
+                action()
             }
-        setTypeface(
-            Typeface.DEFAULT_BOLD,
-        )
-        setTextColor(
-            Color.WHITE,
-        )
-        gravity =
-            Gravity.CENTER
-        minWidth =
-            0
-        minHeight =
-            0
-        setPadding(
-            0,
-            0,
-            0,
-            0,
-        )
-        contentDescription =
-            description
-        background =
-            bottomActionDrawable()
-        elevation =
-            dp(6).toFloat()
-        setOnClickListener {
-            action()
+        }
+    } else {
+        Button(this).apply {
+            text =
+                symbol
+            textSize =
+                if (isCompact()) {
+                    23f
+                } else {
+                    26f
+                }
+            setTypeface(
+                Typeface.DEFAULT_BOLD,
+            )
+            setTextColor(
+                Color.WHITE,
+            )
+            gravity =
+                Gravity.CENTER
+            minWidth =
+                0
+            minHeight =
+                0
+            setPadding(
+                0,
+                0,
+                0,
+                0,
+            )
+            contentDescription =
+                description
+            background =
+                bottomActionDrawable()
+            elevation =
+                dp(6).toFloat()
+            setOnClickListener {
+                action()
+            }
         }
     }
 
