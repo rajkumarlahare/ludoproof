@@ -24,6 +24,10 @@ class GooglePlayBillingGateway(
             ProductDetails,
             >()
 
+    @Volatile
+    private var closed =
+        false
+
     private val billingClient =
         BillingClient
             .newBuilder(
@@ -42,6 +46,12 @@ class GooglePlayBillingGateway(
             .build()
 
     fun connect() {
+        if (
+            closed
+        ) {
+            return
+        }
+
         if (!enabled) {
             listener
                 .onBillingUnavailable(
@@ -67,6 +77,12 @@ class GooglePlayBillingGateway(
                             BillingResult,
                     ) {
                         if (
+                            closed
+                        ) {
+                            return
+                        }
+
+                        if (
                             billingResult.responseCode ==
                             BillingClient
                                 .BillingResponseCode
@@ -86,6 +102,11 @@ class GooglePlayBillingGateway(
                     }
 
                     override fun onBillingServiceDisconnected() {
+                        if (
+                            closed
+                        ) {
+                            return
+                        }
                         listener
                             .onBillingUnavailable(
                                 "Google Play Billing connection was interrupted.",
@@ -98,6 +119,12 @@ class GooglePlayBillingGateway(
     fun launchPurchase(
         productId: String,
     ) {
+        if (
+            closed
+        ) {
+            return
+        }
+
         if (!enabled) {
             listener
                 .onBillingUnavailable(
@@ -189,9 +216,14 @@ class GooglePlayBillingGateway(
 
     fun close() {
         if (
-            billingClient
-                .isReady
+            closed
         ) {
+            return
+        }
+        closed =
+            true
+        productDetails.clear()
+        runCatching {
             billingClient
                 .endConnection()
         }
@@ -201,6 +233,12 @@ class GooglePlayBillingGateway(
         billingResult: BillingResult,
         purchases: MutableList<Purchase>?,
     ) {
+        if (
+            closed
+        ) {
+            return
+        }
+
         when (
             billingResult.responseCode
         ) {
@@ -265,6 +303,12 @@ class GooglePlayBillingGateway(
     }
 
     private fun queryProducts() {
+        if (
+            closed
+        ) {
+            return
+        }
+
         val products =
             StoreCatalog
                 .playProductIds
@@ -298,6 +342,12 @@ class GooglePlayBillingGateway(
             ) {
                     billingResult,
                     result ->
+                if (
+                    closed
+                ) {
+                    return@queryProductDetailsAsync
+                }
+
                 if (
                     billingResult.responseCode !=
                     BillingClient
