@@ -392,7 +392,14 @@ internal fun HomeActivity.continueButton():
                 null
             ) {
                 openGameMode(
-                    GameMode.ONLINE,
+                    GameMode
+                        .fromWireValue(
+                            online.modeWire,
+                        )
+                        ?.takeIf {
+                            it.isRemote
+                        }
+                        ?: GameMode.ONLINE,
                 )
                 return@setOnClickListener
             }
