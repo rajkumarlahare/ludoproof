@@ -332,10 +332,12 @@ private fun OfflineGameActivity.activeDiceControl(
                 }
             }
 
-        diceView =
+        val newDice =
             DiceView(this)
+        diceView =
+            newDice
         control.addView(
-            diceView,
+            newDice,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,

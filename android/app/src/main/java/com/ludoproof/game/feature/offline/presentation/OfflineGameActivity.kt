@@ -38,6 +38,8 @@ class OfflineGameActivity : Activity() {
     internal var diceHost: FrameLayout? = null
     internal var topPlayerRail: LinearLayout? = null
     internal var bottomPlayerRail: LinearLayout? = null
+    internal var turnText: TextView? = null
+    internal var infoText: TextView? = null
     internal var statusText: TextView? = null
     internal lateinit var resultPanel: FrameLayout
     internal lateinit var resultTitleText: TextView

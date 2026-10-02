@@ -66,52 +66,20 @@ internal fun OfflineGameActivity.gameplayTools():
         gravity =
             Gravity.CENTER
 
-        val items =
-            listOf(
-                Triple(
-                    "HISTORY",
-                    false,
-                ) {
-                    ArcadeDialogs
-                        .showProofHistory(
-                            this@gameplayTools,
-                            "OFFLINE HISTORY",
-                            offlineHistory(
-                                engine.snapshot(),
-                            ),
-                        )
-                },
-                Triple(
-                    "ENGINE MAP",
-                    false,
-                ) {
-                    ArcadeDialogs
-                        .showNaturalWorldAudit(
-                            this@gameplayTools,
-                            engine
-                                .lastRandomnessAudit(),
-                        )
-                },
-                Triple(
-                    "NEW GAME",
-                    true,
-                ) {
-                    engine.clear()
-                    showSetup()
-                },
-            )
-
-        items.forEach {
-                item ->
+        fun addTool(
+            label: String,
+            positive: Boolean,
+            action: () -> Unit,
+        ) {
             addView(
                 Button(
                     this@gameplayTools,
                 ).apply {
                     text =
-                        item.first
+                        label
                     textSize =
                         if (isCompactSetup()) 9.5f else 10.5f
-                    if (item.second) {
+                    if (positive) {
                         LudoProofTheme
                             .positive(this)
                     } else {
@@ -126,7 +94,7 @@ internal fun OfflineGameActivity.gameplayTools():
                         dp(4),
                     )
                     setOnClickListener {
-                        item.third()
+                        action()
                     }
                 },
                 LinearLayout.LayoutParams(
@@ -142,6 +110,38 @@ internal fun OfflineGameActivity.gameplayTools():
                     )
                 },
             )
+        }
+
+        addTool(
+            "HISTORY",
+            false,
+        ) {
+            ArcadeDialogs
+                .showProofHistory(
+                    this@gameplayTools,
+                    "OFFLINE HISTORY",
+                    offlineHistory(
+                        engine.snapshot(),
+                    ),
+                )
+        }
+        addTool(
+            "ENGINE MAP",
+            false,
+        ) {
+            ArcadeDialogs
+                .showNaturalWorldAudit(
+                    this@gameplayTools,
+                    engine
+                        .lastRandomnessAudit(),
+                )
+        }
+        addTool(
+            "NEW GAME",
+            true,
+        ) {
+            engine.clear()
+            showSetup()
         }
     }
 

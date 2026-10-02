@@ -144,9 +144,6 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
                 }.onSuccess {
                         next ->
                     renderGame(next)
-                    showStatus(
-                        "Move accepted.",
-                    )
                 }.onFailure {
                         error ->
                     showStatus(
