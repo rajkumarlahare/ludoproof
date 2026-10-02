@@ -7,6 +7,7 @@ import com.ludoproof.game.feature.friends.presentation.FriendsActivity
 
 fun Activity.openGameMode(
     mode: GameMode,
+    resumeSavedMatch: Boolean = false,
 ) {
     val target =
         when (
@@ -32,9 +33,14 @@ fun Activity.openGameMode(
         Intent(
             this,
             target,
-        ).putExtra(
-            GameModeIntent.EXTRA_GAME_MODE,
-            mode.wireValue,
-        ),
+        )
+            .putExtra(
+                GameModeIntent.EXTRA_GAME_MODE,
+                mode.wireValue,
+            )
+            .putExtra(
+                GameModeIntent.EXTRA_RESUME_SAVED_MATCH,
+                resumeSavedMatch,
+            ),
     )
 }
