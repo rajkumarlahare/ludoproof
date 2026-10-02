@@ -613,6 +613,19 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
+    internal fun isMatchmakingUiReady(): Boolean =
+        ::findMatchButton.isInitialized &&
+            ::cancelMatchmakingButton.isInitialized &&
+            ::matchmakingStatusText.isInitialized &&
+            ::matchmakingSlotsText.isInitialized &&
+            ::matchmakingTimerText.isInitialized &&
+            ::twoPlayerButton.isInitialized &&
+            ::fourPlayerButton.isInitialized
+
+    internal fun isPlayerCountUiReady(): Boolean =
+        ::twoPlayerButton.isInitialized &&
+            ::fourPlayerButton.isInitialized
+
     internal fun updateConnectionLabel() {
         if (
             !::connectionText
