@@ -227,6 +227,9 @@ class GooglePlayBillingGateway(
                                                 productId,
                                             )
                                     }
+
+                            else ->
+                                Unit
                         }
                     }
             }
