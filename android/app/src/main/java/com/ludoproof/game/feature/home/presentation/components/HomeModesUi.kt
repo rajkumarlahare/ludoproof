@@ -367,6 +367,17 @@ internal fun HomeActivity.footer():
     }
 
 internal fun HomeActivity.shareLudoProof() {
+    val storeUrl =
+        "https://play.google.com/store/apps/details?id=$packageName"
+    val shareText =
+        buildString {
+            append(
+                "Play LudoProof — fair, verifiable Ludo online or locally.",
+            )
+            append("\n\n")
+            append(storeUrl)
+        }
+
     val share =
         Intent(
             Intent.ACTION_SEND,
@@ -374,10 +385,15 @@ internal fun HomeActivity.shareLudoProof() {
             type =
                 "text/plain"
             putExtra(
+                Intent.EXTRA_SUBJECT,
+                "LudoProof",
+            )
+            putExtra(
                 Intent.EXTRA_TEXT,
-                "Play LudoProof — verified online Ludo with an offline local mode.",
+                shareText,
             )
         }
+
     startActivity(
         Intent.createChooser(
             share,
