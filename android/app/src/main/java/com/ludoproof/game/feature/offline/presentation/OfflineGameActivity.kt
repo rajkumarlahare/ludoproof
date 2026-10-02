@@ -21,8 +21,15 @@ class OfflineGameActivity : Activity() {
     internal val handler = Handler(Looper.getMainLooper())
     internal val engine by lazy { OfflineGameEngine(this) }
 
-    internal var selectedPlayers = 2
-    internal var selectedColor = "BLUE"
+    internal val setupStateHolder = OfflineSetupStateHolder()
+
+    internal var selectedPlayers: Int
+        get() = setupStateHolder.value.selectedPlayers
+        set(value) { setupStateHolder.update { it.copy(selectedPlayers = value) } }
+
+    internal var selectedColor: String
+        get() = setupStateHolder.value.selectedColor
+        set(value) { setupStateHolder.update { it.copy(selectedColor = value) } }
     internal var playerButtons: Map<Int, Button> = emptyMap()
     internal var colorButtons: Map<String, Button> = emptyMap()
 
