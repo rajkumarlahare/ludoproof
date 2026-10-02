@@ -15,9 +15,11 @@ import kotlin.math.min
 import kotlin.math.sin
 
 internal enum class HomeIconKind {
+    LEADERBOARD,
     SHOP,
     BADGE,
     SHARE,
+    RATING,
 }
 
 internal class HomeIconView(
@@ -115,6 +117,10 @@ internal class HomeIconView(
         when (
             kind
         ) {
+            HomeIconKind.LEADERBOARD ->
+                drawLeaderboard(
+                    canvas,
+                )
             HomeIconKind.SHOP ->
                 drawShop(
                     canvas,
@@ -127,9 +133,247 @@ internal class HomeIconView(
                 drawShare(
                     canvas,
                 )
+            HomeIconKind.RATING ->
+                drawRatingStar(
+                    canvas,
+                )
         }
 
         canvas.restore()
+    }
+
+    private fun drawLeaderboard(
+        canvas: Canvas,
+    ) {
+        val cup =
+            Path().apply {
+                moveTo(
+                    34f,
+                    25f,
+                )
+                lineTo(
+                    66f,
+                    25f,
+                )
+                lineTo(
+                    62f,
+                    47f,
+                )
+                quadTo(
+                    58f,
+                    60f,
+                    50f,
+                    63f,
+                )
+                quadTo(
+                    42f,
+                    60f,
+                    38f,
+                    47f,
+                )
+                close()
+            }
+        canvas.drawPath(
+            cup,
+            stroke,
+        )
+
+        canvas.drawArc(
+            RectF(
+                22f,
+                29f,
+                42f,
+                50f,
+            ),
+            100f,
+            190f,
+            false,
+            stroke,
+        )
+        canvas.drawArc(
+            RectF(
+                58f,
+                29f,
+                78f,
+                50f,
+            ),
+            -110f,
+            190f,
+            false,
+            stroke,
+        )
+
+        canvas.drawLine(
+            50f,
+            63f,
+            50f,
+            71f,
+            stroke,
+        )
+        canvas.drawLine(
+            41f,
+            72f,
+            59f,
+            72f,
+            stroke,
+        )
+
+        canvas.drawRoundRect(
+            RectF(
+                22f,
+                71f,
+                37f,
+                83f,
+            ),
+            2f,
+            2f,
+            stroke,
+        )
+        canvas.drawRoundRect(
+            RectF(
+                42f,
+                65f,
+                58f,
+                83f,
+            ),
+            2f,
+            2f,
+            stroke,
+        )
+        canvas.drawRoundRect(
+            RectF(
+                63f,
+                75f,
+                78f,
+                83f,
+            ),
+            2f,
+            2f,
+            stroke,
+        )
+
+        stroke.strokeWidth =
+            4f
+        canvas.drawLine(
+            49f,
+            42f,
+            49f,
+            33f,
+            stroke,
+        )
+        canvas.drawLine(
+            49f,
+            42f,
+            43f,
+            42f,
+            stroke,
+        )
+        stroke.strokeWidth =
+            6f
+    }
+
+    private fun drawRatingStar(
+        canvas: Canvas,
+    ) {
+        val star =
+            Path()
+        for (
+            index in
+            0 until 10
+        ) {
+            val radius =
+                if (
+                    index %
+                    2 ==
+                    0
+                ) {
+                    31f
+                } else {
+                    13.5f
+                }
+            val angle =
+                Math.toRadians(
+                    -90.0 +
+                        index *
+                        36.0,
+                )
+            val x =
+                50f +
+                    cos(
+                        angle,
+                    )
+                        .toFloat() *
+                    radius
+            val y =
+                50f +
+                    sin(
+                        angle,
+                    )
+                        .toFloat() *
+                    radius
+
+            if (
+                index ==
+                0
+            ) {
+                star.moveTo(
+                    x,
+                    y,
+                )
+            } else {
+                star.lineTo(
+                    x,
+                    y,
+                )
+            }
+        }
+        star.close()
+
+        canvas.drawPath(
+            star,
+            fill,
+        )
+
+        val sparkle =
+            Path().apply {
+                moveTo(
+                    78f,
+                    20f,
+                )
+                lineTo(
+                    81f,
+                    27f,
+                )
+                lineTo(
+                    88f,
+                    30f,
+                )
+                lineTo(
+                    81f,
+                    33f,
+                )
+                lineTo(
+                    78f,
+                    40f,
+                )
+                lineTo(
+                    75f,
+                    33f,
+                )
+                lineTo(
+                    68f,
+                    30f,
+                )
+                lineTo(
+                    75f,
+                    27f,
+                )
+                close()
+            }
+        canvas.drawPath(
+            sparkle,
+            fill,
+        )
     }
 
     private fun drawShop(
