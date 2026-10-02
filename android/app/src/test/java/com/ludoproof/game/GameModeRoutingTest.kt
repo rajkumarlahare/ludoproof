@@ -15,7 +15,7 @@ class GameModeRoutingTest {
     }
 
     @Test
-    fun teamAndFriendsRouteToRemoteEntryUntilTheirServicesExist() {
+    fun teamStaysOnRemoteEntryWhileFriendsRoutesToFriendsHub() {
         assertEquals(
             GameModeDestination.REMOTE_MODE_ENTRY,
             GameModeRouting.destination(
@@ -23,7 +23,7 @@ class GameModeRoutingTest {
             ),
         )
         assertEquals(
-            GameModeDestination.REMOTE_MODE_ENTRY,
+            GameModeDestination.FRIENDS_ACTIVITY,
             GameModeRouting.destination(
                 GameMode.FRIENDS,
             ),
