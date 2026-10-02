@@ -1510,8 +1510,13 @@ export class MatchRoom {
         "authorization",
       );
     if (
-      typeof authorization !==
-        "string" ||
+      authorization == null ||
+      authorization.trim() ===
+        ""
+    ) {
+      return null;
+    }
+    if (
       !/^Bearer\s+lpp_[A-Za-z0-9_-]{32,}$/i
         .test(
           authorization,
@@ -1519,8 +1524,8 @@ export class MatchRoom {
     ) {
       throw httpError(
         401,
-        "PROFILE_AUTH_REQUIRED",
-        "authenticated leaderboard profile is required for online play",
+        "PROFILE_AUTH_INVALID",
+        "leaderboard profile credential is invalid",
       );
     }
     if (

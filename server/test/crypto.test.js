@@ -168,5 +168,30 @@ test(
         error?.code ===
           "PROFILE_ASSERTION_EXPIRED",
     );
+
+    const unrankedClaims = {
+      matchId:
+        "LPABCDEFGH",
+      profileId:
+        null,
+      clientRequestId:
+        "00000000-0000-4000-8000-000000000112",
+      expiresAt:
+        30_000,
+    };
+    const unrankedToken =
+      await issueLeaderboardProfileAssertion(
+        env,
+        unrankedClaims,
+      );
+    assert.deepEqual(
+      await verifyLeaderboardProfileAssertion(
+        env,
+        unrankedToken,
+        29_000,
+      ),
+      unrankedClaims,
+      "matchmaker must be able to authorize a legacy seat without creating leaderboard identity",
+    );
   },
 );

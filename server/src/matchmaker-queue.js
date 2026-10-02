@@ -885,8 +885,16 @@ export class MatchmakerQueue {
         "authorization",
       );
     if (
-      typeof authorization !==
-        "string" ||
+      authorization == null ||
+      authorization.trim() ===
+        ""
+    ) {
+      return {
+        profileId:
+          null,
+      };
+    }
+    if (
       !/^Bearer\s+lpp_[A-Za-z0-9_-]{32,}$/i
         .test(
           authorization,
@@ -894,8 +902,8 @@ export class MatchmakerQueue {
     ) {
       throw httpError(
         401,
-        "PROFILE_AUTH_REQUIRED",
-        "authenticated leaderboard profile is required for public matchmaking",
+        "PROFILE_AUTH_INVALID",
+        "leaderboard profile credential is invalid",
       );
     }
     if (

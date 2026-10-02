@@ -645,13 +645,16 @@ function normalizeLeaderboardAssertionClaims(
     )
       .trim()
       .toUpperCase();
+  const rawProfileId =
+    value?.profileId;
   const profileId =
-    String(
-      value?.profileId ??
-        "",
-    )
-      .trim()
-      .toLowerCase();
+    rawProfileId == null
+      ? null
+      : String(
+          rawProfileId,
+        )
+          .trim()
+          .toLowerCase();
   const clientRequestId =
     requireClientRequestId(
       value?.clientRequestId,
@@ -664,8 +667,11 @@ function normalizeLeaderboardAssertionClaims(
   if (
     !/^LP[A-Z2-9]{8}$/
       .test(matchId) ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
-      .test(profileId) ||
+    (
+      profileId !== null &&
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+        .test(profileId)
+    ) ||
     !Number.isSafeInteger(
       expiresAt,
     ) ||

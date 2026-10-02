@@ -508,6 +508,97 @@ test(
 
 
 test(
+  "legacy public matchmaking remains playable but unranked",
+  async () => {
+    const queue =
+      makeQueue();
+    const first =
+      player(
+        21,
+        2,
+      );
+    const second =
+      player(
+        22,
+        2,
+      );
+
+    const waiting =
+      await read(
+        await queue.fetch(
+          request(
+            "/search",
+            first,
+            null,
+          ),
+        ),
+      );
+    assert.equal(
+      waiting.status,
+      202,
+      JSON.stringify(
+        waiting.body,
+      ),
+    );
+    assert.equal(
+      waiting.body.status,
+      "SEARCHING",
+    );
+
+    const matched =
+      await read(
+        await queue.fetch(
+          request(
+            "/search",
+            second,
+            null,
+          ),
+        ),
+      );
+    assert.equal(
+      matched.status,
+      200,
+      JSON.stringify(
+        matched.body,
+      ),
+    );
+    assert.equal(
+      matched.body.status,
+      "MATCHED",
+    );
+    assert.equal(
+      matched.body.state
+        .status,
+      "ACTIVE",
+    );
+
+    const room =
+      queue.env
+        .LUDOPROOF_MATCHES
+        .rooms.get(
+          matched.body
+            .matchId,
+        );
+    const stored =
+      await room.ctx.storage.get(
+        "match-state",
+      );
+    assert.equal(
+      stored.players.length,
+      2,
+    );
+    assert.ok(
+      stored.players.every(
+        (candidate) =>
+          candidate.profileId ==
+          null,
+      ),
+      "legacy matchmaking seats must not receive leaderboard profiles",
+    );
+  },
+);
+
+test(
   "matchmaking request IDs cannot be replayed by another authenticated profile",
   async () => {
     const queue =
