@@ -21,22 +21,13 @@ internal fun StoreActivity.storeContent():
             gemsContent()
 
         StoreTab.BOARD ->
-            placeholderCatalog(
-                "BOARD",
-                "Board themes will live here. This catalog is isolated so it can grow without making the Gems UI heavy.",
-            )
+            boardCatalogContent()
 
         StoreTab.DICE ->
-            placeholderCatalog(
-                "DICE",
-                "Dice skins will live here and can use the same Play Billing layer.",
-            )
+            diceCatalogContent()
 
         StoreTab.AVATAR ->
-            placeholderCatalog(
-                "AVATAR",
-                "Avatar products will live here. Final PNG artwork can be added later without changing StoreActivity.",
-            )
+            avatarCatalogContent()
     }
 
 private fun StoreActivity.gemsContent():
@@ -589,69 +580,6 @@ private fun StoreActivity.storeSafetyNote():
             dp(10),
             dp(14),
             dp(10),
-        )
-    }
-
-private fun StoreActivity.placeholderCatalog(
-    title: String,
-    body: String,
-):
-    LinearLayout =
-    LinearLayout(this).apply {
-        orientation =
-            LinearLayout.VERTICAL
-        gravity =
-            Gravity.CENTER
-        setPadding(
-            dp(18),
-            dp(38),
-            dp(18),
-            dp(38),
-        )
-        background =
-            LudoProofTheme
-                .hudPanelDrawable(
-                    this@placeholderCatalog,
-                )
-
-        addView(
-            TextView(
-                this@placeholderCatalog,
-            ).apply {
-                text =
-                    title
-                textSize =
-                    22f
-                setTypeface(
-                    Typeface.DEFAULT_BOLD,
-                )
-                setTextColor(
-                    Color.WHITE,
-                )
-                gravity =
-                    Gravity.CENTER
-            },
-        )
-        addView(
-            TextView(
-                this@placeholderCatalog,
-            ).apply {
-                text =
-                    body
-                textSize =
-                    13f
-                setTextColor(
-                    0xFFD7E7FA.toInt(),
-                )
-                gravity =
-                    Gravity.CENTER
-                setPadding(
-                    0,
-                    dp(10),
-                    0,
-                    0,
-                )
-            },
         )
     }
 

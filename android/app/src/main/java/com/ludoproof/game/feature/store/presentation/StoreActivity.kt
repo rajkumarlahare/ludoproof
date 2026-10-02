@@ -12,6 +12,7 @@ import com.ludoproof.game.BuildConfig
 import com.ludoproof.game.LudoProofTheme
 import com.ludoproof.game.feature.store.data.billing.GooglePlayBillingGateway
 import com.ludoproof.game.feature.store.data.local.GemWalletStore
+import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
 import com.ludoproof.game.feature.store.domain.model.StoreBillingProduct
 import com.ludoproof.game.feature.store.domain.model.StoreTab
 import com.ludoproof.game.feature.store.presentation.components.storeContent
@@ -24,6 +25,9 @@ class StoreActivity :
     GooglePlayBillingGateway.Listener {
     internal val wallet by lazy {
         GemWalletStore(this)
+    }
+    internal val cosmetics by lazy {
+        CosmeticInventoryStore(this)
     }
 
     internal var selectedTab =
@@ -168,7 +172,7 @@ class StoreActivity :
                 value,
             )
 
-    private fun renderStore() {
+    internal fun renderStore() {
         val (root, host) =
             LudoProofTheme
                 .arcadeRoot(
@@ -285,7 +289,7 @@ class StoreActivity :
         )
     }
 
-    private fun showStoreMessage(
+    internal fun showStoreMessage(
         message: String,
     ) {
         AlertDialog

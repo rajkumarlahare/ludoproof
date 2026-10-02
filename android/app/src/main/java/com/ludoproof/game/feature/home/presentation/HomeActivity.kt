@@ -23,6 +23,8 @@ class HomeActivity : Activity() {
         View? = null
     internal var homeGemBalanceText:
         TextView? = null
+    internal var homeAvatarText:
+        TextView? = null
     internal lateinit var connectivityMonitor:
         ConnectivityMonitor
 
