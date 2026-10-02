@@ -1,111 +1,140 @@
-# LudoProof Android Project Structure
+# LudoProof Android Architecture
 
-## Goal
+## Principle
 
-Make every UI and responsibility easy to find in VS Code as the project grows. Activities stay thin; UI, actions, storage, network, proof, and engine code have separate homes.
+LudoProof now uses a **feature-first source tree**: find the product feature first, then its presentation, data, or domain code.
 
-## Explorer map
+Runtime Kotlin package/class names are intentionally preserved during this migration. That keeps manifest identities, intents, tests, persisted data, and proof behavior stable while making the VS Code file tree scalable.
+
+## Source tree
 
 ```text
 com/ludoproof/game/
-├─ HomeActivity.kt
-├─ MainActivity.kt
-├─ OfflineGameActivity.kt
-├─ ArcadeDialogs.kt
-├─ ui/
-│  ├─ home/
-│  │  ├─ HomeHeaderUi.kt
-│  │  ├─ HomeHeroUi.kt
-│  │  ├─ HomeModesUi.kt
-│  │  └─ HomeLayoutUi.kt
-│  ├─ online/
-│  │  ├─ OnlineHeaderUi.kt
-│  │  ├─ OnlineLobbyUi.kt
-│  │  ├─ OnlineStatusUi.kt
-│  │  ├─ OnlineActionUi.kt
-│  │  └─ OnlinePrimitives.kt
-│  ├─ offline/
-│  │  ├─ common/OfflineCommonUi.kt
-│  │  ├─ setup/
-│  │  │  ├─ OfflineSetupScreenUi.kt
-│  │  │  └─ OfflineSetupSelectionUi.kt
-│  │  └─ gameplay/
-│  │     ├─ OfflineGameplayScreenUi.kt
-│  │     └─ OfflineGameplayControlsUi.kt
-│  ├─ dialogs/
-│  │  ├─ SettingsDialogUi.kt
-│  │  ├─ NaturalWorldAuditDialogUi.kt
-│  │  ├─ ProofHistoryDialogUi.kt
-│  │  ├─ DialogEvidenceComponents.kt
-│  │  ├─ DialogMetricComponents.kt
-│  │  └─ DialogShellComponents.kt
-│  ├─ art/
-│  │  ├─ ArcadeBackdropView.kt
-│  │  ├─ GameResultArtView.kt
-│  │  ├─ HomeHeroArtView.kt
-│  │  ├─ ModeArtView.kt
-│  │  ├─ NaturalWorldMapView.kt
-│  │  ├─ OfflineSetupArtView.kt
-│  │  └─ OnlineLobbyArtView.kt
-│  ├─ components/
-│  │  ├─ DiceView.kt
-│  │  └─ LudoBoardView.kt
-│  └─ theme/LudoProofTheme.kt
-├─ feature/
-│  ├─ online/
-│  │  ├─ OnlineMatchActions.kt
-│  │  ├─ OnlineResponseRenderer.kt
-│  │  ├─ OnlineVerificationRenderer.kt
-│  │  └─ OnlineSessionActions.kt
-│  └─ offline/OfflineGameActions.kt
-├─ data/
-│  ├─ network/
-│  │  ├─ ConnectivityMonitor.kt
-│  │  └─ GameApi.kt
-│  └─ storage/
-│     ├─ CachedMatchStore.kt
-│     ├─ PendingOperationStore.kt
-│     ├─ PendingRollStore.kt
-│     └─ SecureSessionStore.kt
-├─ domain/model/GameModels.kt
-├─ engine/offline/OfflineGameEngine.kt
-└─ proof/
-   ├─ core/
-   │  ├─ EntroNexV4Local.kt
-   │  ├─ LocalSecretBinding.kt
-   │  └─ SeedCommitment.kt
-   └─ offline/
-      ├─ OfflineLudoV4Binding.kt
-      └─ OfflineRandomnessAudit.kt
+├─ core/
+│  ├─ network/ConnectivityMonitor.kt
+│  └─ ui/
+│     ├─ theme/LudoProofTheme.kt
+│     ├─ art/ArcadeBackdropView.kt
+│     └─ dialogs/
+│        ├─ ArcadeDialogs.kt
+│        └─ components/
+│           ├─ DialogEvidenceComponents.kt
+│           ├─ DialogMetricComponents.kt
+│           └─ DialogShellComponents.kt
+│
+├─ game/
+│  ├─ domain/model/GameModels.kt
+│  └─ ui/
+│     ├─ components/
+│     │  ├─ LudoBoardView.kt
+│     │  └─ DiceView.kt
+│     └─ art/GameResultArtView.kt
+│
+└─ feature/
+   ├─ home/
+   │  └─ presentation/
+   │     ├─ HomeActivity.kt
+   │     ├─ components/
+   │     │  ├─ HomeHeaderUi.kt
+   │     │  ├─ HomeHeroUi.kt
+   │     │  ├─ HomeModesUi.kt
+   │     │  └─ HomeLayoutUi.kt
+   │     └─ art/
+   │        ├─ HomeHeroArtView.kt
+   │        └─ ModeArtView.kt
+   │
+   ├─ online/
+   │  ├─ data/
+   │  │  ├─ remote/GameApi.kt
+   │  │  └─ local/
+   │  │     ├─ CachedMatchStore.kt
+   │  │     ├─ PendingOperationStore.kt
+   │  │     ├─ PendingRollStore.kt
+   │  │     └─ SecureSessionStore.kt
+   │  └─ presentation/
+   │     ├─ MainActivity.kt
+   │     ├─ state/OnlineGameUiState.kt
+   │     ├─ actions/
+   │     │  ├─ OnlineMatchActions.kt
+   │     │  ├─ OnlineResponseRenderer.kt
+   │     │  ├─ OnlineVerificationRenderer.kt
+   │     │  └─ OnlineSessionActions.kt
+   │     ├─ components/
+   │     │  ├─ OnlineHeaderUi.kt
+   │     │  ├─ OnlineLobbyUi.kt
+   │     │  ├─ OnlineStatusUi.kt
+   │     │  ├─ OnlineActionUi.kt
+   │     │  └─ OnlinePrimitives.kt
+   │     └─ art/OnlineLobbyArtView.kt
+   │
+   ├─ offline/
+   │  ├─ domain/engine/OfflineGameEngine.kt
+   │  └─ presentation/
+   │     ├─ OfflineGameActivity.kt
+   │     ├─ state/OfflineSetupUiState.kt
+   │     ├─ actions/OfflineGameActions.kt
+   │     ├─ common/OfflineCommonUi.kt
+   │     ├─ setup/
+   │     │  ├─ OfflineSetupScreenUi.kt
+   │     │  └─ OfflineSetupSelectionUi.kt
+   │     ├─ gameplay/
+   │     │  ├─ OfflineGameplayScreenUi.kt
+   │     │  └─ OfflineGameplayControlsUi.kt
+   │     └─ art/OfflineSetupArtView.kt
+   │
+   ├─ proof/
+   │  ├─ domain/
+   │  │  ├─ core/
+   │  │  │  ├─ EntroNexV4Local.kt
+   │  │  │  ├─ LocalSecretBinding.kt
+   │  │  │  └─ SeedCommitment.kt
+   │  │  └─ offline/
+   │  │     ├─ OfflineLudoV4Binding.kt
+   │  │     └─ OfflineRandomnessAudit.kt
+   │  └─ presentation/
+   │     ├─ dialogs/
+   │     │  ├─ NaturalWorldAuditDialogUi.kt
+   │     │  └─ ProofHistoryDialogUi.kt
+   │     └─ art/NaturalWorldMapView.kt
+   │
+   └─ settings/
+      └─ presentation/SettingsDialogUi.kt
 ```
+
+## State ownership
+
+- Online mutable session/screen state -> `OnlineGameUiState` + `OnlineGameStateHolder`.
+- Offline setup selections -> `OfflineSetupUiState` + `OfflineSetupStateHolder`.
+- Offline gameplay state -> `OfflineGameEngine`.
+- Proof/randomness state and algorithms -> `feature/proof/domain/`.
+
+The state holders are framework-independent on purpose. The app still uses `android.app.Activity`; AndroidX/ViewModel migration should be a separate lifecycle change, not mixed into a folder-architecture refactor.
 
 ## Editing map
 
-- Home profile/connectivity -> `ui/home/HomeHeaderUi.kt`
-- Home hero/quick actions -> `ui/home/HomeHeroUi.kt`
-- Home modes/footer -> `ui/home/HomeModesUi.kt`
-- Online lobby -> `ui/online/OnlineLobbyUi.kt`
-- Online match status/result -> `ui/online/OnlineStatusUi.kt`
-- Online controls -> `ui/online/OnlineActionUi.kt`
-- Online create/join/roll/move -> `feature/online/OnlineMatchActions.kt`
-- Online proof rendering -> `feature/online/OnlineVerificationRenderer.kt`
-- Offline setup -> `ui/offline/setup/`
-- Offline gameplay -> `ui/offline/gameplay/`
-- Dialog UI -> `ui/dialogs/`
-- Reusable board/dice -> `ui/components/`
-- Decorative/custom art -> `ui/art/`
-- API/connectivity -> `data/network/`
-- Saved sessions/pending operations -> `data/storage/`
-- Game models -> `domain/model/`
-- Offline game engine -> `engine/offline/`
-- Proof/randomness implementation -> `proof/`
+- Home profile/connectivity -> `feature/home/presentation/components/HomeHeaderUi.kt`
+- Home hero/quick actions -> `feature/home/presentation/components/HomeHeroUi.kt`
+- Home mode cards/footer -> `feature/home/presentation/components/HomeModesUi.kt`
+- Online lobby -> `feature/online/presentation/components/OnlineLobbyUi.kt`
+- Online status/result -> `feature/online/presentation/components/OnlineStatusUi.kt`
+- Online controls -> `feature/online/presentation/components/OnlineActionUi.kt`
+- Online create/join/roll/move -> `feature/online/presentation/actions/OnlineMatchActions.kt`
+- Online API/cache/session -> `feature/online/data/`
+- Offline setup -> `feature/offline/presentation/setup/`
+- Offline gameplay -> `feature/offline/presentation/gameplay/`
+- Offline engine -> `feature/offline/domain/engine/`
+- Proof implementation -> `feature/proof/domain/`
+- Shared board/dice -> `game/ui/components/`
+- Shared theme/dialog shells -> `core/ui/`
 
 ## Guardrails
 
-1. Activities own lifecycle and screen-level state only.
-2. New major UI panels/screens get their own file.
-3. Aim for UI/feature files below roughly 500 lines.
-4. Network/storage code never goes into a UI file.
-5. Proof/cryptographic algorithms never go into a UI file.
-6. Proof/engine algorithm refactors require conformance tests; they are kept cohesive rather than split only to satisfy a line-count target.
-7. Existing runtime package/class names stay stable during folder organization, so this is behavior-neutral.
+1. New code goes under the owning feature first.
+2. Cross-feature reusable UI goes to `core/ui/` or `game/ui/`.
+3. Activities own lifecycle and wiring, not large UI builders.
+4. New mutable screen state must join the feature state holder instead of becoming another unrelated Activity field.
+5. Network/storage code never belongs in UI component files.
+6. Proof/cryptographic algorithms never belong in presentation code.
+7. UI/action files should normally stay below about 500 lines and split by visible responsibility.
+8. Proof/engine code may stay larger when cohesion/auditability matters; those splits require dedicated conformance tests.
+9. Any folder move affecting security/conformance paths updates those gates in the same change.
