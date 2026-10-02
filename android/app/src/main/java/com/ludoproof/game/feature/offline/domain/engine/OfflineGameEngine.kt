@@ -10,8 +10,37 @@ import java.util.UUID
 
 class OfflineGameEngine(
     context: Context,
-    private val computerMode: Boolean = false,
+    val mode: GameMode =
+        GameMode.PASS_AND_PLAY,
 ) {
+    constructor(
+        context: Context,
+        computerMode: Boolean,
+    ) : this(
+        context =
+            context,
+        mode =
+            if (computerMode) {
+                GameMode.COMPUTER
+            } else {
+                GameMode.PASS_AND_PLAY
+            },
+    )
+
+    init {
+        require(
+            mode.isLocal,
+        ) {
+            "OfflineGameEngine requires a local game mode"
+        }
+    }
+
+    private val computerMode:
+        Boolean
+        get() =
+            mode ==
+                GameMode.COMPUTER
+
     private val profileStore =
         ProfileStore(
             context.applicationContext,
@@ -74,12 +103,12 @@ class OfflineGameEngine(
         playerCount: Int,
         preferredColor: String = "RED",
     ): MatchSnapshot {
-        require(
-            playerCount in
-                2..4,
-        ) {
-            "Offline game supports 2 to 4 players"
-        }
+        MatchSpec.classic(
+            mode =
+                mode,
+            playerCount =
+                playerCount,
+        )
         require(
             preferredColor in
                 OfflinePlayerLayout.COLORS,
