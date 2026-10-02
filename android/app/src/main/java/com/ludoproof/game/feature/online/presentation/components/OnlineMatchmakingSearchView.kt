@@ -215,6 +215,10 @@ internal class MatchmakingOpponentRailView(
             val found =
                 index <
                     foundOpponents
+            val activeSearchSlot =
+                searching &&
+                    index ==
+                    foundOpponents
 
             cardFill.color =
                 if (
@@ -225,12 +229,15 @@ internal class MatchmakingOpponentRailView(
                     0xB8072356.toInt()
                 }
             border.color =
-                if (
-                    found
-                ) {
-                    0xFF62ED91.toInt()
-                } else {
-                    0xFF53DFFF.toInt()
+                when {
+                    found ->
+                        0xFF62ED91.toInt()
+
+                    activeSearchSlot ->
+                        0xFFFFD45E.toInt()
+
+                    else ->
+                        0x7753DFFF
                 }
 
             canvas.drawRoundRect(
@@ -252,57 +259,71 @@ internal class MatchmakingOpponentRailView(
                 rect.top +
                     cardHeight *
                     0.43f
+            val avatarX =
+                if (
+                    activeSearchSlot
+                ) {
+                    rect.left +
+                        rect.width() *
+                        (
+                            0.28f +
+                                0.44f *
+                                scanProgress
+                            )
+                } else {
+                    centerX
+                }
 
             if (
-                !found &&
-                searching
+                activeSearchSlot
             ) {
-                val scanX =
-                    rect.left +
-                        dp(14f) +
-                        (
-                            rect.width() -
-                                dp(28f)
-                            ) *
-                            scanProgress
                 canvas.drawCircle(
-                    scanX,
+                    avatarX,
                     avatarCenterY,
-                    dp(19f),
+                    dp(20f),
                     scanner,
                 )
             }
 
             drawSilhouette(
                 canvas,
-                centerX,
+                avatarX,
                 avatarCenterY,
-                if (found) 1f else 0.62f,
+                when {
+                    found ->
+                        1f
+
+                    activeSearchSlot ->
+                        0.82f
+
+                    else ->
+                        0.28f
+                },
             )
 
             label.color =
-                if (
-                    found
-                ) {
-                    0xFF8DFFAB.toInt()
-                } else {
-                    0xFFE9F8FF.toInt()
+                when {
+                    found ->
+                        0xFF8DFFAB.toInt()
+
+                    activeSearchSlot ->
+                        0xFFFFE58A.toInt()
+
+                    else ->
+                        0xFF9AB6D2.toInt()
                 }
             label.alpha =
-                if (
-                    found
-                ) {
-                    255
-                } else {
-                    210
-                }
+                255
             canvas.drawText(
-                if (
-                    found
-                ) {
-                    "PLAYER FOUND"
-                } else {
-                    "SEARCHING…"
+                when {
+                    found ->
+                        "PLAYER FOUND"
+
+                    activeSearchSlot ->
+                        "SEARCHING…"
+
+                    else ->
+                        "WAITING"
                 },
                 centerX,
                 rect.bottom -
