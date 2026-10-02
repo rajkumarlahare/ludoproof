@@ -382,9 +382,9 @@ internal fun HomeActivity.continueButton():
             if (
                 isCompact()
             ) {
-                17f
+                14.5f
             } else {
-                19f
+                16f
             }
         setOnClickListener {
             if (
