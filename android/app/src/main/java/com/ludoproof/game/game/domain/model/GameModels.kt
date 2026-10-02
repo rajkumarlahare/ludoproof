@@ -33,6 +33,14 @@ data class HistoryEventSnapshot(
     val outcome: Int?,
     val moveTokenIndex: Int?,
     val captures: Int,
+    val serverCommitment: String? = null,
+    val clientCommitment: String? = null,
+    val previousStateHash: String? = null,
+    val rulesetHash: String? = null,
+    val fairnessProtocol: String? = null,
+    val previousFairnessDigest: String? = null,
+    val fairnessDigest: String? = null,
+    val status: String? = null,
 )
 
 data class MatchSnapshot(
@@ -184,6 +192,30 @@ object GameJson {
                                 null
                             },
                         captures = event.optInt("captures", 0),
+                        serverCommitment =
+                            event.optString("serverCommitment")
+                                .takeIf { it.isNotBlank() && it != "null" },
+                        clientCommitment =
+                            event.optString("clientCommitment")
+                                .takeIf { it.isNotBlank() && it != "null" },
+                        previousStateHash =
+                            event.optString("previousStateHash")
+                                .takeIf { it.isNotBlank() && it != "null" },
+                        rulesetHash =
+                            event.optString("rulesetHash")
+                                .takeIf { it.isNotBlank() && it != "null" },
+                        fairnessProtocol =
+                            event.optString("fairnessProtocol")
+                                .takeIf { it.isNotBlank() && it != "null" },
+                        previousFairnessDigest =
+                            event.optString("previousFairnessDigest")
+                                .takeIf { it.isNotBlank() && it != "null" },
+                        fairnessDigest =
+                            event.optString("fairnessDigest")
+                                .takeIf { it.isNotBlank() && it != "null" },
+                        status =
+                            event.optString("status")
+                                .takeIf { it.isNotBlank() && it != "null" },
                     ),
                 )
             }
