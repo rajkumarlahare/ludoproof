@@ -32,6 +32,14 @@ class HomeActivity : Activity() {
                 isFillViewport = true
                 overScrollMode =
                     View.OVER_SCROLL_NEVER
+                clipToPadding =
+                    false
+                setPadding(
+                    0,
+                    0,
+                    0,
+                    dp(if (isCompact()) 128 else 142),
+                )
             }
 
         val contentHost =
@@ -86,6 +94,23 @@ class HomeActivity : Activity() {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
             ),
+        )
+
+        host.addView(
+            homeBottomActions(),
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                dp(if (isCompact()) 54 else 60),
+                Gravity.BOTTOM or
+                    Gravity.CENTER_HORIZONTAL,
+            ).apply {
+                leftMargin =
+                    dp(if (isCompact()) 18 else 24)
+                rightMargin =
+                    dp(if (isCompact()) 18 else 24)
+                bottomMargin =
+                    dp(if (isCompact()) 46 else 54)
+            },
         )
 
         content.addView(
