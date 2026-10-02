@@ -243,6 +243,14 @@ export class MatchmakerQueue {
           participant
             .playerCount,
         );
+
+      // Persist the full candidate set before crossing into MatchRoom.
+      // If this object restarts during create/join/start, the same
+      // deterministic request IDs can replay the operation safely.
+      await this.#persist(
+        state,
+      );
+
       const assignment =
         await this.#materialize(
           group,
