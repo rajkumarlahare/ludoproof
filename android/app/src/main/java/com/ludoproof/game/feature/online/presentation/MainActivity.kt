@@ -47,6 +47,17 @@ class MainActivity : Activity() {
             ?: GameMode.ONLINE
     }
 
+    internal val shouldRestoreSavedSession:
+        Boolean by lazy {
+        gameMode !=
+            GameMode.ONLINE ||
+            intent.getBooleanExtra(
+                GameModeIntent
+                    .EXTRA_RESUME_SAVED_MATCH,
+                false,
+            )
+    }
+
     internal val api = GameApi()
     internal val executor =
         Executors.newSingleThreadExecutor()
@@ -344,19 +355,34 @@ class MainActivity : Activity() {
             this,
         )
 
-        secureSessionStore
-            .load()
-            ?.let {
-                    session ->
-                matchId =
-                    session.matchId
-                playerToken =
-                    session.playerToken
-                playerId =
-                    session.playerId
-            }
-        pendingSecret =
-            pendingRollStore.load()
+        if (
+            shouldRestoreSavedSession
+        ) {
+            secureSessionStore
+                .load()
+                ?.let {
+                        session ->
+                    matchId =
+                        session.matchId
+                    playerToken =
+                        session.playerToken
+                    playerId =
+                        session.playerId
+                }
+            pendingSecret =
+                pendingRollStore.load()
+        } else {
+            matchId =
+                null
+            playerToken =
+                null
+            playerId =
+                null
+            currentState =
+                null
+            pendingSecret =
+                null
+        }
 
         val (root, host) =
             LudoProofTheme

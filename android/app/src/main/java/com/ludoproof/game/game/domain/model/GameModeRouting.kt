@@ -30,4 +30,6 @@ object GameModeRouting {
 object GameModeIntent {
     const val EXTRA_GAME_MODE =
         "ludoproof_game_mode_v1"
+    const val EXTRA_RESUME_SAVED_MATCH =
+        "ludoproof_resume_saved_match_v1"
 }

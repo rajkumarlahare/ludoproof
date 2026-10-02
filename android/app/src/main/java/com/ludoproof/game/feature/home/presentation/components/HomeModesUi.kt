@@ -400,6 +400,7 @@ internal fun HomeActivity.continueButton():
                             it.isRemote
                         }
                         ?: GameMode.ONLINE,
+                    resumeSavedMatch = true,
                 )
                 return@setOnClickListener
             }
