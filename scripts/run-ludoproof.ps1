@@ -149,16 +149,50 @@ function Test-Java17Home(
     }
 
     $javaExe = Join-Path $javaHome "bin\java.exe"
-    if (!(Test-Path $javaExe)) {
+    $releaseFile = Join-Path $javaHome "release"
+
+    if (
+        !(Test-Path $javaExe) -or
+        !(Test-Path $releaseFile)
+    ) {
         return $false
     }
 
     try {
-        $versionText = (& $javaExe -version 2>&1 | Out-String)
-        return $versionText -match 'version\s+"17(?:\.|")'
+        $releaseText = Get-Content -Raw -Path $releaseFile
+        return $releaseText -match '(?m)^JAVA_VERSION="17(?:\.|")'
     } catch {
         return $false
     }
+}
+
+function Find-Java17HomeUnder(
+    [string]$root
+) {
+    if ([string]::IsNullOrWhiteSpace($root)) {
+        return $null
+    }
+
+    if (Test-Java17Home $root) {
+        return $root
+    }
+
+    if (!(Test-Path $root)) {
+        return $null
+    }
+
+    $releaseFiles = @(
+        Get-ChildItem -Path $root -Filter "release" -File -Recurse -ErrorAction SilentlyContinue
+    )
+
+    foreach ($releaseFile in $releaseFiles) {
+        $candidate = $releaseFile.DirectoryName
+        if (Test-Java17Home $candidate) {
+            return $candidate
+        }
+    }
+
+    return $null
 }
 
 function Download-Java17Distribution(
@@ -168,6 +202,14 @@ function Download-Java17Distribution(
         "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse"
     )
     $partialPath = "$destination.part"
+
+    if (
+        (Test-Path $destination) -and
+        (Get-Item $destination).Length -gt 50MB
+    ) {
+        Write-Host "Reusing existing Temurin JDK 17 archive."
+        return
+    }
 
     Remove-Item -Force -ErrorAction SilentlyContinue $destination
     Remove-Item -Force -ErrorAction SilentlyContinue $partialPath
@@ -251,62 +293,66 @@ function Resolve-Java17 {
         (Join-Path $env:USERPROFILE ".jdks")
     )
 
-    foreach ($root in $roots) {
-        if (Test-Path $root) {
-            $candidates += (
-                Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue |
-                    Select-Object -ExpandProperty FullName
-            )
+    foreach ($candidate in $candidates | Select-Object -Unique) {
+        $found = Find-Java17HomeUnder $candidate
+        if ($found) {
+            return $found
         }
     }
 
-    foreach ($candidate in $candidates | Select-Object -Unique) {
-        if (Test-Java17Home $candidate) {
-            return $candidate
+    foreach ($root in $roots) {
+        $found = Find-Java17HomeUnder $root
+        if ($found) {
+            return $found
         }
     }
 
     $toolsDir = Join-Path $repoRoot ".tools"
-    $javaHome = Join-Path $toolsDir "temurin-17"
-    if (Test-Java17Home $javaHome) {
-        return $javaHome
+    $javaCacheRoot = Join-Path $toolsDir "temurin-17"
+
+    $cached = Find-Java17HomeUnder $javaCacheRoot
+    if ($cached) {
+        Write-Host "Reusing cached Java 17 from $cached"
+        return $cached
     }
 
     New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
+
+    $legacyExtractRoot = Join-Path $toolsDir "temurin-17-extract"
+    $legacyCached = Find-Java17HomeUnder $legacyExtractRoot
+    if ($legacyCached) {
+        Write-Host "Reusing previously extracted Java 17 from $legacyCached"
+        return $legacyCached
+    }
+
     $zipPath = Join-Path $toolsDir "temurin-17-jdk.zip"
-    $extractRoot = Join-Path $toolsDir "temurin-17-extract"
 
     Write-Host ""
     Write-Host "Java 17 is required by LudoProof. Installing a private Temurin 17 copy once..."
     Download-Java17Distribution $zipPath
 
-    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $extractRoot
-    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $javaHome
-    New-Item -ItemType Directory -Force -Path $extractRoot | Out-Null
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $javaCacheRoot
+    New-Item -ItemType Directory -Force -Path $javaCacheRoot | Out-Null
 
     try {
-        Expand-Archive -Path $zipPath -DestinationPath $extractRoot -Force
+        Expand-Archive -Path $zipPath -DestinationPath $javaCacheRoot -Force
+        $installed = Find-Java17HomeUnder $javaCacheRoot
 
-        $javaExe = Get-ChildItem -Path $extractRoot -Filter java.exe -Recurse -File |
-            Where-Object { $_.Directory.Name -eq "bin" } |
-            Select-Object -First 1
-
-        if (!$javaExe) {
-            throw "Temurin JDK 17 archive did not contain bin\java.exe."
+        if (!$installed) {
+            throw "Temurin JDK 17 archive was extracted, but no valid JDK 17 home was found."
         }
 
-        $extractedHome = Split-Path -Parent $javaExe.DirectoryName
-        Move-Item -Path $extractedHome -Destination $javaHome
+        Write-Host "Java 17 installed at $installed"
+        return $installed
+    } catch {
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $javaCacheRoot
+        throw
     } finally {
-        Remove-Item -Force -ErrorAction SilentlyContinue $zipPath
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $extractRoot
+        $validCache = Find-Java17HomeUnder $javaCacheRoot
+        if ($validCache) {
+            Remove-Item -Force -ErrorAction SilentlyContinue $zipPath
+        }
     }
-
-    if (!(Test-Java17Home $javaHome)) {
-        throw "Java 17 bootstrap failed: $javaHome is not a valid JDK 17 installation."
-    }
-
-    return $javaHome
 }
 
 function Use-Java17 {
