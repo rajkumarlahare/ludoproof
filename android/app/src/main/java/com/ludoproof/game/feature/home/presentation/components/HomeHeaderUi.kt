@@ -470,9 +470,11 @@ private fun HomeActivity.homeShortcutRow():
                 iconKind = HomeIconKind.BADGE,
             ),
             HeaderShortcut(
-                symbol = "AD",
+                symbol = "",
                 label = "REMOVE ADS",
-                tint = 0xFF72E8FF.toInt(),
+                tint = 0xFFFF3B30.toInt(),
+                iconKind =
+                    HomeIconKind.AD_BLOCKER,
             ),
         ).forEach {
                 item ->
