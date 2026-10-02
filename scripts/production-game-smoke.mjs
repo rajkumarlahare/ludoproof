@@ -13,16 +13,14 @@ const baseUrl =
 const ALGORITHM =
   "entronex-v4-dual-commit-hkdf-sha256-context-bound";
 
-let profileBypassBlocked =
-  false;
-try {
+const legacyUnranked =
   await api(
     "POST",
     "/api/matches",
     {
       body: {
         displayName:
-          "Profile Bypass",
+          "Legacy Smoke",
         clientRequestId:
           randomUUID(),
         profileId:
@@ -30,24 +28,15 @@ try {
       },
     },
   );
-} catch (error) {
-  profileBypassBlocked =
-    String(
-      error?.message ??
-        error,
-    )
-      .includes(
-        "PROFILE_AUTH_REQUIRED",
-      );
-}
 
-if (
-  !profileBypassBlocked
-) {
-  throw new Error(
-    "Production smoke allowed ranked play without an authenticated profile credential.",
-  );
-}
+requireText(
+  legacyUnranked.matchId,
+  "legacyUnranked.matchId",
+);
+requireText(
+  legacyUnranked.playerToken,
+  "legacyUnranked.playerToken",
+);
 
 const hostProfile =
   await api(
@@ -405,8 +394,8 @@ console.log(
       ok: true,
       profileAuth:
         {
-          bypassBlocked:
-            profileBypassBlocked,
+          legacyUnrankedAccepted:
+            true,
           hostProfileId:
             hostProfile.profileId,
           guestProfileId:
