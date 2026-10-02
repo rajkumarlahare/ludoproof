@@ -11,6 +11,77 @@ class GameApi(
 ) {
     private val baseUrl = baseUrl.trimEnd('/')
 
+    fun searchPublicMatch(
+        displayName: String,
+        clientRequestId: String,
+        playerCount: Int,
+        profileId: String? = null,
+    ): JSONObject =
+        request(
+            method = "POST",
+            path = "/api/matchmaking/search",
+            body = JSONObject()
+                .put(
+                    "displayName",
+                    displayName,
+                )
+                .put(
+                    "clientRequestId",
+                    clientRequestId,
+                )
+                .put(
+                    "playerCount",
+                    playerCount,
+                )
+                .apply {
+                    if (
+                        !profileId
+                            .isNullOrBlank()
+                    ) {
+                        put(
+                            "profileId",
+                            profileId,
+                        )
+                    }
+                },
+        )
+
+    fun publicMatchStatus(
+        clientRequestId: String,
+        playerCount: Int,
+    ): JSONObject =
+        request(
+            method = "POST",
+            path = "/api/matchmaking/status",
+            body = JSONObject()
+                .put(
+                    "clientRequestId",
+                    clientRequestId,
+                )
+                .put(
+                    "playerCount",
+                    playerCount,
+                ),
+        )
+
+    fun cancelPublicMatch(
+        clientRequestId: String,
+        playerCount: Int,
+    ): JSONObject =
+        request(
+            method = "POST",
+            path = "/api/matchmaking/cancel",
+            body = JSONObject()
+                .put(
+                    "clientRequestId",
+                    clientRequestId,
+                )
+                .put(
+                    "playerCount",
+                    playerCount,
+                ),
+        )
+
     fun createMatch(
         displayName: String,
         clientRequestId: String,
