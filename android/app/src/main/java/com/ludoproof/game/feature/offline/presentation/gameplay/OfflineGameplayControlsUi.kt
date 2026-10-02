@@ -122,11 +122,7 @@ internal fun OfflineGameActivity.quickChatBar():
                         val name =
                             engine.snapshot()
                                 ?.players
-                                ?.getOrNull(
-                                    engine.snapshot()
-                                        ?.turnSeat
-                                        ?: -1,
-                                )
+                                ?.firstOrNull()
                                 ?.displayName
                                 ?: "Player"
                         showStatus(
