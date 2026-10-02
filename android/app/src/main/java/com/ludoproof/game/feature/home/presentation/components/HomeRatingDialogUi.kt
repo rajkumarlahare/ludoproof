@@ -211,7 +211,7 @@ internal fun HomeActivity.showHomeRatingDialog() {
         stars.forEachIndexed {
                 index,
                 star ->
-            star.isSelected =
+            star.isFilled =
                 index <
                 selectedRating
         }
@@ -237,7 +237,7 @@ internal fun HomeActivity.showHomeRatingDialog() {
             RatingStarView(
                 this,
             ).apply {
-                isSelected =
+                isFilled =
                     index <
                     selectedRating
                 contentDescription =
@@ -527,7 +527,7 @@ private class RatingStarView(
         val star =
             starPath()
         if (
-            isSelected
+            isFilled
         ) {
             canvas.drawPath(
                 star,
