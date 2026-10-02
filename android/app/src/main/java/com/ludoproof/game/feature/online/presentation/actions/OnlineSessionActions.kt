@@ -240,6 +240,8 @@ internal fun MainActivity.resetInvalidSessionIfNeeded(
     playerToken = null
     playerId = null
     currentState = null
+    lastRealtimeRevision =
+        -1
     cachedMatchStore.clear()
     realtimeClient.disconnect()
     realtimeConnected =
