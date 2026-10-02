@@ -14,6 +14,8 @@ import android.widget.ScrollView
 import android.widget.TextView
 import com.ludoproof.game.*
 import com.ludoproof.game.feature.offline.*
+import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
+import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.ui.offline.common.*
 import com.ludoproof.game.ui.offline.setup.*
 
@@ -53,9 +55,105 @@ internal fun OfflineGameActivity.gameplayActionPanel():
             ),
         )
 
+        if (
+            GameSettingsStore(
+                this@gameplayActionPanel,
+            )
+                .snapshot()
+                .quickChatEnabled
+        ) {
+            addView(
+                quickChatBar(),
+            )
+        }
+
         addView(
             gameplayTools(),
         )
+    }
+
+internal fun OfflineGameActivity.quickChatBar():
+    LinearLayout =
+    LinearLayout(this).apply {
+        orientation =
+            LinearLayout.HORIZONTAL
+        gravity =
+            Gravity.CENTER
+        setPadding(
+            dp(2),
+            dp(4),
+            dp(2),
+            dp(7),
+        )
+
+        listOf(
+            "👍",
+            "😄",
+            "👏",
+            "😮",
+        ).forEach {
+                emoji ->
+            addView(
+                Button(
+                    this@quickChatBar,
+                ).apply {
+                    text =
+                        emoji
+                    textSize =
+                        if (
+                            isCompactSetup()
+                        ) {
+                            18f
+                        } else {
+                            20f
+                        }
+                    minWidth =
+                        0
+                    minHeight =
+                        0
+                    LudoProofTheme
+                        .secondary(
+                            this,
+                        )
+                    setOnClickListener {
+                        GameSoundFeedback.click(
+                            this@quickChatBar,
+                        )
+                        val name =
+                            engine.snapshot()
+                                ?.players
+                                ?.firstOrNull()
+                                ?.displayName
+                                ?: "Player"
+                        showStatus(
+                            name +
+                                "  " +
+                                emoji,
+                        )
+                    }
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    dp(
+                        if (
+                            isCompactSetup()
+                        ) {
+                            42
+                        } else {
+                            46
+                        },
+                    ),
+                    1f,
+                ).apply {
+                    setMargins(
+                        dp(3),
+                        0,
+                        dp(3),
+                        0,
+                    )
+                },
+            )
+        }
     }
 
 internal fun OfflineGameActivity.gameplayTools():
@@ -205,9 +303,30 @@ internal fun OfflineGameActivity.renderGame(
             View.GONE
     }
 
+    val activePlayerId =
+        active
+            ?.playerId
+    val interactionPlayerId =
+        if (
+            isComputerMode &&
+            engine.isComputerPlayer(
+                activePlayerId,
+            )
+        ) {
+            null
+        } else {
+            activePlayerId
+        }
+
     boardView?.bind(
-        state,
-        engine.activePlayerId(),
+        state =
+            state,
+        playerId =
+            interactionPlayerId,
+        perspectiveColor =
+            state.players
+                .firstOrNull()
+                ?.color,
     )
 
     renderPlayerRails(
@@ -231,11 +350,17 @@ internal fun OfflineGameActivity.renderGame(
         )
     }
 
+    val computerTurn =
+        isComputerMode &&
+            engine.isComputerPlayer(
+                activePlayerId,
+            )
     val canRoll =
         state.status ==
             "ACTIVE" &&
             pending ==
-            null
+            null &&
+            !computerTurn
 
     diceHost?.isEnabled =
         canRoll
@@ -251,6 +376,30 @@ internal fun OfflineGameActivity.renderGame(
             "FINISHED" ->
             showStatus(
                 "Game complete • review history or start a new game.",
+            )
+
+        computerTurn &&
+            pending !=
+            null ->
+            showStatus(
+                (
+                    active
+                        ?.displayName
+                        ?: "CPU"
+                    ) +
+                    " • dice " +
+                    pending.outcome +
+                    " • choosing a move…",
+            )
+
+        computerTurn ->
+            showStatus(
+                (
+                    active
+                        ?.displayName
+                        ?: "CPU"
+                    ) +
+                    " is thinking…",
             )
 
         pending !=
@@ -276,4 +425,8 @@ internal fun OfflineGameActivity.renderGame(
                     " turn • tap the dice beside the profile",
             )
     }
+
+    scheduleComputerTurnIfNeeded(
+        state,
+    )
 }

@@ -19,7 +19,32 @@ import com.ludoproof.game.feature.offline.*
 
 class OfflineGameActivity : Activity() {
     internal val handler = Handler(Looper.getMainLooper())
-    internal val engine by lazy { OfflineGameEngine(this) }
+
+    internal val playMode: String by lazy {
+        intent.getStringExtra(
+            EXTRA_PLAY_MODE,
+        )
+            ?.takeIf {
+                it ==
+                    PLAY_MODE_LOCAL ||
+                    it ==
+                    PLAY_MODE_COMPUTER
+            }
+            ?: PLAY_MODE_LOCAL
+    }
+
+    internal val isComputerMode: Boolean
+        get() =
+            playMode ==
+                PLAY_MODE_COMPUTER
+
+    internal val engine by lazy {
+        OfflineGameEngine(
+            this,
+            computerMode =
+                isComputerMode,
+        )
+    }
 
     internal val setupStateHolder = OfflineSetupStateHolder()
 
@@ -41,6 +66,7 @@ class OfflineGameActivity : Activity() {
     internal var turnText: TextView? = null
     internal var infoText: TextView? = null
     internal var statusText: TextView? = null
+    internal var computerActionRevision: Int? = null
     internal lateinit var resultPanel: FrameLayout
     internal lateinit var resultTitleText: TextView
     internal lateinit var resultSubtitleText: TextView
@@ -54,5 +80,14 @@ class OfflineGameActivity : Activity() {
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
+    }
+
+    companion object {
+        const val EXTRA_PLAY_MODE =
+            "ludoproof_play_mode"
+        const val PLAY_MODE_LOCAL =
+            "LOCAL"
+        const val PLAY_MODE_COMPUTER =
+            "COMPUTER"
     }
 }

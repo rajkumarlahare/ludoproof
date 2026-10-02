@@ -87,7 +87,13 @@ internal fun OfflineGameActivity.showSetup() {
 
     content.addView(
         backHeader(
-            "LOCAL PLAY",
+            if (
+                isComputerMode
+            ) {
+                "COMPUTER"
+            } else {
+                "LOCAL PLAY"
+            },
         ),
     )
 
@@ -254,7 +260,7 @@ internal fun OfflineGameActivity.gameTypePanel():
     LinearLayout =
     selectionPanel(
         "SELECT GAME",
-        "Choose the local ruleset",
+        "Classic Ludo",
     ).apply {
         val row =
             LinearLayout(
@@ -266,104 +272,45 @@ internal fun OfflineGameActivity.gameTypePanel():
                     Gravity.CENTER
             }
 
-        val classic =
+        row.addView(
             choiceTile(
                 "▦",
                 "CLASSIC",
                 "Standard Ludo rules",
                 true,
                 true,
-            ) {}
-        val rush =
-            choiceTile(
-                "⚡",
-                "RUSH",
-                "Coming soon",
-                false,
-                false,
-            ) {}
-
-        row.addView(
-            classic,
+            ) {},
             setupTileParams(
-                if (isCompactSetup()) 104 else 112,
-                marginDp =
-                    if (isCompactSetup()) 4 else 6,
-            ),
-        )
-        row.addView(
-            rush,
-            setupTileParams(
-                if (isCompactSetup()) 104 else 112,
-                marginDp =
-                    if (isCompactSetup()) 4 else 6,
+                if (
+                    isCompactSetup()
+                ) {
+                    118
+                } else {
+                    128
+                },
+                marginDp = 4,
             ),
         )
         addView(row)
 
         addView(
-            LinearLayout(
+            TextView(
                 this@gameTypePanel,
             ).apply {
-                orientation =
-                    LinearLayout.HORIZONTAL
-                gravity =
-                    Gravity.CENTER_VERTICAL
+                text =
+                    "Board and dice styles can be changed from Settings."
+                LudoProofTheme.body(
+                    this,
+                    10.5f,
+                    centered = true,
+                    bright = true,
+                )
                 setPadding(
-                    dp(14),
-                    dp(11),
-                    dp(14),
-                    dp(11),
+                    dp(8),
+                    dp(10),
+                    dp(8),
+                    0,
                 )
-                background =
-                    LudoProofTheme
-                        .hudPanelDrawable(
-                            this@gameTypePanel,
-                            goldBorder = true,
-                        )
-
-                addView(
-                    TextView(
-                        this@gameTypePanel,
-                    ).apply {
-                        text =
-                            "Theme:"
-                        LudoProofTheme.body(
-                            this,
-                            11f,
-                            bright = true,
-                        )
-                    },
-                    LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        1f,
-                    ),
-                )
-
-                addView(
-                    TextView(
-                        this@gameTypePanel,
-                    ).apply {
-                        text =
-                            "CLASSIC  ▼"
-                        LudoProofTheme.body(
-                            this,
-                            13f,
-                            bright = true,
-                        )
-                        setTextColor(
-                            LudoProofTheme.GOLD,
-                        )
-                    },
-                )
-            },
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                topMargin =
-                    dp(12)
             },
         )
     }

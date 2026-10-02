@@ -81,7 +81,15 @@ internal fun HomeActivity.modeSection():
                         0xFF2FA91F.toInt(),
                     ),
             ) {
-                // Computer mode logic will be connected later.
+                startActivity(
+                    Intent(
+                        this@modeSection,
+                        OfflineGameActivity::class.java,
+                    ).putExtra(
+                        OfflineGameActivity.EXTRA_PLAY_MODE,
+                        OfflineGameActivity.PLAY_MODE_COMPUTER,
+                    ),
+                )
             },
             LinearLayout.LayoutParams(
                 cardSize,
@@ -110,6 +118,9 @@ internal fun HomeActivity.modeSection():
                     Intent(
                         this@modeSection,
                         OfflineGameActivity::class.java,
+                    ).putExtra(
+                        OfflineGameActivity.EXTRA_PLAY_MODE,
+                        OfflineGameActivity.PLAY_MODE_LOCAL,
                     ),
                 )
             },
@@ -271,35 +282,83 @@ private fun HomeActivity.homeGameCard(
 internal fun HomeActivity.continueButton():
     Button? {
     val online =
-        SecureSessionStore(this).load()
-    val offline =
-        OfflineGameEngine(this).hasSavedGame()
+        SecureSessionStore(
+            this,
+        ).load()
+    val local =
+        OfflineGameEngine(
+            this,
+            computerMode =
+                false,
+        )
+            .hasSavedGame()
+    val computer =
+        OfflineGameEngine(
+            this,
+            computerMode =
+                true,
+        )
+            .hasSavedGame()
 
     if (
-        online == null &&
-        !offline
+        online ==
+            null &&
+        !local &&
+        !computer
     ) {
         return null
     }
 
     return Button(this).apply {
         text =
-            if (online != null) {
-                "Continue Online Match  ›"
-            } else {
-                "Continue Local Game  ›"
+            when {
+                online !=
+                    null ->
+                    "Continue Online Match  ›"
+
+                local ->
+                    "Continue Local Game  ›"
+
+                else ->
+                    "Continue Computer Game  ›"
             }
-        LudoProofTheme.positive(this)
+        LudoProofTheme.positive(
+            this,
+        )
         textSize =
-            if (isCompact()) 17f else 19f
+            if (
+                isCompact()
+            ) {
+                17f
+            } else {
+                19f
+            }
         setOnClickListener {
+            if (
+                online !=
+                null
+            ) {
+                startActivity(
+                    Intent(
+                        this@continueButton,
+                        MainActivity::class.java,
+                    ),
+                )
+                return@setOnClickListener
+            }
+
             startActivity(
                 Intent(
                     this@continueButton,
-                    if (online != null) {
-                        MainActivity::class.java
+                    OfflineGameActivity::class.java,
+                ).putExtra(
+                    OfflineGameActivity.EXTRA_PLAY_MODE,
+                    if (
+                        local
+                    ) {
+                        OfflineGameActivity.PLAY_MODE_LOCAL
                     } else {
-                        OfflineGameActivity::class.java
+                        OfflineGameActivity.PLAY_MODE_COMPUTER
                     },
                 ),
             )

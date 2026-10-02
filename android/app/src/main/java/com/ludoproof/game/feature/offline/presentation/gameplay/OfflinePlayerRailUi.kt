@@ -107,7 +107,13 @@ private fun OfflineGameActivity.addPlayerSlot(
             .firstOrNull {
                 OfflinePlayerLayout
                     .slotForColor(
-                        it.color,
+                        color =
+                            it.color,
+                        preferredBottomLeftColor =
+                            state.players
+                                .firstOrNull()
+                                ?.color
+                                ?: "BLUE",
                     ) ==
                     slot
             }
@@ -196,11 +202,19 @@ private fun OfflineGameActivity.playerProfile(
                 this@playerProfile,
             ).apply {
                 text =
-                    "P" +
-                        (
-                            player.seat +
-                                1
-                            )
+                    if (
+                        engine.isComputerPlayer(
+                            player.playerId,
+                        )
+                    ) {
+                        "CPU"
+                    } else {
+                        "P" +
+                            (
+                                player.seat +
+                                    1
+                                )
+                    }
                 textSize =
                     if (isCompactSetup()) {
                         16f
@@ -353,13 +367,26 @@ private fun OfflineGameActivity.activeDiceControl(
             }
         }
 
+    val cpuTurn =
+        engine.isComputerPlayer(
+            player.playerId,
+        )
     control.contentDescription =
-        "Roll dice for " +
-            player.displayName
+        if (cpuTurn) {
+            player.displayName +
+                " is thinking"
+        } else {
+            "Roll dice for " +
+                player.displayName
+        }
     control.isEnabled =
-        true
+        !cpuTurn
     control.alpha =
-        1f
+        if (cpuTurn) {
+            .58f
+        } else {
+            1f
+        }
     control.layoutParams =
         LinearLayout.LayoutParams(
             dp(

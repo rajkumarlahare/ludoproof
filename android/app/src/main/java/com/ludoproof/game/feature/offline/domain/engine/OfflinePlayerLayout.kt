@@ -58,19 +58,71 @@ object OfflinePlayerLayout {
     fun slotForColor(
         color: String,
     ): Slot =
+        slotForColor(
+            color =
+                color,
+            preferredBottomLeftColor =
+                "BLUE",
+        )
+
+    fun slotForColor(
+        color: String,
+        preferredBottomLeftColor: String,
+    ): Slot {
+        val rotation =
+            rotationQuarterTurns(
+                preferredBottomLeftColor,
+            )
+        val base =
+            colorIndex(
+                color,
+            )
+        return slotForIndex(
+            (
+                base +
+                    rotation
+                ) %
+                4,
+        )
+    }
+
+    fun rotationQuarterTurns(
+        preferredBottomLeftColor: String,
+    ): Int =
+        (
+            3 -
+                colorIndex(
+                    preferredBottomLeftColor,
+                ) +
+                4
+            ) %
+            4
+
+    private fun colorIndex(
+        color: String,
+    ): Int =
         when (color) {
-            "RED" ->
-                Slot.TOP_LEFT
-            "GREEN" ->
-                Slot.TOP_RIGHT
-            "BLUE" ->
-                Slot.BOTTOM_LEFT
-            "YELLOW" ->
-                Slot.BOTTOM_RIGHT
+            "RED" -> 0
+            "GREEN" -> 1
+            "YELLOW" -> 2
+            "BLUE" -> 3
             else ->
                 error(
                     "Unsupported Ludo color: $color",
                 )
+        }
+
+    private fun slotForIndex(
+        index: Int,
+    ): Slot =
+        when (
+            index %
+                4
+        ) {
+            0 -> Slot.TOP_LEFT
+            1 -> Slot.TOP_RIGHT
+            2 -> Slot.BOTTOM_RIGHT
+            else -> Slot.BOTTOM_LEFT
         }
 
     fun oppositeColor(

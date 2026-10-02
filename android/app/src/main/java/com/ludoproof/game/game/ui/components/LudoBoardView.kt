@@ -1,5 +1,6 @@
 package com.ludoproof.game
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Outline
@@ -13,6 +14,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.ViewOutlineProvider
 import android.view.View
+import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
 import com.ludoproof.game.feature.store.domain.model.CosmeticCategory
 import kotlin.math.hypot
@@ -52,6 +54,9 @@ class LudoBoardView @JvmOverloads constructor(
         "board_classic"
     private var snapshot: MatchSnapshot? = null
     private var localPlayerId: String? = null
+    private var perspectiveColor: String? = null
+    private var moveAnimator: ValueAnimator? = null
+    private var moveAnimation: TokenMoveAnimation? = null
     private val tokenHits = mutableListOf<TokenHit>()
 
     private val fillPaint =
@@ -86,9 +91,18 @@ class LudoBoardView @JvmOverloads constructor(
     fun bind(
         state: MatchSnapshot?,
         playerId: String?,
+        perspectiveColor: String? = null,
     ) {
+        val previous =
+            snapshot
         snapshot = state
         localPlayerId = playerId
+        this.perspectiveColor =
+            perspectiveColor
+                ?.takeIf {
+                    it in
+                        OfflinePlayerLayout.COLORS
+                }
 
         val localPlayer =
             state?.players?.find {
@@ -117,11 +131,21 @@ class LudoBoardView @JvmOverloads constructor(
                     "Ludo board. No legal token is currently selectable."
             }
 
+        startMoveAnimationIfNeeded(
+            previous =
+                previous,
+            current =
+                state,
+        )
         invalidate()
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        reloadStyle()
+    }
+
+    fun reloadStyle() {
         boardThemeId =
             CosmeticInventoryStore(
                 context,
@@ -130,6 +154,16 @@ class LudoBoardView @JvmOverloads constructor(
                     CosmeticCategory.BOARD,
                 )
         invalidate()
+    }
+
+    override fun onDetachedFromWindow() {
+        moveAnimator
+            ?.cancel()
+        moveAnimator =
+            null
+        moveAnimation =
+            null
+        super.onDetachedFromWindow()
     }
 
     override fun onMeasure(
@@ -154,11 +188,44 @@ class LudoBoardView @JvmOverloads constructor(
         val cell = size / 15f
 
         canvas.drawColor(boardSurfaceColor())
+
+        val turns =
+            perspectiveColor
+                ?.let {
+                    OfflinePlayerLayout
+                        .rotationQuarterTurns(
+                            it,
+                        )
+                }
+                ?: 0
+
+        if (
+            turns !=
+            0
+        ) {
+            canvas.save()
+            canvas.rotate(
+                turns *
+                    90f,
+                size /
+                    2f,
+                size /
+                    2f,
+            )
+        }
+
         drawYards(canvas, cell)
         drawTrack(canvas, cell)
         drawHomeLanes(canvas, cell)
         drawCenter(canvas, cell)
         drawTokens(canvas, cell)
+
+        if (
+            turns !=
+            0
+        ) {
+            canvas.restore()
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -166,19 +233,53 @@ class LudoBoardView @JvmOverloads constructor(
             return true
         }
 
+        val size =
+            min(
+                width,
+                height,
+            ).toFloat()
+        val turns =
+            perspectiveColor
+                ?.let {
+                    OfflinePlayerLayout
+                        .rotationQuarterTurns(
+                            it,
+                        )
+                }
+                ?: 0
+        val logicalTouch =
+            unrotateTouch(
+                event.x,
+                event.y,
+                size,
+                turns,
+            )
+
         val hit =
             tokenHits.minByOrNull {
                 hypot(
-                    (event.x - it.x).toDouble(),
-                    (event.y - it.y).toDouble(),
+                    (
+                        logicalTouch.first -
+                            it.x
+                        ).toDouble(),
+                    (
+                        logicalTouch.second -
+                            it.y
+                        ).toDouble(),
                 )
             }
 
         if (
             hit != null &&
             hypot(
-                (event.x - hit.x).toDouble(),
-                (event.y - hit.y).toDouble(),
+                (
+                    logicalTouch.first -
+                        hit.x
+                    ).toDouble(),
+                (
+                    logicalTouch.second -
+                        hit.y
+                    ).toDouble(),
             ) <= hit.radius
         ) {
             performClick()
@@ -191,6 +292,46 @@ class LudoBoardView @JvmOverloads constructor(
         super.performClick()
         return true
     }
+
+    private fun unrotateTouch(
+        x: Float,
+        y: Float,
+        size: Float,
+        quarterTurns: Int,
+    ): Pair<Float, Float> =
+        when (
+            (
+                quarterTurns %
+                    4 +
+                    4
+                ) %
+                4
+        ) {
+            1 ->
+                y to
+                    (
+                        size -
+                            x
+                        )
+            2 ->
+                (
+                    size -
+                        x
+                    ) to
+                    (
+                        size -
+                            y
+                        )
+            3 ->
+                (
+                    size -
+                        y
+                    ) to
+                    x
+            else ->
+                x to
+                    y
+        }
 
     private fun drawYards(
         canvas: Canvas,
@@ -451,12 +592,17 @@ class LudoBoardView @JvmOverloads constructor(
                     position,
                 ->
                 val base =
-                    tokenCenter(
-                        player,
-                        tokenIndex,
-                        position,
-                        cell,
-                    ) ?: return@forEachIndexed
+                    animatedTokenCenter(
+                        player =
+                            player,
+                        tokenIndex =
+                            tokenIndex,
+                        currentPosition =
+                            position,
+                        cell =
+                            cell,
+                    )
+                        ?: return@forEachIndexed
 
                 val offset =
                     if (position in 0..57) {
@@ -502,6 +648,254 @@ class LudoBoardView @JvmOverloads constructor(
                 )
             }
         }
+    }
+
+    private fun startMoveAnimationIfNeeded(
+        previous: MatchSnapshot?,
+        current: MatchSnapshot?,
+    ) {
+        moveAnimator
+            ?.cancel()
+        moveAnimator =
+            null
+        moveAnimation =
+            null
+
+        if (
+            previous ==
+                null ||
+            current ==
+                null ||
+            previous.matchId !=
+                current.matchId
+        ) {
+            return
+        }
+
+        val movement =
+            current.players
+                .asSequence()
+                .mapNotNull {
+                        currentPlayer ->
+                    val previousPlayer =
+                        previous.players
+                            .firstOrNull {
+                                it.playerId ==
+                                    currentPlayer.playerId
+                            }
+                            ?: return@mapNotNull null
+
+                    currentPlayer.tokens
+                        .indices
+                        .firstNotNullOfOrNull {
+                                tokenIndex ->
+                            val from =
+                                previousPlayer.tokens
+                                    .getOrNull(
+                                        tokenIndex,
+                                    )
+                                    ?: return@firstNotNullOfOrNull null
+                            val to =
+                                currentPlayer.tokens
+                                    .getOrNull(
+                                        tokenIndex,
+                                    )
+                                    ?: return@firstNotNullOfOrNull null
+
+                            if (
+                                to >
+                                from
+                            ) {
+                                TokenMoveAnimation(
+                                    playerId =
+                                        currentPlayer.playerId,
+                                    tokenIndex =
+                                        tokenIndex,
+                                    fromPosition =
+                                        from,
+                                    toPosition =
+                                        to,
+                                    progress =
+                                        0f,
+                                )
+                            } else {
+                                null
+                            }
+                        }
+                }
+                .firstOrNull()
+                ?: return
+
+        val steps =
+            (
+                movement.toPosition -
+                    movement.fromPosition
+                )
+                .coerceAtLeast(
+                    1,
+                )
+        val speed =
+            GameSettingsStore(
+                context,
+            )
+                .snapshot()
+                .gameSpeed
+        val duration =
+            (
+                steps.toLong() *
+                    speed.moveStepMs
+                )
+                .coerceAtLeast(
+                    speed.moveStepMs,
+                )
+
+        moveAnimation =
+            movement
+        moveAnimator =
+            ValueAnimator
+                .ofFloat(
+                    0f,
+                    steps.toFloat(),
+                )
+                .apply {
+                    this.duration =
+                        duration
+                    addUpdateListener {
+                            animator ->
+                        moveAnimation =
+                            moveAnimation
+                                ?.copy(
+                                    progress =
+                                        animator
+                                            .animatedValue as Float,
+                                )
+                        invalidate()
+                    }
+                    addListener(
+                        object :
+                            android.animation.AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(
+                                animation: android.animation.Animator,
+                            ) {
+                                moveAnimation =
+                                    null
+                                moveAnimator =
+                                    null
+                                invalidate()
+                            }
+
+                            override fun onAnimationCancel(
+                                animation: android.animation.Animator,
+                            ) {
+                                moveAnimation =
+                                    null
+                                moveAnimator =
+                                    null
+                                invalidate()
+                            }
+                        },
+                    )
+                    start()
+                }
+    }
+
+    private fun animatedTokenCenter(
+        player: PlayerSnapshot,
+        tokenIndex: Int,
+        currentPosition: Int,
+        cell: Float,
+    ): Pair<Float, Float>? {
+        val animation =
+            moveAnimation
+                ?.takeIf {
+                    it.playerId ==
+                        player.playerId &&
+                        it.tokenIndex ==
+                        tokenIndex
+                }
+                ?: return tokenCenter(
+                    player,
+                    tokenIndex,
+                    currentPosition,
+                    cell,
+                )
+
+        val totalSteps =
+            (
+                animation.toPosition -
+                    animation.fromPosition
+                )
+                .coerceAtLeast(
+                    1,
+                )
+        val progress =
+            animation.progress
+                .coerceIn(
+                    0f,
+                    totalSteps.toFloat(),
+                )
+        val whole =
+            kotlin.math.floor(
+                progress,
+            )
+                .toInt()
+                .coerceAtMost(
+                    totalSteps -
+                        1,
+                )
+        val fraction =
+            (
+                progress -
+                    whole
+                )
+                .coerceIn(
+                    0f,
+                    1f,
+                )
+        val fromPosition =
+            animation.fromPosition +
+                whole
+        val toPosition =
+            (
+                fromPosition +
+                    1
+                )
+                .coerceAtMost(
+                    animation.toPosition,
+                )
+        val from =
+            tokenCenter(
+                player,
+                tokenIndex,
+                fromPosition,
+                cell,
+            )
+                ?: return null
+        val to =
+            tokenCenter(
+                player,
+                tokenIndex,
+                toPosition,
+                cell,
+            )
+                ?: return from
+
+        return (
+            from.first +
+                (
+                    to.first -
+                        from.first
+                    ) *
+                fraction
+            ) to
+            (
+                from.second +
+                    (
+                        to.second -
+                            from.second
+                        ) *
+                    fraction
+                )
     }
 
     private fun drawStar(
@@ -849,6 +1243,14 @@ class LudoBoardView @JvmOverloads constructor(
 
     private fun density(value: Float): Float =
         value * resources.displayMetrics.density
+
+    private data class TokenMoveAnimation(
+        val playerId: String,
+        val tokenIndex: Int,
+        val fromPosition: Int,
+        val toPosition: Int,
+        val progress: Float,
+    )
 
     private data class TokenHit(
         val tokenIndex: Int,

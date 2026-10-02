@@ -13,6 +13,9 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.ludoproof.game.*
+import com.ludoproof.game.ui.dialogs.showSettingsDialog
+import com.ludoproof.game.ui.offline.gameplay.showGame
+import com.ludoproof.game.ui.offline.setup.showSetup
 
 internal fun OfflineGameActivity.backHeader(label: String): LinearLayout =
     LinearLayout(this).apply {
@@ -40,7 +43,37 @@ internal fun OfflineGameActivity.backHeader(label: String): LinearLayout =
                 0,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 1f,
-            ).apply { marginStart = dp(12) },
+            ).apply {
+                marginStart = dp(12)
+                marginEnd = dp(10)
+            },
+        )
+        addView(
+            Button(this@backHeader).apply {
+                LudoProofTheme.homeCircularAction(
+                    this,
+                    "⚙",
+                )
+                contentDescription =
+                    "Game settings"
+                setOnClickListener {
+                    showSettingsDialog(
+                        this@backHeader,
+                    ) {
+                        val current =
+                            engine.snapshot()
+                        if (current != null) {
+                            showGame(current)
+                        } else {
+                            showSetup()
+                        }
+                    }
+                }
+            },
+            LinearLayout.LayoutParams(
+                dp(52),
+                dp(52),
+            ),
         )
     }
 

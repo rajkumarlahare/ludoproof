@@ -10,6 +10,7 @@ import java.util.UUID
 
 class OfflineGameEngine(
     context: Context,
+    private val computerMode: Boolean = false,
 ) {
     private val profileStore =
         ProfileStore(
@@ -18,7 +19,11 @@ class OfflineGameEngine(
 
     private val prefs =
         context.getSharedPreferences(
-            PREFS_NAME,
+            if (computerMode) {
+                PREFS_NAME_COMPUTER
+            } else {
+                PREFS_NAME
+            },
             Context.MODE_PRIVATE,
         )
 
@@ -42,6 +47,28 @@ class OfflineGameEngine(
                 state?.turnSeat ?: -1,
             )
             ?.playerId
+
+    fun humanPlayerId(): String? =
+        state
+            ?.players
+            ?.firstOrNull()
+            ?.playerId
+
+    fun humanColor(): String? =
+        state
+            ?.players
+            ?.firstOrNull()
+            ?.color
+
+    fun isComputerPlayer(
+        playerId: String?,
+    ): Boolean =
+        computerMode &&
+            playerId
+                ?.startsWith(
+                    "cpu-player-",
+                ) ==
+            true
 
     fun start(
         playerCount: Int,
@@ -67,6 +94,14 @@ class OfflineGameEngine(
                     preferredColor,
                 )
 
+        val humanName =
+            profileStore
+                .snapshot()
+                .displayName
+                .ifBlank {
+                    "Player 1"
+                }
+
         val players =
             (
                 0 until
@@ -74,19 +109,42 @@ class OfflineGameEngine(
                 )
                 .map {
                         seat ->
+                    val isCpu =
+                        computerMode &&
+                            seat >
+                            0
                     LocalPlayer(
                         playerId =
-                            "offline-player-" +
-                                (
-                                    seat +
-                                        1
-                                    ),
+                            if (isCpu) {
+                                "cpu-player-" +
+                                    (
+                                        seat +
+                                            1
+                                        )
+                            } else {
+                                "offline-player-" +
+                                    (
+                                        seat +
+                                            1
+                                        )
+                            },
                         displayName =
-                            "Player " +
-                                (
-                                    seat +
-                                        1
-                                    ),
+                            when {
+                                seat ==
+                                    0 ->
+                                    humanName
+
+                                isCpu ->
+                                    "CPU " +
+                                        seat
+
+                                else ->
+                                    "Player " +
+                                        (
+                                            seat +
+                                                1
+                                            )
+                            },
                         color =
                             colorOrder[
                                 seat
@@ -555,7 +613,13 @@ class OfflineGameEngine(
                         mode =
                             ProfileGameMode.CLASSIC,
                         source =
-                            ProfileMatchSource.LOCAL,
+                            if (
+                                computerMode
+                            ) {
+                                ProfileMatchSource.COMPUTER
+                            } else {
+                                ProfileMatchSource.LOCAL
+                            },
                         won =
                             player.playerId ==
                                 current.players
@@ -1573,6 +1637,8 @@ class OfflineGameEngine(
     private companion object {
         const val PREFS_NAME =
             "ludoproof_offline_game"
+        const val PREFS_NAME_COMPUTER =
+            "ludoproof_computer_game"
         const val KEY_STATE =
             "state"
         const val HOME_POSITION =

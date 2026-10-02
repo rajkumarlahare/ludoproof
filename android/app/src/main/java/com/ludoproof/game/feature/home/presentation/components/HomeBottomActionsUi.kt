@@ -8,6 +8,7 @@ import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import com.ludoproof.game.HomeActivity
+import com.ludoproof.game.ui.dialogs.showSettingsDialog
 
 internal fun HomeActivity.homeBottomActions():
     LinearLayout =
@@ -45,7 +46,9 @@ internal fun HomeActivity.homeBottomActions():
                 description =
                     "Settings",
             ) {
-                // Settings logic will be connected later.
+                showSettingsDialog(
+                    this@homeBottomActions,
+                )
             },
             bottomActionParams(),
         )
