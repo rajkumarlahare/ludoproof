@@ -15,8 +15,9 @@ export { MatchRoom } from "./match-room.js";
 export { ApiGate } from "./api-gate.js";
 export { LeaderboardRoom } from "./leaderboard-room.js";
 export { MatchmakerQueue } from "./matchmaker-queue.js";
+export { FriendDirectory } from "./friend-directory.js";
 
-const RELEASE_PHASE = "phase3-matchmaking";
+const RELEASE_PHASE = "phase4-friends";
 const MAX_BODY_BYTES = 8 * 1024;
 const RATE_WINDOW_MS = 60 * 1000;
 const RATE_POLICIES = Object.freeze({
@@ -26,6 +27,7 @@ const RATE_POLICIES = Object.freeze({
   mutation: 90,
   leaderboard: 60,
   matchmaking: 90,
+  friends: 120,
 });
 
 export default {
@@ -66,7 +68,8 @@ export default {
           checks.matchStoreConfigured &&
           checks.rateGateConfigured &&
           checks.leaderboardConfigured &&
-          checks.matchmakerConfigured;
+          checks.matchmakerConfigured &&
+          checks.friendsConfigured;
         const entronexReachable =
           configured
             ? await probeEntroNex(env)
@@ -136,6 +139,82 @@ export default {
               },
             ),
           );
+        return withSecurityHeaders(
+          response,
+        );
+      }
+
+      const friendRoute =
+        url.pathname.match(
+          /^\/api\/friends\/(register|snapshot|heartbeat|request|request\/respond|remove|invite|invite\/respond)$/,
+        );
+      if (friendRoute) {
+        const action =
+          friendRoute[1];
+        const isSnapshot =
+          action ===
+          "snapshot";
+        requireMethod(
+          request,
+          isSnapshot
+            ? "GET"
+            : "POST",
+        );
+
+        await enforceRateLimit(
+          env,
+          request,
+          "friends:" +
+            action,
+          RATE_POLICIES.friends,
+        );
+
+        const headers =
+          new Headers();
+        const authorization =
+          request.headers.get(
+            "authorization",
+          );
+        if (authorization) {
+          headers.set(
+            "authorization",
+            authorization,
+          );
+        }
+        if (!isSnapshot) {
+          headers.set(
+            "content-type",
+            "application/json",
+          );
+        }
+
+        const target =
+          friends(
+            env,
+          );
+        const response =
+          await target.fetch(
+            new Request(
+              "https://friends/" +
+                action,
+              {
+                method:
+                  isSnapshot
+                    ? "GET"
+                    : "POST",
+                headers,
+                body:
+                  isSnapshot
+                    ? undefined
+                    : JSON.stringify(
+                        await readJsonRequest(
+                          request,
+                        ),
+                      ),
+              },
+            ),
+          );
+
         return withSecurityHeaders(
           response,
         );
@@ -493,6 +572,27 @@ function room(env, matchId) {
   return env.LUDOPROOF_MATCHES.get(id);
 }
 
+function friends(env) {
+  if (
+    !env.LUDOPROOF_FRIENDS
+  ) {
+    throw httpError(
+      503,
+      "FRIENDS_NOT_CONFIGURED",
+      "friend directory is not configured",
+    );
+  }
+
+  const id =
+    env.LUDOPROOF_FRIENDS
+      .idFromName(
+        "GLOBAL:V1",
+      );
+  return env
+    .LUDOPROOF_FRIENDS
+    .get(id);
+}
+
 function matchmaker(
   env,
   playerCount,
@@ -627,6 +727,8 @@ function configurationChecks(env) {
       Boolean(env.LUDOPROOF_LEADERBOARD),
     matchmakerConfigured:
       Boolean(env.LUDOPROOF_MATCHMAKER),
+    friendsConfigured:
+      Boolean(env.LUDOPROOF_FRIENDS),
     sessionKeyConfigured:
       hasSessionKey(env),
   };
