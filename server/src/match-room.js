@@ -81,6 +81,9 @@ export class MatchRoom {
       if (request.method === "GET" && url.pathname === "/state") {
         return await this.#mutate(() => this.#state(request));
       }
+      if (request.method === "GET" && url.pathname === "/events") {
+        return await this.#mutate(() => this.#events(request));
+      }
       if (request.method === "POST" && url.pathname === "/start") {
         return await this.#mutate(() => this.#start(request));
       }
@@ -156,6 +159,57 @@ export class MatchRoom {
         idleExpiresAt,
       ),
     );
+    this.#broadcastStateChanged(
+      state,
+    );
+  }
+
+  #broadcastStateChanged(
+    state,
+  ) {
+    if (
+      typeof this.ctx
+        .getWebSockets !==
+      "function"
+    ) {
+      return;
+    }
+
+    const payload =
+      JSON.stringify({
+        type:
+          "STATE_CHANGED",
+        matchId:
+          state.matchId,
+        revision:
+          state.revision,
+        status:
+          state.status,
+        playerCount:
+          state.players
+            ?.length ??
+          0,
+      });
+
+    for (
+      const socket of
+        this.ctx.getWebSockets()
+    ) {
+      try {
+        socket.send(
+          payload,
+        );
+      } catch {
+        try {
+          socket.close(
+            1011,
+            "state sync failed",
+          );
+        } catch {
+          // Socket is already gone.
+        }
+      }
+    }
   }
 
   #nextAlarmAt(state, idleExpiresAt) {
@@ -1065,6 +1119,148 @@ export class MatchRoom {
     assertLocalProofValid(proof);
     verifyProofAttestation(proof, this.env);
     return proof;
+  }
+
+  async #events(
+    request,
+  ) {
+    const upgrade =
+      request.headers
+        .get(
+          "upgrade",
+        );
+    if (
+      upgrade
+        ?.toLowerCase() !==
+      "websocket"
+    ) {
+      throw httpError(
+        426,
+        "WEBSOCKET_REQUIRED",
+        "realtime events require a WebSocket upgrade",
+      );
+    }
+
+    const state =
+      await this.#requireState();
+    const player =
+      await this.#authorize(
+        state,
+        request,
+      );
+
+    if (
+      typeof WebSocketPair ===
+        "undefined" ||
+      typeof this.ctx
+        .acceptWebSocket !==
+        "function"
+    ) {
+      throw httpError(
+        503,
+        "REALTIME_UNAVAILABLE",
+        "realtime events are unavailable",
+      );
+    }
+
+    const pair =
+      new WebSocketPair();
+    const client =
+      pair[0];
+    const server =
+      pair[1];
+
+    this.ctx.acceptWebSocket(
+      server,
+      [
+        "player:" +
+          player.playerId,
+      ],
+    );
+
+    server.send(
+      JSON.stringify({
+        type:
+          "SYNC",
+        matchId:
+          state.matchId,
+        revision:
+          state.revision,
+        status:
+          state.status,
+        playerCount:
+          state.players
+            .length,
+      }),
+    );
+
+    return new Response(
+      null,
+      {
+        status:
+          101,
+        webSocket:
+          client,
+      },
+    );
+  }
+
+  async webSocketMessage(
+    socket,
+    message,
+  ) {
+    if (
+      typeof message !==
+      "string"
+    ) {
+      return;
+    }
+
+    if (
+      message ===
+      "ping"
+    ) {
+      try {
+        socket.send(
+          JSON.stringify({
+            type:
+              "PONG",
+            at:
+              Date.now(),
+          }),
+        );
+      } catch {
+        // Hibernated socket may already be closing.
+      }
+    }
+  }
+
+  async webSocketClose(
+    socket,
+    code,
+    reason,
+  ) {
+    try {
+      socket.close(
+        code,
+        reason,
+      );
+    } catch {
+      // Socket is already closed.
+    }
+  }
+
+  async webSocketError(
+    socket,
+  ) {
+    try {
+      socket.close(
+        1011,
+        "realtime socket error",
+      );
+    } catch {
+      // Socket is already closed.
+    }
   }
 
   async #authorize(state, request) {
