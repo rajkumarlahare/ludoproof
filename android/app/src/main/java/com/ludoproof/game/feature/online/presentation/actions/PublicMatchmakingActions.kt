@@ -451,6 +451,22 @@ internal fun MainActivity.setPublicSearchUi(
         } else {
             View.GONE
         }
+    matchmakingSlotsText.visibility =
+        if (
+            searching
+        ) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
+    matchmakingTimerText.visibility =
+        if (
+            searching
+        ) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
 
     if (
         searching
@@ -460,6 +476,83 @@ internal fun MainActivity.setPublicSearchUi(
                 queuedPlayers +
                 "/" +
                 targetPlayerCount
+
+        matchmakingSlotsText.text =
+            buildString {
+                for (
+                    seat in
+                    1..targetPlayerCount
+                ) {
+                    if (
+                        seat >
+                        1
+                    ) {
+                        append(
+                            "\n",
+                        )
+                    }
+
+                    if (
+                        seat ==
+                        1
+                    ) {
+                        append(
+                            "YOU   •   READY ✓",
+                        )
+                    } else {
+                        append(
+                            "PLAYER ",
+                        )
+                        append(
+                            seat,
+                        )
+                        append(
+                            "   •   ",
+                        )
+                        append(
+                            if (
+                                seat <=
+                                queuedPlayers
+                            ) {
+                                "FOUND ✓"
+                            } else {
+                                "SEARCHING…"
+                            },
+                        )
+                    }
+                }
+            }
+
+        val startedAt =
+            publicMatchmakingStore
+                .load()
+                ?.startedAt
+                ?: System.currentTimeMillis()
+        val elapsedSeconds =
+            (
+                (
+                    System.currentTimeMillis() -
+                        startedAt
+                    ) /
+                    1_000L
+                )
+                .coerceAtLeast(
+                    0L,
+                )
+        val minutes =
+            elapsedSeconds /
+                60L
+        val seconds =
+            elapsedSeconds %
+                60L
+        matchmakingTimerText.text =
+            "SEARCH  " +
+                String.format(
+                    java.util.Locale.US,
+                    "%02d:%02d",
+                    minutes,
+                    seconds,
+                )
     }
 
     val interactive =
