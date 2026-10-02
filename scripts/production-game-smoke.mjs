@@ -305,6 +305,9 @@ if (
   );
 }
 
+const friendsSmoke =
+  await verifyFriendsFlow();
+
 console.log(
   JSON.stringify(
     {
@@ -318,15 +321,421 @@ console.log(
       ruleset:
         state?.rulesetId ??
         null,
+      friends:
+        friendsSmoke,
     },
   ),
 );
+
+async function verifyFriendsFlow() {
+  const hostIdentity =
+    await api(
+      "POST",
+      "/api/friends/register",
+      {
+        body: {
+          displayName:
+            "Production Smoke Friend A",
+          clientRequestId:
+            "11111111-1111-4111-8111-111111111111",
+        },
+      },
+    );
+  const guestIdentity =
+    await api(
+      "POST",
+      "/api/friends/register",
+      {
+        body: {
+          displayName:
+            "Production Smoke Friend B",
+          clientRequestId:
+            "22222222-2222-4222-8222-222222222222",
+        },
+      },
+    );
+
+  const hostFriendId =
+    requireText(
+      hostIdentity.friendId,
+      "friends.host.friendId",
+    );
+  const guestFriendId =
+    requireText(
+      guestIdentity.friendId,
+      "friends.guest.friendId",
+    );
+  const hostFriendToken =
+    requireText(
+      hostIdentity.friendToken,
+      "friends.host.friendToken",
+    );
+  const guestFriendToken =
+    requireText(
+      guestIdentity.friendToken,
+      "friends.guest.friendToken",
+    );
+
+  if (
+    !/^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/
+      .test(
+        hostFriendId,
+      ) ||
+    !/^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/
+      .test(
+        guestFriendId,
+      )
+  ) {
+    throw new Error(
+      "Production friends smoke returned an invalid Friend ID.",
+    );
+  }
+
+  try {
+    await api(
+      "POST",
+      "/api/friends/remove",
+      {
+        token:
+          hostFriendToken,
+        body: {
+          friendId:
+            guestFriendId,
+        },
+      },
+    );
+
+    const sentRequest =
+      await api(
+        "POST",
+        "/api/friends/request",
+        {
+          token:
+            hostFriendToken,
+          body: {
+            friendId:
+              guestFriendId,
+          },
+        },
+      );
+
+    if (
+      sentRequest.status !==
+        "PENDING" &&
+      sentRequest.status !==
+        "INCOMING_PENDING"
+    ) {
+      throw new Error(
+        "Production friends smoke could not create a pending friend request.",
+      );
+    }
+
+    const guestBeforeAccept =
+      await api(
+        "GET",
+        "/api/friends/snapshot",
+        {
+          token:
+            guestFriendToken,
+        },
+      );
+
+    const incoming =
+      Array.isArray(
+        guestBeforeAccept
+          ?.incomingRequests,
+      )
+        ? guestBeforeAccept
+            .incomingRequests
+        : [];
+
+    const pendingRequest =
+      incoming.find(
+        (entry) =>
+          entry?.friend
+            ?.friendId ===
+          hostFriendId,
+      );
+
+    if (
+      !pendingRequest
+        ?.requestId
+    ) {
+      throw new Error(
+        "Production friends smoke did not expose the incoming friend request.",
+      );
+    }
+
+    const accepted =
+      await api(
+        "POST",
+        "/api/friends/request/respond",
+        {
+          token:
+            guestFriendToken,
+          body: {
+            requestId:
+              pendingRequest
+                .requestId,
+            accept:
+              true,
+          },
+        },
+      );
+
+    if (
+      accepted.status !==
+      "ACCEPTED"
+    ) {
+      throw new Error(
+        "Production friends smoke did not accept the friend request.",
+      );
+    }
+
+    const hostSnapshot =
+      await api(
+        "GET",
+        "/api/friends/snapshot",
+        {
+          token:
+            hostFriendToken,
+        },
+      );
+
+    const hostFriends =
+      Array.isArray(
+        hostSnapshot?.friends,
+      )
+        ? hostSnapshot
+            .friends
+        : [];
+
+    if (
+      !hostFriends.some(
+        (friend) =>
+          friend?.friendId ===
+          guestFriendId,
+      )
+    ) {
+      throw new Error(
+        "Production friends smoke did not persist the friendship.",
+      );
+    }
+
+    const room =
+      await api(
+        "POST",
+        "/api/matches",
+        {
+          body: {
+            displayName:
+              "Production Smoke Friend A",
+            clientRequestId:
+              randomUUID(),
+            targetPlayerCount:
+              2,
+            matchMode:
+              "FRIENDS",
+          },
+        },
+      );
+
+    const friendMatchId =
+      requireText(
+        room.matchId,
+        "friends.matchId",
+      );
+    const hostRoomToken =
+      requireText(
+        room.playerToken,
+        "friends.hostRoomToken",
+      );
+
+    const invitation =
+      await api(
+        "POST",
+        "/api/friends/invite",
+        {
+          token:
+            hostFriendToken,
+          roomToken:
+            hostRoomToken,
+          body: {
+            friendId:
+              guestFriendId,
+            matchId:
+              friendMatchId,
+            clientRequestId:
+              randomUUID(),
+          },
+        },
+      );
+
+    const inviteId =
+      requireText(
+        invitation.inviteId,
+        "friends.inviteId",
+      );
+
+    const guestWithInvite =
+      await api(
+        "GET",
+        "/api/friends/snapshot",
+        {
+          token:
+            guestFriendToken,
+        },
+      );
+
+    const invites =
+      Array.isArray(
+        guestWithInvite?.invites,
+      )
+        ? guestWithInvite
+            .invites
+        : [];
+
+    if (
+      !invites.some(
+        (invite) =>
+          invite?.inviteId ===
+            inviteId &&
+          invite?.matchId ===
+            friendMatchId,
+      )
+    ) {
+      throw new Error(
+        "Production friends smoke did not expose the private-room invite.",
+      );
+    }
+
+    const acceptedInvite =
+      await api(
+        "POST",
+        "/api/friends/invite/respond",
+        {
+          token:
+            guestFriendToken,
+          body: {
+            inviteId,
+            accept:
+              true,
+          },
+        },
+      );
+
+    if (
+      acceptedInvite.status !==
+        "ACCEPTED" ||
+      acceptedInvite.matchId !==
+        friendMatchId
+    ) {
+      throw new Error(
+        "Production friends smoke did not accept the private-room invite.",
+      );
+    }
+
+    const joined =
+      await api(
+        "POST",
+        "/api/matches/" +
+          encodeURIComponent(
+            friendMatchId,
+          ) +
+          "/join",
+        {
+          body: {
+            displayName:
+              "Production Smoke Friend B",
+            clientRequestId:
+              randomUUID(),
+          },
+        },
+      );
+
+    requireText(
+      joined.playerToken,
+      "friends.guestRoomToken",
+    );
+
+    const startedFriendRoom =
+      await api(
+        "POST",
+        "/api/matches/" +
+          encodeURIComponent(
+            friendMatchId,
+          ) +
+          "/start",
+        {
+          token:
+            hostRoomToken,
+          body: {},
+        },
+      );
+
+    const friendState =
+      startedFriendRoom
+        ?.state;
+
+    if (
+      friendState?.status !==
+        "ACTIVE" ||
+      friendState?.matchMode !==
+        "FRIENDS" ||
+      friendState?.targetPlayerCount !==
+        2 ||
+      !Array.isArray(
+        friendState?.players,
+      ) ||
+      friendState.players.length !==
+        2
+    ) {
+      throw new Error(
+        "Production friends smoke private room did not start with the locked two-player contract.",
+      );
+    }
+
+    return {
+      ok: true,
+      hostFriendId,
+      guestFriendId,
+      matchId:
+        friendMatchId,
+      players:
+        friendState
+          .players
+          .length,
+      matchMode:
+        friendState
+          .matchMode,
+      targetPlayerCount:
+        friendState
+          .targetPlayerCount,
+    };
+  } finally {
+    await api(
+      "POST",
+      "/api/friends/remove",
+      {
+        token:
+          hostFriendToken,
+        body: {
+          friendId:
+            guestFriendId,
+        },
+      },
+    ).catch(
+      () => {},
+    );
+  }
+}
 
 async function api(
   method,
   path,
   {
     token = null,
+    roomToken = null,
     body = null,
   } = {},
 ) {
@@ -340,6 +749,13 @@ async function api(
   if (token) {
     headers.authorization =
       "Bearer " + token;
+  }
+
+  if (roomToken) {
+    headers[
+      "x-ludoproof-room-token"
+    ] =
+      roomToken;
   }
 
   let payload;

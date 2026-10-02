@@ -7,6 +7,7 @@ on:
     paths:
       - 'server/**'
       - 'scripts/cloudflare-deploy-preflight.mjs'
+      - 'scripts/production-game-smoke.mjs'
       - '.github/workflows/deploy-cloudflare.yml'
 
 permissions:
