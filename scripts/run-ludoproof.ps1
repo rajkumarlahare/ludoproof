@@ -7,31 +7,179 @@ $packageName = "com.ludoproof.game"
 $activityName = "com.ludoproof.game.HomeActivity"
 $gradleVersion = "8.9"
 
-function Resolve-Adb {
-    $command = Get-Command adb -ErrorAction SilentlyContinue
+function Test-AndroidSdkRoot(
+    [string]$sdkRoot
+) {
+    if ([string]::IsNullOrWhiteSpace($sdkRoot)) {
+        return $false
+    }
+
+    if (!(Test-Path $sdkRoot)) {
+        return $false
+    }
+
+    if (
+        $sdkRoot -match "Genymobile\.scrcpy" -or
+        $sdkRoot -match "Microsoft\.WinGet\\Packages\\Genymobile\.scrcpy"
+    ) {
+        return $false
+    }
+
+    $markers = @(
+        "platform-tools",
+        "platforms",
+        "build-tools",
+        "cmdline-tools"
+    )
+
+    foreach ($marker in $markers) {
+        if (Test-Path (Join-Path $sdkRoot $marker)) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Read-LocalPropertiesSdkRoot {
+    $localProperties =
+        Join-Path $androidDir "local.properties"
+
+    if (!(Test-Path $localProperties)) {
+        return $null
+    }
+
+    foreach ($line in Get-Content -Path $localProperties) {
+        if ($line -match '^\s*sdk\.dir\s*=\s*(.+?)\s*$') {
+            $value =
+                $Matches[1]
+                    .Replace("\\:", ":")
+                    .Replace("\\\\", "\")
+                    .Replace("/", "\")
+            return $value
+        }
+    }
+
+    return $null
+}
+
+function Resolve-AndroidSdkRoot {
+    $candidates = @()
+
+    if ($env:ANDROID_SDK_ROOT) {
+        $candidates += $env:ANDROID_SDK_ROOT
+    }
+    if ($env:ANDROID_HOME) {
+        $candidates += $env:ANDROID_HOME
+    }
+
+    $localPropertiesSdk =
+        Read-LocalPropertiesSdkRoot
+    if ($localPropertiesSdk) {
+        $candidates +=
+            $localPropertiesSdk
+    }
+
+    if ($env:LOCALAPPDATA) {
+        $candidates +=
+            (Join-Path $env:LOCALAPPDATA "Android\Sdk")
+    }
+
+    if ($env:USERPROFILE) {
+        $candidates +=
+            (Join-Path $env:USERPROFILE "AppData\Local\Android\Sdk")
+    }
+
+    $candidates +=
+        "C:\Android\Sdk"
+
+    foreach ($candidate in $candidates | Select-Object -Unique) {
+        if (Test-AndroidSdkRoot $candidate) {
+            return (
+                Resolve-Path $candidate
+            ).Path
+        }
+    }
+
+    throw @"
+Android SDK not found.
+
+Install Android Studio / Android SDK, or set ANDROID_SDK_ROOT.
+Expected default Windows location:
+$env:LOCALAPPDATA\Android\Sdk
+
+Important: scrcpy's bundled adb is not a complete Android SDK and cannot be used for Gradle builds.
+"@
+}
+
+function Resolve-Adb(
+    [string]$sdkRoot
+) {
+    if (
+        ![string]::IsNullOrWhiteSpace($sdkRoot)
+    ) {
+        $sdkAdb =
+            Join-Path $sdkRoot "platform-tools\adb.exe"
+        if (Test-Path $sdkAdb) {
+            return $sdkAdb
+        }
+    }
+
+    $command =
+        Get-Command adb.exe -ErrorAction SilentlyContinue
     if ($command) {
         return $command.Source
     }
 
-    $sdkRoots = @()
-    if ($env:ANDROID_SDK_ROOT) {
-        $sdkRoots += $env:ANDROID_SDK_ROOT
-    }
-    if ($env:ANDROID_HOME) {
-        $sdkRoots += $env:ANDROID_HOME
-    }
-    if ($env:LOCALAPPDATA) {
-        $sdkRoots += (Join-Path $env:LOCALAPPDATA "Android\Sdk")
-    }
+    throw "ADB not found. Install Android SDK Platform-Tools or add adb.exe to PATH."
+}
 
-    foreach ($sdkRoot in $sdkRoots | Select-Object -Unique) {
-        $candidate = Join-Path $sdkRoot "platform-tools\adb.exe"
-        if (Test-Path $candidate) {
-            return $candidate
+function Ensure-AndroidSdkProperties(
+    [string]$sdkRoot
+) {
+    $localProperties =
+        Join-Path $androidDir "local.properties"
+    $portableSdkPath =
+        $sdkRoot.Replace("\", "/")
+    $desiredLine =
+        "sdk.dir=$portableSdkPath"
+
+    $currentSdk =
+        Read-LocalPropertiesSdkRoot
+
+    if (
+        !$currentSdk -or
+        !(
+            [System.StringComparer]::OrdinalIgnoreCase.Equals(
+                (
+                    [System.IO.Path]::GetFullPath(
+                        $currentSdk
+                    )
+                ).TrimEnd("\"),
+                (
+                    [System.IO.Path]::GetFullPath(
+                        $sdkRoot
+                    )
+                ).TrimEnd("\")
+            )
+        )
+    ) {
+        Set-Content -Encoding ASCII -Path $localProperties -Value $desiredLine
+        if ($currentSdk) {
+            Write-Host "Corrected android/local.properties SDK:"
+            Write-Host "  old: $currentSdk"
+            Write-Host "  new: $sdkRoot"
+        } else {
+            Write-Host "Created android/local.properties for $sdkRoot"
         }
     }
 
-    throw "ADB not found. Install Android SDK Platform-Tools or set ANDROID_SDK_ROOT."
+    $env:ANDROID_SDK_ROOT =
+        $sdkRoot
+    $env:ANDROID_HOME =
+        $sdkRoot
+
+    Write-Host "Using Android SDK from $sdkRoot"
 }
 
 function Download-GradleDistribution(
@@ -364,22 +512,11 @@ function Use-Java17 {
     & $javaExe -version
 }
 
-function Ensure-AndroidSdkProperties([string]$adbPath) {
-    $platformToolsDir = Split-Path -Parent $adbPath
-    $sdkRoot = Split-Path -Parent $platformToolsDir
-    $localProperties = Join-Path $androidDir "local.properties"
-
-    if (!(Test-Path $localProperties)) {
-        $portableSdkPath = $sdkRoot.Replace("\", "/")
-        "sdk.dir=$portableSdkPath" | Set-Content -Encoding ASCII -Path $localProperties
-        Write-Host "Created android/local.properties for $sdkRoot"
-    }
-}
-
 Use-Java17
 
-$adb = Resolve-Adb
-Ensure-AndroidSdkProperties $adb
+$sdkRoot = Resolve-AndroidSdkRoot
+Ensure-AndroidSdkProperties $sdkRoot
+$adb = Resolve-Adb $sdkRoot
 
 $deviceLines = @(
     (& $adb devices) |
