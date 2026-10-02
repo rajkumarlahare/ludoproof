@@ -18,7 +18,9 @@ import org.json.JSONObject
 import java.util.concurrent.Executors
 import com.ludoproof.game.*
 import com.ludoproof.game.ui.online.*
+import com.ludoproof.game.feature.leaderboard.data.local.LeaderboardCredential
 import com.ludoproof.game.feature.leaderboard.data.local.LeaderboardIdentityStore
+import com.ludoproof.game.feature.leaderboard.data.remote.LeaderboardApi
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
 
 internal fun MainActivity.createMatch() {
@@ -39,13 +41,6 @@ internal fun MainActivity.createMatch() {
             displayName,
         )
     }
-    val leaderboardProfileId =
-        runCatching {
-            LeaderboardIdentityStore(
-                this,
-            ).profileId()
-        }.getOrNull()
-
     val operationKey =
         "create:" + displayName
     val requestId =
@@ -65,13 +60,15 @@ internal fun MainActivity.createMatch() {
 
     runNetwork(
         action = {
+            val credential =
+                ensureLeaderboardCredential()
             api.createMatch(
+                profileToken =
+                    credential.profileToken,
                 displayName =
                     displayName,
                 clientRequestId =
                     requestId,
-                profileId =
-                    leaderboardProfileId,
             )
         },
         onSuccess = {
@@ -104,13 +101,6 @@ internal fun MainActivity.joinMatch() {
             displayName,
         )
     }
-    val leaderboardProfileId =
-        runCatching {
-            LeaderboardIdentityStore(
-                this,
-            ).profileId()
-        }.getOrNull()
-
     val code =
         matchInput.text
             .toString()
@@ -150,6 +140,8 @@ internal fun MainActivity.joinMatch() {
 
     runNetwork(
         action = {
+            val credential =
+                ensureLeaderboardCredential()
             api.joinMatch(
                 matchId =
                     code,
@@ -157,8 +149,8 @@ internal fun MainActivity.joinMatch() {
                     displayName,
                 clientRequestId =
                     requestId,
-                profileId =
-                    leaderboardProfileId,
+                profileToken =
+                    credential.profileToken,
             )
         },
         onSuccess = {
@@ -289,6 +281,44 @@ internal fun MainActivity.moveToken(
             },
         )
     }
+}
+
+internal fun MainActivity.ensureLeaderboardCredential():
+    LeaderboardCredential {
+    val store =
+        LeaderboardIdentityStore(
+            this,
+        )
+    store.load()
+        ?.let {
+            return it
+        }
+
+    val requestId =
+        store.registrationRequestId()
+    val response =
+        LeaderboardApi()
+            .registerProfile(
+                clientRequestId =
+                    requestId,
+            )
+    val credential =
+        LeaderboardCredential(
+            profileId =
+                response.getString(
+                    "profileId",
+                ),
+            profileToken =
+                response.getString(
+                    "profileToken",
+                ),
+            registrationRequestId =
+                requestId,
+        )
+    store.save(
+        credential,
+    )
+    return credential
 }
 
 internal fun MainActivity.captureSession(

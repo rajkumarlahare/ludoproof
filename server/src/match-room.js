@@ -32,6 +32,7 @@ import {
   requireDigest,
   sha256Hex,
   verifyFriendRoomJoinToken,
+  verifyLeaderboardProfileAssertion,
 } from "./crypto.js";
 import {
   fairnessSummary,
@@ -251,10 +252,6 @@ export class MatchRoom {
       normalizeDisplayName(
         body?.displayName,
       );
-    const profileId =
-      optionalLeaderboardProfileId(
-        body?.profileId,
-      );
     const matchId =
       String(
         body?.matchId ?? "",
@@ -291,6 +288,16 @@ export class MatchRoom {
         "invalid match ID",
       );
     }
+
+    const profileId =
+      await this.#resolveLeaderboardProfile(
+        request,
+        {
+          matchId,
+          clientRequestId,
+          matchMode,
+        },
+      );
 
     const identity =
       await derivePlayerIdentity(
@@ -405,18 +412,20 @@ export class MatchRoom {
       normalizeDisplayName(
         body?.displayName,
       );
-    const requestedProfileId =
-      optionalLeaderboardProfileId(
-        body?.profileId,
-      );
-    const profileId =
-      state.matchMode ===
-        "FRIENDS"
-        ? null
-        : requestedProfileId;
     const clientRequestId =
       requireClientRequestId(
         body?.clientRequestId,
+      );
+    const profileId =
+      await this.#resolveLeaderboardProfile(
+        request,
+        {
+          matchId:
+            state.matchId,
+          clientRequestId,
+          matchMode:
+            state.matchMode,
+        },
       );
     let friendJoin =
       null;
@@ -1452,6 +1461,137 @@ export class MatchRoom {
     } catch {
       // Socket is already closed.
     }
+  }
+
+  async #resolveLeaderboardProfile(
+    request,
+    {
+      matchId,
+      clientRequestId,
+      matchMode,
+    },
+  ) {
+    if (
+      matchMode ===
+        "FRIENDS"
+    ) {
+      return null;
+    }
+
+    const assertion =
+      request.headers.get(
+        "x-ludoproof-profile-assertion",
+      );
+    if (
+      assertion
+    ) {
+      const claims =
+        await verifyLeaderboardProfileAssertion(
+          this.env,
+          assertion,
+        );
+      if (
+        claims.matchId !==
+          matchId ||
+        claims.clientRequestId !==
+          clientRequestId
+      ) {
+        throw httpError(
+          403,
+          "PROFILE_ASSERTION_MISMATCH",
+          "leaderboard profile assertion is not valid for this match request",
+        );
+      }
+      return claims.profileId;
+    }
+
+    const authorization =
+      request.headers.get(
+        "authorization",
+      );
+    if (
+      typeof authorization !==
+        "string" ||
+      !/^Bearer\s+lpp_[A-Za-z0-9_-]{32,}$/i
+        .test(
+          authorization,
+        )
+    ) {
+      throw httpError(
+        401,
+        "PROFILE_AUTH_REQUIRED",
+        "authenticated leaderboard profile is required for online play",
+      );
+    }
+    if (
+      !this.env
+        .LUDOPROOF_LEADERBOARD
+    ) {
+      throw httpError(
+        503,
+        "LEADERBOARD_NOT_CONFIGURED",
+        "leaderboard storage is not configured",
+      );
+    }
+
+    const id =
+      this.env
+        .LUDOPROOF_LEADERBOARD
+        .idFromName(
+          "global",
+        );
+    const target =
+      this.env
+        .LUDOPROOF_LEADERBOARD
+        .get(id);
+    const response =
+      await target.fetch(
+        new Request(
+          "https://leaderboard/profile/identity",
+          {
+            method:
+              "GET",
+            headers: {
+              authorization,
+            },
+          },
+        ),
+      );
+
+    let value;
+    try {
+      value =
+        await response.json();
+    } catch {
+      throw httpError(
+        503,
+        "PROFILE_AUTH_BAD_RESPONSE",
+        "leaderboard profile authorization returned invalid data",
+      );
+    }
+
+    const profileId =
+      normalizeLeaderboardProfileId(
+        value?.profileId,
+      );
+    if (
+      !response.ok ||
+      value?.ok !== true ||
+      profileId == null
+    ) {
+      throw httpError(
+        response.status ===
+          401
+          ? 401
+          : 403,
+        value?.error ??
+          "PROFILE_AUTH_INVALID",
+        value?.message ??
+          "leaderboard profile credential is invalid",
+      );
+    }
+
+    return profileId;
   }
 
   async #assertFriendHost(

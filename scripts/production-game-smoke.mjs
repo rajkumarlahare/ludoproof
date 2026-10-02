@@ -13,11 +13,100 @@ const baseUrl =
 const ALGORITHM =
   "entronex-v4-dual-commit-hkdf-sha256-context-bound";
 
+let profileBypassBlocked =
+  false;
+try {
+  await api(
+    "POST",
+    "/api/matches",
+    {
+      body: {
+        displayName:
+          "Profile Bypass",
+        clientRequestId:
+          randomUUID(),
+        profileId:
+          "550e8400-e29b-41d4-a716-446655440000",
+      },
+    },
+  );
+} catch (error) {
+  profileBypassBlocked =
+    String(
+      error?.message ??
+        error,
+    )
+      .includes(
+        "PROFILE_AUTH_REQUIRED",
+      );
+}
+
+if (
+  !profileBypassBlocked
+) {
+  throw new Error(
+    "Production smoke allowed ranked play without an authenticated profile credential.",
+  );
+}
+
+const hostProfile =
+  await api(
+    "POST",
+    "/api/leaderboard/profile/register",
+    {
+      body: {
+        clientRequestId:
+          randomUUID(),
+      },
+    },
+  );
+const guestProfile =
+  await api(
+    "POST",
+    "/api/leaderboard/profile/register",
+    {
+      body: {
+        clientRequestId:
+          randomUUID(),
+      },
+    },
+  );
+
+const hostProfileToken =
+  requireText(
+    hostProfile.profileToken,
+    "hostProfile.profileToken",
+  );
+const guestProfileToken =
+  requireText(
+    guestProfile.profileToken,
+    "guestProfile.profileToken",
+  );
+requireText(
+  hostProfile.profileId,
+  "hostProfile.profileId",
+);
+requireText(
+  guestProfile.profileId,
+  "guestProfile.profileId",
+);
+
+await api(
+  "GET",
+  "/api/leaderboard?limit=5",
+  {
+    token:
+      hostProfileToken,
+  },
+);
+
 const host =
   await api(
     "POST",
     "/api/matches",
     {
+      token:
+        hostProfileToken,
       body: {
         displayName:
           "Production Smoke Host",
@@ -55,6 +144,8 @@ const guest =
       ) +
       "/join",
     {
+      token:
+        guestProfileToken,
       body: {
         displayName:
           "Production Smoke Guest",
@@ -312,6 +403,15 @@ console.log(
   JSON.stringify(
     {
       ok: true,
+      profileAuth:
+        {
+          bypassBlocked:
+            profileBypassBlocked,
+          hostProfileId:
+            hostProfile.profileId,
+          guestProfileId:
+            guestProfile.profileId,
+        },
       matchId,
       players: 2,
       verifiedRolls,

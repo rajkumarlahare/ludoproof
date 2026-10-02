@@ -6,7 +6,9 @@ import {
   expectedDigests,
 } from "../src/match-room.js";
 import {
+  deriveLeaderboardIdentity,
   issueFriendRoomJoinToken,
+  issueLeaderboardProfileAssertion,
   sha256Hex,
 } from "../src/crypto.js";
 import {
@@ -80,6 +82,7 @@ function roomRequest(path, {
   method = "GET",
   token = null,
   friendJoinToken = null,
+  profileAssertion = null,
   body = null,
 } = {}) {
   const headers = new Headers();
@@ -90,6 +93,12 @@ function roomRequest(path, {
     headers.set(
       "x-ludoproof-friend-join-token",
       friendJoinToken,
+    );
+  }
+  if (profileAssertion) {
+    headers.set(
+      "x-ludoproof-profile-assertion",
+      profileAssertion,
     );
   }
   if (body !== null) {
@@ -111,10 +120,30 @@ async function createMatch(
   matchId = "LPABCDEFGH",
   clientRequestId = crypto.randomUUID(),
 ) {
+  const profile =
+    await deriveLeaderboardIdentity(
+      room.env,
+      clientRequestId,
+    );
+  const profileAssertion =
+    await issueLeaderboardProfileAssertion(
+      room.env,
+      {
+        matchId,
+        profileId:
+          profile.profileId,
+        clientRequestId,
+        expiresAt:
+          Date.now() +
+          10 * 60 * 1000,
+      },
+    );
+
   const { response, body } = await json(
     await room.fetch(
       roomRequest("/create", {
         method: "POST",
+        profileAssertion,
         body: {
           matchId,
           displayName: "Alice",
@@ -132,10 +161,36 @@ async function joinMatch(
   displayName,
   clientRequestId = crypto.randomUUID(),
 ) {
+  const state =
+    await room.ctx.storage.get(
+      "match-state",
+    );
+  const matchId =
+    state.matchId;
+  const profile =
+    await deriveLeaderboardIdentity(
+      room.env,
+      clientRequestId,
+    );
+  const profileAssertion =
+    await issueLeaderboardProfileAssertion(
+      room.env,
+      {
+        matchId,
+        profileId:
+          profile.profileId,
+        clientRequestId,
+        expiresAt:
+          Date.now() +
+          10 * 60 * 1000,
+      },
+    );
+
   const { response, body } = await json(
     await room.fetch(
       roomRequest("/join", {
         method: "POST",
+        profileAssertion,
         body: {
           displayName,
           clientRequestId,
@@ -875,6 +930,151 @@ test(
 );
 
 test(
+  "ranked matches reject client profile spoofing and bind the authenticated profile",
+  { concurrency: false },
+  async () => {
+    const ctx =
+      makeContext();
+    const env =
+      makeEnv();
+    const authenticatedProfileId =
+      "550e8400-e29b-41d4-a716-446655440000";
+    const attackerProfileId =
+      "660e8400-e29b-41d4-a716-446655440000";
+    const profileToken =
+      "lpp_" +
+      "P".repeat(48);
+
+    env.LUDOPROOF_LEADERBOARD = {
+      idFromName(name) {
+        assert.equal(
+          name,
+          "global",
+        );
+        return name;
+      },
+      get() {
+        return {
+          async fetch(request) {
+            assert.equal(
+              new URL(
+                request.url,
+              ).pathname,
+              "/profile/identity",
+            );
+            if (
+              request.headers.get(
+                "authorization",
+              ) !==
+              "Bearer " +
+                profileToken
+            ) {
+              return Response.json(
+                {
+                  error:
+                    "PROFILE_AUTH_INVALID",
+                  message:
+                    "leaderboard profile credential is invalid",
+                },
+                {
+                  status:
+                    401,
+                },
+              );
+            }
+            return Response.json({
+              ok: true,
+              profileId:
+                authenticatedProfileId,
+            });
+          },
+        };
+      },
+    };
+
+    const room =
+      new MatchRoom(
+        ctx,
+        env,
+      );
+    const matchId =
+      "LPABCDEFGH";
+    const missingAuth =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/create",
+            {
+              method:
+                "POST",
+              body: {
+                matchId,
+                displayName:
+                  "Alice",
+                clientRequestId:
+                  crypto.randomUUID(),
+                profileId:
+                  attackerProfileId,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      missingAuth.response.status,
+      401,
+    );
+    assert.equal(
+      missingAuth.body.error,
+      "PROFILE_AUTH_REQUIRED",
+    );
+
+    const created =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/create",
+            {
+              method:
+                "POST",
+              token:
+                profileToken,
+              body: {
+                matchId,
+                displayName:
+                  "Alice",
+                clientRequestId:
+                  crypto.randomUUID(),
+                profileId:
+                  attackerProfileId,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      created.response.status,
+      201,
+    );
+
+    const stored =
+      await ctx.storage.get(
+        "match-state",
+      );
+    assert.equal(
+      stored.players[0]
+        .profileId,
+      authenticatedProfileId,
+    );
+    assert.notEqual(
+      stored.players[0]
+        .profileId,
+      attackerProfileId,
+    );
+  },
+);
+
+test(
   "player bearer auth rejects an invalid session token",
   { concurrency: false },
   async () => {
@@ -1370,6 +1570,26 @@ test(
     );
     const requestId =
       "11111111-1111-4111-8111-111111111111";
+    const profile =
+      await deriveLeaderboardIdentity(
+        env,
+        requestId,
+      );
+    const profileAssertion =
+      await issueLeaderboardProfileAssertion(
+        env,
+        {
+          matchId:
+            "LPABCDEFGH",
+          profileId:
+            profile.profileId,
+          clientRequestId:
+            requestId,
+          expiresAt:
+            Date.now() +
+            10 * 60 * 1000,
+        },
+      );
 
     const first =
       await json(
@@ -1378,6 +1598,7 @@ test(
             "/create",
             {
               method: "POST",
+              profileAssertion,
               body: {
                 matchId:
                   "LPABCDEFGH",
@@ -1397,6 +1618,7 @@ test(
             "/create",
             {
               method: "POST",
+              profileAssertion,
               body: {
                 matchId:
                   "LPABCDEFGH",
@@ -1413,10 +1635,16 @@ test(
     assert.equal(
       first.response.status,
       201,
+      JSON.stringify(
+        first.body,
+      ),
     );
     assert.equal(
       retry.response.status,
       200,
+      JSON.stringify(
+        retry.body,
+      ),
     );
     assert.equal(
       retry.body.replayed,
@@ -1451,6 +1679,26 @@ test(
 
     const requestId =
       "22222222-2222-4222-8222-222222222222";
+    const profile =
+      await deriveLeaderboardIdentity(
+        env,
+        requestId,
+      );
+    const profileAssertion =
+      await issueLeaderboardProfileAssertion(
+        env,
+        {
+          matchId:
+            "LPABCDEFGH",
+          profileId:
+            profile.profileId,
+          clientRequestId:
+            requestId,
+          expiresAt:
+            Date.now() +
+            10 * 60 * 1000,
+        },
+      );
     const first =
       await json(
         await room.fetch(
@@ -1458,6 +1706,7 @@ test(
             "/join",
             {
               method: "POST",
+              profileAssertion,
               body: {
                 displayName:
                   "Bob",
@@ -1475,6 +1724,7 @@ test(
             "/join",
             {
               method: "POST",
+              profileAssertion,
               body: {
                 displayName:
                   "Bob",

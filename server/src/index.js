@@ -17,7 +17,7 @@ export { LeaderboardRoom } from "./leaderboard-room.js";
 export { MatchmakerQueue } from "./matchmaker-queue.js";
 export { FriendDirectory } from "./friend-directory.js";
 
-const RELEASE_PHASE = "phase5-friend-security";
+const RELEASE_PHASE = "phase6-profile-identity";
 const MAX_BODY_BYTES = 8 * 1024;
 const RATE_WINDOW_MS = 60 * 1000;
 const RATE_POLICIES = Object.freeze({
@@ -92,6 +92,46 @@ export default {
       }
 
       if (
+        request.method === "POST" &&
+        url.pathname ===
+          "/api/leaderboard/profile/register"
+      ) {
+        await enforceRateLimit(
+          env,
+          request,
+          "leaderboard:profile-register",
+          RATE_POLICIES.leaderboard,
+        );
+
+        const target =
+          leaderboard(env);
+        const response =
+          await target.fetch(
+            new Request(
+              "https://leaderboard/profile/register",
+              {
+                method:
+                  "POST",
+                headers: {
+                  "content-type":
+                    "application/json",
+                },
+                body:
+                  JSON.stringify(
+                    await readJsonRequest(
+                      request,
+                    ),
+                  ),
+              },
+            ),
+          );
+
+        return withSecurityHeaders(
+          response,
+        );
+      }
+
+      if (
         request.method === "GET" &&
         url.pathname === "/api/leaderboard"
       ) {
@@ -112,10 +152,6 @@ export default {
           url.searchParams.get(
             "limit",
           );
-        const profileId =
-          url.searchParams.get(
-            "profileId",
-          );
 
         if (limit) {
           upstreamUrl.searchParams.set(
@@ -123,10 +159,19 @@ export default {
             limit,
           );
         }
-        if (profileId) {
-          upstreamUrl.searchParams.set(
-            "profileId",
-            profileId,
+
+        const headers =
+          new Headers();
+        const authorization =
+          request.headers.get(
+            "authorization",
+          );
+        if (
+          authorization
+        ) {
+          headers.set(
+            "authorization",
+            authorization,
           );
         }
 
@@ -136,6 +181,7 @@ export default {
               upstreamUrl,
               {
                 method: "GET",
+                headers,
               },
             ),
           );
@@ -275,10 +321,26 @@ export default {
               {
                 method:
                   "POST",
-                headers: {
-                  "content-type":
-                    "application/json",
-                },
+                headers: (() => {
+                  const headers =
+                    new Headers({
+                      "content-type":
+                        "application/json",
+                    });
+                  const authorization =
+                    request.headers.get(
+                      "authorization",
+                    );
+                  if (
+                    authorization
+                  ) {
+                    headers.set(
+                      "authorization",
+                      authorization,
+                    );
+                  }
+                  return headers;
+                })(),
                 body:
                   JSON.stringify(
                     body,

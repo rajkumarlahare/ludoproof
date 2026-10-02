@@ -182,6 +182,54 @@ export async function deriveFriendIdentity(
   };
 }
 
+export async function deriveLeaderboardIdentity(
+  env,
+  clientRequestId,
+) {
+  const requestId =
+    requireClientRequestId(
+      clientRequestId,
+    );
+  const sessionKey =
+    requireSessionKey(env);
+  const profileBytes =
+    await hmacSha256(
+      sessionKey,
+      "ludoproof:leaderboard-profile-id:v2:" +
+        requestId,
+    );
+  const uuidBytes =
+    profileBytes.slice(
+      0,
+      16,
+    );
+  uuidBytes[6] =
+    (uuidBytes[6] & 0x0f) |
+    0x40;
+  uuidBytes[8] =
+    (uuidBytes[8] & 0x3f) |
+    0x80;
+
+  const tokenBytes =
+    await hmacSha256(
+      sessionKey,
+      "ludoproof:leaderboard-profile-token:v1:" +
+        requestId,
+    );
+
+  return {
+    profileId:
+      uuidV4FromBytes(
+        uuidBytes,
+      ),
+    profileToken:
+      "lpp_" +
+      base64Url(
+        tokenBytes,
+      ),
+  };
+}
+
 export async function issueFriendRoomJoinToken(
   env,
   {
@@ -329,6 +377,147 @@ export async function verifyFriendRoomJoinToken(
   return normalized;
 }
 
+export async function issueLeaderboardProfileAssertion(
+  env,
+  {
+    matchId,
+    profileId,
+    clientRequestId,
+    expiresAt,
+  },
+) {
+  const claims =
+    normalizeLeaderboardAssertionClaims({
+      matchId,
+      profileId,
+      clientRequestId,
+      expiresAt,
+    });
+  const encodedPayload =
+    base64Url(
+      new TextEncoder()
+        .encode(
+          canonicalJson({
+            v: 1,
+            ...claims,
+          }),
+        ),
+    );
+  const signature =
+    await hmacSha256(
+      requireSessionKey(env),
+      "ludoproof:leaderboard-profile-assertion:v1:" +
+        encodedPayload,
+    );
+
+  return (
+    "lpa_" +
+    encodedPayload +
+    "." +
+    base64Url(signature)
+  );
+}
+
+export async function verifyLeaderboardProfileAssertion(
+  env,
+  token,
+  now = Date.now(),
+) {
+  if (
+    typeof token !== "string" ||
+    token.length < 80 ||
+    token.length > 2048
+  ) {
+    throw httpError(
+      401,
+      "PROFILE_ASSERTION_INVALID",
+      "leaderboard profile assertion is invalid",
+    );
+  }
+
+  const match =
+    token.match(
+      /^lpa_([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)$/,
+    );
+  if (!match) {
+    throw httpError(
+      401,
+      "PROFILE_ASSERTION_INVALID",
+      "leaderboard profile assertion is invalid",
+    );
+  }
+
+  const encodedPayload =
+    match[1];
+  let signatureBytes;
+  let claims;
+  try {
+    signatureBytes =
+      base64UrlDecode(
+        match[2],
+      );
+    claims =
+      JSON.parse(
+        new TextDecoder()
+          .decode(
+            base64UrlDecode(
+              encodedPayload,
+            ),
+          ),
+      );
+  } catch {
+    throw httpError(
+      401,
+      "PROFILE_ASSERTION_INVALID",
+      "leaderboard profile assertion is invalid",
+    );
+  }
+
+  const verified =
+    await verifyHmacSha256(
+      requireSessionKey(env),
+      "ludoproof:leaderboard-profile-assertion:v1:" +
+        encodedPayload,
+      signatureBytes,
+    );
+  if (
+    !verified ||
+    claims?.v !== 1
+  ) {
+    throw httpError(
+      401,
+      "PROFILE_ASSERTION_INVALID",
+      "leaderboard profile assertion is invalid",
+    );
+  }
+
+  const normalized =
+    normalizeLeaderboardAssertionClaims(
+      claims,
+    );
+  if (
+    !Number.isSafeInteger(
+      now,
+    )
+  ) {
+    throw new TypeError(
+      "leaderboard profile assertion time must be a safe integer",
+    );
+  }
+  if (
+    normalized.expiresAt <=
+    now
+  ) {
+    throw httpError(
+      410,
+      "PROFILE_ASSERTION_EXPIRED",
+      "leaderboard profile assertion expired",
+    );
+  }
+
+  return normalized;
+}
+
 export function requireClientRequestId(
   value,
 ) {
@@ -444,6 +633,57 @@ async function sha256Bytes(text) {
       bytes,
     );
   return new Uint8Array(digest);
+}
+
+function normalizeLeaderboardAssertionClaims(
+  value,
+) {
+  const matchId =
+    String(
+      value?.matchId ??
+        "",
+    )
+      .trim()
+      .toUpperCase();
+  const profileId =
+    String(
+      value?.profileId ??
+        "",
+    )
+      .trim()
+      .toLowerCase();
+  const clientRequestId =
+    requireClientRequestId(
+      value?.clientRequestId,
+    );
+  const expiresAt =
+    Number(
+      value?.expiresAt,
+    );
+
+  if (
+    !/^LP[A-Z2-9]{8}$/
+      .test(matchId) ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+      .test(profileId) ||
+    !Number.isSafeInteger(
+      expiresAt,
+    ) ||
+    expiresAt <= 0
+  ) {
+    throw httpError(
+      401,
+      "PROFILE_ASSERTION_INVALID",
+      "leaderboard profile assertion contains invalid claims",
+    );
+  }
+
+  return {
+    matchId,
+    profileId,
+    clientRequestId,
+    expiresAt,
+  };
 }
 
 function normalizeFriendJoinClaims(
@@ -576,6 +816,41 @@ function requireSessionKey(env) {
     );
   }
   return env.LUDOPROOF_SESSION_HMAC_KEY;
+}
+
+function uuidV4FromBytes(
+  bytes,
+) {
+  if (
+    !(bytes instanceof Uint8Array) ||
+    bytes.length !== 16
+  ) {
+    throw new TypeError(
+      "UUID requires 16 bytes",
+    );
+  }
+
+  const hex =
+    [...bytes]
+      .map(
+        (value) =>
+          value
+            .toString(16)
+            .padStart(2, "0"),
+      )
+      .join("");
+
+  return (
+    hex.slice(0, 8) +
+    "-" +
+    hex.slice(8, 12) +
+    "-" +
+    hex.slice(12, 16) +
+    "-" +
+    hex.slice(16, 20) +
+    "-" +
+    hex.slice(20)
+  );
 }
 
 function base64Url(bytes) {

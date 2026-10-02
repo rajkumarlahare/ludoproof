@@ -1,4 +1,10 @@
 import {
+  deriveLeaderboardIdentity,
+  httpError,
+  requireClientRequestId,
+  sha256Hex,
+} from "./crypto.js";
+import {
   LEADERBOARD_FINISH_POINTS,
   LEADERBOARD_WIN_BONUS,
   leaderboardPointsForResult,
@@ -7,6 +13,8 @@ import {
 
 const MAX_LEADERBOARD_LIMIT = 50;
 const DEFAULT_LEADERBOARD_LIMIT = 25;
+const PROFILE_TOKEN =
+  /^lpp_[A-Za-z0-9_-]{32,}$/;
 
 export class LeaderboardRoom {
   constructor(ctx, env) {
@@ -15,8 +23,19 @@ export class LeaderboardRoom {
 
     ctx.blockConcurrencyWhile(async () => {
       const sql = ctx.storage.sql;
+
       sql.exec(`
-        CREATE TABLE IF NOT EXISTS leaderboard_entries (
+        CREATE TABLE IF NOT EXISTS leaderboard_profiles_v2 (
+          profile_id TEXT PRIMARY KEY,
+          token_hash TEXT NOT NULL UNIQUE,
+          registration_request_id TEXT NOT NULL UNIQUE,
+          created_at INTEGER NOT NULL,
+          last_seen_at INTEGER NOT NULL
+        )
+      `);
+
+      sql.exec(`
+        CREATE TABLE IF NOT EXISTS leaderboard_entries_v2 (
           profile_id TEXT PRIMARY KEY,
           display_name TEXT NOT NULL,
           games INTEGER NOT NULL DEFAULT 0,
@@ -25,15 +44,17 @@ export class LeaderboardRoom {
           updated_at INTEGER NOT NULL
         )
       `);
+
       sql.exec(`
-        CREATE TABLE IF NOT EXISTS leaderboard_matches (
+        CREATE TABLE IF NOT EXISTS leaderboard_matches_v2 (
           match_id TEXT PRIMARY KEY,
           recorded_at INTEGER NOT NULL
         )
       `);
+
       sql.exec(`
-        CREATE INDEX IF NOT EXISTS idx_leaderboard_rank
-        ON leaderboard_entries (
+        CREATE INDEX IF NOT EXISTS idx_leaderboard_rank_v2
+        ON leaderboard_entries_v2 (
           points DESC,
           wins DESC,
           games ASC,
@@ -50,16 +71,39 @@ export class LeaderboardRoom {
 
       if (
         request.method === "POST" &&
+        url.pathname === "/profile/register"
+      ) {
+        return await this.#registerProfile(
+          request,
+        );
+      }
+
+      if (
+        request.method === "GET" &&
+        url.pathname === "/profile/identity"
+      ) {
+        return await this.#profileIdentity(
+          request,
+        );
+      }
+
+      if (
+        request.method === "POST" &&
         url.pathname === "/record"
       ) {
-        return await this.#record(request);
+        return await this.#record(
+          request,
+        );
       }
 
       if (
         request.method === "GET" &&
         url.pathname === "/list"
       ) {
-        return this.#list(url);
+        return await this.#list(
+          request,
+          url,
+        );
       }
 
       return json(404, {
@@ -76,11 +120,142 @@ export class LeaderboardRoom {
             error?.code ??
             "INTERNAL_ERROR",
           message:
-            error?.message ??
-            "internal server error",
+            Number.isInteger(error?.status)
+              ? String(
+                  error?.message ??
+                    "request failed",
+                )
+              : "internal server error",
         },
       );
     }
+  }
+
+  async #registerProfile(
+    request,
+  ) {
+    const body =
+      await readJson(
+        request,
+      );
+    const clientRequestId =
+      requireClientRequestId(
+        body?.clientRequestId,
+      );
+    const identity =
+      await deriveLeaderboardIdentity(
+        this.env,
+        clientRequestId,
+      );
+    const tokenHash =
+      await profileTokenHash(
+        identity.profileToken,
+      );
+    const now =
+      Date.now();
+
+    const existingRows = [
+      ...this.ctx.storage.sql.exec(
+        `
+          SELECT
+            profile_id,
+            registration_request_id
+          FROM leaderboard_profiles_v2
+          WHERE
+            profile_id = ?
+            OR registration_request_id = ?
+            OR token_hash = ?
+          LIMIT 1
+        `,
+        identity.profileId,
+        clientRequestId,
+        tokenHash,
+      ),
+    ];
+
+    if (
+      existingRows.length >
+      0
+    ) {
+      const existing =
+        existingRows[0];
+
+      if (
+        String(
+          existing.profile_id,
+        ) !==
+          identity.profileId ||
+        String(
+          existing.registration_request_id,
+        ) !==
+          clientRequestId
+      ) {
+        throw httpError(
+          409,
+          "PROFILE_IDENTITY_CONFLICT",
+          "leaderboard identity could not be recovered",
+        );
+      }
+
+      this.ctx.storage.sql.exec(
+        `
+          UPDATE leaderboard_profiles_v2
+          SET
+            token_hash = ?,
+            last_seen_at = ?
+          WHERE profile_id = ?
+        `,
+        tokenHash,
+        now,
+        identity.profileId,
+      );
+    } else {
+      this.ctx.storage.sql.exec(
+        `
+          INSERT INTO leaderboard_profiles_v2 (
+            profile_id,
+            token_hash,
+            registration_request_id,
+            created_at,
+            last_seen_at
+          ) VALUES (?, ?, ?, ?, ?)
+        `,
+        identity.profileId,
+        tokenHash,
+        clientRequestId,
+        now,
+        now,
+      );
+    }
+
+    return json(
+      200,
+      {
+        ok: true,
+        profileId:
+          identity.profileId,
+        profileToken:
+          identity.profileToken,
+      },
+    );
+  }
+
+  async #profileIdentity(
+    request,
+  ) {
+    const profile =
+      await this.#authorizeProfile(
+        request,
+      );
+
+    return json(
+      200,
+      {
+        ok: true,
+        profileId:
+          profile.profileId,
+      },
+    );
   }
 
   async #record(request) {
@@ -127,6 +302,29 @@ export class LeaderboardRoom {
           "a leaderboard profile may only appear once per match",
         );
       }
+
+      const profileRows = [
+        ...this.ctx.storage.sql.exec(
+          `
+            SELECT profile_id
+            FROM leaderboard_profiles_v2
+            WHERE profile_id = ?
+            LIMIT 1
+          `,
+          profileId,
+        ),
+      ];
+      if (
+        profileRows.length !==
+        1
+      ) {
+        throw httpError(
+          403,
+          "PROFILE_NOT_AUTHENTICATED",
+          "match result contains an unauthenticated leaderboard profile",
+        );
+      }
+
       seen.add(profileId);
 
       const displayName =
@@ -150,7 +348,7 @@ export class LeaderboardRoom {
       const inserted =
         this.ctx.storage.sql.exec(
           `
-            INSERT OR IGNORE INTO leaderboard_matches (
+            INSERT OR IGNORE INTO leaderboard_matches_v2 (
               match_id,
               recorded_at
             ) VALUES (?, ?)
@@ -176,7 +374,7 @@ export class LeaderboardRoom {
 
         this.ctx.storage.sql.exec(
           `
-            INSERT INTO leaderboard_entries (
+            INSERT INTO leaderboard_entries_v2 (
               profile_id,
               display_name,
               games,
@@ -186,9 +384,9 @@ export class LeaderboardRoom {
             ) VALUES (?, ?, 1, ?, ?, ?)
             ON CONFLICT(profile_id) DO UPDATE SET
               display_name = excluded.display_name,
-              games = leaderboard_entries.games + 1,
-              wins = leaderboard_entries.wins + excluded.wins,
-              points = leaderboard_entries.points + excluded.points,
+              games = leaderboard_entries_v2.games + 1,
+              wins = leaderboard_entries_v2.wins + excluded.wins,
+              points = leaderboard_entries_v2.points + excluded.points,
               updated_at = excluded.updated_at
           `,
           player.profileId,
@@ -207,7 +405,10 @@ export class LeaderboardRoom {
     });
   }
 
-  #list(url) {
+  async #list(
+    request,
+    url,
+  ) {
     const requestedLimit =
       Number(
         url.searchParams.get("limit"),
@@ -219,13 +420,13 @@ export class LeaderboardRoom {
             Math.max(1, requestedLimit),
           )
         : DEFAULT_LEADERBOARD_LIMIT;
-
-    const viewerId =
-      normalizeLeaderboardProfileId(
-        url.searchParams.get(
-          "profileId",
-        ),
+    const viewer =
+      await this.#optionalProfile(
+        request,
       );
+    const viewerId =
+      viewer?.profileId ??
+      null;
 
     const rows = [
       ...this.ctx.storage.sql.exec(
@@ -236,7 +437,7 @@ export class LeaderboardRoom {
             games,
             wins,
             points
-          FROM leaderboard_entries
+          FROM leaderboard_entries_v2
           ORDER BY
             points DESC,
             wins DESC,
@@ -266,7 +467,7 @@ export class LeaderboardRoom {
             viewerId,
       }));
 
-    let viewer = null;
+    let viewerEntry = null;
 
     if (viewerId) {
       const viewerRows = [
@@ -293,7 +494,7 @@ export class LeaderboardRoom {
                     updated_at ASC,
                     profile_id ASC
                 ) AS rank
-              FROM leaderboard_entries
+              FROM leaderboard_entries_v2
             ) AS ranked
             WHERE ranked.profile_id = ?
             LIMIT 1
@@ -304,7 +505,7 @@ export class LeaderboardRoom {
 
       if (viewerRows.length === 1) {
         const row = viewerRows[0];
-        viewer = {
+        viewerEntry = {
           rank:
             Number(row.rank),
           displayName:
@@ -320,8 +521,10 @@ export class LeaderboardRoom {
     }
 
     return json(200, {
-      season: "all-time-v1",
-      scope: "verified-online-classic",
+      season:
+        "authenticated-v2",
+      scope:
+        "verified-online-classic-authenticated",
       scoring: {
         finish:
           LEADERBOARD_FINISH_POINTS,
@@ -329,9 +532,114 @@ export class LeaderboardRoom {
           LEADERBOARD_WIN_BONUS,
       },
       entries,
-      viewer,
+      viewer:
+        viewerEntry,
     });
   }
+
+  async #optionalProfile(
+    request,
+  ) {
+    const header =
+      request.headers.get(
+        "authorization",
+      );
+    if (
+      header == null ||
+      header.trim() ===
+        ""
+    ) {
+      return null;
+    }
+    return this.#authorizeProfile(
+      request,
+    );
+  }
+
+  async #authorizeProfile(
+    request,
+  ) {
+    const header =
+      request.headers.get(
+        "authorization",
+      ) ?? "";
+    const match =
+      header.match(
+        /^Bearer\s+(.+)$/i,
+      );
+    const token =
+      match?.[1] ??
+      "";
+
+    if (
+      !PROFILE_TOKEN.test(
+        token,
+      )
+    ) {
+      throw httpError(
+        401,
+        "PROFILE_AUTH_INVALID",
+        "leaderboard profile credential is invalid",
+      );
+    }
+
+    const tokenHash =
+      await profileTokenHash(
+        token,
+      );
+    const rows = [
+      ...this.ctx.storage.sql.exec(
+        `
+          SELECT
+            profile_id
+          FROM leaderboard_profiles_v2
+          WHERE token_hash = ?
+          LIMIT 1
+        `,
+        tokenHash,
+      ),
+    ];
+
+    if (
+      rows.length !==
+      1
+    ) {
+      throw httpError(
+        401,
+        "PROFILE_AUTH_INVALID",
+        "leaderboard profile credential is invalid",
+      );
+    }
+
+    const now =
+      Date.now();
+    const profileId =
+      String(
+        rows[0].profile_id,
+      );
+    this.ctx.storage.sql.exec(
+      `
+        UPDATE leaderboard_profiles_v2
+        SET last_seen_at = ?
+        WHERE profile_id = ?
+      `,
+      now,
+      profileId,
+    );
+
+    return {
+      profileId,
+    };
+  }
+}
+
+async function profileTokenHash(
+  token,
+) {
+  return sha256Hex(
+    "ludoproof:leaderboard-profile-token-hash:v1:" +
+      token,
+  );
 }
 
 function normalizeDisplayName(value) {
@@ -351,6 +659,24 @@ function normalizeDisplayName(value) {
 }
 
 async function readJson(request) {
+  const type =
+    request.headers.get(
+      "content-type",
+    ) ?? "";
+  if (
+    !type
+      .toLowerCase()
+      .startsWith(
+        "application/json",
+      )
+  ) {
+    throw httpError(
+      415,
+      "UNSUPPORTED_MEDIA_TYPE",
+      "content-type must be application/json",
+    );
+  }
+
   try {
     const body = await request.json();
     if (
@@ -363,7 +689,13 @@ async function readJson(request) {
       );
     }
     return body;
-  } catch {
+  } catch (error) {
+    if (
+      error?.code ===
+      "UNSUPPORTED_MEDIA_TYPE"
+    ) {
+      throw error;
+    }
     throw badRequest(
       "INVALID_JSON",
       "request body must be a JSON object",

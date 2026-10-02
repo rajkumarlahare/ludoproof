@@ -17,6 +17,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import com.ludoproof.game.LudoProofTheme
 import com.ludoproof.game.feature.leaderboard.data.local.LeaderboardCacheStore
+import com.ludoproof.game.feature.leaderboard.data.local.LeaderboardCredential
 import com.ludoproof.game.feature.leaderboard.data.local.LeaderboardIdentityStore
 import com.ludoproof.game.feature.leaderboard.data.remote.LeaderboardApi
 import com.ludoproof.game.feature.leaderboard.domain.model.LeaderboardEntry
@@ -115,13 +116,12 @@ class LeaderboardActivity :
 
         executor.execute {
             try {
-                val profileId =
-                    identityStore
-                        .profileId()
+                val credential =
+                    ensureCredential()
                 val payload =
                     api.load(
-                        profileId =
-                            profileId,
+                        profileToken =
+                            credential.profileToken,
                         limit =
                             50,
                     )
@@ -177,6 +177,41 @@ class LeaderboardActivity :
                 }
             }
         }
+    }
+
+    private fun ensureCredential():
+        LeaderboardCredential {
+        identityStore
+            .load()
+            ?.let {
+                return it
+            }
+
+        val requestId =
+            identityStore
+                .registrationRequestId()
+        val response =
+            api.registerProfile(
+                clientRequestId =
+                    requestId,
+            )
+        val credential =
+            LeaderboardCredential(
+                profileId =
+                    response.getString(
+                        "profileId",
+                    ),
+                profileToken =
+                    response.getString(
+                        "profileToken",
+                    ),
+                registrationRequestId =
+                    requestId,
+            )
+        identityStore.save(
+            credential,
+        )
+        return credential
     }
 
     private fun render() {

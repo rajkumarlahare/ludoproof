@@ -96,6 +96,57 @@ function makeQueue() {
     new MatchNamespace(
       env,
     );
+  env.LUDOPROOF_LEADERBOARD = {
+    idFromName(name) {
+      assert.equal(
+        name,
+        "global",
+      );
+      return name;
+    },
+    get() {
+      return {
+        async fetch(request) {
+          const authorization =
+            request.headers.get(
+              "authorization",
+            ) ?? "";
+          const match =
+            authorization.match(
+              /^Bearer\s+(lpp_[A-Za-z0-9_-]{32,})$/,
+            );
+          if (
+            !match
+          ) {
+            return Response.json(
+              {
+                error:
+                  "PROFILE_AUTH_INVALID",
+                message:
+                  "leaderboard profile credential is invalid",
+              },
+              {
+                status:
+                  401,
+              },
+            );
+          }
+
+          const suffix =
+            match[1]
+              .slice(
+                -12,
+              );
+          return Response.json({
+            ok: true,
+            profileId:
+              "10000000-0000-4000-8000-" +
+              suffix,
+          });
+        },
+      };
+    },
+  };
 
   return new MatchmakerQueue(
     {
@@ -109,22 +160,62 @@ function makeQueue() {
 function request(
   path,
   body,
+  profileToken =
+    profileTokenFor(
+      body
+        ?.clientRequestId,
+    ),
 ) {
+  const headers = {
+    "content-type":
+      "application/json",
+  };
+  if (
+    profileToken
+  ) {
+    headers.authorization =
+      "Bearer " +
+      profileToken;
+  }
+
   return new Request(
     "https://matchmaker" +
       path,
     {
       method:
         "POST",
-      headers: {
-        "content-type":
-          "application/json",
-      },
+      headers,
       body:
         JSON.stringify(
           body,
         ),
     },
+  );
+}
+
+function profileTokenFor(
+  clientRequestId,
+) {
+  const suffix =
+    String(
+      clientRequestId ??
+        "",
+    )
+      .replaceAll(
+        "-",
+        "",
+      )
+      .slice(
+        -12,
+      )
+      .padStart(
+        12,
+        "0",
+      );
+  return (
+    "lpp_" +
+    "A".repeat(32) +
+    suffix
   );
 }
 
@@ -149,14 +240,6 @@ function player(
       suffix,
     clientRequestId:
       "00000000-0000-4000-8000-" +
-      String(
-        suffix,
-      ).padStart(
-        12,
-        "0",
-      ),
-    profileId:
-      "10000000-0000-4000-8000-" +
       String(
         suffix,
       ).padStart(
@@ -195,6 +278,9 @@ test(
     assert.equal(
       waiting.status,
       202,
+      JSON.stringify(
+        waiting.body,
+      ),
     );
     assert.equal(
       waiting.body.status,
@@ -416,6 +502,58 @@ test(
     assert.match(
       raced.body.matchId,
       /^LP[A-Z2-9]{8}$/,
+    );
+  },
+);
+
+
+test(
+  "matchmaking request IDs cannot be replayed by another authenticated profile",
+  async () => {
+    const queue =
+      makeQueue();
+    const first =
+      player(
+        7,
+        2,
+      );
+
+    const waiting =
+      await read(
+        await queue.fetch(
+          request(
+            "/search",
+            first,
+          ),
+        ),
+      );
+    assert.equal(
+      waiting.status,
+      202,
+    );
+
+    const attackerToken =
+      "lpp_" +
+      "B".repeat(32) +
+      "000000000999";
+    const replay =
+      await read(
+        await queue.fetch(
+          request(
+            "/search",
+            first,
+            attackerToken,
+          ),
+        ),
+      );
+
+    assert.equal(
+      replay.status,
+      403,
+    );
+    assert.equal(
+      replay.body.error,
+      "MATCHMAKING_PROFILE_MISMATCH",
     );
   },
 );

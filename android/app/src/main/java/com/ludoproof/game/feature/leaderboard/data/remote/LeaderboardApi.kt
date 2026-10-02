@@ -6,7 +6,6 @@ import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 
 class LeaderboardApi(
     baseUrl: String =
@@ -15,8 +14,24 @@ class LeaderboardApi(
     private val baseUrl =
         baseUrl.trimEnd('/')
 
+    fun registerProfile(
+        clientRequestId: String,
+    ): JSONObject =
+        request(
+            method =
+                "POST",
+            path =
+                "/api/leaderboard/profile/register",
+            body =
+                JSONObject()
+                    .put(
+                        "clientRequestId",
+                        clientRequestId,
+                    ),
+        )
+
     fun load(
-        profileId: String,
+        profileToken: String,
         limit: Int = 50,
     ): JSONObject {
         require(
@@ -32,19 +47,12 @@ class LeaderboardApi(
                 1,
                 50,
             )
-        val encodedProfileId =
-            URLEncoder.encode(
-                profileId,
-                Charsets.UTF_8.name(),
-            )
         val connection =
             URL(
                 baseUrl +
                     "/api/leaderboard" +
                     "?limit=" +
-                    safeLimit +
-                    "&profileId=" +
-                    encodedProfileId,
+                    safeLimit,
             ).openConnection() as
                 HttpURLConnection
 
@@ -66,6 +74,120 @@ class LeaderboardApi(
                 "LudoProof-Android/" +
                     BuildConfig.VERSION_NAME,
             )
+            connection.setRequestProperty(
+                "Authorization",
+                "Bearer $profileToken",
+            )
+
+            val status =
+                connection.responseCode
+            val stream =
+                if (
+                    status in
+                    200..299
+                ) {
+                    connection.inputStream
+                } else {
+                    connection.errorStream
+                }
+            val text =
+                stream
+                    ?.use {
+                        readUtf8Limited(
+                            it,
+                            MAX_RESPONSE_BYTES,
+                        )
+                    }
+                    .orEmpty()
+            val json =
+                if (
+                    text.isBlank()
+                ) {
+                    JSONObject()
+                } else {
+                    JSONObject(
+                        text,
+                    )
+                }
+
+            if (
+                status !in
+                200..299
+            ) {
+                throw LeaderboardApiException(
+                    json.optString(
+                        "message",
+                        "Leaderboard request failed with HTTP $status",
+                    ),
+                )
+            }
+
+            return json
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun request(
+        method: String,
+        path: String,
+        body: JSONObject? = null,
+    ): JSONObject {
+        require(
+            baseUrl.startsWith(
+                "https://",
+            ),
+        ) {
+            "LudoProof API must use HTTPS"
+        }
+
+        val connection =
+            URL(
+                baseUrl +
+                    path,
+            ).openConnection() as
+                HttpURLConnection
+
+        try {
+            connection.requestMethod =
+                method
+            connection.connectTimeout =
+                10_000
+            connection.readTimeout =
+                20_000
+            connection.instanceFollowRedirects =
+                false
+            connection.setRequestProperty(
+                "Accept",
+                "application/json",
+            )
+            connection.setRequestProperty(
+                "User-Agent",
+                "LudoProof-Android/" +
+                    BuildConfig.VERSION_NAME,
+            )
+
+            if (
+                body !=
+                null
+            ) {
+                val bytes =
+                    body.toString()
+                        .toByteArray(
+                            Charsets.UTF_8,
+                        )
+                connection.doOutput =
+                    true
+                connection.setRequestProperty(
+                    "Content-Type",
+                    "application/json",
+                )
+                connection.outputStream.use {
+                    it.write(
+                        bytes,
+                    )
+                }
+            }
 
             val status =
                 connection.responseCode

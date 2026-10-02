@@ -1,12 +1,10 @@
 import {
   deterministicMatchId,
   httpError,
+  issueLeaderboardProfileAssertion,
   normalizeDisplayName,
   requireClientRequestId,
 } from "./crypto.js";
-import {
-  normalizeLeaderboardProfileId,
-} from "./leaderboard-core.js";
 
 const STATE_KEY =
   "matchmaking-state";
@@ -14,6 +12,8 @@ const QUEUE_TTL_MS =
   2 * 60 * 1000;
 const ASSIGNMENT_TTL_MS =
   10 * 60 * 1000;
+const PROFILE_ASSERTION_TTL_MS =
+  15 * 60 * 1000;
 const ALLOWED_PLAYER_COUNTS =
   new Set([2, 4]);
 
@@ -48,6 +48,7 @@ export class MatchmakerQueue {
         return await this.#mutate(
           () =>
             this.#search(
+              request,
               body,
             ),
         );
@@ -62,6 +63,7 @@ export class MatchmakerQueue {
         return await this.#mutate(
           () =>
             this.#status(
+              request,
               body,
             ),
         );
@@ -76,6 +78,7 @@ export class MatchmakerQueue {
         return await this.#mutate(
           () =>
             this.#cancel(
+              request,
               body,
             ),
         );
@@ -123,10 +126,18 @@ export class MatchmakerQueue {
     return run;
   }
 
-  async #search(body) {
+  async #search(
+    request,
+    body,
+  ) {
+    const profile =
+      await this.#profileIdentity(
+        request,
+      );
     const participant =
       normalizeParticipant(
         body,
+        profile.profileId,
       );
     const now =
       Date.now();
@@ -161,6 +172,19 @@ export class MatchmakerQueue {
       existingIndex >=
       0
     ) {
+      if (
+        state.queue[
+          existingIndex
+        ].profileId !==
+        participant.profileId
+      ) {
+        throw httpError(
+          403,
+          "MATCHMAKING_PROFILE_MISMATCH",
+          "matchmaking request belongs to another authenticated profile",
+        );
+      }
+
       state.queue[
         existingIndex
       ] = {
@@ -340,7 +364,14 @@ export class MatchmakerQueue {
     );
   }
 
-  async #status(body) {
+  async #status(
+    request,
+    body,
+  ) {
+    const profile =
+      await this.#profileIdentity(
+        request,
+      );
     const clientRequestId =
       requireClientRequestId(
         body
@@ -364,6 +395,17 @@ export class MatchmakerQueue {
         clientRequestId
       ];
     if (assignment) {
+      if (
+        assignment.profileId !==
+        profile.profileId
+      ) {
+        throw httpError(
+          403,
+          "MATCHMAKING_PROFILE_MISMATCH",
+          "matchmaking request belongs to another authenticated profile",
+        );
+      }
+
       const participant = {
         clientRequestId,
         playerCount,
@@ -408,6 +450,17 @@ export class MatchmakerQueue {
       );
     }
 
+    if (
+      queued.profileId !==
+      profile.profileId
+    ) {
+      throw httpError(
+        403,
+        "MATCHMAKING_PROFILE_MISMATCH",
+        "matchmaking request belongs to another authenticated profile",
+      );
+    }
+
     queued.lastSeenAt =
       now;
     await this.#persist(
@@ -423,7 +476,14 @@ export class MatchmakerQueue {
     );
   }
 
-  async #cancel(body) {
+  async #cancel(
+    request,
+    body,
+  ) {
+    const profile =
+      await this.#profileIdentity(
+        request,
+      );
     const clientRequestId =
       requireClientRequestId(
         body
@@ -447,6 +507,16 @@ export class MatchmakerQueue {
         clientRequestId
       ];
     if (assignment) {
+      if (
+        assignment.profileId !==
+        profile.profileId
+      ) {
+        throw httpError(
+          403,
+          "MATCHMAKING_PROFILE_MISMATCH",
+          "matchmaking request belongs to another authenticated profile",
+        );
+      }
       await this.#persist(
         state,
       );
@@ -462,6 +532,25 @@ export class MatchmakerQueue {
             assignment
               .matchId,
         },
+      );
+    }
+
+    const queued =
+      state.queue.find(
+        (candidate) =>
+          candidate
+            .clientRequestId ===
+          clientRequestId,
+      );
+    if (
+      queued &&
+      queued.profileId !==
+        profile.profileId
+    ) {
+      throw httpError(
+        403,
+        "MATCHMAKING_PROFILE_MISMATCH",
+        "matchmaking request belongs to another authenticated profile",
       );
     }
 
@@ -526,6 +615,20 @@ export class MatchmakerQueue {
               headers: {
                 "content-type":
                   "application/json",
+                "x-ludoproof-profile-assertion":
+                  await issueLeaderboardProfileAssertion(
+                    this.env,
+                    {
+                      matchId,
+                      profileId:
+                        host.profileId,
+                      clientRequestId:
+                        host.clientRequestId,
+                      expiresAt:
+                        Date.now() +
+                        PROFILE_ASSERTION_TTL_MS,
+                    },
+                  ),
               },
               body:
                 JSON.stringify({
@@ -533,9 +636,6 @@ export class MatchmakerQueue {
                   displayName:
                     host
                       .displayName,
-                  profileId:
-                    host
-                      .profileId,
                   clientRequestId:
                     host
                       .clientRequestId,
@@ -580,15 +680,26 @@ export class MatchmakerQueue {
                 headers: {
                   "content-type":
                     "application/json",
+                  "x-ludoproof-profile-assertion":
+                    await issueLeaderboardProfileAssertion(
+                      this.env,
+                      {
+                        matchId,
+                        profileId:
+                          participant.profileId,
+                        clientRequestId:
+                          participant.clientRequestId,
+                        expiresAt:
+                          Date.now() +
+                          PROFILE_ASSERTION_TTL_MS,
+                      },
+                    ),
                 },
                 body:
                   JSON.stringify({
                     displayName:
                       participant
                         .displayName,
-                    profileId:
-                      participant
-                        .profileId,
                     clientRequestId:
                       participant
                         .clientRequestId,
@@ -644,6 +755,17 @@ export class MatchmakerQueue {
     assignment,
   ) {
     if (
+      assignment.profileId !==
+      participant.profileId
+    ) {
+      throw httpError(
+        403,
+        "MATCHMAKING_PROFILE_MISMATCH",
+        "matchmaking request belongs to another authenticated profile",
+      );
+    }
+
+    if (
       assignment
         .targetPlayerCount !==
       participant
@@ -673,9 +795,6 @@ export class MatchmakerQueue {
       displayName:
         participant
           .displayName,
-      profileId:
-        participant
-          .profileId,
       clientRequestId:
         participant
           .clientRequestId,
@@ -706,6 +825,21 @@ export class MatchmakerQueue {
             headers: {
               "content-type":
                 "application/json",
+              "x-ludoproof-profile-assertion":
+                await issueLeaderboardProfileAssertion(
+                  this.env,
+                  {
+                    matchId:
+                      assignment.matchId,
+                    profileId:
+                      participant.profileId,
+                    clientRequestId:
+                      participant.clientRequestId,
+                    expiresAt:
+                      Date.now() +
+                      PROFILE_ASSERTION_TTL_MS,
+                  },
+                ),
             },
             body:
               JSON.stringify(
@@ -741,6 +875,102 @@ export class MatchmakerQueue {
             .state,
       },
     );
+  }
+
+  async #profileIdentity(
+    request,
+  ) {
+    const authorization =
+      request.headers.get(
+        "authorization",
+      );
+    if (
+      typeof authorization !==
+        "string" ||
+      !/^Bearer\s+lpp_[A-Za-z0-9_-]{32,}$/i
+        .test(
+          authorization,
+        )
+    ) {
+      throw httpError(
+        401,
+        "PROFILE_AUTH_REQUIRED",
+        "authenticated leaderboard profile is required for public matchmaking",
+      );
+    }
+    if (
+      !this.env
+        .LUDOPROOF_LEADERBOARD
+    ) {
+      throw httpError(
+        503,
+        "LEADERBOARD_NOT_CONFIGURED",
+        "leaderboard storage is not configured",
+      );
+    }
+
+    const id =
+      this.env
+        .LUDOPROOF_LEADERBOARD
+        .idFromName(
+          "global",
+        );
+    const target =
+      this.env
+        .LUDOPROOF_LEADERBOARD
+        .get(id);
+    const response =
+      await target.fetch(
+        new Request(
+          "https://leaderboard/profile/identity",
+          {
+            method:
+              "GET",
+            headers: {
+              authorization,
+            },
+          },
+        ),
+      );
+
+    let value;
+    try {
+      value =
+        await response.json();
+    } catch {
+      throw httpError(
+        503,
+        "PROFILE_AUTH_BAD_RESPONSE",
+        "leaderboard profile authorization returned invalid data",
+      );
+    }
+
+    if (
+      !response.ok ||
+      value?.ok !== true ||
+      typeof value?.profileId !==
+        "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+        .test(
+          value.profileId,
+        )
+    ) {
+      throw httpError(
+        response.status ===
+          401
+          ? 401
+          : 403,
+        value?.error ??
+          "PROFILE_AUTH_INVALID",
+        value?.message ??
+          "leaderboard profile credential is invalid",
+      );
+    }
+
+    return {
+      profileId:
+        value.profileId,
+    };
   }
 
   async #load() {
@@ -871,6 +1101,7 @@ export class MatchmakerQueue {
 
 function normalizeParticipant(
   body,
+  profileId,
 ) {
   return {
     clientRequestId:
@@ -883,11 +1114,7 @@ function normalizeParticipant(
         body
           ?.displayName,
       ),
-    profileId:
-      normalizeLeaderboardProfileId(
-        body
-          ?.profileId,
-      ),
+    profileId,
     playerCount:
       requirePlayerCount(
         body
