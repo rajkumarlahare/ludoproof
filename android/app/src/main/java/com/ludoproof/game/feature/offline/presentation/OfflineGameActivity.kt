@@ -77,8 +77,32 @@ class OfflineGameActivity : Activity() {
         if (engine.hasSavedGame()) showGame(engine.snapshot()) else showSetup()
     }
 
-    override fun onDestroy() {
+    internal fun prepareOfflineUiTransition() {
         handler.removeCallbacksAndMessages(null)
+        computerActionRevision =
+            null
+        diceView
+            ?.stopRolling()
+        boardView =
+            null
+        diceView =
+            null
+        diceHost =
+            null
+        topPlayerRail =
+            null
+        bottomPlayerRail =
+            null
+        turnText =
+            null
+        infoText =
+            null
+        statusText =
+            null
+    }
+
+    override fun onDestroy() {
+        prepareOfflineUiTransition()
         super.onDestroy()
     }
 
