@@ -76,6 +76,16 @@ internal fun MainActivity.applyResponse(
 
     if (
         state.status ==
+        "FINISHED"
+    ) {
+        realtimeClient.disconnect()
+        realtimeConnected =
+            false
+        updateConnectionLabel()
+    }
+
+    if (
+        state.status ==
             "FINISHED"
     ) {
         runCatching {
