@@ -304,13 +304,12 @@ private fun OfflineGameActivity.playerProfile(
 private fun OfflineGameActivity.activeDiceControl(
     player: PlayerSnapshot,
 ): FrameLayout {
-    var control =
+    val existing =
         diceHost
-    if (
-        control ==
-        null
-    ) {
-        control =
+    val control =
+        if (existing != null) {
+            existing
+        } else {
             FrameLayout(this).apply {
                 isClickable =
                     true
@@ -330,23 +329,26 @@ private fun OfflineGameActivity.activeDiceControl(
                 setOnClickListener {
                     rollOffline()
                 }
-            }
 
-        val newDice =
-            DiceView(this)
-        diceView =
-            newDice
-        control.addView(
-            newDice,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                Gravity.CENTER,
-            ),
-        )
-        diceHost =
-            control
-    }
+                val newDice =
+                    DiceView(
+                        this@activeDiceControl,
+                    )
+                diceView =
+                    newDice
+                addView(
+                    newDice,
+                    FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        Gravity.CENTER,
+                    ),
+                )
+            }.also {
+                diceHost =
+                    it
+            }
+        }
 
     control.contentDescription =
         "Roll dice for " +
@@ -355,8 +357,7 @@ private fun OfflineGameActivity.activeDiceControl(
         true
     control.alpha =
         1f
-
-    val params =
+    control.layoutParams =
         LinearLayout.LayoutParams(
             dp(
                 if (isCompactSetup()) {
@@ -381,8 +382,6 @@ private fun OfflineGameActivity.activeDiceControl(
             )
         }
 
-    control.layoutParams =
-        params
     return control
 }
 
