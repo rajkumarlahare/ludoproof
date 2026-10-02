@@ -29,9 +29,9 @@ internal fun HomeActivity.profileHud():
         orientation =
             LinearLayout.VERTICAL
         setPadding(
-            dp(if (isCompact()) 4 else 6),
-            dp(4),
-            dp(if (isCompact()) 4 else 6),
+            dp(2),
+            dp(2),
+            dp(2),
             dp(4),
         )
 
@@ -50,7 +50,7 @@ internal fun HomeActivity.profileHud():
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
                 topMargin =
-                    dp(if (isCompact()) 18 else 22)
+                    dp(if (isCompact()) 10 else 12)
             },
         )
 
@@ -72,13 +72,13 @@ private fun HomeActivity.homeIdentityRow():
         gravity =
             Gravity.CENTER_VERTICAL
         minimumHeight =
-            dp(if (isCompact()) 72 else 80)
+            dp(if (isCompact()) 64 else 70)
 
         addView(
             homeAvatarPlaceholder(),
             LinearLayout.LayoutParams(
-                dp(if (isCompact()) 58 else 64),
-                dp(if (isCompact()) 58 else 64),
+                dp(if (isCompact()) 52 else 56),
+                dp(if (isCompact()) 52 else 56),
             ),
         )
 
@@ -90,17 +90,17 @@ private fun HomeActivity.homeIdentityRow():
                 1f,
             ).apply {
                 marginStart =
-                    dp(if (isCompact()) 10 else 12)
+                    dp(if (isCompact()) 8 else 9)
                 marginEnd =
-                    dp(if (isCompact()) 8 else 12)
+                    dp(if (isCompact()) 6 else 8)
             },
         )
 
         addView(
             homeCurrencyPill(),
             LinearLayout.LayoutParams(
-                dp(if (isCompact()) 112 else 126),
-                dp(if (isCompact()) 44 else 48),
+                dp(if (isCompact()) 104 else 116),
+                dp(if (isCompact()) 40 else 44),
             ),
         )
     }
@@ -124,7 +124,7 @@ private fun HomeActivity.homeAvatarPlaceholder():
                 ?.previewSymbol
                 ?: "GU"
         textSize =
-            if (isCompact()) 17f else 19f
+            if (isCompact()) 16f else 18f
         setTypeface(
             Typeface.DEFAULT_BOLD,
         )
@@ -182,7 +182,7 @@ private fun HomeActivity.homeIdentityBlock():
                         .snapshot()
                         .displayName
                 textSize =
-                    if (isCompact()) 18f else 21f
+                    if (isCompact()) 17f else 19f
                 setTypeface(
                     Typeface.DEFAULT_BOLD,
                 )
@@ -203,9 +203,9 @@ private fun HomeActivity.homeIdentityBlock():
             homeLevelProgress(),
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                dp(if (isCompact()) 30 else 34),
+                dp(if (isCompact()) 27 else 30),
             ).apply {
-                topMargin = dp(3)
+                topMargin = dp(2)
             },
         )
     }
@@ -237,7 +237,7 @@ private fun HomeActivity.homeLevelProgress():
                     "★" +
                         progress.level
                 textSize =
-                    if (isCompact()) 21f else 24f
+                    if (isCompact()) 19f else 21f
                 setTypeface(
                     Typeface.DEFAULT_BOLD,
                 )
@@ -249,8 +249,8 @@ private fun HomeActivity.homeLevelProgress():
                     "Level 0"
             },
             LinearLayout.LayoutParams(
-                dp(if (isCompact()) 38 else 42),
-                dp(if (isCompact()) 30 else 34),
+                dp(if (isCompact()) 34 else 38),
+                dp(if (isCompact()) 27 else 30),
             ),
         )
 
@@ -269,7 +269,7 @@ private fun HomeActivity.homeLevelProgress():
             }
 
         val trackWidthDp =
-            if (isCompact()) 118 else 138
+            if (isCompact()) 106 else 124
         val currentProgress =
             ProfileProgression
                 .levelProgress(
@@ -312,7 +312,7 @@ private fun HomeActivity.homeLevelProgress():
             track,
             LinearLayout.LayoutParams(
                 dp(trackWidthDp),
-                dp(10),
+                dp(if (isCompact()) 8 else 9),
             ).apply {
                 marginStart = dp(2)
             },
@@ -357,7 +357,7 @@ private fun HomeActivity.homeCurrencyPill():
             ).apply {
                 text = "◆"
                 textSize =
-                    if (isCompact()) 23f else 26f
+                    if (isCompact()) 21f else 23f
                 setTypeface(
                     Typeface.DEFAULT_BOLD,
                 )
@@ -369,7 +369,7 @@ private fun HomeActivity.homeCurrencyPill():
                     "Currency"
             },
             LinearLayout.LayoutParams(
-                dp(if (isCompact()) 38 else 42),
+                dp(if (isCompact()) 34 else 38),
                 LinearLayout.LayoutParams.MATCH_PARENT,
             ),
         )
@@ -386,7 +386,7 @@ private fun HomeActivity.homeCurrencyPill():
                         .balance()
                         .toString()
                 textSize =
-                    if (isCompact()) 19f else 21f
+                    if (isCompact()) 18f else 19f
                 setTypeface(
                     Typeface.DEFAULT_BOLD,
                 )
@@ -406,7 +406,7 @@ private fun HomeActivity.homeCurrencyPill():
             ).apply {
                 text = "+"
                 textSize =
-                    if (isCompact()) 25f else 28f
+                    if (isCompact()) 23f else 25f
                 setTypeface(
                     Typeface.DEFAULT_BOLD,
                 )
@@ -435,7 +435,7 @@ private fun HomeActivity.homeCurrencyPill():
                 }
             },
             LinearLayout.LayoutParams(
-                dp(if (isCompact()) 38 else 42),
+                dp(if (isCompact()) 34 else 38),
                 LinearLayout.LayoutParams.MATCH_PARENT,
             ),
         )
@@ -508,10 +508,10 @@ private fun HomeActivity.homeShortcut(
                 12f,
             )
         setPadding(
-            dp(2),
-            dp(5),
-            dp(2),
-            dp(5),
+            dp(1),
+            dp(3),
+            dp(1),
+            dp(3),
         )
         setOnClickListener {
             when (
@@ -540,9 +540,9 @@ private fun HomeActivity.homeShortcut(
                 if (
                     isCompact()
                 ) {
-                    50
+                    46
                 } else {
-                    56
+                    50
                 },
             )
         val iconView =
@@ -558,10 +558,10 @@ private fun HomeActivity.homeShortcut(
                     iconColor =
                         item.tint
                     setPadding(
-                        dp(8),
-                        dp(8),
-                        dp(8),
-                        dp(8),
+                        dp(7),
+                        dp(7),
+                        dp(7),
+                        dp(7),
                     )
                     background =
                         LudoProofTheme.rounded(
@@ -623,7 +623,7 @@ private fun HomeActivity.homeShortcut(
             ).apply {
                 text = item.label
                 textSize =
-                    if (isCompact()) 8.5f else 9.5f
+                    if (isCompact()) 8f else 9f
                 setTypeface(
                     Typeface.DEFAULT_BOLD,
                 )
@@ -632,7 +632,7 @@ private fun HomeActivity.homeShortcut(
                 maxLines = 1
                 setPadding(
                     0,
-                    dp(5),
+                    dp(4),
                     0,
                     0,
                 )
@@ -706,9 +706,9 @@ internal fun HomeActivity.refreshHomeProfileSummary() {
 
     val trackWidthDp =
         if (isCompact()) {
-            118
+            106
         } else {
-            138
+            124
         }
     homeProfileXpFill
         ?.layoutParams =
