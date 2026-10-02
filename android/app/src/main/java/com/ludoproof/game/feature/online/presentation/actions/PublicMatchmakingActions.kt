@@ -248,11 +248,34 @@ internal fun MainActivity.applyPublicMatchmakingResponse(
         )
     ) {
         "MATCHED" -> {
+            val count =
+                response.optInt(
+                    "targetPlayerCount",
+                    selectedPublicPlayerCount,
+                )
+                .coerceIn(
+                    2,
+                    4,
+                )
+
+            if (
+                isMatchmakingUiReady()
+            ) {
+                matchmakingOpponentRail
+                    .updateState(
+                        queuedPlayers =
+                            count,
+                        targetPlayerCount =
+                            count,
+                        searching =
+                            true,
+                    )
+                matchmakingStatusText.text =
+                    "MATCH FOUND • STARTING…"
+            }
+
             publicMatchmakingStore
                 .clear()
-            setPublicSearchUi(
-                searching = false,
-            )
             captureSession(
                 response,
             )
@@ -262,23 +285,10 @@ internal fun MainActivity.applyPublicMatchmakingResponse(
             )
             connectRealtimeIfPossible()
 
-            val count =
-                response.optInt(
-                    "targetPlayerCount",
-                    currentState
-                        ?.players
-                        ?.size
-                        ?: 0,
-                )
             showStatus(
-                if (
-                    count >
-                    0
-                ) {
-                    "Match found • $count players • live sync connected when available."
-                } else {
-                    "Match found • live sync connected when available."
-                },
+                "Match found • " +
+                    count +
+                    " real players • game started.",
             )
         }
 
@@ -313,7 +323,7 @@ internal fun MainActivity.applyPublicMatchmakingResponse(
                 searching = false,
             )
             showStatus(
-                "Search expired. Tap Find Match to search again.",
+                "Search expired. Choose players and tap PLAY to search again.",
             )
         }
 
