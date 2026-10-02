@@ -71,6 +71,8 @@ internal fun MainActivity.persistSessionSecurely(
                 matchId = code,
                 playerId = id,
                 playerToken = token,
+                modeWire =
+                    gameMode.wireValue,
             ),
         )
     } catch (_: Exception) {
@@ -246,6 +248,17 @@ internal fun MainActivity.resetInvalidSessionIfNeeded(
     realtimeClient.disconnect()
     realtimeConnected =
         false
+
+    if (
+        gameMode ==
+        GameMode.FRIENDS
+    ) {
+        showStatus(
+            "Private friend room is no longer available.",
+        )
+        finish()
+        return true
+    }
 
     matchInput.setText("")
     boardView.bind(

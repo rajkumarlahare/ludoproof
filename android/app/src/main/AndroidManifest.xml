@@ -4,6 +4,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
+        android:name=".LudoProofApplication"
         android:allowBackup="false"
         android:icon="@drawable/ic_ludoproof"
         android:label="LudoProof"
@@ -20,6 +21,9 @@
             android:exported="false" />
         <activity
             android:name=".feature.mode.presentation.RemoteModeEntryActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature.friends.presentation.FriendsActivity"
             android:exported="false" />
         <activity
             android:name=".feature.leaderboard.presentation.LeaderboardActivity"

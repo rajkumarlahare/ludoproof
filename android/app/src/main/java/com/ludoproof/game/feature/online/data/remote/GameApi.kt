@@ -11,6 +11,194 @@ class GameApi(
 ) {
     private val baseUrl = baseUrl.trimEnd('/')
 
+    fun registerFriend(
+        displayName: String,
+        clientRequestId: String,
+    ): JSONObject =
+        request(
+            method = "POST",
+            path = "/api/friends/register",
+            body = JSONObject()
+                .put(
+                    "displayName",
+                    displayName,
+                )
+                .put(
+                    "clientRequestId",
+                    clientRequestId,
+                ),
+        )
+
+    fun friendSnapshot(
+        friendToken: String,
+    ): JSONObject =
+        request(
+            method = "GET",
+            path = "/api/friends/snapshot",
+            friendToken =
+                friendToken,
+        )
+
+    fun friendHeartbeat(
+        friendToken: String,
+        displayName: String,
+    ): JSONObject =
+        request(
+            method = "POST",
+            path = "/api/friends/heartbeat",
+            friendToken =
+                friendToken,
+            body = JSONObject()
+                .put(
+                    "displayName",
+                    displayName,
+                ),
+        )
+
+    fun sendFriendRequest(
+        friendToken: String,
+        friendId: String,
+    ): JSONObject =
+        request(
+            method = "POST",
+            path = "/api/friends/request",
+            friendToken =
+                friendToken,
+            body = JSONObject()
+                .put(
+                    "friendId",
+                    friendId,
+                ),
+        )
+
+    fun respondFriendRequest(
+        friendToken: String,
+        requestId: String,
+        accept: Boolean,
+    ): JSONObject =
+        request(
+            method = "POST",
+            path =
+                "/api/friends/request/respond",
+            friendToken =
+                friendToken,
+            body = JSONObject()
+                .put(
+                    "requestId",
+                    requestId,
+                )
+                .put(
+                    "accept",
+                    accept,
+                ),
+        )
+
+    fun removeFriend(
+        friendToken: String,
+        friendId: String,
+    ): JSONObject =
+        request(
+            method = "POST",
+            path = "/api/friends/remove",
+            friendToken =
+                friendToken,
+            body = JSONObject()
+                .put(
+                    "friendId",
+                    friendId,
+                ),
+        )
+
+    fun sendFriendInvite(
+        friendToken: String,
+        friendId: String,
+        matchId: String,
+        roomPlayerToken: String,
+        clientRequestId: String,
+    ): JSONObject =
+        request(
+            method = "POST",
+            path = "/api/friends/invite",
+            friendToken =
+                friendToken,
+            roomPlayerToken =
+                roomPlayerToken,
+            body = JSONObject()
+                .put(
+                    "friendId",
+                    friendId,
+                )
+                .put(
+                    "matchId",
+                    matchId,
+                )
+                .put(
+                    "clientRequestId",
+                    clientRequestId,
+                ),
+        )
+
+    fun respondFriendInvite(
+        friendToken: String,
+        inviteId: String,
+        accept: Boolean,
+    ): JSONObject =
+        request(
+            method = "POST",
+            path =
+                "/api/friends/invite/respond",
+            friendToken =
+                friendToken,
+            body = JSONObject()
+                .put(
+                    "inviteId",
+                    inviteId,
+                )
+                .put(
+                    "accept",
+                    accept,
+                ),
+        )
+
+    fun createFriendRoom(
+        displayName: String,
+        clientRequestId: String,
+        playerCount: Int,
+        profileId: String? = null,
+    ): JSONObject =
+        request(
+            method = "POST",
+            path = "/api/matches",
+            body = JSONObject()
+                .put(
+                    "displayName",
+                    displayName,
+                )
+                .put(
+                    "clientRequestId",
+                    clientRequestId,
+                )
+                .put(
+                    "targetPlayerCount",
+                    playerCount,
+                )
+                .put(
+                    "matchMode",
+                    "FRIENDS",
+                )
+                .apply {
+                    if (
+                        !profileId
+                            .isNullOrBlank()
+                    ) {
+                        put(
+                            "profileId",
+                            profileId,
+                        )
+                    }
+                },
+        )
+
     fun searchPublicMatch(
         displayName: String,
         clientRequestId: String,
@@ -206,6 +394,8 @@ class GameApi(
         method: String,
         path: String,
         playerToken: String? = null,
+        friendToken: String? = null,
+        roomPlayerToken: String? = null,
         body: JSONObject? = null,
     ): JSONObject {
         require(baseUrl.startsWith("https://")) {
@@ -230,10 +420,22 @@ class GameApi(
                 "LudoProof-Android/" + BuildConfig.VERSION_NAME,
             )
 
-            if (playerToken != null) {
+            val bearerToken =
+                playerToken
+                    ?: friendToken
+            if (bearerToken != null) {
                 connection.setRequestProperty(
                     "Authorization",
-                    "Bearer $playerToken",
+                    "Bearer $bearerToken",
+                )
+            }
+            if (
+                roomPlayerToken !=
+                null
+            ) {
+                connection.setRequestProperty(
+                    "X-LudoProof-Room-Token",
+                    roomPlayerToken,
                 )
             }
 

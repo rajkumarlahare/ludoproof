@@ -128,6 +128,60 @@ export async function derivePlayerIdentity(
   };
 }
 
+export async function deriveFriendIdentity(
+  env,
+  clientRequestId,
+) {
+  const requestId =
+    requireClientRequestId(
+      clientRequestId,
+    );
+  const sessionKey =
+    requireSessionKey(env);
+  const digestBytes =
+    await sha256Bytes(
+      "ludoproof:friend-id:v1:" +
+        requestId,
+    );
+
+  let friendId =
+    "LPF-";
+  for (
+    let index = 0;
+    index < 12;
+    index += 1
+  ) {
+    if (
+      index === 4 ||
+      index === 8
+    ) {
+      friendId +=
+        "-";
+    }
+    friendId +=
+      MATCH_ALPHABET[
+        digestBytes[index] &
+          31
+      ];
+  }
+
+  const tokenBytes =
+    await hmacSha256(
+      sessionKey,
+      "ludoproof:friend-token:v1:" +
+        requestId,
+    );
+
+  return {
+    friendId,
+    friendToken:
+      "lf_" +
+      base64Url(
+        tokenBytes,
+      ),
+  };
+}
+
 export function requireClientRequestId(
   value,
 ) {

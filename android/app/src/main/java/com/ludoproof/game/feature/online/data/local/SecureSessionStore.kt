@@ -14,6 +14,8 @@ data class PlayerSession(
     val matchId: String,
     val playerId: String,
     val playerToken: String,
+    val modeWire: String =
+        GameMode.ONLINE.wireValue,
 )
 
 class SecureSessionStore(
@@ -29,6 +31,14 @@ class SecureSessionStore(
         require(MATCH_ID.matches(value.matchId))
         require(value.playerId.isNotBlank())
         require(PLAYER_TOKEN.matches(value.playerToken))
+        require(
+            GameMode
+                .fromWireValue(
+                    value.modeWire,
+                )
+                ?.isRemote ==
+                true,
+        )
 
         val cipher =
             Cipher.getInstance(TRANSFORMATION)
@@ -56,6 +66,10 @@ class SecureSessionStore(
             )
             .putString(KEY_MATCH_ID, value.matchId)
             .putString(KEY_PLAYER_ID, value.playerId)
+            .putString(
+                KEY_GAME_MODE,
+                value.modeWire,
+            )
             .putString(
                 KEY_IV,
                 Base64.encodeToString(
@@ -98,6 +112,21 @@ class SecureSessionStore(
         val playerId =
             prefs.getString(KEY_PLAYER_ID, null)
                 ?: return null
+        val modeWire =
+            prefs.getString(
+                KEY_GAME_MODE,
+                GameMode.ONLINE.wireValue,
+            )
+                ?: GameMode.ONLINE.wireValue
+        val mode =
+            GameMode
+                .fromWireValue(
+                    modeWire,
+                )
+                ?.takeIf {
+                    it.isRemote
+                }
+                ?: GameMode.ONLINE
         val ivText =
             prefs.getString(KEY_IV, null)
                 ?: return null
@@ -164,6 +193,8 @@ class SecureSessionStore(
                         matchId = matchId,
                         playerId = playerId,
                         playerToken = playerToken,
+                        modeWire =
+                            mode.wireValue,
                     )
                 if (
                     formatVersion <
@@ -211,6 +242,9 @@ class SecureSessionStore(
                 matchId = matchId,
                 playerId = playerId,
                 playerToken = playerToken,
+                modeWire =
+                    GameMode.ONLINE
+                        .wireValue,
             )
         return try {
             save(session)
@@ -283,6 +317,7 @@ class SecureSessionStore(
             "formatVersion"
         const val KEY_MATCH_ID = "matchId"
         const val KEY_PLAYER_ID = "playerId"
+        const val KEY_GAME_MODE = "gameMode"
         const val LEGACY_PLAYER_TOKEN =
             "playerToken"
         const val KEY_IV = "iv"

@@ -115,6 +115,8 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
         false,
       matchmakerConfigured:
         false,
+      friendsConfigured:
+        false,
       sessionKeyConfigured:
         false,
     },
@@ -138,6 +140,7 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
           LUDOPROOF_API_GATE: {},
           LUDOPROOF_LEADERBOARD: {},
           LUDOPROOF_MATCHMAKER: {},
+          LUDOPROOF_FRIENDS: {},
         },
       ),
     );
@@ -186,6 +189,11 @@ test("ready is fail-closed until EntroNex trust, storage, and upstream health ar
     true,
   );
   assert.equal(
+    ready.json.checks
+      .friendsConfigured,
+    true,
+  );
+  assert.equal(
     ready.json.productionClaim,
     false,
   );
@@ -227,6 +235,7 @@ test(
             LUDOPROOF_API_GATE: {},
           LUDOPROOF_LEADERBOARD: {},
           LUDOPROOF_MATCHMAKER: {},
+          LUDOPROOF_FRIENDS: {},
             ENTRONEX_SERVICE: {
               async fetch(request) {
                 serviceCalls += 1;
@@ -393,6 +402,7 @@ test(
             LUDOPROOF_API_GATE: {},
           LUDOPROOF_LEADERBOARD: {},
           LUDOPROOF_MATCHMAKER: {},
+          LUDOPROOF_FRIENDS: {},
           },
         ),
       );

@@ -47,6 +47,8 @@ data class MatchSnapshot(
     val matchId: String,
     val status: String,
     val hostPlayerId: String,
+    val targetPlayerCount: Int? = null,
+    val matchMode: String = "ONLINE",
     val players: List<PlayerSnapshot>,
     val turnSeat: Int,
     val randomEventIndex: Int,
@@ -84,6 +86,29 @@ object GameJson {
             matchId = value.optString("matchId"),
             status = value.optString("status", "WAITING"),
             hostPlayerId = value.optString("hostPlayerId"),
+            targetPlayerCount =
+                if (
+                    value.has(
+                        "targetPlayerCount",
+                    ) &&
+                    !value.isNull(
+                        "targetPlayerCount",
+                    )
+                ) {
+                    value.optInt(
+                        "targetPlayerCount",
+                    )
+                        .takeIf {
+                            it in 2..4
+                        }
+                } else {
+                    null
+                },
+            matchMode =
+                value.optString(
+                    "matchMode",
+                    "ONLINE",
+                ),
             players =
                 value.optJSONArray("players")
                     .toPlayerList(),
