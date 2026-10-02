@@ -308,6 +308,14 @@ internal fun MainActivity.captureSession(
         )
 
     if (
+        matchId !=
+        code
+    ) {
+        lastRealtimeRevision =
+            -1
+    }
+
+    if (
         pendingSecret != null &&
         pendingSecret?.matchId != code
     ) {
