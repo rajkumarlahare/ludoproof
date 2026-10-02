@@ -131,7 +131,12 @@ class MainActivity : Activity() {
                 if (
                     canRenderUi() &&
                     isOnline &&
-                    matchId == null &&
+                    (
+                        matchId == null ||
+                        currentState
+                            ?.status ==
+                        "FINISHED"
+                    ) &&
                     publicMatchmakingStore.load() !=
                     null
                 ) {
