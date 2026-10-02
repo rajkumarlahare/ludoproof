@@ -35,10 +35,13 @@ internal fun MainActivity.selectPublicPlayerCount(
 internal fun MainActivity.beginPublicMatchmaking() {
     if (
         matchId !=
-        null
+            null &&
+        currentState
+            ?.status !=
+        "FINISHED"
     ) {
         showStatus(
-            "Finish or leave the current online match before searching again.",
+            "Finish the current online match before searching again.",
         )
         return
     }
@@ -154,7 +157,10 @@ internal fun MainActivity.pollPublicMatchmaking() {
             ?: return
     if (
         matchId !=
-        null
+            null &&
+        currentState
+            ?.status !=
+        "FINISHED"
     ) {
         publicMatchmakingStore
             .clear()
@@ -330,7 +336,10 @@ internal fun MainActivity.restorePublicMatchmakingUi() {
             .load()
     if (
         matchId !=
-        null
+            null &&
+        currentState
+            ?.status !=
+        "FINISHED"
     ) {
         if (
             ticket !=
@@ -456,8 +465,13 @@ internal fun MainActivity.setPublicSearchUi(
     val interactive =
         !searching &&
             isOnline &&
-            matchId ==
-            null
+            (
+                matchId ==
+                    null ||
+                currentState
+                    ?.status ==
+                "FINISHED"
+            )
 
     nameInput.isEnabled =
         interactive
