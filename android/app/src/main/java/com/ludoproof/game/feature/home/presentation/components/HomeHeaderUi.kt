@@ -13,6 +13,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.ludoproof.game.HomeActivity
 import com.ludoproof.game.LudoProofTheme
+import com.ludoproof.game.core.ui.components.ProfilePlaceholderView
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
 import com.ludoproof.game.feature.profile.domain.ProfileProgression
 import com.ludoproof.game.feature.profile.presentation.ProfileActivity
@@ -103,8 +104,8 @@ private fun HomeActivity.homeIdentityRow():
     }
 
 private fun HomeActivity.homeAvatarPlaceholder():
-    HomeProfilePlaceholderView =
-    HomeProfilePlaceholderView(this).apply {
+    ProfilePlaceholderView =
+    ProfilePlaceholderView(this).apply {
         contentDescription =
             "Guest user profile"
         isClickable = true
