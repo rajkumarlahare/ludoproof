@@ -160,8 +160,10 @@ internal fun HomeActivity.quickActions():
         )
         row.addView(
             quickAction(
-                "↗",
-                "SHARE",
+                symbol = "",
+                label = "SHARE",
+                iconKind =
+                    HomeIconKind.SHARE,
             ) {
                 shareLudoProof()
             },
@@ -201,6 +203,7 @@ internal fun HomeActivity.quickActions():
 internal fun HomeActivity.quickAction(
     symbol: String,
     label: String,
+    iconKind: HomeIconKind? = null,
     action: () -> Unit,
 ): LinearLayout =
     LinearLayout(this).apply {
@@ -209,22 +212,67 @@ internal fun HomeActivity.quickAction(
         gravity =
             Gravity.CENTER
 
-        addView(
-            Button(this@quickAction).apply {
-                LudoProofTheme
-                    .homeCircularAction(
-                        this,
-                        symbol,
-                    )
-                contentDescription =
-                    label.lowercase()
-                setOnClickListener {
-                    action()
+        val actionSize =
+            dp(
+                if (
+                    isCompact()
+                ) {
+                    50
+                } else {
+                    54
+                },
+            )
+        val actionView =
+            if (
+                iconKind !=
+                null
+            ) {
+                HomeIconView(
+                    this@quickAction,
+                ).apply {
+                    kind =
+                        iconKind
+                    iconColor =
+                        0xFF91E9FF.toInt()
+                    contentDescription =
+                        label.lowercase()
+                    isClickable =
+                        true
+                    isFocusable =
+                        true
+                    background =
+                        homeBlueCircularIconBackground(
+                            this@quickAction,
+                        )
+                    elevation =
+                        dp(7)
+                            .toFloat()
+                    setOnClickListener {
+                        action()
+                    }
                 }
-            },
+            } else {
+                Button(
+                    this@quickAction,
+                ).apply {
+                    LudoProofTheme
+                        .homeCircularAction(
+                            this,
+                            symbol,
+                        )
+                    contentDescription =
+                        label.lowercase()
+                    setOnClickListener {
+                        action()
+                    }
+                }
+            }
+
+        addView(
+            actionView,
             LinearLayout.LayoutParams(
-                dp(if (isCompact()) 50 else 54),
-                dp(if (isCompact()) 50 else 54),
+                actionSize,
+                actionSize,
             ),
         )
         addView(
