@@ -1532,6 +1532,29 @@ class OfflineGameEngine(
             "Offline save has an invalid pending event index"
         }
 
+        if (
+            restored.pendingOutcome !=
+            null
+        ) {
+            check(
+                restored.pendingEventIndex !=
+                    null &&
+                    restored.pendingEventIndex <
+                    restored.eventIndex &&
+                    restored.pendingLegal
+                        .isNotEmpty(),
+            ) {
+                "Offline save has an incomplete pending move"
+            }
+        } else {
+            check(
+                restored.pendingLegal
+                    .isEmpty(),
+            ) {
+                "Offline save has stale legal moves"
+            }
+        }
+
         val winner =
             restored.winnerPlayerId
         check(
@@ -1551,6 +1574,13 @@ class OfflineGameEngine(
                     null,
             ) {
                 "Finished offline save is missing a winner"
+            }
+        } else {
+            check(
+                winner ==
+                    null,
+            ) {
+                "Active offline save cannot already have a winner"
             }
         }
     }
