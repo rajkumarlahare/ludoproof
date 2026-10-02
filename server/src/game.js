@@ -24,7 +24,14 @@ export const RULESET = Object.freeze({
   captureOnSafeCell: false,
 });
 
-export function newMatch({ matchId, hostPlayerId, hostDisplayName, now }) {
+export function newMatch({
+  matchId,
+  hostPlayerId,
+  hostDisplayName,
+  now,
+  targetPlayerCount = null,
+  matchMode = "ONLINE",
+}) {
   return {
     schemaVersion: 1,
     matchId,
@@ -33,6 +40,8 @@ export function newMatch({ matchId, hostPlayerId, hostDisplayName, now }) {
     updatedAt: now,
     revision: 1,
     hostPlayerId,
+    targetPlayerCount,
+    matchMode,
     players: [
       {
         playerId: hostPlayerId,
@@ -53,7 +62,21 @@ export function newMatch({ matchId, hostPlayerId, hostDisplayName, now }) {
 
 export function addPlayer(state, { playerId, displayName, tokenAuthHash, now }) {
   requireStatus(state, "WAITING");
-  if (state.players.length >= 4) throw gameError("MATCH_FULL", "match already has four players");
+  const playerLimit =
+    Number.isInteger(
+      state.targetPlayerCount,
+    )
+      ? state.targetPlayerCount
+      : 4;
+  if (
+    state.players.length >=
+    playerLimit
+  ) {
+    throw gameError(
+      "MATCH_FULL",
+      "match already has all required players",
+    );
+  }
   if (state.players.some((player) => player.playerId === playerId)) {
     throw gameError("PLAYER_EXISTS", "player already joined");
   }
@@ -85,6 +108,18 @@ export function startMatch(state, playerId, now) {
   }
   if (state.players.length < 2) {
     throw gameError("NEED_MORE_PLAYERS", "at least two players are required");
+  }
+  if (
+    Number.isInteger(
+      state.targetPlayerCount,
+    ) &&
+    state.players.length !==
+      state.targetPlayerCount
+  ) {
+    throw gameError(
+      "WAITING_FOR_PLAYERS",
+      "all invited seats must be filled before the match can start",
+    );
   }
 
   const next = clone(state);
@@ -387,6 +422,15 @@ export function publicState(state) {
     updatedAt: state.updatedAt,
     revision: state.revision,
     hostPlayerId: state.hostPlayerId,
+    targetPlayerCount:
+      Number.isInteger(
+        state.targetPlayerCount,
+      )
+        ? state.targetPlayerCount
+        : null,
+    matchMode:
+      state.matchMode ??
+      "ONLINE",
     players: state.players.map((player, seat) => ({
       playerId: player.playerId,
       displayName: player.displayName,
