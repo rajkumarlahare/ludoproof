@@ -99,13 +99,18 @@ class HomeActivity : Activity() {
                         2,
                 ),
             )
-        val lowerContentInsetPx =
+        val modeSectionWidth =
             (
-                topHudWidth -
-                    lowerContentWidth
+                lowerContentWidth *
+                    0.92f
                 )
-                .coerceAtLeast(0) /
-                2
+                .toInt()
+        val continueButtonWidth =
+            (
+                lowerContentWidth *
+                    0.70f
+                )
+                .toInt()
 
         val content =
             LinearLayout(this).apply {
@@ -158,13 +163,16 @@ class HomeActivity : Activity() {
 
         content.addView(
             modeSection(),
-            fullWidthSection(
-                if (isCompact()) 20 else 24,
+            LinearLayout.LayoutParams(
+                modeSectionWidth,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                leftMargin =
-                    lowerContentInsetPx
-                rightMargin =
-                    lowerContentInsetPx
+                gravity =
+                    Gravity.CENTER_HORIZONTAL
+                topMargin =
+                    dp(
+                        if (isCompact()) 20 else 24,
+                    )
             },
         )
 
@@ -173,21 +181,15 @@ class HomeActivity : Activity() {
                 content.addView(
                     button,
                     LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(if (isCompact()) 58 else 62),
+                        continueButtonWidth,
+                        dp(
+                            if (isCompact()) 42 else 44,
+                        ),
                     ).apply {
-                        setMargins(
-                            (
-                                if (isCompact()) dp(12) else dp(34)
-                                ) +
-                                lowerContentInsetPx,
-                            dp(18),
-                            (
-                                if (isCompact()) dp(12) else dp(34)
-                                ) +
-                                lowerContentInsetPx,
-                            0,
-                        )
+                        gravity =
+                            Gravity.CENTER_HORIZONTAL
+                        topMargin =
+                            dp(16)
                     },
                 )
             }
