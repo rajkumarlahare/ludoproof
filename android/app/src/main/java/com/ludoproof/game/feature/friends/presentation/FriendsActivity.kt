@@ -1201,7 +1201,7 @@ class FriendsActivity :
                         requestId,
                 )
             },
-            onSuccess = {
+            onSuccess = success@ {
                     response ->
                 val next =
                     FriendCredential(
@@ -1226,7 +1226,7 @@ class FriendsActivity :
                         showStatus(
                             "Friend ID was created but could not be secured on this device.",
                         )
-                        return@runRequest
+                        return@success
                     }
 
                 credential =
@@ -1278,13 +1278,51 @@ class FriendsActivity :
                             .snapshot()
                             .displayName,
                 )
-                api.friendSnapshot(
-                    auth.friendToken,
-                )
+                val result =
+                    api.friendSnapshot(
+                        auth.friendToken,
+                    )
+                activeFriendSession()
+                    ?.let {
+                            session ->
+                        runCatching {
+                            api.state(
+                                session.matchId,
+                                session.playerToken,
+                            )
+                        }
+                            .getOrNull()
+                            ?.optJSONObject(
+                                "state",
+                            )
+                            ?.let {
+                                    roomState ->
+                                result.put(
+                                    "_roomState",
+                                    roomState,
+                                )
+                            }
+                    }
+                result
             },
             onSuccess = {
                 snapshot =
                     it
+
+                val roomState =
+                    it.optJSONObject(
+                        "_roomState",
+                    )
+                if (
+                    roomState
+                        ?.optString(
+                            "status",
+                        ) ==
+                    "FINISHED"
+                ) {
+                    sessionStore.clear()
+                }
+
                 renderAll()
                 if (
                     announce
@@ -1455,7 +1493,7 @@ class FriendsActivity :
                         selectedPlayerCount,
                 )
             },
-            onSuccess = {
+            onSuccess = success@ {
                     response ->
                 val session =
                     PlayerSession(
@@ -1489,7 +1527,7 @@ class FriendsActivity :
                         showStatus(
                             "Room was created but its secure session could not be saved.",
                         )
-                        return@runRequest
+                        return@success
                     }
 
                 pendingOperationStore
@@ -1597,7 +1635,7 @@ class FriendsActivity :
 
                 joined
             },
-            onSuccess = {
+            onSuccess = success@ {
                     response ->
                 val session =
                     PlayerSession(
@@ -1631,7 +1669,7 @@ class FriendsActivity :
                         showStatus(
                             "Joined room but could not secure the session locally.",
                         )
-                        return@runRequest
+                        return@success
                     }
 
                 pendingOperationStore
