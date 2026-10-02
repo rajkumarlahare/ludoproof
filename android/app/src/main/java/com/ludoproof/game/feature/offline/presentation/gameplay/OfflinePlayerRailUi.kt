@@ -9,6 +9,9 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.ludoproof.game.*
+import com.ludoproof.game.feature.offline.*
+import com.ludoproof.game.ui.offline.common.*
+import com.ludoproof.game.ui.offline.setup.*
 
 internal fun OfflineGameActivity.playerRail():
     LinearLayout =
