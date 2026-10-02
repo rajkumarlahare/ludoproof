@@ -5,7 +5,10 @@ import {
   MatchRoom,
   expectedDigests,
 } from "../src/match-room.js";
-import { sha256Hex } from "../src/crypto.js";
+import {
+  issueFriendRoomJoinToken,
+  sha256Hex,
+} from "../src/crypto.js";
 import {
   TEST_TRUST_ENV,
   attachCommitmentEvidence,
@@ -76,11 +79,18 @@ async function json(response) {
 function roomRequest(path, {
   method = "GET",
   token = null,
+  friendJoinToken = null,
   body = null,
 } = {}) {
   const headers = new Headers();
   if (token) {
     headers.set("authorization", "Bearer " + token);
+  }
+  if (friendJoinToken) {
+    headers.set(
+      "x-ludoproof-friend-join-token",
+      friendJoinToken,
+    );
   }
   if (body !== null) {
     headers.set("content-type", "application/json");
@@ -173,6 +183,133 @@ async function setupActiveMatch(playerCount = 2) {
     room,
     host,
     started,
+  };
+}
+
+
+function attachFriendDirectory(
+  env,
+  {
+    hostFriendToken,
+    hostFriendId,
+    guestFriendId,
+    matchId,
+    inviteId,
+  },
+) {
+  let joinChecks = 0;
+
+  env.LUDOPROOF_FRIENDS = {
+    idFromName(name) {
+      assert.equal(
+        name,
+        "GLOBAL:V1",
+      );
+      return name;
+    },
+    get() {
+      return {
+        async fetch(request) {
+          const url =
+            new URL(
+              request.url,
+            );
+
+          if (
+            request.method ===
+              "GET" &&
+            url.pathname ===
+              "/identity"
+          ) {
+            if (
+              request.headers.get(
+                "authorization",
+              ) !==
+              "Bearer " +
+                hostFriendToken
+            ) {
+              return Response.json(
+                {
+                  error:
+                    "FRIEND_AUTH_INVALID",
+                  message:
+                    "friend credential is invalid",
+                },
+                {
+                  status:
+                    401,
+                },
+              );
+            }
+
+            return Response.json({
+              ok: true,
+              friendId:
+                hostFriendId,
+              displayName:
+                "Host Friend",
+            });
+          }
+
+          if (
+            request.method ===
+              "POST" &&
+            url.pathname ===
+              "/invite/join-check"
+          ) {
+            joinChecks += 1;
+            const body =
+              await request.json();
+            if (
+              body?.matchId !==
+                matchId ||
+              body?.hostFriendId !==
+                hostFriendId ||
+              body?.friendId !==
+                guestFriendId ||
+              body?.inviteId !==
+                inviteId
+            ) {
+              return Response.json(
+                {
+                  error:
+                    "INVITE_JOIN_MISMATCH",
+                  message:
+                    "friend invite does not match",
+                },
+                {
+                  status:
+                    403,
+                },
+              );
+            }
+
+            return Response.json({
+              ok: true,
+              ...body,
+            });
+          }
+
+          return Response.json(
+            {
+              error:
+                "NOT_FOUND",
+              message:
+                "route not found",
+            },
+            {
+              status:
+                404,
+            },
+          );
+        },
+      };
+    },
+  };
+
+  return {
+    joinChecks: () =>
+      joinChecks,
   };
 }
 
@@ -450,6 +587,292 @@ function chooseServerSeed({
     "could not find deterministic test server seed",
   );
 }
+
+
+test(
+  "FRIENDS rooms require bound host identity and accepted invite credentials",
+  { concurrency: false },
+  async () => {
+    const ctx =
+      makeContext();
+    const env =
+      makeEnv();
+    const room =
+      new MatchRoom(
+        ctx,
+        env,
+      );
+    const matchId =
+      "LPABCDEFGH";
+    const hostFriendToken =
+      "lf_" +
+      "h".repeat(48);
+    const hostFriendId =
+      "LPF-ABCD-EFGH-JKLM";
+    const guestFriendId =
+      "LPF-MNPQ-RSTU-VWXY";
+    const inviteId =
+      "FIV-0123456789ABCDEF0123";
+
+    const directory =
+      attachFriendDirectory(
+        env,
+        {
+          hostFriendToken,
+          hostFriendId,
+          guestFriendId,
+          matchId,
+          inviteId,
+        },
+      );
+
+    const createRequestId =
+      crypto.randomUUID();
+    const missingHostAuth =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/create",
+            {
+              method:
+                "POST",
+              body: {
+                matchId,
+                displayName:
+                  "Host Friend",
+                clientRequestId:
+                  createRequestId,
+                targetPlayerCount:
+                  2,
+                matchMode:
+                  "FRIENDS",
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      missingHostAuth
+        .response.status,
+      401,
+    );
+    assert.equal(
+      missingHostAuth
+        .body.error,
+      "FRIEND_AUTH_REQUIRED",
+    );
+
+    const created =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/create",
+            {
+              method:
+                "POST",
+              token:
+                hostFriendToken,
+              body: {
+                matchId,
+                displayName:
+                  "Host Friend",
+                clientRequestId:
+                  createRequestId,
+                targetPlayerCount:
+                  2,
+                matchMode:
+                  "FRIENDS",
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      created.response.status,
+      201,
+    );
+
+    const hostAssert =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/friend-host/assert",
+            {
+              method:
+                "POST",
+              token:
+                created.body
+                  .playerToken,
+              body: {
+                hostFriendId,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      hostAssert.response.status,
+      200,
+    );
+    assert.equal(
+      hostAssert.body.ok,
+      true,
+    );
+
+    const wrongHost =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/friend-host/assert",
+            {
+              method:
+                "POST",
+              token:
+                created.body
+                  .playerToken,
+              body: {
+                hostFriendId:
+                  guestFriendId,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      wrongHost.response.status,
+      403,
+    );
+    assert.equal(
+      wrongHost.body.error,
+      "FRIEND_HOST_MISMATCH",
+    );
+
+    const joinRequestId =
+      crypto.randomUUID();
+    const missingInvite =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/join",
+            {
+              method:
+                "POST",
+              body: {
+                displayName:
+                  "Guest Friend",
+                clientRequestId:
+                  joinRequestId,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      missingInvite.response.status,
+      401,
+    );
+    assert.equal(
+      missingInvite.body.error,
+      "FRIEND_JOIN_TOKEN_REQUIRED",
+    );
+
+    const joinToken =
+      await issueFriendRoomJoinToken(
+        env,
+        {
+          matchId,
+          hostFriendId,
+          friendId:
+            guestFriendId,
+          inviteId,
+          expiresAt:
+            Date.now() +
+            5 * 60 * 1000,
+        },
+      );
+
+    const joined =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/join",
+            {
+              method:
+                "POST",
+              friendJoinToken:
+                joinToken,
+              body: {
+                displayName:
+                  "Guest Friend",
+                clientRequestId:
+                  joinRequestId,
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      joined.response.status,
+      201,
+    );
+    assert.equal(
+      joined.body.state
+        .players.length,
+      2,
+    );
+    assert.equal(
+      directory.joinChecks(),
+      1,
+    );
+
+    const replayed =
+      await json(
+        await room.fetch(
+          roomRequest(
+            "/join",
+            {
+              method:
+                "POST",
+              friendJoinToken:
+                joinToken,
+              body: {
+                displayName:
+                  "Guest Friend",
+                clientRequestId:
+                  crypto.randomUUID(),
+              },
+            },
+          ),
+        ),
+      );
+    assert.equal(
+      replayed.response.status,
+      200,
+    );
+    assert.equal(
+      replayed.body.replayed,
+      true,
+    );
+    assert.equal(
+      replayed.body.playerId,
+      joined.body.playerId,
+    );
+    assert.equal(
+      replayed.body.playerToken,
+      joined.body.playerToken,
+    );
+    assert.equal(
+      replayed.body.state
+        .players.length,
+      2,
+      "one accepted invite must never fill a second seat",
+    );
+    assert.equal(
+      directory.joinChecks(),
+      2,
+    );
+  },
+);
 
 test(
   "player bearer auth rejects an invalid session token",
