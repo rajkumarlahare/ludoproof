@@ -100,13 +100,6 @@ class HomeActivity : Activity() {
         )
 
         content.addView(
-            quickActions(),
-            fullWidthSection(
-                if (isCompact()) 14 else 18,
-            ),
-        )
-
-        content.addView(
             modeSection(),
             fullWidthSection(
                 if (isCompact()) 20 else 24,
