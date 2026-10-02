@@ -81,7 +81,15 @@ internal fun HomeActivity.modeSection():
                         0xFF2FA91F.toInt(),
                     ),
             ) {
-                // Computer mode logic will be connected later.
+                startActivity(
+                    Intent(
+                        this@modeSection,
+                        OfflineGameActivity::class.java,
+                    ).putExtra(
+                        OfflineGameActivity.EXTRA_PLAY_MODE,
+                        OfflineGameActivity.PLAY_MODE_COMPUTER,
+                    ),
+                )
             },
             LinearLayout.LayoutParams(
                 cardSize,
@@ -110,6 +118,9 @@ internal fun HomeActivity.modeSection():
                     Intent(
                         this@modeSection,
                         OfflineGameActivity::class.java,
+                    ).putExtra(
+                        OfflineGameActivity.EXTRA_PLAY_MODE,
+                        OfflineGameActivity.PLAY_MODE_LOCAL,
                     ),
                 )
             },
