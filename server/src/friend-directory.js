@@ -8,7 +8,7 @@ import {
 } from "./crypto.js";
 
 const FRIEND_ID =
-  /^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}$/;
+  /^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/;
 const MATCH_ID =
   /^LP[A-Z2-9]{8}$/;
 const FRIEND_TOKEN =
@@ -308,10 +308,12 @@ export class FriendDirectory {
           `
             UPDATE friend_profiles
             SET
+              token_hash = ?,
               display_name = ?,
               last_seen_at = ?
             WHERE friend_id = ?
           `,
+          tokenHash,
           displayName,
           now,
           identity
@@ -845,6 +847,13 @@ export class FriendDirectory {
           ?.clientRequestId,
       );
 
+    await this.#assertFriendRoomHost(
+      matchId,
+      request.headers.get(
+        "x-ludoproof-room-token",
+      ),
+    );
+
     if (
       !this.#areFriends(
         me.friendId,
@@ -1084,6 +1093,128 @@ export class FriendDirectory {
             : null,
       },
     );
+  }
+
+  async #assertFriendRoomHost(
+    matchId,
+    roomToken,
+  ) {
+    if (
+      typeof roomToken !==
+        "string" ||
+      !/^lp_[A-Za-z0-9_-]{32,}$/
+        .test(
+          roomToken,
+        )
+    ) {
+      throw httpError(
+        401,
+        "ROOM_AUTH_REQUIRED",
+        "private room host credential is required",
+      );
+    }
+
+    if (
+      !this.env
+        .LUDOPROOF_MATCHES
+    ) {
+      throw httpError(
+        503,
+        "MATCH_STORE_NOT_CONFIGURED",
+        "match storage is not configured",
+      );
+    }
+
+    const id =
+      this.env
+        .LUDOPROOF_MATCHES
+        .idFromName(
+          matchId,
+        );
+    const target =
+      this.env
+        .LUDOPROOF_MATCHES
+        .get(
+          id,
+        );
+    const response =
+      await target.fetch(
+        new Request(
+          "https://room/state",
+          {
+            method:
+              "GET",
+            headers: {
+              authorization:
+                "Bearer " +
+                roomToken,
+            },
+          },
+        ),
+      );
+
+    let body;
+    try {
+      body =
+        await response.json();
+    } catch {
+      throw httpError(
+        503,
+        "ROOM_AUTH_BAD_RESPONSE",
+        "private room authorization returned invalid data",
+      );
+    }
+
+    if (
+      !response.ok
+    ) {
+      throw httpError(
+        response.status ===
+          401
+          ? 401
+          : 403,
+        "ROOM_AUTH_INVALID",
+        "private room host credential is invalid",
+      );
+    }
+
+    const state =
+      body
+        ?.state;
+    if (
+      state
+        ?.matchMode !==
+        "FRIENDS"
+    ) {
+      throw httpError(
+        409,
+        "NOT_FRIEND_ROOM",
+        "room is not a friends private room",
+      );
+    }
+    if (
+      state
+        ?.status !==
+        "WAITING"
+    ) {
+      throw httpError(
+        409,
+        "ROOM_NOT_WAITING",
+        "room is no longer accepting invites",
+      );
+    }
+    if (
+      body
+        ?.playerId !==
+      state
+        ?.hostPlayerId
+    ) {
+      throw httpError(
+        403,
+        "HOST_ONLY",
+        "only the private room host can invite friends",
+      );
+    }
   }
 
   async #authorize(
@@ -1431,7 +1562,7 @@ function normalizeFriendId(
     throw httpError(
       400,
       "INVALID_FRIEND_ID",
-      "Friend ID must look like LPF-ABCD-EFGH",
+      "Friend ID must look like LPF-ABCD-EFGH-JKLM",
     );
   }
   return normalized;
