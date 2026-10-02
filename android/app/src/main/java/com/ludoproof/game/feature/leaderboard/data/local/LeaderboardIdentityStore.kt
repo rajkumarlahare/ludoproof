@@ -37,27 +37,12 @@ class LeaderboardIdentityStore(
                 return it
             }
 
-        val legacy =
-            prefs.getString(
-                LEGACY_KEY_PROFILE_ID,
-                null,
-            )
-                ?.trim()
-                ?.lowercase(
+        val generated =
+            UUID.randomUUID()
+                .toString()
+                .lowercase(
                     Locale.ROOT,
                 )
-                ?.takeIf {
-                    UUID_V4.matches(
-                        it,
-                    )
-                }
-        val generated =
-            legacy
-                ?: UUID.randomUUID()
-                    .toString()
-                    .lowercase(
-                        Locale.ROOT,
-                    )
 
         persistRegistrationRequestId(
             generated,
