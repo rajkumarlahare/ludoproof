@@ -443,14 +443,13 @@ export class MatchmakerQueue {
         state,
       );
       return json(
-        409,
+        200,
         {
-          error:
-            "MATCH_ALREADY_ASSIGNED",
-          message:
-            "a match was already assigned",
           status:
             "MATCHED",
+          cancelled:
+            false,
+          playerCount,
           matchId:
             assignment
               .matchId,
