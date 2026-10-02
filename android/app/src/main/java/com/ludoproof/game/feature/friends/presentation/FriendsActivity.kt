@@ -1272,14 +1272,6 @@ class FriendsActivity :
                     null
                 },
             action = {
-                api.friendHeartbeat(
-                    friendToken =
-                        auth.friendToken,
-                    displayName =
-                        profileStore
-                            .snapshot()
-                            .displayName,
-                )
                 val result =
                     api.friendSnapshot(
                         auth.friendToken,
