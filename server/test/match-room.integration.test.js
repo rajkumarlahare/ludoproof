@@ -1635,10 +1635,16 @@ test(
     assert.equal(
       first.response.status,
       201,
+      JSON.stringify(
+        first.body,
+      ),
     );
     assert.equal(
       retry.response.status,
       200,
+      JSON.stringify(
+        retry.body,
+      ),
     );
     assert.equal(
       retry.body.replayed,
