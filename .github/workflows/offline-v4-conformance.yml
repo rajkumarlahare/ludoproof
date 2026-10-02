@@ -3,19 +3,19 @@ name: Offline v4 Conformance
 on:
   push:
     paths:
-      - 'android/app/src/main/java/com/ludoproof/game/EntroNexV4Local.kt'
-      - 'android/app/src/main/java/com/ludoproof/game/OfflineLudoV4Binding.kt'
-      - 'android/app/src/main/java/com/ludoproof/game/OfflineRandomnessAudit.kt'
-      - 'android/app/src/main/java/com/ludoproof/game/OfflineGameEngine.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/proof/core/EntroNexV4Local.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/proof/offline/OfflineLudoV4Binding.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/proof/offline/OfflineRandomnessAudit.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/engine/offline/OfflineGameEngine.kt'
       - 'android/app/src/test/java/com/ludoproof/game/EntroNexV4LocalConformanceTest.kt'
       - 'android/app/src/test/java/com/ludoproof/game/OfflineLudoV4BindingTest.kt'
       - '.github/workflows/offline-v4-conformance.yml'
   pull_request:
     paths:
-      - 'android/app/src/main/java/com/ludoproof/game/EntroNexV4Local.kt'
-      - 'android/app/src/main/java/com/ludoproof/game/OfflineLudoV4Binding.kt'
-      - 'android/app/src/main/java/com/ludoproof/game/OfflineRandomnessAudit.kt'
-      - 'android/app/src/main/java/com/ludoproof/game/OfflineGameEngine.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/proof/core/EntroNexV4Local.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/proof/offline/OfflineLudoV4Binding.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/proof/offline/OfflineRandomnessAudit.kt'
+      - 'android/app/src/main/java/com/ludoproof/game/engine/offline/OfflineGameEngine.kt'
       - 'android/app/src/test/java/com/ludoproof/game/EntroNexV4LocalConformanceTest.kt'
       - 'android/app/src/test/java/com/ludoproof/game/OfflineLudoV4BindingTest.kt'
       - '.github/workflows/offline-v4-conformance.yml'
