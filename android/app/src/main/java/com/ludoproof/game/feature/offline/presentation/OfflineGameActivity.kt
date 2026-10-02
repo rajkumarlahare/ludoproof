@@ -84,7 +84,15 @@ class OfflineGameActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         LudoProofTheme.configureWindow(this)
-        if (engine.hasSavedGame()) showGame(engine.snapshot()) else showSetup()
+        if (
+            session.hasSavedGame()
+        ) {
+            showGame(
+                session.snapshot(),
+            )
+        } else {
+            showSetup()
+        }
     }
 
     internal fun prepareOfflineUiTransition() {
