@@ -53,12 +53,31 @@ class MainActivity : Activity() {
     internal lateinit var rollButton: Button
     internal lateinit var proofButton: Button
 
-    internal var matchId: String? = null
-    internal var playerToken: String? = null
-    internal var playerId: String? = null
-    internal var currentState: MatchSnapshot? = null
-    internal var pendingSecret: PendingRollSecret? = null
-    internal var isOnline: Boolean = false
+    internal val uiStateHolder = OnlineGameStateHolder()
+
+    internal var matchId: String?
+        get() = uiStateHolder.value.matchId
+        set(value) { uiStateHolder.update { it.copy(matchId = value) } }
+
+    internal var playerToken: String?
+        get() = uiStateHolder.value.playerToken
+        set(value) { uiStateHolder.update { it.copy(playerToken = value) } }
+
+    internal var playerId: String?
+        get() = uiStateHolder.value.playerId
+        set(value) { uiStateHolder.update { it.copy(playerId = value) } }
+
+    internal var currentState: MatchSnapshot?
+        get() = uiStateHolder.value.currentState
+        set(value) { uiStateHolder.update { it.copy(currentState = value) } }
+
+    internal var pendingSecret: PendingRollSecret?
+        get() = uiStateHolder.value.pendingSecret
+        set(value) { uiStateHolder.update { it.copy(pendingSecret = value) } }
+
+    internal var isOnline: Boolean
+        get() = uiStateHolder.value.isOnline
+        set(value) { uiStateHolder.update { it.copy(isOnline = value) } }
 
     internal val statePollRunnable =
         object : Runnable {
