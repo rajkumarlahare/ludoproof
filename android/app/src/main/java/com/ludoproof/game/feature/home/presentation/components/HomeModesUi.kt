@@ -1,6 +1,7 @@
 package com.ludoproof.game.ui.home
 
 import android.app.Activity
+import android.graphics.drawable.GradientDrawable
 import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
@@ -17,31 +18,31 @@ internal fun HomeActivity.modeSection():
     LinearLayout(this).apply {
         orientation =
             LinearLayout.VERTICAL
+        gravity =
+            Gravity.CENTER_HORIZONTAL
 
-        val modes =
-            LinearLayout(this@modeSection).apply {
-                orientation =
-                    if (isCompact()) {
-                        LinearLayout.VERTICAL
-                    } else {
-                        LinearLayout.HORIZONTAL
-                    }
-                gravity =
-                    Gravity.CENTER
-            }
+        val cardSize =
+            dp(
+                if (isCompact()) {
+                    146
+                } else {
+                    162
+                },
+            )
 
-        val onlineCard =
-            modeCard(
-                mode =
-                    ModeArtView.Mode.ONLINE,
+        addView(
+            homeGameCard(
                 title =
-                    "ONLINE MATCH",
-                subtitle =
-                    "Remote EntroNex authority",
-                buttonLabel =
-                    "Play Online  ›",
-                usePositiveAction =
-                    true,
+                    "ONLINE GAME",
+                artMode =
+                    ModeArtView.Mode.ONLINE,
+                placeholder =
+                    null,
+                labelColors =
+                    intArrayOf(
+                        0xFF28C7FF.toInt(),
+                        0xFF126FD6.toInt(),
+                    ),
             ) {
                 startActivity(
                     Intent(
@@ -49,20 +50,61 @@ internal fun HomeActivity.modeSection():
                         MainActivity::class.java,
                     ),
                 )
+            },
+            LinearLayout.LayoutParams(
+                cardSize,
+                cardSize,
+            ),
+        )
+
+        val bottomRow =
+            LinearLayout(
+                this@modeSection,
+            ).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+                gravity =
+                    Gravity.CENTER
             }
 
-        val localCard =
-            modeCard(
-                mode =
-                    ModeArtView.Mode.LOCAL,
+        bottomRow.addView(
+            homeGameCard(
                 title =
-                    "LOCAL PLAY",
-                subtitle =
-                    "Pass & play • local v4",
-                buttonLabel =
-                    "Play Local  ›",
-                usePositiveAction =
-                    false,
+                    "COMPUTER",
+                artMode =
+                    null,
+                placeholder =
+                    "CPU",
+                labelColors =
+                    intArrayOf(
+                        0xFF70D82F.toInt(),
+                        0xFF2FA91F.toInt(),
+                    ),
+            ) {
+                // Computer mode logic will be connected later.
+            },
+            LinearLayout.LayoutParams(
+                cardSize,
+                cardSize,
+            ).apply {
+                marginEnd =
+                    dp(if (isCompact()) 6 else 8)
+            },
+        )
+
+        bottomRow.addView(
+            homeGameCard(
+                title =
+                    "LOCAL",
+                artMode =
+                    ModeArtView.Mode.LOCAL,
+                placeholder =
+                    null,
+                labelColors =
+                    intArrayOf(
+                        0xFFFFC32A.toInt(),
+                        0xFFF08A00.toInt(),
+                    ),
             ) {
                 startActivity(
                     Intent(
@@ -70,104 +112,119 @@ internal fun HomeActivity.modeSection():
                         OfflineGameActivity::class.java,
                     ),
                 )
-            }
+            },
+            LinearLayout.LayoutParams(
+                cardSize,
+                cardSize,
+            ).apply {
+                marginStart =
+                    dp(if (isCompact()) 6 else 8)
+            },
+        )
 
-        if (isCompact()) {
-            modes.addView(
-                onlineCard,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(228),
-                ),
-            )
-            modes.addView(
-                localCard,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(228),
-                ).apply {
-                    topMargin =
-                        dp(12)
-                },
-            )
-        } else {
-            val cardHeight =
-                dp(
-                    if (
-                        LudoProofTheme
-                            .isExpandedWidth(this@modeSection)
-                    ) {
-                        270
-                    } else {
-                        242
-                    },
-                )
-            modes.addView(
-                onlineCard,
-                LinearLayout.LayoutParams(
-                    0,
-                    cardHeight,
-                    1f,
-                ).apply {
-                    marginEnd =
-                        dp(7)
-                },
-            )
-            modes.addView(
-                localCard,
-                LinearLayout.LayoutParams(
-                    0,
-                    cardHeight,
-                    1f,
-                ).apply {
-                    marginStart =
-                        dp(7)
-                },
-            )
-        }
-
-        addView(modes)
+        addView(
+            bottomRow,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin =
+                    dp(if (isCompact()) 12 else 14)
+            },
+        )
     }
 
-internal fun HomeActivity.modeCard(
-    mode: ModeArtView.Mode,
+private fun HomeActivity.homeGameCard(
     title: String,
-    subtitle: String,
-    buttonLabel: String,
-    usePositiveAction: Boolean,
+    artMode: ModeArtView.Mode?,
+    placeholder: String?,
+    labelColors: IntArray,
     action: () -> Unit,
 ): LinearLayout =
     LinearLayout(this).apply {
         orientation =
             LinearLayout.VERTICAL
         setPadding(
-            dp(5),
-            dp(5),
-            dp(5),
-            dp(6),
+            dp(4),
+            dp(4),
+            dp(4),
+            dp(4),
         )
         background =
-            LudoProofTheme
-                .panelDrawable(this@modeCard)
+            GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    0xFF168EEA.toInt(),
+                    0xFF0D5BB9.toInt(),
+                    0xFF073E91.toInt(),
+                ),
+            ).apply {
+                cornerRadius =
+                    dp(14).toFloat()
+                setStroke(
+                    dp(2),
+                    0xFF5BE0FF.toInt(),
+                )
+            }
         elevation =
-            dp(8).toFloat()
-        isClickable =
-            true
-        isFocusable =
-            true
+            dp(7).toFloat()
+        isClickable = true
+        isFocusable = true
         contentDescription =
-            "$title. $subtitle"
+            title
         setOnClickListener {
             action()
         }
 
+        val artHost =
+            FrameLayout(
+                this@homeGameCard,
+            )
+
+        if (artMode != null) {
+            artHost.addView(
+                ModeArtView(
+                    this@homeGameCard,
+                ).apply {
+                    mode =
+                        artMode
+                    importantForAccessibility =
+                        View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                },
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                ),
+            )
+        } else {
+            artHost.addView(
+                TextView(
+                    this@homeGameCard,
+                ).apply {
+                    text =
+                        placeholder ?: "GAME"
+                    textSize =
+                        if (isCompact()) 28f else 31f
+                    setTypeface(
+                        android.graphics.Typeface.DEFAULT_BOLD,
+                    )
+                    setTextColor(
+                        0xFFEAF8FF.toInt(),
+                    )
+                    gravity =
+                        Gravity.CENTER
+                    importantForAccessibility =
+                        View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                },
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                ),
+            )
+        }
+
         addView(
-            ModeArtView(this@modeCard).apply {
-                this.mode =
-                    mode
-                importantForAccessibility =
-                    View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            },
+            artHost,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 0,
@@ -176,61 +233,37 @@ internal fun HomeActivity.modeCard(
         )
 
         addView(
-            TextView(this@modeCard).apply {
+            TextView(
+                this@homeGameCard,
+            ).apply {
                 text =
                     title
-                LudoProofTheme.title(
-                    this,
-                    if (isCompact()) 17f else 18f,
-                )
-                setPadding(
-                    0,
-                    dp(6),
-                    0,
-                    0,
-                )
-            },
-        )
-
-        addView(
-            TextView(this@modeCard).apply {
-                text =
-                    subtitle
-                LudoProofTheme.body(
-                    this,
-                    if (isCompact()) 10.5f else 11f,
-                    centered = true,
-                    bright = true,
-                )
-                setPadding(
-                    dp(4),
-                    dp(2),
-                    dp(4),
-                    dp(6),
-                )
-            },
-        )
-
-        addView(
-            Button(this@modeCard).apply {
-                text =
-                    buttonLabel
-                if (usePositiveAction) {
-                    LudoProofTheme
-                        .positive(this)
-                } else {
-                    LudoProofTheme
-                        .primary(this)
-                }
                 textSize =
-                    if (isCompact()) 16f else 17f
-                setOnClickListener {
-                    action()
-                }
+                    if (isCompact()) 14f else 15.5f
+                setTypeface(
+                    android.graphics.Typeface.DEFAULT_BOLD,
+                )
+                setTextColor(
+                    0xFFFFFFFF.toInt(),
+                )
+                gravity =
+                    Gravity.CENTER
+                background =
+                    GradientDrawable(
+                        GradientDrawable.Orientation.TOP_BOTTOM,
+                        labelColors,
+                    ).apply {
+                        cornerRadius =
+                            dp(10).toFloat()
+                        setStroke(
+                            dp(1),
+                            0x66FFFFFF,
+                        )
+                    }
             },
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(54),
+                dp(if (isCompact()) 34 else 38),
             ),
         )
     }
