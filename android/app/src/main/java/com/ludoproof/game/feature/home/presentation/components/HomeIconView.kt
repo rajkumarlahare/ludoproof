@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.view.View
@@ -20,6 +21,7 @@ internal enum class HomeIconKind {
     BADGE,
     SHARE,
     RATING,
+    AD_BLOCKER,
 }
 
 internal class HomeIconView(
@@ -137,9 +139,70 @@ internal class HomeIconView(
                 drawRatingStar(
                     canvas,
                 )
+            HomeIconKind.AD_BLOCKER ->
+                drawAdBlocker(
+                    canvas,
+                )
         }
 
         canvas.restore()
+    }
+
+    private fun drawAdBlocker(
+        canvas: Canvas,
+    ) {
+        val adText =
+            Paint(
+                Paint.ANTI_ALIAS_FLAG,
+            ).apply {
+                style =
+                    Paint.Style.FILL
+                color =
+                    0xFF8FEAFF.toInt()
+                textSize =
+                    38f
+                textAlign =
+                    Paint.Align.CENTER
+                typeface =
+                    Typeface.DEFAULT_BOLD
+            }
+
+        val blocker =
+            Paint(
+                Paint.ANTI_ALIAS_FLAG,
+            ).apply {
+                style =
+                    Paint.Style.STROKE
+                color =
+                    0xFFFF3B30.toInt()
+                strokeWidth =
+                    8f
+                strokeCap =
+                    Paint.Cap.ROUND
+                strokeJoin =
+                    Paint.Join.ROUND
+            }
+
+        canvas.drawText(
+            "AD",
+            50f,
+            62f,
+            adText,
+        )
+
+        canvas.drawCircle(
+            50f,
+            50f,
+            34f,
+            blocker,
+        )
+        canvas.drawLine(
+            27f,
+            27f,
+            73f,
+            73f,
+            blocker,
+        )
     }
 
     private fun drawLeaderboard(
