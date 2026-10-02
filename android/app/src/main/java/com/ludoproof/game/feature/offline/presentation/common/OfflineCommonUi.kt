@@ -17,7 +17,7 @@ import com.ludoproof.game.ui.dialogs.showSettingsDialog
 import com.ludoproof.game.ui.offline.gameplay.showGame
 import com.ludoproof.game.ui.offline.setup.showSetup
 
-internal fun OfflineGameActivity.backHeader(label: String): LinearLayout =
+internal fun OfflineGameActivity.backHeader(label: String?): LinearLayout =
     LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
@@ -31,26 +31,47 @@ internal fun OfflineGameActivity.backHeader(label: String): LinearLayout =
             },
             LinearLayout.LayoutParams(dp(52), dp(52)),
         )
-        addView(
-            TextView(this@backHeader).apply {
-                text = label
-                LudoProofTheme.body(this, 14f, centered = true, bright = true)
-                setPadding(dp(14), dp(8), dp(14), dp(8))
-                background =
-                    LudoProofTheme.darkPanelDrawable(
-                        this@backHeader,
-                        goldBorder = true,
-                    )
-            },
-            LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f,
-            ).apply {
-                marginStart = dp(12)
-                marginEnd = dp(10)
-            },
-        )
+        if (
+            label !=
+            null
+        ) {
+            addView(
+                TextView(this@backHeader).apply {
+                    text = label
+                    LudoProofTheme.body(this, 14f, centered = true, bright = true)
+                    setPadding(dp(14), dp(8), dp(14), dp(8))
+                    background =
+                        LudoProofTheme.darkPanelDrawable(
+                            this@backHeader,
+                            goldBorder = true,
+                        )
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f,
+                ).apply {
+                    marginStart = dp(12)
+                    marginEnd = dp(10)
+                },
+            )
+        } else {
+            addView(
+                View(
+                    this@backHeader,
+                ),
+                LinearLayout.LayoutParams(
+                    0,
+                    1,
+                    1f,
+                ).apply {
+                    marginStart =
+                        dp(12)
+                    marginEnd =
+                        dp(10)
+                },
+            )
+        }
         addView(
             Button(this@backHeader).apply {
                 LudoProofTheme.homeCircularAction(

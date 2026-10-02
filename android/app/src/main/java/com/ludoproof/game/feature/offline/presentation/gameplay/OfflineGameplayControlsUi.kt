@@ -297,7 +297,7 @@ internal fun OfflineGameActivity.renderGame(
             "WINNER • " +
                 winnerName
         resultSubtitleText.text =
-            "Local v4 result • history and engine map remain available"
+            "Game complete"
     } else {
         resultPanel.visibility =
             View.GONE
