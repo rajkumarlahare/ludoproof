@@ -229,6 +229,62 @@ internal fun MainActivity.onlineLobbyPanel():
                 matchmakingStatusText,
             )
 
+            matchmakingSlotsText =
+                TextView(
+                    this@onlineLobbyPanel,
+                ).apply {
+                    visibility =
+                        View.GONE
+                    LudoProofTheme.body(
+                        this,
+                        if (isCompactOnline()) 12f else 13f,
+                        centered = true,
+                        bright = true,
+                    )
+                    setPadding(
+                        dp(10),
+                        dp(5),
+                        dp(10),
+                        dp(5),
+                    )
+                    background =
+                        LudoProofTheme.darkPanelDrawable(
+                            this@onlineLobbyPanel,
+                            goldBorder = true,
+                        )
+                }
+            addView(
+                matchmakingSlotsText,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+
+            matchmakingTimerText =
+                TextView(
+                    this@onlineLobbyPanel,
+                ).apply {
+                    visibility =
+                        View.GONE
+                    text =
+                        "SEARCH  00:00"
+                    LudoProofTheme.title(
+                        this,
+                        if (isCompactOnline()) 17f else 19f,
+                        gold = true,
+                    )
+                    setPadding(
+                        dp(8),
+                        dp(8),
+                        dp(8),
+                        dp(8),
+                    )
+                }
+            addView(
+                matchmakingTimerText,
+            )
+
             cancelMatchmakingButton =
                 Button(
                     this@onlineLobbyPanel,
