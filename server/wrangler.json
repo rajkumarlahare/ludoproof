@@ -17,6 +17,10 @@
       {
         "name": "LUDOPROOF_LEADERBOARD",
         "class_name": "LeaderboardRoom"
+      },
+      {
+        "name": "LUDOPROOF_MATCHMAKER",
+        "class_name": "MatchmakerQueue"
       }
     ]
   },
@@ -37,6 +41,12 @@
       "tag": "v3-leaderboard",
       "new_sqlite_classes": [
         "LeaderboardRoom"
+      ]
+    },
+    {
+      "tag": "v4-matchmaker",
+      "new_sqlite_classes": [
+        "MatchmakerQueue"
       ]
     }
   ],
