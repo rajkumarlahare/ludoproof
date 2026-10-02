@@ -263,6 +263,16 @@ internal fun MainActivity.updateTurnBanner(
         "WAITING" -> {
             turnText.text =
                 if (
+                    state.targetPlayerCount !=
+                        null &&
+                    state.players.size <
+                        state.targetPlayerCount
+                ) {
+                    "WAITING FOR PLAYERS • " +
+                        state.players.size +
+                        "/" +
+                        state.targetPlayerCount
+                } else if (
                     state.players.size <
                     2
                 ) {
