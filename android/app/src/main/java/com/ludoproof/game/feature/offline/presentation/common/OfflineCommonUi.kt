@@ -24,7 +24,10 @@ internal fun OfflineGameActivity.backHeader(label: String): LinearLayout =
         addView(
             Button(this@backHeader).apply {
                 LudoProofTheme.homeCircularAction(this, "‹")
-                setOnClickListener { finish() }
+                setOnClickListener {
+                    prepareOfflineUiTransition()
+                    finish()
+                }
             },
             LinearLayout.LayoutParams(dp(52), dp(52)),
         )
