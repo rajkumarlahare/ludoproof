@@ -1,463 +1,688 @@
 package com.ludoproof.game.ui.online
 
-import android.app.Activity
-import android.content.Intent
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.text.InputType
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
-import org.json.JSONObject
-import java.util.concurrent.Executors
-import com.ludoproof.game.*
-import com.ludoproof.game.feature.online.*
+import com.ludoproof.game.LudoProofTheme
+import com.ludoproof.game.MainActivity
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
+import com.ludoproof.game.core.ui.components.ProfilePlaceholderView
+import com.ludoproof.game.feature.online.beginPublicMatchmaking
+import com.ludoproof.game.feature.online.cancelPublicMatchmaking
+import com.ludoproof.game.feature.online.selectPublicPlayerCount
 
 internal fun MainActivity.onlineLobbyPanel():
     LinearLayout =
-    LudoProofTheme
-        .panel(this)
-        .apply {
-            setPadding(
-                dp(if (isCompactOnline()) 12 else 15),
-                dp(if (isCompactOnline()) 12 else 15),
-                dp(if (isCompactOnline()) 12 else 15),
-                dp(if (isCompactOnline()) 12 else 15),
+    LinearLayout(this).apply {
+        orientation =
+            LinearLayout.VERTICAL
+        gravity =
+            Gravity.CENTER_HORIZONTAL
+
+        val profile =
+            ProfileStore(
+                this@onlineLobbyPanel,
             )
+                .snapshot()
 
-            addView(
-                TextView(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    text =
-                        "QUICK ONLINE"
-                    LudoProofTheme.title(
-                        this,
-                        if (isCompactOnline()) 21f else 24f,
-                        gold = true,
-                    )
-                },
-            )
+        nameInput =
+            EditText(
+                this@onlineLobbyPanel,
+            ).apply {
+                setText(
+                    profile.displayName,
+                )
+                visibility =
+                    View.GONE
+            }
 
-            addView(
-                TextView(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    text =
-                        "Choose 2 or 4 players. LudoProof will find real players and start the match automatically."
-                    LudoProofTheme.body(
-                        this,
-                        11f,
-                        centered = true,
-                        bright = true,
-                    )
-                    setPadding(
-                        dp(5),
-                        dp(3),
-                        dp(5),
-                        dp(13),
-                    )
-                },
-            )
+        matchInput =
+            EditText(
+                this@onlineLobbyPanel,
+            ).apply {
+                visibility =
+                    View.GONE
+            }
+        createButton =
+            Button(
+                this@onlineLobbyPanel,
+            ).apply {
+                visibility =
+                    View.GONE
+            }
+        joinButton =
+            Button(
+                this@onlineLobbyPanel,
+            ).apply {
+                visibility =
+                    View.GONE
+            }
 
-            addView(
-                inputLabel(
-                    "PLAYER NAME",
-                ),
-            )
-
-            nameInput =
-                EditText(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    hint =
-                        "Your display name"
-                    setText(
-                        ProfileStore(
-                            this@onlineLobbyPanel,
-                        )
-                            .snapshot()
-                            .displayName,
-                    )
-                    inputType =
-                        InputType.TYPE_CLASS_TEXT or
-                            InputType.TYPE_TEXT_FLAG_CAP_WORDS
-                    LudoProofTheme.input(
-                        this,
-                    )
-                    setSingleLine(
-                        true,
-                    )
-                }
-            addView(
-                nameInput,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(54),
-                ).apply {
-                    bottomMargin =
-                        dp(12)
-                },
-            )
-
-            addView(
-                inputLabel(
-                    "PLAYERS",
-                ),
-            )
-
-            val playerCountRow =
-                LinearLayout(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    orientation =
-                        LinearLayout.HORIZONTAL
-                }
-
-            twoPlayerButton =
-                Button(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    text =
-                        "✓  2 PLAYERS"
-                    LudoProofTheme.positive(
-                        this,
-                    )
-                    setOnClickListener {
-                        selectPublicPlayerCount(
-                            2,
-                        )
-                    }
-                }
-
-            fourPlayerButton =
-                Button(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    text =
-                        "4 PLAYERS"
-                    LudoProofTheme.secondary(
-                        this,
-                    )
-                    setOnClickListener {
-                        selectPublicPlayerCount(
-                            4,
-                        )
-                    }
-                }
-
-            playerCountRow.addView(
-                twoPlayerButton,
-                LinearLayout.LayoutParams(
-                    0,
-                    dp(54),
-                    1f,
-                ).apply {
-                    marginEnd =
-                        dp(5)
-                },
-            )
-            playerCountRow.addView(
-                fourPlayerButton,
-                LinearLayout.LayoutParams(
-                    0,
-                    dp(54),
-                    1f,
-                ).apply {
-                    marginStart =
-                        dp(5)
-                },
-            )
-            addView(
-                playerCountRow,
-            )
-
-            findMatchButton =
-                Button(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    text =
-                        "FIND MATCH"
-                    LudoProofTheme.primary(
-                        this,
-                    )
-                    textSize =
-                        if (isCompactOnline()) 17f else 19f
-                    setOnClickListener {
-                        beginPublicMatchmaking()
-                    }
-                }
-            addView(
-                findMatchButton,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(if (isCompactOnline()) 58 else 62),
-                ).apply {
-                    topMargin =
-                        dp(12)
-                },
-            )
-
-            matchmakingStatusText =
-                TextView(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    text =
-                        "SEARCHING FOR PLAYERS…"
-                    visibility =
-                        View.GONE
-                    LudoProofTheme.title(
-                        this,
-                        if (isCompactOnline()) 16f else 18f,
-                        gold = true,
-                    )
-                    setPadding(
-                        dp(8),
-                        dp(14),
-                        dp(8),
-                        dp(7),
-                    )
-                }
-            addView(
-                matchmakingStatusText,
-            )
-
-            matchmakingSlotsText =
-                TextView(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    visibility =
-                        View.GONE
-                    LudoProofTheme.body(
-                        this,
-                        if (isCompactOnline()) 12f else 13f,
-                        centered = true,
-                        bright = true,
-                    )
-                    setPadding(
-                        dp(10),
-                        dp(5),
-                        dp(10),
-                        dp(5),
-                    )
-                    background =
-                        LudoProofTheme.darkPanelDrawable(
+        matchmakingSetupPanel =
+            LinearLayout(
+                this@onlineLobbyPanel,
+            ).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                gravity =
+                    Gravity.CENTER_HORIZONTAL
+                setPadding(
+                    dp(
+                        if (
+                            isCompactOnline()
+                        ) {
+                            20
+                        } else {
+                            28
+                        },
+                    ),
+                    dp(24),
+                    dp(
+                        if (
+                            isCompactOnline()
+                        ) {
+                            20
+                        } else {
+                            28
+                        },
+                    ),
+                    dp(24),
+                )
+                background =
+                    LudoProofTheme
+                        .darkPanelDrawable(
                             this@onlineLobbyPanel,
                             goldBorder = true,
                         )
-                }
-            addView(
-                matchmakingSlotsText,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ),
-            )
 
-            matchmakingTimerText =
-                TextView(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    visibility =
-                        View.GONE
-                    text =
-                        "SEARCH  00:00"
-                    LudoProofTheme.title(
-                        this,
-                        if (isCompactOnline()) 17f else 19f,
-                        gold = true,
-                    )
-                    setPadding(
-                        dp(8),
-                        dp(8),
-                        dp(8),
-                        dp(8),
-                    )
-                }
-            addView(
-                matchmakingTimerText,
-            )
+                addView(
+                    TextView(
+                        this@onlineLobbyPanel,
+                    ).apply {
+                        text =
+                            "SELECT PLAYERS"
+                        LudoProofTheme
+                            .title(
+                                this,
+                                if (
+                                    isCompactOnline()
+                                ) {
+                                    21f
+                                } else {
+                                    24f
+                                },
+                                gold = true,
+                            )
+                        gravity =
+                            Gravity.CENTER
+                    },
+                )
 
-            cancelMatchmakingButton =
-                Button(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    text =
-                        "CANCEL SEARCH"
-                    visibility =
-                        View.GONE
-                    LudoProofTheme.danger(
-                        this,
-                    )
-                    setOnClickListener {
-                        cancelPublicMatchmaking()
-                    }
-                }
-            addView(
-                cancelMatchmakingButton,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(52),
-                ),
-            )
+                addView(
+                    TextView(
+                        this@onlineLobbyPanel,
+                    ).apply {
+                        text =
+                            "Choose match size"
+                        LudoProofTheme
+                            .body(
+                                this,
+                                11f,
+                                centered = true,
+                                bright = true,
+                            )
+                        setPadding(
+                            0,
+                            dp(4),
+                            0,
+                            dp(16),
+                        )
+                    },
+                )
 
-            addView(
-                TextView(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    text =
-                        "PRIVATE MATCH CODE"
-                    LudoProofTheme.body(
-                        this,
-                        10f,
-                        centered = true,
-                        bright = true,
-                    )
-                    setTextColor(
-                        0xFF70E7FF.toInt(),
-                    )
-                    setPadding(
-                        dp(4),
-                        dp(20),
-                        dp(4),
-                        dp(7),
-                    )
-                },
-            )
-
-            matchInput =
-                EditText(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    hint =
-                        "LPXXXXXXXX"
-                    setText(
-                        matchId
-                            .orEmpty(),
-                    )
-                    inputType =
-                        InputType.TYPE_CLASS_TEXT or
-                            InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
-                    LudoProofTheme.input(
-                        this,
-                    )
-                    setSingleLine(
-                        true,
-                    )
-                }
-            addView(
-                matchInput,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(52),
-                ),
-            )
-
-            val privateActions =
-                LinearLayout(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    orientation =
-                        if (isCompactOnline()) {
-                            LinearLayout.VERTICAL
-                        } else {
-                            LinearLayout.HORIZONTAL
+                twoPlayerButton =
+                    Button(
+                        this@onlineLobbyPanel,
+                    ).apply {
+                        minWidth =
+                            0
+                        minHeight =
+                            0
+                        setPadding(
+                            dp(14),
+                            0,
+                            dp(14),
+                            0,
+                        )
+                        setOnClickListener {
+                            selectPublicPlayerCount(
+                                2,
+                            )
                         }
-                }
-
-            createButton =
-                Button(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    text =
-                        "CREATE PRIVATE"
-                    LudoProofTheme.secondary(
-                        this,
-                    )
-                    setOnClickListener {
-                        createMatch()
                     }
-                }
-
-            joinButton =
-                Button(
-                    this@onlineLobbyPanel,
-                ).apply {
-                    text =
-                        "JOIN CODE"
-                    LudoProofTheme.secondary(
-                        this,
-                    )
-                    setOnClickListener {
-                        joinMatch()
-                    }
-                }
-
-            if (isCompactOnline()) {
-                privateActions.addView(
-                    createButton,
+                addView(
+                    twoPlayerButton,
                     LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(50),
+                        dp(46),
                     ).apply {
-                        topMargin =
-                            dp(9)
+                        leftMargin =
+                            dp(
+                                if (
+                                    isCompactOnline()
+                                ) {
+                                    22
+                                } else {
+                                    54
+                                },
+                            )
+                        rightMargin =
+                            leftMargin
                     },
                 )
-                privateActions.addView(
-                    joinButton,
+
+                fourPlayerButton =
+                    Button(
+                        this@onlineLobbyPanel,
+                    ).apply {
+                        minWidth =
+                            0
+                        minHeight =
+                            0
+                        setPadding(
+                            dp(14),
+                            0,
+                            dp(14),
+                            0,
+                        )
+                        setOnClickListener {
+                            selectPublicPlayerCount(
+                                4,
+                            )
+                        }
+                    }
+                addView(
+                    fourPlayerButton,
                     LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(50),
+                        dp(46),
                     ).apply {
+                        leftMargin =
+                            dp(
+                                if (
+                                    isCompactOnline()
+                                ) {
+                                    22
+                                } else {
+                                    54
+                                },
+                            )
+                        rightMargin =
+                            leftMargin
                         topMargin =
-                            dp(7)
+                            dp(8)
                     },
                 )
-            } else {
-                privateActions.addView(
-                    createButton,
-                    LinearLayout.LayoutParams(
-                        0,
-                        dp(52),
-                        1f,
+
+                findMatchButton =
+                    Button(
+                        this@onlineLobbyPanel,
                     ).apply {
-                        setMargins(
-                            0,
-                            dp(9),
-                            dp(5),
-                            0,
-                        )
-                    },
-                )
-                privateActions.addView(
-                    joinButton,
+                        text =
+                            "PLAY"
+                        LudoProofTheme
+                            .primary(
+                                this,
+                            )
+                        textSize =
+                            if (
+                                isCompactOnline()
+                            ) {
+                                16f
+                            } else {
+                                18f
+                            }
+                        setOnClickListener {
+                            beginPublicMatchmaking()
+                        }
+                    }
+                addView(
+                    findMatchButton,
                     LinearLayout.LayoutParams(
-                        0,
-                        dp(52),
-                        1f,
+                        dp(
+                            if (
+                                isCompactOnline()
+                            ) {
+                                138
+                            } else {
+                                156
+                            },
+                        ),
+                        dp(46),
                     ).apply {
-                        setMargins(
-                            dp(5),
-                            dp(9),
-                            0,
-                            0,
-                        )
+                        gravity =
+                            Gravity.CENTER_HORIZONTAL
+                        topMargin =
+                            dp(18)
                     },
                 )
             }
 
-            addView(
-                privateActions,
+        addView(
+            matchmakingSetupPanel,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+
+        matchmakingSearchPanel =
+            LinearLayout(
+                this@onlineLobbyPanel,
+            ).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+                gravity =
+                    Gravity.CENTER_HORIZONTAL
+                visibility =
+                    View.GONE
+                setPadding(
+                    dp(
+                        if (
+                            isCompactOnline()
+                        ) {
+                            14
+                        } else {
+                            20
+                        },
+                    ),
+                    dp(18),
+                    dp(
+                        if (
+                            isCompactOnline()
+                        ) {
+                            14
+                        } else {
+                            20
+                        },
+                    ),
+                    dp(18),
+                )
+                background =
+                    LudoProofTheme
+                        .darkPanelDrawable(
+                            this@onlineLobbyPanel,
+                            goldBorder = true,
+                        )
+
+                val ownAvatar =
+                    FrameLayout(
+                        this@onlineLobbyPanel,
+                    ).apply {
+                        background =
+                            GradientDrawable(
+                                GradientDrawable.Orientation.TOP_BOTTOM,
+                                intArrayOf(
+                                    0xFF168EEA.toInt(),
+                                    0xFF083D91.toInt(),
+                                ),
+                            ).apply {
+                                cornerRadius =
+                                    dp(12)
+                                        .toFloat()
+                                setStroke(
+                                    dp(2),
+                                    0xFF5BE0FF.toInt(),
+                                )
+                            }
+                        addView(
+                            ProfilePlaceholderView(
+                                this@onlineLobbyPanel,
+                            ).apply {
+                                setPadding(
+                                    dp(10),
+                                    dp(10),
+                                    dp(10),
+                                    dp(10),
+                                )
+                            },
+                            FrameLayout.LayoutParams(
+                                FrameLayout.LayoutParams.MATCH_PARENT,
+                                FrameLayout.LayoutParams.MATCH_PARENT,
+                            ),
+                        )
+                    }
+                addView(
+                    ownAvatar,
+                    LinearLayout.LayoutParams(
+                        dp(
+                            if (
+                                isCompactOnline()
+                            ) {
+                                72
+                            } else {
+                                82
+                            },
+                        ),
+                        dp(
+                            if (
+                                isCompactOnline()
+                            ) {
+                                72
+                            } else {
+                                82
+                            },
+                        ),
+                    ),
+                )
+
+                addView(
+                    TextView(
+                        this@onlineLobbyPanel,
+                    ).apply {
+                        text =
+                            profile.displayName
+                        LudoProofTheme
+                            .title(
+                                this,
+                                if (
+                                    isCompactOnline()
+                                ) {
+                                    15f
+                                } else {
+                                    17f
+                                },
+                            )
+                        gravity =
+                            Gravity.CENTER
+                        setPadding(
+                            0,
+                            dp(5),
+                            0,
+                            0,
+                        )
+                    },
+                )
+
+                addView(
+                    TextView(
+                        this@onlineLobbyPanel,
+                    ).apply {
+                        text =
+                            "VS"
+                        textSize =
+                            if (
+                                isCompactOnline()
+                            ) {
+                                25f
+                            } else {
+                                29f
+                            }
+                        setTypeface(
+                            Typeface.DEFAULT_BOLD,
+                        )
+                        setTextColor(
+                            LudoProofTheme.GOLD,
+                        )
+                        gravity =
+                            Gravity.CENTER
+                        setPadding(
+                            0,
+                            dp(10),
+                            0,
+                            dp(8),
+                        )
+                    },
+                )
+
+                matchmakingOpponentRail =
+                    MatchmakingOpponentRailView(
+                        this@onlineLobbyPanel,
+                    )
+                addView(
+                    matchmakingOpponentRail,
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dp(
+                            if (
+                                isCompactOnline()
+                            ) {
+                                118
+                            } else {
+                                132
+                            },
+                        ),
+                    ),
+                )
+
+                matchmakingStatusText =
+                    TextView(
+                        this@onlineLobbyPanel,
+                    ).apply {
+                        text =
+                            "SEARCHING FOR PLAYERS…"
+                        LudoProofTheme
+                            .title(
+                                this,
+                                if (
+                                    isCompactOnline()
+                                ) {
+                                    15f
+                                } else {
+                                    17f
+                                },
+                                gold = true,
+                            )
+                        gravity =
+                            Gravity.CENTER
+                        setPadding(
+                            dp(6),
+                            dp(12),
+                            dp(6),
+                            dp(4),
+                        )
+                    }
+                addView(
+                    matchmakingStatusText,
+                )
+
+                matchmakingTimerText =
+                    TextView(
+                        this@onlineLobbyPanel,
+                    ).apply {
+                        text =
+                            "SEARCH  00:00"
+                        LudoProofTheme
+                            .body(
+                                this,
+                                if (
+                                    isCompactOnline()
+                                ) {
+                                    12f
+                                } else {
+                                    13f
+                                },
+                                centered = true,
+                                bright = true,
+                            )
+                        setTextColor(
+                            0xFF70E7FF.toInt(),
+                        )
+                    }
+                addView(
+                    matchmakingTimerText,
+                )
+
+                cancelMatchmakingButton =
+                    Button(
+                        this@onlineLobbyPanel,
+                    ).apply {
+                        text =
+                            "CANCEL"
+                        LudoProofTheme
+                            .danger(
+                                this,
+                            )
+                        setOnClickListener {
+                            cancelPublicMatchmaking()
+                        }
+                    }
+                addView(
+                    cancelMatchmakingButton,
+                    LinearLayout.LayoutParams(
+                        dp(
+                            if (
+                                isCompactOnline()
+                            ) {
+                                132
+                            } else {
+                                148
+                            },
+                        ),
+                        dp(44),
+                    ).apply {
+                        gravity =
+                            Gravity.CENTER_HORIZONTAL
+                        topMargin =
+                            dp(13)
+                    },
+                )
+            }
+
+        addView(
+            matchmakingSearchPanel,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+
+        matchmakingSlotsText =
+            TextView(
+                this@onlineLobbyPanel,
+            ).apply {
+                visibility =
+                    View.GONE
+                importantForAccessibility =
+                    View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            }
+        addView(
+            matchmakingSlotsText,
+            LinearLayout.LayoutParams(
+                1,
+                1,
+            ),
+        )
+
+        stylePublicPlayerCountButton(
+            twoPlayerButton,
+            selected = true,
+        )
+        stylePublicPlayerCountButton(
+            fourPlayerButton,
+            selected = false,
+        )
+    }
+
+internal fun MainActivity.stylePublicPlayerCountButton(
+    button: Button,
+    selected: Boolean,
+) {
+    button.text =
+        if (
+            selected
+        ) {
+            "◉   " +
+                if (
+                    button ===
+                    twoPlayerButton
+                ) {
+                    "2 PLAYERS"
+                } else {
+                    "4 PLAYERS"
+                }
+        } else {
+            "○   " +
+                if (
+                    button ===
+                    twoPlayerButton
+                ) {
+                    "2 PLAYERS"
+                } else {
+                    "4 PLAYERS"
+                }
+        }
+
+    button.textSize =
+        if (
+            isCompactOnline()
+        ) {
+            13.5f
+        } else {
+            15f
+        }
+    button.setTypeface(
+        Typeface.DEFAULT_BOLD,
+    )
+    button.setTextColor(
+        if (
+            selected
+        ) {
+            0xFFFFD45E.toInt()
+        } else {
+            Color.WHITE
+        },
+    )
+    button.gravity =
+        Gravity.CENTER_VERTICAL or
+            Gravity.START
+    button.background =
+        GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            if (
+                selected
+            ) {
+                intArrayOf(
+                    0xEE0A3B7D.toInt(),
+                    0xEE08265B.toInt(),
+                )
+            } else {
+                intArrayOf(
+                    0xCC071C49.toInt(),
+                    0xCC051638.toInt(),
+                )
+            },
+        ).apply {
+            cornerRadius =
+                dp(999)
+                    .toFloat()
+            setStroke(
+                dp(
+                    if (
+                        selected
+                    ) {
+                        2
+                    } else {
+                        1
+                    },
+                ),
+                if (
+                    selected
+                ) {
+                    0xFFFFD45E.toInt()
+                } else {
+                    0x6653DFFF
+                },
             )
         }
+}
 
 internal fun MainActivity.inputLabel(
     label: String,
