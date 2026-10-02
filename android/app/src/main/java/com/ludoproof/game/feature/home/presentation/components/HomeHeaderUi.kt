@@ -456,14 +456,16 @@ private fun HomeActivity.homeShortcutRow():
                 tint = 0xFFFFC928.toInt(),
             ),
             HeaderShortcut(
-                symbol = "▣",
+                symbol = "",
                 label = "SHOP",
                 tint = 0xFFFFC928.toInt(),
+                iconKind = HomeIconKind.SHOP,
             ),
             HeaderShortcut(
-                symbol = "◆",
+                symbol = "",
                 label = "BADGES",
                 tint = 0xFFFFB51E.toInt(),
+                iconKind = HomeIconKind.BADGE,
             ),
             HeaderShortcut(
                 symbol = "AD",
@@ -529,34 +531,85 @@ private fun HomeActivity.homeShortcut(
             }
         }
 
-        addView(
-            TextView(
-                this@homeShortcut,
-            ).apply {
-                text = item.symbol
-                textSize =
-                    if (item.symbol.length > 1) {
-                        if (isCompact()) 17f else 19f
-                    } else {
-                        if (isCompact()) 30f else 34f
-                    }
-                setTypeface(
-                    Typeface.DEFAULT_BOLD,
-                )
-                setTextColor(item.tint)
-                gravity = Gravity.CENTER
-                background =
-                    LudoProofTheme.rounded(
-                        0xA80A2D72.toInt(),
-                        13f,
-                        0x665ED8FF,
-                        1f,
-                        this@homeShortcut,
+        val iconSize =
+            dp(
+                if (
+                    isCompact()
+                ) {
+                    50
+                } else {
+                    56
+                },
+            )
+        val iconView =
+            if (
+                item.iconKind !=
+                null
+            ) {
+                HomeIconView(
+                    this@homeShortcut,
+                ).apply {
+                    kind =
+                        item.iconKind
+                    iconColor =
+                        item.tint
+                    setPadding(
+                        dp(8),
+                        dp(8),
+                        dp(8),
+                        dp(8),
                     )
-            },
+                    background =
+                        LudoProofTheme.rounded(
+                            0xA80A2D72.toInt(),
+                            13f,
+                            0x665ED8FF,
+                            1f,
+                            this@homeShortcut,
+                        )
+                    importantForAccessibility =
+                        View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }
+            } else {
+                TextView(
+                    this@homeShortcut,
+                ).apply {
+                    text = item.symbol
+                    textSize =
+                        if (
+                            item.symbol.length >
+                            1
+                        ) {
+                            if (isCompact()) 17f else 19f
+                        } else {
+                            if (isCompact()) 30f else 34f
+                        }
+                    setTypeface(
+                        Typeface.DEFAULT_BOLD,
+                    )
+                    setTextColor(
+                        item.tint,
+                    )
+                    gravity =
+                        Gravity.CENTER
+                    background =
+                        LudoProofTheme.rounded(
+                            0xA80A2D72.toInt(),
+                            13f,
+                            0x665ED8FF,
+                            1f,
+                            this@homeShortcut,
+                        )
+                    importantForAccessibility =
+                        View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }
+            }
+
+        addView(
+            iconView,
             LinearLayout.LayoutParams(
-                dp(if (isCompact()) 50 else 56),
-                dp(if (isCompact()) 50 else 56),
+                iconSize,
+                iconSize,
             ),
         )
 
@@ -684,4 +737,5 @@ private data class HeaderShortcut(
     val symbol: String,
     val label: String,
     val tint: Int,
+    val iconKind: HomeIconKind? = null,
 )
