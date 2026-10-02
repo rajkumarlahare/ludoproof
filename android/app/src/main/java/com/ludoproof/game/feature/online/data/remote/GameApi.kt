@@ -14,6 +14,7 @@ class GameApi(
     fun createMatch(
         displayName: String,
         clientRequestId: String,
+        profileId: String? = null,
     ): JSONObject =
         request(
             method = "POST",
@@ -23,13 +24,25 @@ class GameApi(
                 .put(
                     "clientRequestId",
                     clientRequestId,
-                ),
+                )
+                .apply {
+                    if (
+                        !profileId
+                            .isNullOrBlank()
+                    ) {
+                        put(
+                            "profileId",
+                            profileId,
+                        )
+                    }
+                },
         )
 
     fun joinMatch(
         matchId: String,
         displayName: String,
         clientRequestId: String,
+        profileId: String? = null,
     ): JSONObject =
         request(
             method = "POST",
@@ -39,7 +52,18 @@ class GameApi(
                 .put(
                     "clientRequestId",
                     clientRequestId,
-                ),
+                )
+                .apply {
+                    if (
+                        !profileId
+                            .isNullOrBlank()
+                    ) {
+                        put(
+                            "profileId",
+                            profileId,
+                        )
+                    }
+                },
         )
 
     fun state(

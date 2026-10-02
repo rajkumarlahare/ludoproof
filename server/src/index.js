@@ -13,6 +13,7 @@ import {
 
 export { MatchRoom } from "./match-room.js";
 export { ApiGate } from "./api-gate.js";
+export { LeaderboardRoom } from "./leaderboard-room.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const RATE_WINDOW_MS = 60 * 1000;
@@ -21,6 +22,7 @@ const RATE_POLICIES = Object.freeze({
   join: 30,
   state: 120,
   mutation: 90,
+  leaderboard: 60,
 });
 
 export default {
@@ -57,7 +59,8 @@ export default {
         const configured =
           checks.entronexConfigured &&
           checks.matchStoreConfigured &&
-          checks.rateGateConfigured;
+          checks.rateGateConfigured &&
+          checks.leaderboardConfigured;
         const entronexReachable =
           configured
             ? await probeEntroNex(env)
@@ -76,6 +79,59 @@ export default {
           checks,
           productionClaim: false,
         });
+      }
+
+      if (
+        request.method === "GET" &&
+        url.pathname === "/api/leaderboard"
+      ) {
+        await enforceRateLimit(
+          env,
+          request,
+          "leaderboard",
+          RATE_POLICIES.leaderboard,
+        );
+
+        const target =
+          leaderboard(env);
+        const upstreamUrl =
+          new URL(
+            "https://leaderboard/list",
+          );
+        const limit =
+          url.searchParams.get(
+            "limit",
+          );
+        const profileId =
+          url.searchParams.get(
+            "profileId",
+          );
+
+        if (limit) {
+          upstreamUrl.searchParams.set(
+            "limit",
+            limit,
+          );
+        }
+        if (profileId) {
+          upstreamUrl.searchParams.set(
+            "profileId",
+            profileId,
+          );
+        }
+
+        const response =
+          await target.fetch(
+            new Request(
+              upstreamUrl,
+              {
+                method: "GET",
+              },
+            ),
+          );
+        return withSecurityHeaders(
+          response,
+        );
       }
 
       if (url.pathname === "/api/matches") {
@@ -350,6 +406,20 @@ function room(env, matchId) {
   return env.LUDOPROOF_MATCHES.get(id);
 }
 
+function leaderboard(env) {
+  if (!env.LUDOPROOF_LEADERBOARD) {
+    throw httpError(
+      503,
+      "LEADERBOARD_NOT_CONFIGURED",
+      "leaderboard storage is not configured",
+    );
+  }
+  const id =
+    env.LUDOPROOF_LEADERBOARD
+      .idFromName("global");
+  return env.LUDOPROOF_LEADERBOARD.get(id);
+}
+
 async function probeEntroNex(env) {
   const baseUrl =
     String(
@@ -440,6 +510,8 @@ function configurationChecks(env) {
       Boolean(env.LUDOPROOF_MATCHES),
     rateGateConfigured:
       Boolean(env.LUDOPROOF_API_GATE),
+    leaderboardConfigured:
+      Boolean(env.LUDOPROOF_LEADERBOARD),
     sessionKeyConfigured:
       hasSessionKey(env),
   };

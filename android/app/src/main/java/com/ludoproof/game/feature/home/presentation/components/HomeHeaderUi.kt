@@ -16,6 +16,7 @@ import com.ludoproof.game.LudoProofTheme
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
 import com.ludoproof.game.feature.profile.domain.ProfileProgression
 import com.ludoproof.game.feature.profile.presentation.ProfileActivity
+import com.ludoproof.game.feature.leaderboard.presentation.LeaderboardActivity
 import com.ludoproof.game.feature.store.data.local.GemWalletStore
 import com.ludoproof.game.feature.store.presentation.StoreActivity
 import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
@@ -507,16 +508,24 @@ private fun HomeActivity.homeShortcut(
             dp(5),
         )
         setOnClickListener {
-            if (
-                item.label ==
-                    "SHOP"
+            when (
+                item.label
             ) {
-                startActivity(
-                    Intent(
-                        this@homeShortcut,
-                        StoreActivity::class.java,
-                    ),
-                )
+                "LEADERBOARD" ->
+                    startActivity(
+                        Intent(
+                            this@homeShortcut,
+                            LeaderboardActivity::class.java,
+                        ),
+                    )
+
+                "SHOP" ->
+                    startActivity(
+                        Intent(
+                            this@homeShortcut,
+                            StoreActivity::class.java,
+                        ),
+                    )
             }
         }
 

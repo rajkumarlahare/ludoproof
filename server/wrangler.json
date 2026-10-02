@@ -13,6 +13,10 @@
       {
         "name": "LUDOPROOF_API_GATE",
         "class_name": "ApiGate"
+      },
+      {
+        "name": "LUDOPROOF_LEADERBOARD",
+        "class_name": "LeaderboardRoom"
       }
     ]
   },
@@ -27,6 +31,12 @@
       "tag": "v2-rate-gate",
       "new_sqlite_classes": [
         "ApiGate"
+      ]
+    },
+    {
+      "tag": "v3-leaderboard",
+      "new_sqlite_classes": [
+        "LeaderboardRoom"
       ]
     }
   ],
