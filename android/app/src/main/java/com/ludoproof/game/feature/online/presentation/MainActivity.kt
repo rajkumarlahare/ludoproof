@@ -21,8 +21,31 @@ import com.ludoproof.game.feature.online.*
 
 class MainActivity : Activity() {
     internal val gameMode:
-        GameMode =
-        GameMode.ONLINE
+        GameMode by lazy {
+        GameMode
+            .fromWireValue(
+                intent.getStringExtra(
+                    GameModeIntent
+                        .EXTRA_GAME_MODE,
+                ),
+            )
+            ?.takeIf {
+                it.isRemote
+            }
+            ?: secureSessionStore
+                .load()
+                ?.modeWire
+                ?.let {
+                    GameMode
+                        .fromWireValue(
+                            it,
+                        )
+                }
+                ?.takeIf {
+                    it.isRemote
+                }
+            ?: GameMode.ONLINE
+    }
 
     internal val api = GameApi()
     internal val executor =
