@@ -182,7 +182,6 @@ class GameApi(
         displayName: String,
         clientRequestId: String,
         playerCount: Int,
-        profileId: String? = null,
     ): JSONObject =
         request(
             method = "POST",
@@ -205,29 +204,20 @@ class GameApi(
                 .put(
                     "matchMode",
                     "FRIENDS",
-                )
-                .apply {
-                    if (
-                        !profileId
-                            .isNullOrBlank()
-                    ) {
-                        put(
-                            "profileId",
-                            profileId,
-                        )
-                    }
-                },
+                ),
         )
 
     fun searchPublicMatch(
+        profileToken: String,
         displayName: String,
         clientRequestId: String,
         playerCount: Int,
-        profileId: String? = null,
     ): JSONObject =
         request(
             method = "POST",
             path = "/api/matchmaking/search",
+            profileToken =
+                profileToken,
             body = JSONObject()
                 .put(
                     "displayName",
@@ -240,27 +230,19 @@ class GameApi(
                 .put(
                     "playerCount",
                     playerCount,
-                )
-                .apply {
-                    if (
-                        !profileId
-                            .isNullOrBlank()
-                    ) {
-                        put(
-                            "profileId",
-                            profileId,
-                        )
-                    }
-                },
+                ),
         )
 
     fun publicMatchStatus(
+        profileToken: String,
         clientRequestId: String,
         playerCount: Int,
     ): JSONObject =
         request(
             method = "POST",
             path = "/api/matchmaking/status",
+            profileToken =
+                profileToken,
             body = JSONObject()
                 .put(
                     "clientRequestId",
@@ -273,12 +255,15 @@ class GameApi(
         )
 
     fun cancelPublicMatch(
+        profileToken: String,
         clientRequestId: String,
         playerCount: Int,
     ): JSONObject =
         request(
             method = "POST",
             path = "/api/matchmaking/cancel",
+            profileToken =
+                profileToken,
             body = JSONObject()
                 .put(
                     "clientRequestId",
@@ -291,61 +276,49 @@ class GameApi(
         )
 
     fun createMatch(
+        profileToken: String,
         displayName: String,
         clientRequestId: String,
-        profileId: String? = null,
     ): JSONObject =
         request(
             method = "POST",
             path = "/api/matches",
+            profileToken =
+                profileToken,
             body = JSONObject()
-                .put("displayName", displayName)
+                .put(
+                    "displayName",
+                    displayName,
+                )
                 .put(
                     "clientRequestId",
                     clientRequestId,
-                )
-                .apply {
-                    if (
-                        !profileId
-                            .isNullOrBlank()
-                    ) {
-                        put(
-                            "profileId",
-                            profileId,
-                        )
-                    }
-                },
+                ),
         )
 
     fun joinMatch(
         matchId: String,
         displayName: String,
         clientRequestId: String,
-        profileId: String? = null,
+        profileToken: String? = null,
         friendJoinToken: String? = null,
     ): JSONObject =
         request(
             method = "POST",
             path = "/api/matches/${matchId.uppercase()}/join",
+            profileToken =
+                profileToken,
             friendJoinToken =
                 friendJoinToken,
             body = JSONObject()
-                .put("displayName", displayName)
+                .put(
+                    "displayName",
+                    displayName,
+                )
                 .put(
                     "clientRequestId",
                     clientRequestId,
-                )
-                .apply {
-                    if (
-                        !profileId
-                            .isNullOrBlank()
-                    ) {
-                        put(
-                            "profileId",
-                            profileId,
-                        )
-                    }
-                },
+                ),
         )
 
     fun state(
@@ -418,6 +391,7 @@ class GameApi(
         path: String,
         playerToken: String? = null,
         friendToken: String? = null,
+        profileToken: String? = null,
         roomPlayerToken: String? = null,
         friendJoinToken: String? = null,
         body: JSONObject? = null,
@@ -447,6 +421,7 @@ class GameApi(
             val bearerToken =
                 playerToken
                     ?: friendToken
+                    ?: profileToken
             if (bearerToken != null) {
                 connection.setRequestProperty(
                     "Authorization",
