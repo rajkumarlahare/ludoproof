@@ -348,7 +348,7 @@ class FriendIdentityStore(
 
         val FRIEND_ID =
             Regex(
-                "^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}$",
+                "^LPF-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$",
             )
         val FRIEND_TOKEN =
             Regex(
