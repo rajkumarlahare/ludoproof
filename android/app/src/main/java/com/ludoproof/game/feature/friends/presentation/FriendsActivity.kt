@@ -1457,6 +1457,15 @@ class FriendsActivity :
     }
 
     private fun createFriendRoom() {
+        val auth =
+            credential
+                ?: run {
+                    showStatus(
+                        "Friend identity is not ready yet.",
+                    )
+                    return
+                }
+
         if (
             activeFriendSession() !=
             null
@@ -1496,6 +1505,8 @@ class FriendsActivity :
                 "Creating $selectedPlayerCount-player private room…",
             action = {
                 api.createFriendRoom(
+                    friendToken =
+                        auth.friendToken,
                     displayName =
                         displayName,
                     clientRequestId =
@@ -1628,26 +1639,46 @@ class FriendsActivity :
             working =
                 "Joining private room…",
             action = {
-                val joined =
-                    api.joinMatch(
-                        matchId =
-                            matchId,
-                        displayName =
-                            displayName,
+                val accepted =
+                    api.respondFriendInvite(
+                        friendToken =
+                            auth.friendToken,
+                        inviteId =
+                            inviteId,
+                        accept =
+                            true,
                         clientRequestId =
                             requestId,
                     )
+                val authorizedMatchId =
+                    accepted
+                        .getString(
+                            "matchId",
+                        )
+                if (
+                    authorizedMatchId !=
+                    matchId
+                ) {
+                    throw IllegalStateException(
+                        "Accepted invite does not match the selected room.",
+                    )
+                }
+                val friendJoinToken =
+                    accepted
+                        .getString(
+                            "friendJoinToken",
+                        )
 
-                api.respondFriendInvite(
-                    friendToken =
-                        auth.friendToken,
-                    inviteId =
-                        inviteId,
-                    accept =
-                        true,
+                api.joinMatch(
+                    matchId =
+                        matchId,
+                    displayName =
+                        displayName,
+                    clientRequestId =
+                        requestId,
+                    friendJoinToken =
+                        friendJoinToken,
                 )
-
-                joined
             },
             onSuccess = success@ {
                     response ->
