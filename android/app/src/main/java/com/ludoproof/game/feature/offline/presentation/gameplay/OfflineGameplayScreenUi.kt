@@ -14,6 +14,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import com.ludoproof.game.*
 import com.ludoproof.game.feature.offline.*
+import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.ui.offline.common.*
 import com.ludoproof.game.ui.offline.setup.*
 
@@ -149,6 +150,9 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
                     )
                 }.onSuccess {
                         next ->
+                    GameSoundFeedback.move(
+                        this@apply,
+                    )
                     renderGame(next)
                 }.onFailure {
                         error ->
