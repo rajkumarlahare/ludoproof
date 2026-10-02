@@ -19,9 +19,6 @@ import com.ludoproof.game.feature.profile.presentation.ProfileActivity
 import com.ludoproof.game.feature.leaderboard.presentation.LeaderboardActivity
 import com.ludoproof.game.feature.store.data.local.GemWalletStore
 import com.ludoproof.game.feature.store.presentation.StoreActivity
-import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
-import com.ludoproof.game.feature.store.domain.StoreCosmeticCatalog
-import com.ludoproof.game.feature.store.domain.model.CosmeticCategory
 
 internal fun HomeActivity.profileHud():
     LinearLayout =
@@ -106,30 +103,8 @@ private fun HomeActivity.homeIdentityRow():
     }
 
 private fun HomeActivity.homeAvatarPlaceholder():
-    TextView =
-    TextView(this).apply {
-        homeAvatarText = this
-        val avatarId =
-            CosmeticInventoryStore(
-                this@homeAvatarPlaceholder,
-            )
-                .selectedId(
-                    CosmeticCategory.AVATAR,
-                )
-        text =
-            StoreCosmeticCatalog
-                .find(
-                    avatarId,
-                )
-                ?.previewSymbol
-                ?: "GU"
-        textSize =
-            if (isCompact()) 16f else 18f
-        setTypeface(
-            Typeface.DEFAULT_BOLD,
-        )
-        setTextColor(Color.WHITE)
-        gravity = Gravity.CENTER
+    HomeProfilePlaceholderView =
+    HomeProfilePlaceholderView(this).apply {
         contentDescription =
             "Guest user profile"
         isClickable = true
@@ -673,20 +648,6 @@ private fun HomeActivity.headerPressDrawable(
     }
 
 internal fun HomeActivity.refreshHomeProfileSummary() {
-    val avatarId =
-        CosmeticInventoryStore(this)
-            .selectedId(
-                CosmeticCategory.AVATAR,
-            )
-    homeAvatarText
-        ?.text =
-        StoreCosmeticCatalog
-            .find(
-                avatarId,
-            )
-            ?.previewSymbol
-            ?: "GU"
-
     val profile =
         ProfileStore(this)
             .snapshot()
