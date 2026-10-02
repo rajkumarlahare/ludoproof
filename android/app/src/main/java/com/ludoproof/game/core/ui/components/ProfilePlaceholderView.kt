@@ -1,4 +1,4 @@
-package com.ludoproof.game.ui.home
+package com.ludoproof.game.core.ui.components
 
 import android.content.Context
 import android.graphics.Canvas
@@ -7,7 +7,7 @@ import android.graphics.Path
 import android.view.View
 import kotlin.math.min
 
-internal class HomeProfilePlaceholderView(
+internal class ProfilePlaceholderView(
     context: Context,
 ) : View(context) {
     private val silhouette =
@@ -18,18 +18,6 @@ internal class HomeProfilePlaceholderView(
                 Paint.Style.FILL
             color =
                 0xFFBDEFFF.toInt()
-        }
-
-    private val accent =
-        Paint(
-            Paint.ANTI_ALIAS_FLAG,
-        ).apply {
-            style =
-                Paint.Style.STROKE
-            strokeWidth =
-                4f
-            color =
-                0x6653DFFF
         }
 
     override fun onDraw(
@@ -112,13 +100,6 @@ internal class HomeProfilePlaceholderView(
         canvas.drawPath(
             shoulders,
             silhouette,
-        )
-
-        canvas.drawCircle(
-            50f,
-            50f,
-            37f,
-            accent,
         )
 
         canvas.restore()
