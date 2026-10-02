@@ -14,6 +14,8 @@ import android.widget.ScrollView
 import android.widget.TextView
 import com.ludoproof.game.*
 import com.ludoproof.game.ui.dialogs.showSettingsDialog
+import com.ludoproof.game.ui.offline.gameplay.showGame
+import com.ludoproof.game.ui.offline.setup.showSetup
 
 internal fun OfflineGameActivity.backHeader(label: String): LinearLayout =
     LinearLayout(this).apply {
