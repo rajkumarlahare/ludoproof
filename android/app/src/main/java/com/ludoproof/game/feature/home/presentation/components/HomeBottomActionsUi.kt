@@ -22,7 +22,9 @@ internal fun HomeActivity.homeBottomActions():
                 symbol = "★",
                 description =
                     "Favorites",
-            ),
+            ) {
+                // Favorites logic will be connected later.
+            },
             bottomActionParams(),
         )
 
@@ -31,7 +33,9 @@ internal fun HomeActivity.homeBottomActions():
                 symbol = "↗",
                 description =
                     "Share",
-            ),
+            ) {
+                shareLudoProof()
+            },
             bottomActionParams(),
         )
 
@@ -40,7 +44,9 @@ internal fun HomeActivity.homeBottomActions():
                 symbol = "⚙",
                 description =
                     "Settings",
-            ),
+            ) {
+                // Settings logic will be connected later.
+            },
             bottomActionParams(),
         )
     }
@@ -61,6 +67,7 @@ private fun HomeActivity.bottomActionParams():
 private fun HomeActivity.bottomActionButton(
     symbol: String,
     description: String,
+    action: () -> Unit,
 ): Button =
     Button(this).apply {
         text =
@@ -96,7 +103,7 @@ private fun HomeActivity.bottomActionButton(
         elevation =
             dp(6).toFloat()
         setOnClickListener {
-            // Logic will be connected later.
+            action()
         }
     }
 
