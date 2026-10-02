@@ -251,6 +251,15 @@ export class MatchRoom {
       requireClientRequestId(
         body?.clientRequestId,
       );
+    const targetPlayerCount =
+      optionalTargetPlayerCount(
+        body?.targetPlayerCount,
+      );
+    const matchMode =
+      normalizeMatchMode(
+        body?.matchMode,
+        targetPlayerCount,
+      );
 
     if (
       !/^LP[A-Z2-9]{8}$/.test(
@@ -316,6 +325,8 @@ export class MatchRoom {
       hostDisplayName:
         displayName,
       now,
+      targetPlayerCount,
+      matchMode,
     });
     state = attachHostAuth(
       state,
@@ -1692,6 +1703,77 @@ function requireEntroNex(env) {
       "game backend is not configured with EntroNex",
     );
   }
+}
+
+function optionalTargetPlayerCount(
+  value,
+) {
+  if (
+    value == null
+  ) {
+    return null;
+  }
+
+  const count =
+    Number(
+      value,
+    );
+  if (
+    !Number.isInteger(
+      count,
+    ) ||
+    count < 2 ||
+    count > 4
+  ) {
+    throw httpError(
+      400,
+      "INVALID_TARGET_PLAYER_COUNT",
+      "targetPlayerCount must be 2, 3, or 4",
+    );
+  }
+  return count;
+}
+
+function normalizeMatchMode(
+  value,
+  targetPlayerCount,
+) {
+  const normalized =
+    String(
+      value ??
+        "ONLINE",
+    )
+      .trim()
+      .toUpperCase();
+
+  if (
+    normalized !==
+      "ONLINE" &&
+    normalized !==
+      "FRIENDS"
+  ) {
+    throw httpError(
+      400,
+      "INVALID_MATCH_MODE",
+      "matchMode must be ONLINE or FRIENDS",
+    );
+  }
+
+  if (
+    normalized ===
+      "FRIENDS" &&
+    !Number.isInteger(
+      targetPlayerCount,
+    )
+  ) {
+    throw httpError(
+      400,
+      "FRIEND_ROOM_PLAYER_COUNT_REQUIRED",
+      "friend rooms require targetPlayerCount",
+    );
+  }
+
+  return normalized;
 }
 
 function optionalLeaderboardProfileId(
