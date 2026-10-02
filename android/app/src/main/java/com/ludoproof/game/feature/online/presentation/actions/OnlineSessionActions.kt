@@ -112,6 +112,12 @@ internal fun MainActivity.runNetwork(
     },
     showWorking: Boolean = true,
 ) {
+    if (
+        !canRenderUi()
+    ) {
+        return
+    }
+
     if (!isOnline) {
         diceView.stopRolling()
         showStatus(
@@ -123,6 +129,12 @@ internal fun MainActivity.runNetwork(
         return
     }
 
+    if (
+        executor.isShutdown
+    ) {
+        return
+    }
+
     if (showWorking) {
         showStatus("Working…")
     }
@@ -130,50 +142,80 @@ internal fun MainActivity.runNetwork(
         enabled = false,
     )
 
-    executor.execute {
-        try {
-            val response =
-                action()
-            mainHandler.post {
-                setNetworkControls(
-                    enabled = true,
-                )
-                onSuccess(
-                    response,
-                )
-                updateRollButton()
-            }
-        } catch (
-            error: Exception,
-        ) {
-            mainHandler.post {
-                diceView.stopRolling()
-                val sessionReset =
-                    resetInvalidSessionIfNeeded(
-                        error,
-                    )
-                if (!sessionReset) {
-                    setNetworkControls(
-                        enabled = true,
-                    )
-                    showStatus(
-                        "Error: " +
-                            (
-                                error.message
-                                    ?: error
-                                        .toString()
-                                ),
-                    )
-                    currentState
-                        ?.let {
-                            updateControls(
-                                it,
-                            )
+    val submitted =
+        runCatching {
+            executor.execute {
+                try {
+                    val response =
+                        action()
+                    mainHandler.post {
+                        if (
+                            !canRenderUi()
+                        ) {
+                            return@post
                         }
+
+                        setNetworkControls(
+                            enabled = true,
+                        )
+                        onSuccess(
+                            response,
+                        )
+                        updateRollButton()
+                    }
+                } catch (
+                    error: Exception,
+                ) {
+                    mainHandler.post {
+                        if (
+                            !canRenderUi()
+                        ) {
+                            return@post
+                        }
+
+                        diceView.stopRolling()
+                        val sessionReset =
+                            resetInvalidSessionIfNeeded(
+                                error,
+                            )
+                        if (!sessionReset) {
+                            setNetworkControls(
+                                enabled = true,
+                            )
+                            showStatus(
+                                "Error: " +
+                                    (
+                                        error.message
+                                            ?: error
+                                                .toString()
+                                        ),
+                            )
+                            currentState
+                                ?.let {
+                                    updateControls(
+                                        it,
+                                    )
+                                }
+                        }
+                        updateRollButton()
+                    }
                 }
-                updateRollButton()
             }
         }
+            .isSuccess
+
+    if (
+        !submitted &&
+        canRenderUi()
+    ) {
+        diceView.stopRolling()
+        setNetworkControls(
+            enabled = true,
+        )
+        showStatus(
+            "Request was cancelled because the screen is closing.",
+        )
+        updateRollButton()
     }
 }
 
