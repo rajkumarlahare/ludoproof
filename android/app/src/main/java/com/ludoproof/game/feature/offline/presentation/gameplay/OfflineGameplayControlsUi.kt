@@ -19,245 +19,59 @@ import com.ludoproof.game.ui.offline.setup.*
 
 internal fun OfflineGameActivity.gameplayActionPanel():
     LinearLayout =
-    LudoProofTheme
-        .panel(this)
-        .apply {
-            setPadding(
-                dp(if (isCompactSetup()) 12 else 14),
-                dp(if (isCompactSetup()) 12 else 14),
-                dp(if (isCompactSetup()) 12 else 14),
-                dp(if (isCompactSetup()) 12 else 14),
-            )
+    LinearLayout(this).apply {
+        orientation =
+            LinearLayout.VERTICAL
+        setPadding(
+            dp(4),
+            dp(2),
+            dp(4),
+            dp(4),
+        )
 
-            val diceRow =
-                LinearLayout(
-                    this@gameplayActionPanel,
-                ).apply {
-                    orientation =
-                        LinearLayout.HORIZONTAL
-                    gravity =
-                        Gravity.CENTER_VERTICAL
-                }
-
-            val diceDock =
-                FrameLayout(
-                    this@gameplayActionPanel,
-                ).apply {
-                    background =
-                        LudoProofTheme
-                            .hudPanelDrawable(
-                                this@gameplayActionPanel,
-                                goldBorder = true,
-                            )
-                    elevation =
-                        dp(5).toFloat()
-                }
-
-            diceView =
-                DiceView(
-                    this@gameplayActionPanel,
+        statusText =
+            TextView(
+                this@gameplayActionPanel,
+            ).apply {
+                text =
+                    "Tap the dice beside the active player."
+                LudoProofTheme.body(
+                    this,
+                    if (isCompactSetup()) 10f else 11f,
+                    centered = true,
                 )
-            diceDock.addView(
-                diceView,
-                FrameLayout.LayoutParams(
-                    dp(
-                        if (isCompactSetup()) 92 else 104,
-                    ),
-                    dp(
-                        if (isCompactSetup()) 92 else 104,
-                    ),
-                    Gravity.CENTER,
-                ),
-            )
+                setPadding(
+                    dp(4),
+                    dp(3),
+                    dp(4),
+                    dp(5),
+                )
+            }
+        addView(
+            requireNotNull(
+                statusText,
+            ),
+        )
 
-            diceRow.addView(
-                diceDock,
-                LinearLayout.LayoutParams(
-                    dp(
-                        if (isCompactSetup()) 110 else 122,
-                    ),
-                    dp(
-                        if (isCompactSetup()) 110 else 122,
-                    ),
-                ),
-            )
-
-            val statusColumn =
-                LinearLayout(
-                    this@gameplayActionPanel,
-                ).apply {
-                    orientation =
-                        LinearLayout.VERTICAL
-                    gravity =
-                        Gravity.CENTER_VERTICAL
-                    setPadding(
-                        dp(12),
-                        0,
-                        0,
-                        0,
-                    )
-
-                    addView(
-                        TextView(
-                            this@gameplayActionPanel,
-                        ).apply {
-                            text =
-                                "LOCAL V4"
-                            LudoProofTheme.body(
-                                this,
-                                10f,
-                                bright = true,
-                            )
-                            setTextColor(
-                                0xFF68F053.toInt(),
-                            )
-                            setPadding(
-                                dp(10),
-                                dp(5),
-                                dp(10),
-                                dp(5),
-                            )
-                            background =
-                                LudoProofTheme
-                                    .rounded(
-                                        0xCC073A56.toInt(),
-                                        999f,
-                                        0xFF46E8A4.toInt(),
-                                        1f,
-                                        this@gameplayActionPanel,
-                                    )
-                        },
-                    )
-
-                    statusText =
-                        TextView(
-                            this@gameplayActionPanel,
-                        ).apply {
-                            text =
-                                "Offline v4 local engine ready"
-                            LudoProofTheme.body(
-                                this,
-                                if (isCompactSetup()) 12f else 13f,
-                                bright = true,
-                            )
-                            setPadding(
-                                0,
-                                dp(8),
-                                0,
-                                0,
-                            )
-                        }
-                    addView(
-                        requireNotNull(
-                            statusText,
-                        ),
-                    )
-
-                    addView(
-                        TextView(
-                            this@gameplayActionPanel,
-                        ).apply {
-                            text =
-                                "Dice result is applied only after local proof recomputation."
-                            LudoProofTheme.body(
-                                this,
-                                10f,
-                            )
-                            setPadding(
-                                0,
-                                dp(3),
-                                0,
-                                0,
-                            )
-                        },
-                    )
-                }
-
-            diceRow.addView(
-                statusColumn,
-                LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f,
-                ),
-            )
-
-            addView(diceRow)
-
-            rollButton =
-                Button(
-                    this@gameplayActionPanel,
-                ).apply {
-                    text =
-                        "ROLL DICE"
-                    textSize =
-                        if (isCompactSetup()) 18f else 20f
-                    LudoProofTheme
-                        .primary(this)
-                    setOnClickListener {
-                        rollOffline()
-                    }
-                }
-
-            addView(
-                requireNotNull(
-                    rollButton,
-                ),
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(
-                        if (isCompactSetup()) 58 else 62,
-                    ),
-                ).apply {
-                    topMargin =
-                        dp(12)
-                },
-            )
-
-            addView(
-                gameplayTools(),
-            )
-
-            addView(
-                TextView(
-                    this@gameplayActionPanel,
-                ).apply {
-                    text =
-                        "LOCAL V4 • Same EntroNex derivation • No remote attestation"
-                    LudoProofTheme.body(
-                        this,
-                        10f,
-                        centered = true,
-                    )
-                    setPadding(
-                        dp(4),
-                        dp(12),
-                        dp(4),
-                        0,
-                    )
-                },
-            )
-        }
+        addView(
+            gameplayTools(),
+        )
+    }
 
 internal fun OfflineGameActivity.gameplayTools():
     LinearLayout =
     LinearLayout(this).apply {
         orientation =
-            if (isCompactSetup()) {
-                LinearLayout.VERTICAL
-            } else {
-                LinearLayout.HORIZONTAL
-            }
+            LinearLayout.HORIZONTAL
+        gravity =
+            Gravity.CENTER
 
-        val history =
-            Button(
-                this@gameplayTools,
-            ).apply {
-                text =
-                    "HISTORY"
-                LudoProofTheme
-                    .secondary(this)
-                setOnClickListener {
+        val items =
+            listOf(
+                Triple(
+                    "HISTORY",
+                    false,
+                ) {
                     ArcadeDialogs
                         .showProofHistory(
                             this@gameplayTools,
@@ -266,71 +80,67 @@ internal fun OfflineGameActivity.gameplayTools():
                                 engine.snapshot(),
                             ),
                         )
-                }
-            }
-
-        val engineMap =
-            Button(
-                this@gameplayTools,
-            ).apply {
-                text =
-                    "ENGINE MAP"
-                LudoProofTheme
-                    .secondary(this)
-                setOnClickListener {
+                },
+                Triple(
+                    "ENGINE MAP",
+                    false,
+                ) {
                     ArcadeDialogs
                         .showNaturalWorldAudit(
                             this@gameplayTools,
                             engine
                                 .lastRandomnessAudit(),
                         )
-                }
-            }
-
-        val newGame =
-            Button(
-                this@gameplayTools,
-            ).apply {
-                text =
-                    "NEW GAME"
-                LudoProofTheme
-                    .positive(this)
-                setOnClickListener {
+                },
+                Triple(
+                    "NEW GAME",
+                    true,
+                ) {
                     engine.clear()
                     showSetup()
-                }
-            }
+                },
+            )
 
-        if (isCompactSetup()) {
-            listOf(
-                history,
-                engineMap,
-                newGame,
-            ).forEach {
-                    button ->
-                addView(
-                    button,
-                    LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(54),
-                    ).apply {
-                        topMargin =
-                            dp(9)
-                    },
-                )
-            }
-        } else {
+        items.forEach {
+                item ->
             addView(
-                history,
-                gameplayToolParams(),
-            )
-            addView(
-                engineMap,
-                gameplayToolParams(),
-            )
-            addView(
-                newGame,
-                gameplayToolParams(),
+                Button(
+                    this@gameplayTools,
+                ).apply {
+                    text =
+                        item.first
+                    textSize =
+                        if (isCompactSetup()) 9.5f else 10.5f
+                    if (item.second) {
+                        LudoProofTheme
+                            .positive(this)
+                    } else {
+                        LudoProofTheme
+                            .secondary(this)
+                    }
+                    minHeight = 0
+                    setPadding(
+                        dp(4),
+                        dp(4),
+                        dp(4),
+                        dp(4),
+                    )
+                    setOnClickListener {
+                        item.third()
+                    }
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    dp(if (isCompactSetup()) 42 else 46),
+                    1f,
+                ).apply {
+                    setMargins(
+                        dp(3),
+                        0,
+                        dp(3),
+                        0,
+                    )
+                },
             )
         }
     }
@@ -375,18 +185,6 @@ internal fun OfflineGameActivity.renderGame(
                     state.winnerPlayerId
             }
 
-    infoText?.text =
-        state.players
-            .joinToString(
-                separator =
-                    "   •   ",
-            ) {
-                player ->
-                player.color +
-                    "  " +
-                    player.displayName
-            }
-
     if (
         state.status ==
         "FINISHED"
@@ -395,9 +193,6 @@ internal fun OfflineGameActivity.renderGame(
             winner
                 ?.displayName
                 ?: "Player"
-
-        turnText?.text =
-            "MATCH COMPLETE"
         resultPanel.visibility =
             View.VISIBLE
         resultTitleText.text =
@@ -406,13 +201,6 @@ internal fun OfflineGameActivity.renderGame(
         resultSubtitleText.text =
             "Local v4 result • history and engine map remain available"
     } else {
-        turnText?.text =
-            "TURN • " +
-                (
-                    active
-                        ?.displayName
-                        ?: "Player"
-                    )
         resultPanel.visibility =
             View.GONE
     }
@@ -420,6 +208,10 @@ internal fun OfflineGameActivity.renderGame(
     boardView?.bind(
         state,
         engine.activePlayerId(),
+    )
+
+    renderPlayerRails(
+        state,
     )
 
     val pending =
@@ -439,34 +231,19 @@ internal fun OfflineGameActivity.renderGame(
         )
     }
 
-    rollButton?.isEnabled =
+    val canRoll =
         state.status ==
             "ACTIVE" &&
             pending ==
             null
 
-    rollButton?.visibility =
-        if (
-            state.status ==
-            "FINISHED"
-        ) {
-            View.GONE
+    diceHost?.isEnabled =
+        canRoll
+    diceHost?.alpha =
+        if (canRoll) {
+            1f
         } else {
-            View.VISIBLE
-        }
-
-    rollButton?.text =
-        when {
-            state.status ==
-                "FINISHED" ->
-                "GAME FINISHED"
-
-            pending !=
-                null ->
-                "MOVE HIGHLIGHTED TOKEN"
-
-            else ->
-                "ROLL DICE"
+            .58f
         }
 
     when {
@@ -479,14 +256,24 @@ internal fun OfflineGameActivity.renderGame(
         pending !=
             null ->
             showStatus(
-                "Dice " +
+                (
+                    active
+                        ?.displayName
+                        ?: "Player"
+                    ) +
+                    " • dice " +
                     pending.outcome +
                     " • move a highlighted token",
             )
 
         else ->
             showStatus(
-                "Ready • roll when it is the active player's turn.",
+                (
+                    active
+                        ?.displayName
+                        ?: "Player"
+                    ) +
+                    " turn • tap the dice beside the profile",
             )
     }
 }

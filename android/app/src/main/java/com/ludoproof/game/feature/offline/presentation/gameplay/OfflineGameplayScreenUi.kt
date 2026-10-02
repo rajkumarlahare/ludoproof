@@ -115,18 +115,6 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         },
     )
 
-    content.addView(
-        gameplayHud(),
-        gameplaySectionParams(
-            if (isCompactSetup()) 12 else 16,
-        ).apply {
-            leftMargin =
-                sectionSideMargin
-            rightMargin =
-                sectionSideMargin
-        },
-    )
-
     resultPanel =
         offlineResultPanel()
             .apply {
@@ -169,17 +157,49 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
             }
         }
 
+    topPlayerRail =
+        playerRail()
+    content.addView(
+        requireNotNull(
+            topPlayerRail,
+        ),
+        gameplaySectionParams(
+            if (isCompactSetup()) 10 else 12,
+        ).apply {
+            leftMargin =
+                sectionSideMargin
+            rightMargin =
+                sectionSideMargin
+        },
+    )
+
     content.addView(
         boardView,
         gameplaySectionParams(
-            if (isCompactSetup()) 12 else 14,
+            if (isCompactSetup()) 6 else 8,
         ),
+    )
+
+    bottomPlayerRail =
+        playerRail()
+    content.addView(
+        requireNotNull(
+            bottomPlayerRail,
+        ),
+        gameplaySectionParams(
+            if (isCompactSetup()) 6 else 8,
+        ).apply {
+            leftMargin =
+                sectionSideMargin
+            rightMargin =
+                sectionSideMargin
+        },
     )
 
     content.addView(
         gameplayActionPanel(),
         gameplaySectionParams(
-            if (isCompactSetup()) 12 else 14,
+            if (isCompactSetup()) 4 else 6,
         ).apply {
             leftMargin =
                 sectionSideMargin

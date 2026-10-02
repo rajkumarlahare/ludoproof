@@ -92,13 +92,6 @@ internal fun OfflineGameActivity.showSetup() {
     )
 
     content.addView(
-        setupHero(),
-        setupSectionParams(
-            if (isCompactSetup()) 14 else 18,
-        ),
-    )
-
-    content.addView(
         gameTypePanel(),
         setupSectionParams(
             if (isCompactSetup()) 14 else 18,
@@ -122,16 +115,9 @@ internal fun OfflineGameActivity.showSetup() {
     refreshSetupSelections()
 
     content.addView(
-        localTrustStrip(),
-        setupSectionParams(
-            if (isCompactSetup()) 14 else 18,
-        ),
-    )
-
-    content.addView(
         Button(this).apply {
             text =
-                "START LOCAL GAME  ›"
+                "PLAY"
             textSize =
                 if (isCompactSetup()) 18f else 20f
             LudoProofTheme
@@ -275,11 +261,7 @@ internal fun OfflineGameActivity.gameTypePanel():
                 this@gameTypePanel,
             ).apply {
                 orientation =
-                    if (isCompactSetup()) {
-                        LinearLayout.VERTICAL
-                    } else {
-                        LinearLayout.HORIZONTAL
-                    }
+                    LinearLayout.HORIZONTAL
                 gravity =
                     Gravity.CENTER
             }
@@ -301,38 +283,22 @@ internal fun OfflineGameActivity.gameTypePanel():
                 false,
             ) {}
 
-        if (isCompactSetup()) {
-            row.addView(
-                classic,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(104),
-                ),
-            )
-            row.addView(
-                rush,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(92),
-                ).apply {
-                    topMargin =
-                        dp(10)
-                },
-            )
-        } else {
-            row.addView(
-                classic,
-                setupTileParams(
-                    112,
-                ),
-            )
-            row.addView(
-                rush,
-                setupTileParams(
-                    112,
-                ),
-            )
-        }
+        row.addView(
+            classic,
+            setupTileParams(
+                if (isCompactSetup()) 104 else 112,
+                marginDp =
+                    if (isCompactSetup()) 4 else 6,
+            ),
+        )
+        row.addView(
+            rush,
+            setupTileParams(
+                if (isCompactSetup()) 104 else 112,
+                marginDp =
+                    if (isCompactSetup()) 4 else 6,
+            ),
+        )
         addView(row)
 
         addView(
@@ -361,7 +327,7 @@ internal fun OfflineGameActivity.gameTypePanel():
                         this@gameTypePanel,
                     ).apply {
                         text =
-                            "BOARD THEME"
+                            "Theme:"
                         LudoProofTheme.body(
                             this,
                             11f,
@@ -380,7 +346,7 @@ internal fun OfflineGameActivity.gameTypePanel():
                         this@gameTypePanel,
                     ).apply {
                         text =
-                            "CLASSIC"
+                            "CLASSIC  ▼"
                         LudoProofTheme.body(
                             this,
                             13f,
