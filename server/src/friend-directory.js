@@ -793,29 +793,67 @@ export class FriendDirectory {
         targetFriendId,
       );
 
-    const result =
-      this.ctx.storage.sql
-        .exec(
-          `
-            DELETE FROM friendships
-            WHERE
-              friend_a = ?
-              AND friend_b = ?
-          `,
-          friendA,
-          friendB,
-        );
+    const now =
+      Date.now();
+    let removed =
+      false;
+
+    this.ctx.storage
+      .transactionSync(
+        () => {
+          const result =
+            this.ctx.storage.sql
+              .exec(
+                `
+                  DELETE FROM friendships
+                  WHERE
+                    friend_a = ?
+                    AND friend_b = ?
+                `,
+                friendA,
+                friendB,
+              );
+          removed =
+            Number(
+              result.rowsWritten ??
+                0,
+            ) >
+            0;
+
+          this.ctx.storage.sql
+            .exec(
+              `
+                UPDATE friend_invites
+                SET
+                  status = 'REVOKED',
+                  updated_at = ?
+                WHERE
+                  status = 'PENDING'
+                  AND (
+                    (
+                      sender_id = ?
+                      AND receiver_id = ?
+                    )
+                    OR (
+                      sender_id = ?
+                      AND receiver_id = ?
+                    )
+                  )
+              `,
+              now,
+              me.friendId,
+              targetFriendId,
+              targetFriendId,
+              me.friendId,
+            );
+        },
+      );
 
     return json(
       200,
       {
         ok: true,
-        removed:
-          Number(
-            result.rowsWritten ??
-              0,
-          ) >
-          0,
+        removed,
       },
     );
   }
@@ -867,12 +905,68 @@ export class FriendDirectory {
       );
     }
 
+    const now =
+      Date.now();
+    this.#expireInvites(
+      now,
+    );
+
+    const pendingRows = [
+      ...this.ctx.storage.sql
+        .exec(
+          `
+            SELECT
+              invite_id,
+              expires_at
+            FROM friend_invites
+            WHERE
+              sender_id = ?
+              AND receiver_id = ?
+              AND match_id = ?
+              AND status = 'PENDING'
+              AND expires_at > ?
+            ORDER BY
+              created_at DESC
+            LIMIT 1
+          `,
+          me.friendId,
+          targetFriendId,
+          matchId,
+          now,
+        ),
+    ];
+
+    if (
+      pendingRows.length >
+      0
+    ) {
+      return json(
+        200,
+        {
+          ok: true,
+          inviteId:
+            String(
+              pendingRows[0]
+                .invite_id,
+            ),
+          status:
+            "PENDING",
+          matchId,
+          expiresAt:
+            Number(
+              pendingRows[0]
+                .expires_at,
+            ),
+          replayed:
+            true,
+        },
+      );
+    }
+
     const inviteId =
       await friendInviteId(
         clientRequestId,
       );
-    const now =
-      Date.now();
     const expiresAt =
       now +
       INVITE_TTL_MS;
@@ -1042,12 +1136,57 @@ export class FriendDirectory {
 
     if (
       status ===
-      "EXPIRED"
+        "EXPIRED" ||
+      status ===
+        "REVOKED"
     ) {
       throw httpError(
         410,
-        "INVITE_EXPIRED",
-        "friend invite expired",
+        status ===
+          "REVOKED"
+          ? "INVITE_REVOKED"
+          : "INVITE_EXPIRED",
+        status ===
+          "REVOKED"
+          ? "friend invite was revoked"
+          : "friend invite expired",
+      );
+    }
+
+    if (
+      status !==
+        "PENDING"
+    ) {
+      const expectedStatus =
+        accept
+          ? "ACCEPTED"
+          : "DECLINED";
+      if (
+        status !==
+        expectedStatus
+      ) {
+        throw httpError(
+          409,
+          "INVITE_ALREADY_RESPONDED",
+          "friend invite was already answered",
+        );
+      }
+
+      return json(
+        200,
+        {
+          ok: true,
+          status,
+          matchId:
+            status ===
+            "ACCEPTED"
+              ? String(
+                  row.match_id,
+                )
+              : null,
+          replayed:
+            true,
+        },
       );
     }
 
