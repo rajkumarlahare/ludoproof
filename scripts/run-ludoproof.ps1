@@ -10,9 +10,9 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $androidDir = Join-Path $repoRoot "android"
 $packageName = "com.ludoproof.game"
 $activityName = "com.ludoproof.game.HomeActivity"
-$gradleVersion = "8.9"
-$requiredPlatform = "android-35"
-$requiredBuildTools = "34.0.0"
+$gradleVersion = "8.11.1"
+$requiredPlatform = "android-36"
+$requiredBuildTools = "35.0.0"
 
 function Use-SystemJava {
     $javaExe = $null
