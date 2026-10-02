@@ -129,7 +129,9 @@ internal fun MainActivity.updateControls(
         state.status ==
             "FINISHED"
     val canEnterAnotherMatch =
-        finished
+        finished &&
+            gameMode ==
+            GameMode.ONLINE
 
     lobbyPanel.visibility =
         if (
