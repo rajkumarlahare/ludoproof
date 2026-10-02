@@ -9,12 +9,10 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.ludoproof.game.LudoProofTheme
+import com.ludoproof.game.core.ui.components.ProfilePlaceholderView
 import com.ludoproof.game.feature.profile.domain.ProfileProgression
 import com.ludoproof.game.feature.profile.domain.model.ProfileSnapshot
 import com.ludoproof.game.feature.profile.presentation.ProfileActivity
-import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
-import com.ludoproof.game.feature.store.domain.StoreCosmeticCatalog
-import com.ludoproof.game.feature.store.domain.model.CosmeticCategory
 
 internal fun ProfileActivity.profileTopBar():
     LinearLayout =
@@ -187,33 +185,17 @@ internal fun ProfileActivity.profileIdentityPanel(
                     }
 
                 addView(
-                    TextView(
+                    ProfilePlaceholderView(
                         this@profileIdentityPanel,
                     ).apply {
-                        val avatarId =
-                            CosmeticInventoryStore(
-                                this@profileIdentityPanel,
-                            )
-                                .selectedId(
-                                    CosmeticCategory.AVATAR,
-                                )
-                        text =
-                            StoreCosmeticCatalog
-                                .find(
-                                    avatarId,
-                                )
-                                ?.previewSymbol
-                                ?: "GU"
-                        textSize =
-                            28f
-                        setTypeface(
-                            Typeface.DEFAULT_BOLD,
+                        contentDescription =
+                            "Profile placeholder"
+                        setPadding(
+                            dp(16),
+                            dp(16),
+                            dp(16),
+                            dp(16),
                         )
-                        setTextColor(
-                            Color.WHITE,
-                        )
-                        gravity =
-                            Gravity.CENTER
                     },
                     FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.MATCH_PARENT,
