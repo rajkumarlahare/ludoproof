@@ -172,6 +172,19 @@ export class MatchmakerQueue {
       existingIndex >=
       0
     ) {
+      if (
+        state.queue[
+          existingIndex
+        ].profileId !==
+        participant.profileId
+      ) {
+        throw httpError(
+          403,
+          "MATCHMAKING_PROFILE_MISMATCH",
+          "matchmaking request belongs to another authenticated profile",
+        );
+      }
+
       state.queue[
         existingIndex
       ] = {
@@ -742,6 +755,17 @@ export class MatchmakerQueue {
     assignment,
   ) {
     if (
+      assignment.profileId !==
+      participant.profileId
+    ) {
+      throw httpError(
+        403,
+        "MATCHMAKING_PROFILE_MISMATCH",
+        "matchmaking request belongs to another authenticated profile",
+      );
+    }
+
+    if (
       assignment
         .targetPlayerCount !==
       participant
@@ -925,7 +949,11 @@ export class MatchmakerQueue {
       !response.ok ||
       value?.ok !== true ||
       typeof value?.profileId !==
-        "string"
+        "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+        .test(
+          value.profileId,
+        )
     ) {
       throw httpError(
         response.status ===
