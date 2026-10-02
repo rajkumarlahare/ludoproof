@@ -379,7 +379,8 @@ internal fun MainActivity.restorePublicMatchmakingUi() {
 internal fun MainActivity.connectRealtimeIfPossible() {
     if (
         !canRenderUi() ||
-        !isOnline
+        !isOnline ||
+        realtimeConnected
     ) {
         return
     }
