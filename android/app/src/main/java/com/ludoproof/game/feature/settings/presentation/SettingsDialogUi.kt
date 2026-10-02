@@ -1,22 +1,38 @@
 package com.ludoproof.game.ui.dialogs
 
-import android.app.Dialog
 import android.content.Context
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.view.Gravity
 import android.view.View
-import android.view.Window
-import android.view.WindowManager
-import android.widget.Button
 import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
-import com.ludoproof.game.*
+import com.ludoproof.game.feature.profile.data.local.ProfileStore
+import com.ludoproof.game.feature.profile.domain.ProfileProgression
+import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
+import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
+import com.ludoproof.game.feature.store.domain.StoreCosmeticCatalog
+import com.ludoproof.game.feature.store.domain.model.CosmeticCategory
 
 internal fun showSettingsDialog(
     context: Context,
+    onChanged: (() -> Unit)? = null,
 ) {
+    val settingsStore =
+        GameSettingsStore(
+            context,
+        )
+    val cosmetics =
+        CosmeticInventoryStore(
+            context,
+        )
+    val profileLevel =
+        ProfileProgression
+            .levelProgress(
+                ProfileStore(
+                    context,
+                )
+                    .snapshot()
+                    .totalXp,
+            )
+            .level
+
     val dialog =
         baseDialog(
             context,
@@ -25,62 +41,51 @@ internal fun showSettingsDialog(
         dialogPanel(
             context,
             "SETTINGS",
-            "CURRENT CONFIGURATION",
+            "GAMEPLAY & APPEARANCE",
             dialog,
         )
 
-    panel.addView(
-        statusChip(
+    fun refresh(
+        change: () -> Unit,
+    ) {
+        change()
+        onChanged
+            ?.invoke()
+        dialog.dismiss()
+        showSettingsDialog(
             context,
-            "READ-ONLY IN THIS BUILD",
-            0xFF70E7FF.toInt(),
-        ),
-        fullWidthParams(
-            context,
-            topDp = 8,
-        ),
-    )
+            onChanged,
+        )
+    }
 
-    listOf(
-        Triple(
-            "Online sync",
-            "AUTO",
-            "Reconnects and refreshes the current verified match.",
-        ),
-        Triple(
-            "Proof mode",
-            "ENTRONEX V4",
-            "Online rolls use server commitments and attestations.",
-        ),
-        Triple(
-            "Offline rolls",
-            "V4 LOCAL",
-            "Same v4 derivation recomputed on this device.",
-        ),
-        Triple(
-            "Game speed",
-            "NORMAL",
-            "Standard animation and interaction timing.",
-        ),
-        Triple(
-            "Board",
-            "CLASSIC",
-            "Classic Ludo board presentation.",
-        ),
-        Triple(
-            "Dice",
-            "CLASSIC",
-            "Standard six-sided dice presentation.",
-        ),
-    ).forEach {
-            item ->
-        panel.addView(
+    fun addClickableRow(
+        title: String,
+        value: String,
+        detail: String,
+        action: () -> Unit,
+    ) {
+        val row =
             settingsRow(
                 context,
-                item.first,
-                item.second,
-                item.third,
-            ),
+                title,
+                value,
+                detail,
+            ).apply {
+                isClickable =
+                    true
+                isFocusable =
+                    true
+                foreground =
+                    context.getDrawable(
+                        android.R.drawable.list_selector_background,
+                    )
+                setOnClickListener {
+                    action()
+                }
+            }
+
+        panel.addView(
+            row,
             fullWidthParams(
                 context,
                 topDp = 9,
@@ -88,11 +93,201 @@ internal fun showSettingsDialog(
         )
     }
 
+    val settings =
+        settingsStore
+            .snapshot()
+
+    addClickableRow(
+        title = "Music",
+        value =
+            if (
+                settings.musicEnabled
+            ) {
+                "ON"
+            } else {
+                "OFF"
+            },
+        detail =
+            "Background music preference. Tap to toggle.",
+    ) {
+        refresh {
+            settingsStore
+                .setMusicEnabled(
+                    !settings
+                        .musicEnabled,
+                )
+        }
+    }
+
+    addClickableRow(
+        title = "Sound",
+        value =
+            if (
+                settings.soundEnabled
+            ) {
+                "ON"
+            } else {
+                "OFF"
+            },
+        detail =
+            "Dice, move and interaction sound feedback.",
+    ) {
+        refresh {
+            settingsStore
+                .setSoundEnabled(
+                    !settings
+                        .soundEnabled,
+                )
+        }
+    }
+
+    addClickableRow(
+        title = "Quick chat",
+        value =
+            if (
+                settings.quickChatEnabled
+            ) {
+                "ON"
+            } else {
+                "OFF"
+            },
+        detail =
+            "Shows quick emoji reactions during a match.",
+    ) {
+        refresh {
+            settingsStore
+                .setQuickChatEnabled(
+                    !settings
+                        .quickChatEnabled,
+                )
+        }
+    }
+
+    addClickableRow(
+        title = "Game speed",
+        value =
+            settings
+                .gameSpeed
+                .label,
+        detail =
+            "Controls dice timing, CPU thinking and token movement animation speed.",
+    ) {
+        refresh {
+            settingsStore
+                .setGameSpeed(
+                    settings
+                        .gameSpeed
+                        .next(),
+                )
+        }
+    }
+
+    fun nextOwnedCosmetic(
+        category: CosmeticCategory,
+    ) {
+        val owned =
+            StoreCosmeticCatalog
+                .forCategory(
+                    category,
+                )
+                .filter {
+                    cosmetics
+                        .isOwned(
+                            it.id,
+                        )
+                }
+        if (
+            owned.isEmpty()
+        ) {
+            return
+        }
+
+        val current =
+            cosmetics.selectedId(
+                category,
+            )
+        val currentIndex =
+            owned.indexOfFirst {
+                it.id ==
+                    current
+            }
+        val next =
+            owned[
+                if (
+                    currentIndex <
+                    0
+                ) {
+                    0
+                } else {
+                    (
+                        currentIndex +
+                            1
+                        ) %
+                        owned.size
+                }
+            ]
+
+        cosmetics.acquireOrSelect(
+            cosmetic =
+                next,
+            currentLevel =
+                profileLevel,
+        )
+    }
+
+    val selectedBoard =
+        StoreCosmeticCatalog
+            .find(
+                cosmetics.selectedId(
+                    CosmeticCategory.BOARD,
+                ),
+            )
+    addClickableRow(
+        title = "Board",
+        value =
+            selectedBoard
+                ?.title
+                ?.uppercase()
+                ?: "CLASSIC",
+        detail =
+            "Tap to cycle through boards you already unlocked.",
+    ) {
+        refresh {
+            nextOwnedCosmetic(
+                CosmeticCategory.BOARD,
+            )
+        }
+    }
+
+    val selectedDice =
+        StoreCosmeticCatalog
+            .find(
+                cosmetics.selectedId(
+                    CosmeticCategory.DICE,
+                ),
+            )
+    addClickableRow(
+        title = "Dice",
+        value =
+            selectedDice
+                ?.title
+                ?.uppercase()
+                ?: "CLASSIC",
+        detail =
+            "Tap to cycle through dice you already unlocked.",
+    ) {
+        refresh {
+            nextOwnedCosmetic(
+                CosmeticCategory.DICE,
+            )
+        }
+    }
+
     panel.addView(
         trustStrip(
             context,
-            "VERIFICATION MODEL",
-            "Online uses remote EntroNex authority. Offline uses the same v4 derivation locally and does not claim remote attestation.",
+            "FAIRNESS IS UNCHANGED",
+            "These options change presentation, audio and animation timing only. Dice outcomes and Ludo rules are not changed.",
         ),
         fullWidthParams(
             context,
