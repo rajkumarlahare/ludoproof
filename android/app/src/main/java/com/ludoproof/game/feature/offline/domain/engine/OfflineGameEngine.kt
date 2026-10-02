@@ -397,22 +397,6 @@ class OfflineGameEngine(
             current.revision +=
                 1
             persist()
-            runCatching {
-                profileStore
-                    .recordCompletedMatch(
-                        matchId =
-                            current.matchId,
-                        mode =
-                            ProfileGameMode.CLASSIC,
-                        source =
-                            ProfileMatchSource.LOCAL,
-                        won =
-                            player.playerId ==
-                                current.players
-                                    .firstOrNull()
-                                    ?.playerId,
-                    )
-            }
             return current
                 .toSnapshot()
         }
@@ -563,6 +547,22 @@ class OfflineGameEngine(
             current.revision +=
                 1
             persist()
+            runCatching {
+                profileStore
+                    .recordCompletedMatch(
+                        matchId =
+                            current.matchId,
+                        mode =
+                            ProfileGameMode.CLASSIC,
+                        source =
+                            ProfileMatchSource.LOCAL,
+                        won =
+                            player.playerId ==
+                                current.players
+                                    .firstOrNull()
+                                    ?.playerId,
+                    )
+            }
             return current
                 .toSnapshot()
         }

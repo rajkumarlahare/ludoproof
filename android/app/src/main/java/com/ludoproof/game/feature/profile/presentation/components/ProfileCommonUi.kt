@@ -87,7 +87,7 @@ internal fun ProfileActivity.showNameEditor() {
                 current.displayName,
             )
             selectAll()
-            singleLine =
+            isSingleLine =
                 true
             setPadding(
                 dp(14),
