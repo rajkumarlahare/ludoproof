@@ -2,7 +2,6 @@ package com.ludoproof.game.feature.online
 
 import android.view.View
 import com.ludoproof.game.*
-import com.ludoproof.game.feature.leaderboard.data.local.LeaderboardIdentityStore
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
 import org.json.JSONObject
 import java.util.UUID
@@ -121,25 +120,19 @@ internal fun MainActivity.beginPublicMatchmaking() {
         "Searching for a public match…",
     )
 
-    val profileId =
-        runCatching {
-            LeaderboardIdentityStore(
-                this,
-            ).profileId()
-        }
-            .getOrNull()
-
     runMatchmakingRequest(
         action = {
+            val credential =
+                ensureLeaderboardCredential()
             api.searchPublicMatch(
+                profileToken =
+                    credential.profileToken,
                 displayName =
                     ticket.displayName,
                 clientRequestId =
                     ticket.requestId,
                 playerCount =
                     ticket.playerCount,
-                profileId =
-                    profileId,
             )
         },
         onSuccess = {
@@ -172,7 +165,11 @@ internal fun MainActivity.pollPublicMatchmaking() {
 
     runMatchmakingRequest(
         action = {
+            val credential =
+                ensureLeaderboardCredential()
             api.publicMatchStatus(
+                profileToken =
+                    credential.profileToken,
                 clientRequestId =
                     ticket.requestId,
                 playerCount =
@@ -201,7 +198,11 @@ internal fun MainActivity.cancelPublicMatchmaking() {
 
     runMatchmakingRequest(
         action = {
+            val credential =
+                ensureLeaderboardCredential()
             api.cancelPublicMatch(
+                profileToken =
+                    credential.profileToken,
                 clientRequestId =
                     ticket.requestId,
                 playerCount =
