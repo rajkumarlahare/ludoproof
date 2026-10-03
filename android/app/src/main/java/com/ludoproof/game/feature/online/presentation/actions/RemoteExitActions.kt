@@ -11,14 +11,12 @@ import java.util.concurrent.Executors
 
 private val remoteForfeitExecutor =
     Executors
-        .newSingleThreadExecutor {
-                work ->
+        .newSingleThreadExecutor { work ->
             Thread(
                 work,
                 "ludoproof-remote-forfeit",
             ).apply {
-                isDaemon =
-                    true
+                isDaemon = true
             }
         }
 
@@ -27,45 +25,32 @@ private val inFlightForfeits =
         .newKeySet<String>()
 
 internal fun MainActivity.abandonRemoteSessionState() {
-    val abandonedMatchId =
-        matchId
-    val abandonedPlayerToken =
-        playerToken
-    val wasActive =
-        currentState
-            ?.status ==
-            "ACTIVE"
+    val abandonedMatchId = matchId
+    val abandonedPlayerToken = playerToken
+    val wasActive = currentState?.status == "ACTIVE"
 
     if (
         wasActive &&
-        !abandonedMatchId
-            .isNullOrBlank()
+        gameMode.ranked &&
+        !abandonedMatchId.isNullOrBlank()
     ) {
         ProfileStore(this)
             .recordCompletedMatch(
-                matchId =
-                    abandonedMatchId,
-                mode =
-                    ProfileGameMode.CLASSIC,
-                source =
-                    ProfileMatchSource.ONLINE,
-                won =
-                    false,
+                matchId = abandonedMatchId,
+                mode = ProfileGameMode.CLASSIC,
+                source = ProfileMatchSource.ONLINE,
+                won = false,
             )
     }
 
     if (
         wasActive &&
-        !abandonedMatchId
-            .isNullOrBlank() &&
-        !abandonedPlayerToken
-            .isNullOrBlank()
+        !abandonedMatchId.isNullOrBlank() &&
+        !abandonedPlayerToken.isNullOrBlank()
     ) {
         enqueueAuthoritativeForfeit(
-            matchId =
-                abandonedMatchId,
-            playerToken =
-                abandonedPlayerToken,
+            matchId = abandonedMatchId,
+            playerToken = abandonedPlayerToken,
         )
     }
 
@@ -88,70 +73,37 @@ private fun enqueueAuthoritativeForfeit(
     matchId: String,
     playerToken: String,
 ) {
-    val key =
-        matchId
-            .trim()
-            .uppercase()
-    if (
-        !inFlightForfeits.add(
-            key,
-        )
-    ) {
-        return
-    }
+    val key = matchId.trim().uppercase()
+    if (!inFlightForfeits.add(key)) return
 
     remoteForfeitExecutor.execute {
         try {
-            repeat(
-                3,
-            ) {
-                    attempt ->
+            repeat(3) { attempt ->
                 try {
-                    RemoteForfeitApi
-                        .forfeit(
-                            matchId =
-                                matchId,
-                            playerToken =
-                                playerToken,
-                        )
+                    RemoteForfeitApi.forfeit(
+                        matchId = matchId,
+                        playerToken = playerToken,
+                    )
                     return@execute
-                } catch (
-                    error:
-                    GameApiException,
-                ) {
-                    if (
-                        error.code in
-                        TERMINAL_FORFEIT_CODES
-                    ) {
+                } catch (error: GameApiException) {
+                    if (error.code in TERMINAL_FORFEIT_CODES) {
                         return@execute
                     }
                 } catch (_: Exception) {
                     // Retry transient transport failures below.
                 }
 
-                if (
-                    attempt <
-                    2
-                ) {
+                if (attempt < 2) {
                     try {
-                        Thread.sleep(
-                            700L *
-                                (
-                                    attempt +
-                                        1
-                                    ),
-                        )
+                        Thread.sleep(700L * (attempt + 1))
                     } catch (_: InterruptedException) {
-                        Thread.currentThread()
-                            .interrupt()
+                        Thread.currentThread().interrupt()
                         return@execute
                     }
                 }
             }
         } finally {
-            inFlightForfeits.remove(
-                key,
-            )
+            inFlightForfeits.remove(key)
         }
     }
 }
