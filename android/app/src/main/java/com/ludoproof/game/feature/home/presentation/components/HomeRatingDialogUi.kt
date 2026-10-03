@@ -17,6 +17,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.ludoproof.game.HomeActivity
 import com.ludoproof.game.LudoProofTheme
+import com.ludoproof.game.R
 import com.ludoproof.game.ui.dialogs.baseDialog
 import com.ludoproof.game.ui.dialogs.sizeDialog
 import kotlin.math.cos
@@ -121,7 +122,7 @@ internal fun HomeActivity.showHomeRatingDialog() {
     panel.addView(
         TextView(this).apply {
             text =
-                "RATE LUDOPROOF"
+                getString(R.string.rate_dialog_title)
             LudoProofTheme.title(
                 this,
                 if (compact) 22f else 26f,
@@ -141,7 +142,7 @@ internal fun HomeActivity.showHomeRatingDialog() {
     panel.addView(
         TextView(this).apply {
             text =
-                "Loving LudoProof?"
+                getString(R.string.rate_dialog_question)
             LudoProofTheme.title(
                 this,
                 if (compact) 17f else 19f,
