@@ -202,39 +202,21 @@ private fun HomeActivity.homeGameCard(
         )
     }
 
-internal fun HomeActivity.continueButton(): Button? {
-    val local =
-        LocalMatchSession(
-            context = this,
-            mode = GameMode.PASS_AND_PLAY,
-        ).hasSavedGame()
-    val computer =
-        LocalMatchSession(
-            context = this,
-            mode = GameMode.COMPUTER,
-        ).hasSavedGame()
-
-    if (!local && !computer) {
-        return null
-    }
-
-    return Button(this).apply {
-        text =
-            if (local) {
-                "Continue Pass & Play  ›"
-            } else {
-                "Continue Computer Game  ›"
-            }
+private fun HomeActivity.localContinueButton(
+    mode: GameMode,
+    label: String,
+): Button =
+    Button(this).apply {
+        text = label
         LudoProofTheme.positive(this)
         textSize = if (isCompact()) 14.5f else 16f
         setOnClickListener {
             openGameMode(
-                if (local) GameMode.PASS_AND_PLAY else GameMode.COMPUTER,
+                mode,
                 resumeSavedMatch = true,
             )
         }
     }
-}
 
 internal fun HomeActivity.refreshHomeContinueButton() {
     if (!::homeContinueHost.isInitialized) {
@@ -242,20 +224,66 @@ internal fun HomeActivity.refreshHomeContinueButton() {
     }
 
     homeContinueHost.removeAllViews()
-    val button =
-        continueButton()
 
-    if (button == null) {
+    val hasPassAndPlay =
+        LocalMatchSession(
+            context = this,
+            mode = GameMode.PASS_AND_PLAY,
+        ).hasSavedGame()
+    val hasComputer =
+        LocalMatchSession(
+            context = this,
+            mode = GameMode.COMPUTER,
+        ).hasSavedGame()
+
+    if (!hasPassAndPlay && !hasComputer) {
         homeContinueHost.visibility = View.GONE
         return
     }
 
     homeContinueHost.visibility = View.VISIBLE
+
+    val stack =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+        }
+
+    if (hasPassAndPlay) {
+        stack.addView(
+            localContinueButton(
+                GameMode.PASS_AND_PLAY,
+                "Continue Pass & Play  ›",
+            ),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(if (isCompact()) 42 else 44),
+            ),
+        )
+    }
+
+    if (hasComputer) {
+        stack.addView(
+            localContinueButton(
+                GameMode.COMPUTER,
+                "Continue Computer Game  ›",
+            ),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(if (isCompact()) 42 else 44),
+            ).apply {
+                if (hasPassAndPlay) {
+                    topMargin = dp(8)
+                }
+            },
+        )
+    }
+
     homeContinueHost.addView(
-        button,
+        stack,
         FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
-            dp(if (isCompact()) 42 else 44),
+            FrameLayout.LayoutParams.WRAP_CONTENT,
         ),
     )
 }
