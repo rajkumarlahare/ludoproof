@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ludo Paws</string>
+    <string name="store_title">Ludo Paws: Talking Animals</string>
+    <string name="brand_tagline">Roll. Race. Roar!</string>
+    <string name="home_hero_title">LUDO PAWS</string>
+    <string name="home_hero_tagline">ROLL. RACE. ROAR!</string>
+    <string name="home_hero_supporting_copy">Fair Ludo online or locally with independently verifiable dice outcomes.</string>
+    <string name="share_subject">Ludo Paws</string>
+    <string name="share_chooser_title">Share Ludo Paws</string>
+    <string name="share_message">Play Ludo Paws — Roll. Race. Roar! Fair, verifiable Ludo online or locally.</string>
+    <string name="rate_accessibility_label">Rate Ludo Paws</string>
+    <string name="rate_dialog_title">RATE LUDO PAWS</string>
+    <string name="rate_dialog_question">Loving Ludo Paws?</string>
+</resources>
