@@ -1,0 +1,7 @@
+LudoProof production release trigger
+
+Target feature commit: f3aa606ec5e53069b2f48a8c9005c4f9a9ddf5c4
+Release purpose: durable match proof receipts, readiness hardening, Android Kotlin CodeQL, unified conformance toolchain.
+Requested: 2026-10-03
+
+This file is an auditable no-runtime release marker. It is not imported by the Worker.
