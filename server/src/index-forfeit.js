@@ -1,6 +1,6 @@
 export {
   default,
-} from "./index-hardening.js";
+} from "./index-team.js";
 
 export {
   ApiGate,
@@ -8,6 +8,10 @@ export {
   MatchmakerQueue,
   FriendDirectory,
 } from "./index.js";
+
+export {
+  TeamMatchmakerQueue,
+} from "./team-matchmaker-queue.js";
 
 export {
   MatchReceiptArchive,
