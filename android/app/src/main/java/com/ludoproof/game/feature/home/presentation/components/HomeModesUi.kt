@@ -221,7 +221,7 @@ internal fun HomeActivity.fairPlayStrip(): TextView =
             ArcadeDialogs.showProofHistory(
                 this@fairPlayStrip,
                 "FAIR PLAY",
-                "LudoProof uses the same v4 derivation math online and offline. Online adds remote EntroNex authority; offline is locally reproducible only.",
+                "Ludo Paws uses the same v4 derivation math online and offline. Online adds remote EntroNex authority; offline is locally reproducible only.",
             )
         }
     }
@@ -237,12 +237,12 @@ internal fun HomeActivity.footer(): TextView =
         setPadding(dp(8), dp(4), dp(8), 0)
     }
 
-internal fun HomeActivity.shareLudoProof() {
+internal fun HomeActivity.shareLudoPaws() {
     val storeUrl =
         "https://play.google.com/store/apps/details?id=$packageName"
     val shareText =
         buildString {
-            append("Play LudoProof — fair, verifiable Ludo online or locally.")
+            append(getString(R.string.share_message))
             append("\n\n")
             append(storeUrl)
         }
@@ -250,14 +250,17 @@ internal fun HomeActivity.shareLudoProof() {
     val share =
         Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "LudoProof")
+            putExtra(
+                Intent.EXTRA_SUBJECT,
+                getString(R.string.share_subject),
+            )
             putExtra(Intent.EXTRA_TEXT, shareText)
         }
 
     startActivity(
         Intent.createChooser(
             share,
-            "Share LudoProof",
+            getString(R.string.share_chooser_title),
         ),
     )
 }
