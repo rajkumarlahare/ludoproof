@@ -25,7 +25,9 @@ enum class GameMode(
         displayName = "Team Up",
         authority = MatchAuthority.REMOTE,
         allowedPlayerCounts = setOf(4),
-        ranked = true,
+        // Team Up v1 deliberately stays off the individual leaderboard until
+        // a dedicated two-winner team ledger is introduced server-side.
+        ranked = false,
         teamBased = true,
     ),
     FRIENDS(

@@ -9,6 +9,7 @@ data class PlayerSnapshot(
     val color: String,
     val seat: Int,
     val tokens: List<Int>,
+    val teamId: String? = null,
 )
 
 data class PendingRollSnapshot(
@@ -23,6 +24,7 @@ data class PendingRollSnapshot(
     val proofDigest: String?,
     val outcome: Int?,
     val legalTokenIndexes: Set<Int>,
+    val scheduledSeat: Int? = null,
 )
 
 data class HistoryEventSnapshot(
@@ -56,6 +58,9 @@ data class MatchSnapshot(
     val winnerPlayerId: String?,
     val rulesetId: String,
     val history: List<HistoryEventSnapshot>,
+    val actingSeat: Int? = null,
+    val teamAssignments: List<String> = emptyList(),
+    val winnerTeamId: String? = null,
 )
 
 data class GameEnvelope(
@@ -88,42 +93,34 @@ object GameJson {
             hostPlayerId = value.optString("hostPlayerId"),
             targetPlayerCount =
                 if (
-                    value.has(
-                        "targetPlayerCount",
-                    ) &&
-                    !value.isNull(
-                        "targetPlayerCount",
-                    )
+                    value.has("targetPlayerCount") &&
+                    !value.isNull("targetPlayerCount")
                 ) {
-                    value.optInt(
-                        "targetPlayerCount",
-                    )
-                        .takeIf {
-                            it in 2..4
-                        }
+                    value.optInt("targetPlayerCount")
+                        .takeIf { it in 2..4 }
                 } else {
                     null
                 },
-            matchMode =
-                value.optString(
-                    "matchMode",
-                    "ONLINE",
-                ),
-            players =
-                value.optJSONArray("players")
-                    .toPlayerList(),
+            matchMode = value.optString("matchMode", "ONLINE"),
+            players = value.optJSONArray("players").toPlayerList(),
             turnSeat = value.optInt("turnSeat", 0),
             randomEventIndex = value.optInt("randomEventIndex", 0),
-            pendingRoll =
-                value.optJSONObject("pendingRoll")
-                    ?.let(::pendingRoll),
+            pendingRoll = value.optJSONObject("pendingRoll")?.let(::pendingRoll),
             winnerPlayerId =
                 value.optString("winnerPlayerId")
                     .takeIf { it.isNotBlank() && it != "null" },
             rulesetId = value.optString("rulesetId"),
-            history =
-                value.optJSONArray("history")
-                    .toHistoryList(),
+            history = value.optJSONArray("history").toHistoryList(),
+            actingSeat =
+                if (value.has("actingSeat") && !value.isNull("actingSeat")) {
+                    value.optInt("actingSeat").takeIf { it in 0..3 }
+                } else {
+                    null
+                },
+            teamAssignments = value.optJSONArray("teamAssignments").toStringList(),
+            winnerTeamId =
+                value.optString("winnerTeamId")
+                    .takeIf { it == "A" || it == "B" },
         )
 
     private fun pendingRoll(value: JSONObject): PendingRollSnapshot =
@@ -144,10 +141,7 @@ object GameJson {
                 value.optString("clientCommitment")
                     .takeIf { it.isNotBlank() && it != "null" },
             revealDeadlineAt =
-                if (
-                    value.has("revealDeadlineAt") &&
-                    !value.isNull("revealDeadlineAt")
-                ) {
+                if (value.has("revealDeadlineAt") && !value.isNull("revealDeadlineAt")) {
                     value.optLong("revealDeadlineAt")
                 } else {
                     null
@@ -161,9 +155,13 @@ object GameJson {
                 } else {
                     null
                 },
-            legalTokenIndexes =
-                value.optJSONArray("legalTokenIndexes")
-                    .toIntSet(),
+            legalTokenIndexes = value.optJSONArray("legalTokenIndexes").toIntSet(),
+            scheduledSeat =
+                if (value.has("scheduledSeat") && !value.isNull("scheduledSeat")) {
+                    value.optInt("scheduledSeat").takeIf { it in 0..3 }
+                } else {
+                    null
+                },
         )
 
     private fun JSONArray?.toPlayerList(): List<PlayerSnapshot> {
@@ -177,9 +175,10 @@ object GameJson {
                         displayName = player.optString("displayName"),
                         color = player.optString("color"),
                         seat = player.optInt("seat", index),
-                        tokens =
-                            player.optJSONArray("tokens")
-                                .toIntList(),
+                        tokens = player.optJSONArray("tokens").toIntList(),
+                        teamId =
+                            player.optString("teamId")
+                                .takeIf { it == "A" || it == "B" },
                     ),
                 )
             }
@@ -208,10 +207,7 @@ object GameJson {
                                 null
                             },
                         moveTokenIndex =
-                            if (
-                                event.has("moveTokenIndex") &&
-                                !event.isNull("moveTokenIndex")
-                            ) {
+                            if (event.has("moveTokenIndex") && !event.isNull("moveTokenIndex")) {
                                 event.optInt("moveTokenIndex")
                             } else {
                                 null
@@ -250,12 +246,20 @@ object GameJson {
     private fun JSONArray?.toIntList(): List<Int> {
         if (this == null) return emptyList()
         return buildList {
+            for (index in 0 until length()) add(optInt(index))
+        }
+    }
+
+    private fun JSONArray?.toStringList(): List<String> {
+        if (this == null) return emptyList()
+        return buildList {
             for (index in 0 until length()) {
-                add(optInt(index))
+                optString(index)
+                    .takeIf { it.isNotBlank() }
+                    ?.let(::add)
             }
         }
     }
 
-    private fun JSONArray?.toIntSet(): Set<Int> =
-        toIntList().toSet()
+    private fun JSONArray?.toIntSet(): Set<Int> = toIntList().toSet()
 }

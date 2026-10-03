@@ -29,6 +29,10 @@
       {
         "name": "LUDOPROOF_RECEIPTS",
         "class_name": "MatchReceiptArchive"
+      },
+      {
+        "name": "LUDOPROOF_TEAM_MATCHMAKER",
+        "class_name": "TeamMatchmakerQueue"
       }
     ]
   },
@@ -67,6 +71,12 @@
       "tag": "v6-match-receipts",
       "new_sqlite_classes": [
         "MatchReceiptArchive"
+      ]
+    },
+    {
+      "tag": "v7-team-matchmaker",
+      "new_sqlite_classes": [
+        "TeamMatchmakerQueue"
       ]
     }
   ],

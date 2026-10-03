@@ -1,60 +1,32 @@
 package com.ludoproof.game.feature.online
 
-import android.app.Activity
 import android.content.Intent
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.text.InputType
-import android.view.Gravity
 import android.view.View
-import android.widget.Button
-import android.widget.EditText
-import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
-import org.json.JSONObject
-import java.util.concurrent.Executors
 import com.ludoproof.game.*
-import com.ludoproof.game.ui.online.*
+import org.json.JSONObject
 
 internal fun MainActivity.shareMatch() {
+    if (gameMode == GameMode.TEAM_UP) {
+        showStatus("Team Up rooms are assigned by secure matchmaking and cannot be shared.")
+        return
+    }
     val code =
         matchId
             ?: run {
-                showStatus(
-                    "Create or join a match first.",
-                )
+                showStatus("Create or join a match first.")
                 return
             }
 
-    val intent =
-        Intent(
-            Intent.ACTION_SEND,
-        ).apply {
-            type = "text/plain"
-            putExtra(
-                Intent.EXTRA_TEXT,
-                "Join my LudoProof match: $code",
-            )
-        }
-    startActivity(
-        Intent.createChooser(
-            intent,
-            "Share LudoProof match",
-        ),
-    )
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, "Join my LudoProof match: $code")
+    }
+    startActivity(Intent.createChooser(intent, "Share LudoProof match"))
 }
 
 internal fun MainActivity.playerName(): String {
-    val value =
-        nameInput.text
-            .toString()
-            .trim()
-    require(
-        value.length in 2..24,
-    ) {
+    val value = nameInput.text.toString().trim()
+    require(value.length in 2..24) {
         "Player name must contain 2 to 24 characters"
     }
     return value
@@ -71,8 +43,7 @@ internal fun MainActivity.persistSessionSecurely(
                 matchId = code,
                 playerId = id,
                 playerToken = token,
-                modeWire =
-                    gameMode.wireValue,
+                modeWire = gameMode.wireValue,
             ),
         )
     } catch (_: Exception) {
@@ -81,142 +52,66 @@ internal fun MainActivity.persistSessionSecurely(
 }
 
 internal fun MainActivity.withSession(
-    action: (
-        String,
-        String,
-    ) -> Unit,
+    action: (String, String) -> Unit,
 ) {
     val code = matchId
     val token = playerToken
-
-    if (
-        code == null ||
-        token == null
-    ) {
-        showStatus(
-            "Create or join a match first.",
-        )
+    if (code == null || token == null) {
+        showStatus("Create or join a match first.")
         return
     }
-
-    action(
-        code,
-        token,
-    )
+    action(code, token)
 }
 
 internal fun MainActivity.runNetwork(
     action: () -> JSONObject,
-    onSuccess: (
-        JSONObject,
-    ) -> Unit = {
-        applyResponse(it)
-    },
+    onSuccess: (JSONObject) -> Unit = { applyResponse(it) },
     showWorking: Boolean = true,
 ) {
-    if (
-        !canRenderUi()
-    ) {
-        return
-    }
+    if (!canRenderUi()) return
 
     if (!isOnline) {
         diceView.stopRolling()
-        showStatus(
-            "Offline — this online match is read-only until internet returns.",
-        )
-        currentState?.let {
-            updateControls(it)
-        }
+        showStatus("Offline — this online match is read-only until internet returns.")
+        currentState?.let { updateControls(it) }
         return
     }
+    if (executor.isShutdown) return
 
-    if (
-        executor.isShutdown
-    ) {
-        return
-    }
-
-    if (showWorking) {
-        showStatus("Working…")
-    }
-    setNetworkControls(
-        enabled = false,
-    )
+    if (showWorking) showStatus("Working…")
+    setNetworkControls(enabled = false)
 
     val submitted =
         runCatching {
             executor.execute {
                 try {
-                    val response =
-                        action()
+                    val response = action()
                     mainHandler.post {
-                        if (
-                            !canRenderUi()
-                        ) {
-                            return@post
-                        }
-
-                        setNetworkControls(
-                            enabled = true,
-                        )
-                        onSuccess(
-                            response,
-                        )
+                        if (!canRenderUi()) return@post
+                        setNetworkControls(enabled = true)
+                        onSuccess(response)
                         updateRollButton()
                     }
-                } catch (
-                    error: Exception,
-                ) {
+                } catch (error: Exception) {
                     mainHandler.post {
-                        if (
-                            !canRenderUi()
-                        ) {
-                            return@post
-                        }
-
+                        if (!canRenderUi()) return@post
                         diceView.stopRolling()
-                        val sessionReset =
-                            resetInvalidSessionIfNeeded(
-                                error,
-                            )
+                        val sessionReset = resetInvalidSessionIfNeeded(error)
                         if (!sessionReset) {
-                            setNetworkControls(
-                                enabled = true,
-                            )
-                            showStatus(
-                                "Error: " +
-                                    (
-                                        error.message
-                                            ?: error
-                                                .toString()
-                                        ),
-                            )
-                            currentState
-                                ?.let {
-                                    updateControls(
-                                        it,
-                                    )
-                                }
+                            setNetworkControls(enabled = true)
+                            showStatus("Error: " + (error.message ?: error.toString()))
+                            currentState?.let { updateControls(it) }
                         }
                         updateRollButton()
                     }
                 }
             }
-        }
-            .isSuccess
+        }.isSuccess
 
-    if (
-        !submitted &&
-        canRenderUi()
-    ) {
+    if (!submitted && canRenderUi()) {
         diceView.stopRolling()
-        setNetworkControls(
-            enabled = true,
-        )
-        showStatus(
-            "Request was cancelled because the screen is closing.",
-        )
+        setNetworkControls(enabled = true)
+        showStatus("Request was cancelled because the screen is closing.")
         updateRollButton()
     }
 }
@@ -224,16 +119,8 @@ internal fun MainActivity.runNetwork(
 internal fun MainActivity.resetInvalidSessionIfNeeded(
     error: Exception,
 ): Boolean {
-    val code =
-        (error as? GameApiException)
-            ?.code
-            ?: return false
-    if (
-        code != "MATCH_NOT_FOUND" &&
-        code != "AUTH_INVALID"
-    ) {
-        return false
-    }
+    val code = (error as? GameApiException)?.code ?: return false
+    if (code != "MATCH_NOT_FOUND" && code != "AUTH_INVALID") return false
 
     secureSessionStore.clear()
     pendingRollStore.clear()
@@ -242,82 +129,55 @@ internal fun MainActivity.resetInvalidSessionIfNeeded(
     playerToken = null
     playerId = null
     currentState = null
-    lastRealtimeRevision =
-        -1
+    lastRealtimeRevision = -1
     cachedMatchStore.clear()
     realtimeClient.disconnect()
-    realtimeConnected =
-        false
+    realtimeConnected = false
 
-    if (
-        gameMode ==
-        GameMode.FRIENDS
-    ) {
+    if (gameMode != GameMode.ONLINE) {
         showStatus(
-            "Private friend room is no longer available.",
+            if (gameMode == GameMode.TEAM_UP) {
+                "Team Up match is no longer available. Start a new Quick Team search."
+            } else {
+                "Private friend room is no longer available."
+            },
         )
         finish()
         return true
     }
 
     matchInput.setText("")
-    boardView.bind(
-        null,
-        null,
-    )
+    boardView.bind(null, null)
     diceView.stopRolling()
-    matchInfoText.text =
-        "No active match"
-    playersText.text =
-        "Players will appear here."
-    turnText.text =
-        "Create or join a new match."
-    verificationText.text =
-        "No verified roll yet."
+    matchInfoText.text = "No active match"
+    playersText.text = "Players will appear here."
+    turnText.text = "Create or join a new match."
+    verificationText.text = "No verified roll yet."
     proofDetailsText.text = ""
-    proofDetailsText.visibility =
-        View.GONE
+    proofDetailsText.visibility = View.GONE
 
-    lobbyPanel.visibility =
-        View.VISIBLE
-    nameInput.visibility =
-        View.VISIBLE
-    matchInput.visibility =
-        View.VISIBLE
-    createButton.visibility =
-        View.VISIBLE
-    joinButton.visibility =
-        View.VISIBLE
-    startButton.visibility =
-        View.GONE
-    rollButton.visibility =
-        View.GONE
+    lobbyPanel.visibility = View.VISIBLE
+    nameInput.visibility = View.VISIBLE
+    matchInput.visibility = View.VISIBLE
+    createButton.visibility = View.VISIBLE
+    joinButton.visibility = View.VISIBLE
+    startButton.visibility = View.GONE
+    rollButton.visibility = View.GONE
 
     restorePublicMatchmakingUi()
-    nameInput.isEnabled =
-        isOnline
-    matchInput.isEnabled =
-        isOnline
-    createButton.isEnabled =
-        isOnline
-    joinButton.isEnabled =
-        isOnline
-    findMatchButton.isEnabled =
-        isOnline
-    twoPlayerButton.isEnabled =
-        isOnline
-    fourPlayerButton.isEnabled =
-        isOnline
+    nameInput.isEnabled = isOnline
+    matchInput.isEnabled = isOnline
+    createButton.isEnabled = isOnline
+    joinButton.isEnabled = isOnline
+    findMatchButton.isEnabled = isOnline
+    twoPlayerButton.isEnabled = isOnline
+    fourPlayerButton.isEnabled = isOnline
     cancelMatchmakingButton.isEnabled =
-        isOnline &&
-            publicMatchmakingStore.load() !=
-            null
+        isOnline && publicMatchmakingStore.load() != null
     refreshButton.isEnabled = false
     shareButton.isEnabled = false
 
-    showStatus(
-        "Previous match session is no longer available. Create or join a new match.",
-    )
+    showStatus("Previous match session is no longer available. Create or join a new match.")
     return true
 }
 
@@ -340,56 +200,30 @@ internal fun MainActivity.setNetworkControls(
     val state = currentState
     if (state != null) {
         updateControls(state)
-    } else {
-        val searching =
-            publicMatchmakingStore.load() !=
-                null
+    } else if (gameMode == GameMode.ONLINE) {
+        val searching = publicMatchmakingStore.load() != null
         setPublicSearchUi(
-            searching =
-                searching,
-            queuedPlayers =
-                if (
-                    searching
-                ) {
-                    1
-                } else {
-                    0
-                },
+            searching = searching,
+            queuedPlayers = if (searching) 1 else 0,
             targetPlayerCount =
-                publicMatchmakingStore
-                    .load()
-                    ?.playerCount
+                publicMatchmakingStore.load()?.playerCount
                     ?: selectedPublicPlayerCount,
         )
-        refreshButton.isEnabled =
-            isOnline &&
-                playerToken != null
+        refreshButton.isEnabled = isOnline && playerToken != null
+        startButton.isEnabled = false
+        rollButton.isEnabled = false
+    } else {
+        refreshButton.isEnabled = isOnline && playerToken != null
         startButton.isEnabled = false
         rollButton.isEnabled = false
     }
 }
 
-internal fun MainActivity.showStatus(
-    value: String,
-) {
+internal fun MainActivity.showStatus(value: String) {
     statusText.text = value
 }
 
-internal fun MainActivity.shortDigest(
-    value: String?,
-): String {
-    if (
-        value.isNullOrBlank()
-    ) {
-        return "—"
-    }
-    return if (
-        value.length <= 16
-    ) {
-        value
-    } else {
-        value.take(8) +
-            "…" +
-            value.takeLast(6)
-    }
+internal fun MainActivity.shortDigest(value: String?): String {
+    if (value.isNullOrBlank()) return "—"
+    return if (value.length <= 16) value else value.take(8) + "…" + value.takeLast(6)
 }
