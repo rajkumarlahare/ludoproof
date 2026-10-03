@@ -219,10 +219,6 @@ private fun HomeActivity.localContinueButton(
     }
 
 internal fun HomeActivity.refreshHomeContinueButton() {
-    if (!::homeContinueHost.isInitialized) {
-        return
-    }
-
     homeContinueHost.removeAllViews()
 
     val hasPassAndPlay =
