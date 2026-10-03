@@ -113,7 +113,7 @@ internal fun MainActivity.joinMatch() {
         ).matches(code)
     ) {
         showStatus(
-            "Enter a valid LudoProof match code.",
+            "Enter a valid Ludo Paws match code.",
         )
         return
     }
