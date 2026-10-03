@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import com.ludoproof.game.feature.mode.presentation.RemoteModeEntryActivity
 import com.ludoproof.game.feature.friends.presentation.FriendsActivity
+import com.ludoproof.game.feature.team.presentation.TeamUpActivity
 
 fun Activity.openGameMode(
     mode: GameMode,
@@ -20,7 +21,7 @@ fun Activity.openGameMode(
                 MainActivity::class.java
 
             GameModeDestination.REMOTE_MODE_ENTRY ->
-                RemoteModeEntryActivity::class.java
+                TeamUpActivity::class.java
 
             GameModeDestination.FRIENDS_ACTIVITY ->
                 FriendsActivity::class.java
