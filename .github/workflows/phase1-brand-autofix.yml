@@ -1,0 +1,34 @@
+name: Phase 1 Brand Autofix
+
+on:
+  push:
+    branches:
+      - feat/ludo-paws-phase-1-brand
+
+permissions:
+  contents: write
+
+jobs:
+  fix-friends-copy:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout phase branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: feat/ludo-paws-phase-1-brand
+          fetch-depth: 0
+      - name: Apply exact Friends brand replacements
+        run: node scripts/phase1-fix-friends-brand.mjs
+      - name: Commit replacements
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No brand replacements needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android/app/src/main/java/com/ludoproof/game/feature/friends/presentation/FriendsActivity.kt
+          git commit -m "brand: update friends copy to Ludo Paws"
+          git push origin HEAD:feat/ludo-paws-phase-1-brand
