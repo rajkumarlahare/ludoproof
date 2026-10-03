@@ -1,229 +1,117 @@
 package com.ludoproof.game.feature.online
 
-import android.app.Activity
-import android.content.Intent
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.text.InputType
-import android.view.Gravity
 import android.view.View
-import android.widget.Button
-import android.widget.EditText
-import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
-import org.json.JSONObject
-import java.util.concurrent.Executors
 import com.ludoproof.game.*
-import com.ludoproof.game.ui.online.*
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
 import com.ludoproof.game.feature.profile.domain.model.ProfileGameMode
 import com.ludoproof.game.feature.profile.domain.model.ProfileMatchSource
+import org.json.JSONObject
 
 internal fun MainActivity.applyResponse(
     response: JSONObject,
     announce: Boolean = true,
 ) {
-    val envelope =
-        GameJson.envelope(
-            response,
-        )
+    val envelope = GameJson.envelope(response)
 
-    envelope.playerId
-        ?.let {
-                resolvedPlayerId ->
-            playerId =
-                resolvedPlayerId
-            val code =
-                matchId
-            val token =
-                playerToken
-            if (
-                code != null &&
-                token != null
-            ) {
-                persistSessionSecurely(
-                    code =
-                        code,
-                    id =
-                        resolvedPlayerId,
-                    token =
-                        token,
-                )
-            }
+    envelope.playerId?.let { resolvedPlayerId ->
+        playerId = resolvedPlayerId
+        val code = matchId
+        val token = playerToken
+        if (code != null && token != null) {
+            persistSessionSecurely(
+                code = code,
+                id = resolvedPlayerId,
+                token = token,
+            )
         }
+    }
 
-    val state =
-        envelope.state
-    if (
-        state ==
-        null
-    ) {
-        showStatus(
-            response
-                .toString(2),
-        )
+    val state = envelope.state
+    if (state == null) {
+        showStatus(response.toString(2))
         updateRollButton()
         return
     }
 
-    currentState =
-        state
-    matchId =
-        state.matchId
+    currentState = state
+    matchId = state.matchId
 
     val serverRevision =
-        response
-            .optJSONObject(
-                "state",
-            )
-            ?.optInt(
-                "revision",
-                -1,
-            )
-            ?: response.optInt(
-                "revision",
-                -1,
-            )
-    if (
-        serverRevision >
-        lastRealtimeRevision
-    ) {
-        lastRealtimeRevision =
-            serverRevision
+        response.optJSONObject("state")
+            ?.optInt("revision", -1)
+            ?: response.optInt("revision", -1)
+    if (serverRevision > lastRealtimeRevision) {
+        lastRealtimeRevision = serverRevision
     }
 
-    if (
-        state.status ==
-        "FINISHED"
-    ) {
+    if (state.status == "FINISHED") {
         realtimeClient.disconnect()
-        realtimeConnected =
-            false
+        realtimeConnected = false
         updateConnectionLabel()
     }
 
-    if (
-        state.status ==
-            "FINISHED"
-    ) {
+    // Team Up v1 is intentionally unranked until a dedicated team ledger can
+    // represent two co-winners without corrupting individual profile stats.
+    if (state.status == "FINISHED" && gameMode.ranked) {
         runCatching {
-            ProfileStore(
-                this,
-            ).recordCompletedMatch(
-                matchId =
-                    state.matchId,
-                mode =
-                    ProfileGameMode.CLASSIC,
-                source =
-                    ProfileMatchSource.ONLINE,
-                won =
-                    state.winnerPlayerId ==
-                        playerId,
+            ProfileStore(this).recordCompletedMatch(
+                matchId = state.matchId,
+                mode = ProfileGameMode.CLASSIC,
+                source = ProfileMatchSource.ONLINE,
+                won = state.winnerPlayerId == playerId,
             )
         }
     }
 
-    response
-        .optJSONObject(
-            "state",
+    response.optJSONObject("state")?.let { safeState ->
+        cachedMatchStore.save(
+            envelope.playerId ?: playerId,
+            safeState,
         )
-        ?.let {
-                safeState ->
-            cachedMatchStore
-                .save(
-                    envelope.playerId
-                        ?: playerId,
-                    safeState,
-                )
-        }
+    }
 
-    reconcilePendingSecret(
-        state,
-    )
-    boardView.bind(
-        state,
-        playerId,
-    )
+    reconcilePendingSecret(state)
+    boardView.bind(state, playerId)
 
     matchInfoText.text =
         buildString {
-            append(
-                "MATCH • ",
-            )
-            append(
-                state.matchId,
-            )
-            append(
-                "   •   ",
-            )
-            append(
-                state.status,
-            )
-            if (
-                state.rulesetId
-                    .isNotBlank()
-            ) {
-                append(
-                    "   •   ",
-                )
-                append(
-                    state.rulesetId,
-                )
+            append("MATCH • ")
+            append(state.matchId)
+            append("   •   ")
+            append(state.status)
+            if (state.matchMode == "TEAM_UP") {
+                append("   •   2 VS 2")
+            }
+            if (state.rulesetId.isNotBlank()) {
+                append("   •   ")
+                append(state.rulesetId)
             }
         }
 
     playersText.text =
-        state.players
-            .joinToString(
-                separator =
-                    "\n",
-            ) {
-                player ->
-                val marker =
-                    if (
-                        player.playerId ==
-                        playerId
-                    ) {
-                        "  •  YOU"
-                    } else {
-                        ""
-                    }
-                player.color +
-                    "  •  " +
-                    player.displayName +
-                    marker
-            }
+        state.players.joinToString(separator = "\n") { player ->
+            val marker = if (player.playerId == playerId) "  •  YOU" else ""
+            val team =
+                if (state.matchMode == "TEAM_UP" && player.teamId != null) {
+                    "  •  TEAM ${player.teamId}"
+                } else {
+                    ""
+                }
+            player.color + "  •  " + player.displayName + team + marker
+        }
 
-    updateTurnBanner(
-        state,
-    )
-    updateVerification(
-        state,
-    )
-    proofDetailsText.text =
-        proofDetails(
-            state,
-        )
-    updateControls(
-        state,
-    )
+    updateTurnBanner(state)
+    updateVerification(state)
+    proofDetailsText.text = proofDetails(state)
+    updateControls(state)
     updateRollButton()
 
-    if (
-        announce
-    ) {
+    if (announce) {
         showStatus(
-            if (
-                state.status ==
-                "WAITING"
-            ) {
-                "Room synced • share the code and wait for players."
+            if (state.status == "WAITING") {
+                "Room synced • waiting for all required players."
             } else {
-                "State revision updated. Event index: " +
-                    state.randomEventIndex
+                "State revision updated. Event index: " + state.randomEventIndex
             },
         )
     }
@@ -232,23 +120,15 @@ internal fun MainActivity.applyResponse(
 internal fun MainActivity.reconcilePendingSecret(
     state: MatchSnapshot,
 ) {
-    val secret =
-        pendingSecret
-            ?: return
+    val secret = pendingSecret ?: return
     if (secret.matchId != state.matchId) {
         pendingRollStore.clear()
         pendingSecret = null
         return
     }
 
-    val remoteCommitment =
-        state.pendingRoll
-            ?.clientCommitment
-    if (
-        remoteCommitment == null ||
-        remoteCommitment !=
-        secret.clientCommitment
-    ) {
+    val remoteCommitment = state.pendingRoll?.clientCommitment
+    if (remoteCommitment == null || remoteCommitment != secret.clientCommitment) {
         pendingRollStore.clear()
         pendingSecret = null
     }
@@ -257,30 +137,17 @@ internal fun MainActivity.reconcilePendingSecret(
 internal fun MainActivity.updateTurnBanner(
     state: MatchSnapshot,
 ) {
-    when (
-        state.status
-    ) {
+    when (state.status) {
         "WAITING" -> {
             turnText.text =
                 if (
-                    state.targetPlayerCount !=
-                        null &&
-                    state.players.size <
-                        state.targetPlayerCount
+                    state.targetPlayerCount != null &&
+                    state.players.size < state.targetPlayerCount
                 ) {
-                    "WAITING FOR PLAYERS • " +
-                        state.players.size +
-                        "/" +
-                        state.targetPlayerCount
-                } else if (
-                    state.players.size <
-                    2
-                ) {
+                    "WAITING FOR PLAYERS • ${state.players.size}/${state.targetPlayerCount}"
+                } else if (state.players.size < 2) {
                     "WAITING FOR PLAYER"
-                } else if (
-                    state.hostPlayerId ==
-                    playerId
-                ) {
+                } else if (state.hostPlayerId == playerId) {
                     "READY • START THE MATCH"
                 } else {
                     "READY • WAITING FOR HOST"
@@ -288,65 +155,51 @@ internal fun MainActivity.updateTurnBanner(
         }
 
         "FINISHED" -> {
-            val winner =
-                state.players
-                    .find {
-                        it.playerId ==
-                            state.winnerPlayerId
+            turnText.text = "MATCH COMPLETE"
+            if (state.matchMode == "TEAM_UP") {
+                val me = state.players.find { it.playerId == playerId }
+                val winnerTeam = state.winnerTeamId
+                val won = winnerTeam != null && me?.teamId == winnerTeam
+                val winners =
+                    state.players
+                        .filter { it.teamId == winnerTeam }
+                        .joinToString(" + ") { it.displayName }
+                        .ifBlank { "Team ${winnerTeam ?: "—"}" }
+
+                resultTitleText.text =
+                    if (won) "YOUR TEAM WON" else "TEAM ${winnerTeam ?: "—"} WINS"
+                resultSubtitleText.text =
+                    "$winners • server-authoritative team result • verified history available"
+            } else {
+                val winner = state.players.find { it.playerId == state.winnerPlayerId }
+                val winnerName = winner?.displayName ?: "Player"
+                resultTitleText.text =
+                    if (winner?.playerId == playerId) "YOU WON"
+                    else "WINNER • $winnerName"
+                resultSubtitleText.text =
+                    if (winner?.playerId == playerId) {
+                        "$winnerName • server-authoritative result • proof history available"
+                    } else {
+                        "Server-authoritative result • verified history available"
                     }
-            val winnerName =
-                winner
-                    ?.displayName
-                    ?: "Player"
-
-            turnText.text =
-                "MATCH COMPLETE"
-
-            resultTitleText.text =
-                if (
-                    winner?.playerId ==
-                    playerId
-                ) {
-                    "YOU WON"
-                } else {
-                    "WINNER • " +
-                        winnerName
-                }
-
-            resultSubtitleText.text =
-                if (
-                    winner?.playerId ==
-                    playerId
-                ) {
-                    winnerName +
-                        " • server-authoritative result • proof history available"
-                } else {
-                    "Server-authoritative result • verified history available"
-                }
+            }
         }
 
         else -> {
-            val active =
-                state.players
-                    .getOrNull(
-                        state.turnSeat,
-                    )
-            val mine =
-                active?.playerId ==
-                    playerId
+            val activeSeat = state.actingSeat ?: state.turnSeat
+            val active = state.players.getOrNull(activeSeat)
+            val mine = active?.playerId == playerId
+            val handoff =
+                state.matchMode == "TEAM_UP" &&
+                    state.actingSeat != null &&
+                    state.actingSeat != state.turnSeat
             turnText.text =
-                if (
-                    mine
-                ) {
-                    "YOUR TURN • ROLL OR MOVE"
+                if (mine) {
+                    if (handoff) "YOUR TEAM TURN • PARTNER HANDOFF"
+                    else "YOUR TURN • ROLL OR MOVE"
                 } else {
-                    "WAITING • " +
-                        (
-                            active
-                                ?.displayName
-                                ?: "Player"
-                            ) +
-                        "'S TURN"
+                    val prefix = if (handoff) "TEAM HANDOFF • " else "WAITING • "
+                    prefix + (active?.displayName ?: "Player") + "'S TURN"
                 }
         }
     }
