@@ -1,24 +1,36 @@
 package com.ludoproof.game.feature.online
 
-import android.os.Build
-import android.window.OnBackInvokedDispatcher
 import com.ludoproof.game.MainActivity
+import com.ludoproof.game.feature.profile.data.local.ProfileStore
+import com.ludoproof.game.feature.profile.domain.model.ProfileGameMode
+import com.ludoproof.game.feature.profile.domain.model.ProfileMatchSource
 
-internal fun MainActivity.registerRemoteBackHandling() {
+internal fun MainActivity.abandonRemoteSessionState() {
+    val abandonedMatchId =
+        matchId
+    val wasActive =
+        currentState
+            ?.status ==
+            "ACTIVE"
+
     if (
-        Build.VERSION.SDK_INT >=
-        Build.VERSION_CODES.TIRAMISU
+        wasActive &&
+        !abandonedMatchId
+            .isNullOrBlank()
     ) {
-        onBackInvokedDispatcher
-            .registerOnBackInvokedCallback(
-                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
-            ) {
-                abandonRemoteSessionAndFinish()
-            }
+        ProfileStore(this)
+            .recordCompletedMatch(
+                matchId =
+                    abandonedMatchId,
+                mode =
+                    ProfileGameMode.CLASSIC,
+                source =
+                    ProfileMatchSource.ONLINE,
+                won =
+                    false,
+            )
     }
-}
 
-internal fun MainActivity.abandonRemoteSessionAndFinish() {
     publicMatchmakingStore.clear()
     secureSessionStore.clear()
     pendingRollStore.clear()
@@ -32,5 +44,4 @@ internal fun MainActivity.abandonRemoteSessionAndFinish() {
 
     realtimeConnected = false
     realtimeClient.disconnect()
-    finish()
 }
