@@ -233,11 +233,11 @@ export class TeamMatchmakerQueue {
   async #materialize(participants) {
     const host = participants[0];
     for (let attempt = 0; attempt < 4; attempt += 1) {
-      // Keep Team Up allocation in a deterministic namespace distinct from the
-      // ONLINE matchmaker's attempts 0..3.
+      // ONLINE public matchmaking reserves attempts 0..3. Team Up uses 4..7,
+      // remaining inside deterministicMatchId's reviewed attempt bounds.
       const matchId = await deterministicMatchId(
         host.clientRequestId,
-        16 + attempt,
+        4 + attempt,
       );
       const target = room(this.env, matchId);
       const createResponse = await target.fetch(
