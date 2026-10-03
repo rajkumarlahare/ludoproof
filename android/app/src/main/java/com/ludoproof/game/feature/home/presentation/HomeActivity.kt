@@ -10,6 +10,9 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import com.ludoproof.game.feature.profile.data.local.ProfileStore
+import com.ludoproof.game.feature.profile.domain.model.ProfileGameMode
+import com.ludoproof.game.feature.profile.domain.model.ProfileMatchSource
 import com.ludoproof.game.ui.home.*
 
 class HomeActivity : Activity() {
@@ -23,6 +26,8 @@ class HomeActivity : Activity() {
         View? = null
     internal var homeGemBalanceText:
         TextView? = null
+    internal lateinit var homeContinueHost:
+        FrameLayout
     internal lateinit var connectivityMonitor:
         ConnectivityMonitor
 
@@ -174,23 +179,21 @@ class HomeActivity : Activity() {
             },
         )
 
-        continueButton()
-            ?.let { button ->
-                content.addView(
-                    button,
-                    LinearLayout.LayoutParams(
-                        continueButtonWidth,
-                        dp(
-                            if (isCompact()) 42 else 44,
-                        ),
-                    ).apply {
-                        gravity =
-                            Gravity.CENTER_HORIZONTAL
-                        topMargin =
-                            dp(16)
-                    },
-                )
-            }
+        homeContinueHost =
+            FrameLayout(this)
+        content.addView(
+            homeContinueHost,
+            LinearLayout.LayoutParams(
+                continueButtonWidth,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                gravity =
+                    Gravity.CENTER_HORIZONTAL
+                topMargin =
+                    dp(16)
+            },
+        )
+        refreshHomeContinueButton()
 
         setContentView(root)
 
@@ -230,8 +233,60 @@ class HomeActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+
+        recordAbandonedRemoteLossIfNeeded()
+
+        // Remote matches are never resumable from Home. Returning Home means
+        // the remote match was abandoned, so stale remote credentials and
+        // cached state must not survive into a future ONLINE/FRIENDS/TEAM_UP
+        // entry. Local CPU and Pass & Play snapshots are intentionally kept.
+        SecureSessionStore(this).clear()
+        PendingRollStore(this).clear()
+        CachedMatchStore(this).clear()
+        PublicMatchmakingStore(this).clear()
+
         refreshHomeProfileSummary()
         refreshHomeGemBalance()
+        refreshHomeContinueButton()
+    }
+
+    private fun recordAbandonedRemoteLossIfNeeded() {
+        val session =
+            SecureSessionStore(this)
+                .load()
+                ?: return
+        val cached =
+            CachedMatchStore(this)
+                .load()
+                ?.optJSONObject(
+                    "state",
+                )
+                ?: return
+
+        if (
+            cached.optString(
+                "matchId",
+            ) !=
+            session.matchId ||
+            cached.optString(
+                "status",
+            ) !=
+            "ACTIVE"
+        ) {
+            return
+        }
+
+        ProfileStore(this)
+            .recordCompletedMatch(
+                matchId =
+                    session.matchId,
+                mode =
+                    ProfileGameMode.CLASSIC,
+                source =
+                    ProfileMatchSource.ONLINE,
+                won =
+                    false,
+            )
     }
 
     override fun onStart() {

@@ -2,6 +2,7 @@ package com.ludoproof.game.ui.online
 
 import android.app.Activity
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -14,6 +15,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.window.OnBackInvokedDispatcher
 import org.json.JSONObject
 import java.util.concurrent.Executors
 import com.ludoproof.game.*
@@ -22,6 +24,19 @@ import com.ludoproof.game.feature.online.*
 internal fun MainActivity.onlineTopBar():
     LinearLayout =
     LinearLayout(this).apply {
+        if (
+            Build.VERSION.SDK_INT >=
+            Build.VERSION_CODES.TIRAMISU
+        ) {
+            onBackInvokedDispatcher
+                .registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                ) {
+                    abandonRemoteSessionState()
+                    finish()
+                }
+        }
+
         orientation =
             LinearLayout.HORIZONTAL
         gravity =
@@ -39,6 +54,7 @@ internal fun MainActivity.onlineTopBar():
                 contentDescription =
                     "Back"
                 setOnClickListener {
+                    abandonRemoteSessionState()
                     finish()
                 }
             },
@@ -180,9 +196,7 @@ internal fun MainActivity.onlineHero():
                 )
 
                 addView(
-                    TextView(
-                        this@onlineHero,
-                    ).apply {
+                    TextView(this@onlineHero).apply {
                         text =
                             "VERIFIED ONLINE"
                         LudoProofTheme.title(
@@ -197,9 +211,7 @@ internal fun MainActivity.onlineHero():
                 )
 
                 addView(
-                    TextView(
-                        this@onlineHero,
-                    ).apply {
+                    TextView(this@onlineHero).apply {
                         text =
                             "Create a room or join with a match code"
                         LudoProofTheme.body(
@@ -219,11 +231,9 @@ internal fun MainActivity.onlineHero():
                 )
 
                 addView(
-                    TextView(
-                        this@onlineHero,
-                    ).apply {
+                    TextView(this@onlineHero).apply {
                         text =
-                            "Remote EntroNex authority • resumable verified rolls"
+                            "Remote EntroNex authority • exit abandons this match"
                         LudoProofTheme.body(
                             this,
                             if (isCompactOnline()) 9.5f else 10.5f,

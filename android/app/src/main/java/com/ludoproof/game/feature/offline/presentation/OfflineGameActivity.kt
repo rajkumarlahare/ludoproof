@@ -37,6 +37,14 @@ class OfflineGameActivity : Activity() {
             ?: GameMode.PASS_AND_PLAY
     }
 
+    internal val shouldResumeSavedGame:
+        Boolean by lazy {
+        intent.getBooleanExtra(
+            GameModeIntent.EXTRA_RESUME_SAVED_MATCH,
+            false,
+        )
+    }
+
     internal val isComputerMode: Boolean
         get() =
             gameMode ==
@@ -84,7 +92,9 @@ class OfflineGameActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         LudoProofTheme.configureWindow(this)
+
         if (
+            shouldResumeSavedGame &&
             session.hasSavedGame()
         ) {
             showGame(
@@ -129,7 +139,8 @@ class OfflineGameActivity : Activity() {
             GameModeIntent.EXTRA_GAME_MODE
 
         // Legacy extras remain readable so installed builds and old intents
-        // can continue an existing local or computer session after upgrade.
+        // can identify the requested local mode after upgrade. Resuming now
+        // requires the explicit EXTRA_RESUME_SAVED_MATCH flag.
         const val EXTRA_PLAY_MODE =
             "ludoproof_play_mode"
         const val PLAY_MODE_LOCAL =
