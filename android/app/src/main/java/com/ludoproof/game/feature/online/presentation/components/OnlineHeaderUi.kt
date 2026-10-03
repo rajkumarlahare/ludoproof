@@ -39,7 +39,7 @@ internal fun MainActivity.onlineTopBar():
                 contentDescription =
                     "Back"
                 setOnClickListener {
-                    finish()
+                    abandonRemoteSessionAndFinish()
                 }
             },
             LinearLayout.LayoutParams(
@@ -180,9 +180,7 @@ internal fun MainActivity.onlineHero():
                 )
 
                 addView(
-                    TextView(
-                        this@onlineHero,
-                    ).apply {
+                    TextView(this@onlineHero).apply {
                         text =
                             "VERIFIED ONLINE"
                         LudoProofTheme.title(
@@ -197,9 +195,7 @@ internal fun MainActivity.onlineHero():
                 )
 
                 addView(
-                    TextView(
-                        this@onlineHero,
-                    ).apply {
+                    TextView(this@onlineHero).apply {
                         text =
                             "Create a room or join with a match code"
                         LudoProofTheme.body(
@@ -219,11 +215,9 @@ internal fun MainActivity.onlineHero():
                 )
 
                 addView(
-                    TextView(
-                        this@onlineHero,
-                    ).apply {
+                    TextView(this@onlineHero).apply {
                         text =
-                            "Remote EntroNex authority • resumable verified rolls"
+                            "Remote EntroNex authority • exit abandons this match"
                         LudoProofTheme.body(
                             this,
                             if (isCompactOnline()) 9.5f else 10.5f,
