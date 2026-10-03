@@ -64,7 +64,7 @@ class GameModeMatchSpecTest {
     }
 
     @Test
-    fun teamUpIsFourPlayerOnly() {
+    fun teamUpIsFourPlayerUnrankedTeamMode() {
         assertFalse(
             GameMode.TEAM_UP
                 .supportsPlayerCount(
@@ -76,6 +76,16 @@ class GameModeMatchSpecTest {
                 .supportsPlayerCount(
                     4,
                 ),
+        )
+        assertTrue(
+            GameMode.TEAM_UP.teamBased,
+        )
+        assertFalse(
+            GameMode.TEAM_UP.ranked,
+        )
+        assertEquals(
+            MatchAuthority.REMOTE,
+            GameMode.TEAM_UP.authority,
         )
     }
 
