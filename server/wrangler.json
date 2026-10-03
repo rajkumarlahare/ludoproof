@@ -33,6 +33,14 @@
       {
         "name": "LUDOPROOF_TEAM_MATCHMAKER",
         "class_name": "TeamMatchmakerQueue"
+      },
+      {
+        "name": "LUDOPROOF_FRIEND_CONVERSATIONS",
+        "class_name": "FriendConversation"
+      },
+      {
+        "name": "LUDOPROOF_FRIEND_RECENT",
+        "class_name": "FriendRecentRoom"
       }
     ]
   },
@@ -77,6 +85,13 @@
       "tag": "v7-team-matchmaker",
       "new_sqlite_classes": [
         "TeamMatchmakerQueue"
+      ]
+    },
+    {
+      "tag": "v8-friend-social",
+      "new_sqlite_classes": [
+        "FriendConversation",
+        "FriendRecentRoom"
       ]
     }
   ],
