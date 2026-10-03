@@ -3,10 +3,14 @@ package com.ludoproof.game.ui.dialogs
 import android.app.Activity
 import android.content.Context
 import android.view.View
-import android.widget.LinearLayout
+import android.view.ViewGroup
+import com.ludoproof.game.DiceView
+import com.ludoproof.game.LudoBoardView
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
 import com.ludoproof.game.feature.profile.domain.ProfileProgression
+import com.ludoproof.game.feature.settings.data.local.GameMusicController
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
+import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
 import com.ludoproof.game.feature.store.domain.StoreCosmeticCatalog
 import com.ludoproof.game.feature.store.domain.model.CosmeticCategory
@@ -26,251 +30,240 @@ internal fun showSettingsDialog(
     }
 
     val settingsStore =
-        GameSettingsStore(
-            context,
-        )
+        GameSettingsStore(context)
     val cosmetics =
-        CosmeticInventoryStore(
-            context,
-        )
+        CosmeticInventoryStore(context)
     val profileLevel =
         ProfileProgression
             .levelProgress(
-                ProfileStore(
-                    context,
-                )
+                ProfileStore(context)
                     .snapshot()
                     .totalXp,
             )
             .level
 
     val dialog =
-        baseDialog(
-            context,
-        )
+        baseDialog(context)
     val panel =
-        dialogPanel(
+        settingsCompactPanel(
+            context = context,
+            dialog = dialog,
+        )
+
+    fun notifyChanged(
+        refreshCosmetics: Boolean = false,
+    ) {
+        if (refreshCosmetics) {
+            reloadVisibleCosmetics(
+                activity.window
+                    .decorView,
+            )
+        }
+        onChanged?.invoke()
+    }
+
+    var settings =
+        settingsStore.snapshot()
+
+    val musicControl =
+        SettingsAudioIconView(
             context,
-            "SETTINGS",
-            "GAMEPLAY & APPEARANCE",
-            dialog,
-        )
-
-    fun refresh(
-        change: () -> Unit,
-    ) {
-        change()
-        dialog.dismiss()
-
-        if (
-            activity.isFinishing ||
-            activity.isDestroyed
-        ) {
-            return
-        }
-
-        onChanged
-            ?.invoke()
-
-        if (
-            activity.isFinishing ||
-            activity.isDestroyed
-        ) {
-            return
-        }
-
-        activity.window
-            .decorView
-            .post {
-                if (
-                    !activity.isFinishing &&
-                    !activity.isDestroyed
-                ) {
-                    showSettingsDialog(
-                        activity,
-                        onChanged,
-                    )
-                }
-            }
-    }
-
-    fun addClickableRow(
-        title: String,
-        value: String,
-        detail: String,
-        action: () -> Unit,
-    ) {
-        val row =
-            settingsRow(
-                context,
-                title,
-                value,
-                detail,
-            ).apply {
-                isClickable =
-                    true
-                isFocusable =
-                    true
-                foreground =
-                    context.getDrawable(
-                        android.R.drawable.list_selector_background,
-                    )
-                setOnClickListener {
-                    action()
-                }
-            }
-
-        panel.addView(
-            row,
-            fullWidthParams(
-                context,
-                topDp = 9,
-            ),
-        )
-    }
-
-    val settings =
-        settingsStore
-            .snapshot()
-
-    addClickableRow(
-        title = "Music",
-        value =
-            if (
+        ).apply {
+            kind =
+                SettingsAudioIconKind.MUSIC
+            isOn =
                 settings.musicEnabled
-            ) {
-                "ON"
-            } else {
-                "OFF"
-            },
-        detail =
-            "Background music preference. Tap to toggle.",
-    ) {
-        refresh {
-            settingsStore
-                .setMusicEnabled(
-                    !settings
-                        .musicEnabled,
+            contentDescription =
+                if (isOn) {
+                    "Music on"
+                } else {
+                    "Music muted"
+                }
+            setOnClickListener {
+                val enabled =
+                    !settingsStore
+                        .snapshot()
+                        .musicEnabled
+                settingsStore
+                    .setMusicEnabled(
+                        enabled,
+                    )
+                GameMusicController
+                    .onPreferenceChanged(
+                        context,
+                    )
+                isOn = enabled
+                contentDescription =
+                    if (enabled) {
+                        "Music on"
+                    } else {
+                        "Music muted"
+                    }
+                GameSoundFeedback.click(
+                    context,
                 )
+                settings =
+                    settingsStore
+                        .snapshot()
+                notifyChanged()
+            }
         }
-    }
+    panel.addView(
+        settingsCompactRow(
+            context = context,
+            label = "Music",
+            control = musicControl,
+        ),
+    )
 
-    addClickableRow(
-        title = "Sound",
-        value =
-            if (
+    val soundControl =
+        SettingsAudioIconView(
+            context,
+        ).apply {
+            kind =
+                SettingsAudioIconKind.SOUND
+            isOn =
                 settings.soundEnabled
-            ) {
-                "ON"
-            } else {
-                "OFF"
-            },
-        detail =
-            "Dice, move and interaction sound feedback.",
-    ) {
-        refresh {
-            settingsStore
-                .setSoundEnabled(
-                    !settings
-                        .soundEnabled,
-                )
+            contentDescription =
+                if (isOn) {
+                    "Sound on"
+                } else {
+                    "Sound muted"
+                }
+            setOnClickListener {
+                val enabled =
+                    !settingsStore
+                        .snapshot()
+                        .soundEnabled
+                settingsStore
+                    .setSoundEnabled(
+                        enabled,
+                    )
+                isOn = enabled
+                contentDescription =
+                    if (enabled) {
+                        "Sound on"
+                    } else {
+                        "Sound muted"
+                    }
+                if (enabled) {
+                    GameSoundFeedback.click(
+                        context,
+                    )
+                }
+                settings =
+                    settingsStore
+                        .snapshot()
+                notifyChanged()
+            }
         }
-    }
+    panel.addView(
+        settingsDivider(context),
+    )
+    panel.addView(
+        settingsCompactRow(
+            context = context,
+            label = "Sound",
+            control = soundControl,
+        ),
+    )
 
-    addClickableRow(
-        title = "Quick chat",
-        value =
-            if (
-                settings.quickChatEnabled
-            ) {
-                "ON"
-            } else {
-                "OFF"
-            },
-        detail =
-            "Shows quick emoji reactions during a match.",
-    ) {
-        refresh {
+    val quickChatControl =
+        SettingsBooleanControl(
+            context = context,
+            initialValue =
+                settings.quickChatEnabled,
+        ) { enabled ->
             settingsStore
                 .setQuickChatEnabled(
-                    !settings
-                        .quickChatEnabled,
+                    enabled,
                 )
+            settings =
+                settingsStore
+                    .snapshot()
+            GameSoundFeedback.click(
+                context,
+            )
+            notifyChanged()
         }
-    }
+    panel.addView(
+        settingsDivider(context),
+    )
+    panel.addView(
+        settingsCompactRow(
+            context = context,
+            label = "Quick chat",
+            control = quickChatControl,
+        ),
+    )
 
-    addClickableRow(
-        title = "Game speed",
-        value =
-            settings
-                .gameSpeed
-                .label,
-        detail =
-            "Controls dice timing, CPU thinking and token movement animation speed.",
-    ) {
-        refresh {
+    val speedField =
+        settingsDropdownField(
+            context,
+            settings.gameSpeed.label,
+        )
+    speedField.setOnClickListener {
+        val latest =
+            settingsStore
+                .snapshot()
+        showSettingsChoiceDialog(
+            context = context,
+            title = "GAME SPEED",
+            options =
+                listOf(
+                    "FAST",
+                    "NORMAL",
+                    "SLOW",
+                ),
+            selected =
+                latest.gameSpeed.label,
+        ) { selected ->
+            val speed =
+                com.ludoproof.game
+                    .feature.settings.data.local
+                    .GameSpeed.entries
+                    .first {
+                        it.label ==
+                            selected
+                    }
             settingsStore
                 .setGameSpeed(
-                    settings
-                        .gameSpeed
-                        .next(),
+                    speed,
                 )
-        }
-    }
-
-    fun nextOwnedCosmetic(
-        category: CosmeticCategory,
-    ) {
-        val owned =
-            StoreCosmeticCatalog
-                .forCategory(
-                    category,
+            speedField.text =
+                settingsDropdownLabel(
+                    selected,
                 )
-                .filter {
-                    cosmetics
-                        .isOwned(
-                            it.id,
-                        )
-                }
-        if (
-            owned.isEmpty()
-        ) {
-            return
-        }
-
-        val current =
-            cosmetics.selectedId(
-                category,
+            settings =
+                settingsStore
+                    .snapshot()
+            GameSoundFeedback.click(
+                context,
             )
-        val currentIndex =
-            owned.indexOfFirst {
-                it.id ==
-                    current
-            }
-        val next =
-            owned[
-                if (
-                    currentIndex <
-                    0
-                ) {
-                    0
-                } else {
-                    (
-                        currentIndex +
-                            1
-                        ) %
-                        owned.size
-                }
-            ]
-
-        cosmetics.acquireOrSelect(
-            cosmetic =
-                next,
-            currentLevel =
-                profileLevel,
-        )
+            notifyChanged()
+        }
     }
+    panel.addView(
+        settingsDivider(context),
+    )
+    panel.addView(
+        settingsCompactRow(
+            context = context,
+            label = "Game Speed",
+            control = speedField,
+        ),
+    )
 
+    val ownedBoards =
+        StoreCosmeticCatalog
+            .forCategory(
+                CosmeticCategory.BOARD,
+            )
+            .filter {
+                cosmetics.isOwned(
+                    it.id,
+                )
+            }
     val selectedBoard =
         StoreCosmeticCatalog
             .find(
@@ -278,23 +271,91 @@ internal fun showSettingsDialog(
                     CosmeticCategory.BOARD,
                 ),
             )
-    addClickableRow(
-        title = "Board",
-        value =
+    val boardField =
+        settingsDropdownField(
+            context,
             selectedBoard
                 ?.title
                 ?.uppercase()
                 ?: "CLASSIC",
-        detail =
-            "Tap to cycle through boards you already unlocked.",
-    ) {
-        refresh {
-            nextOwnedCosmetic(
-                CosmeticCategory.BOARD,
+        )
+    boardField.setOnClickListener {
+        val currentTitle =
+            StoreCosmeticCatalog
+                .find(
+                    cosmetics.selectedId(
+                        CosmeticCategory.BOARD,
+                    ),
+                )
+                ?.title
+                ?.uppercase()
+                ?: "CLASSIC"
+        showSettingsChoiceDialog(
+            context = context,
+            title = "BOARDS",
+            options =
+                ownedBoards.map {
+                    it.title.uppercase()
+                },
+            selected = currentTitle,
+        ) { selected ->
+            val cosmetic =
+                ownedBoards
+                    .firstOrNull {
+                        it.title
+                            .uppercase() ==
+                            selected
+                    }
+                    ?: return@showSettingsChoiceDialog
+            cosmetics.acquireOrSelect(
+                cosmetic = cosmetic,
+                currentLevel =
+                    profileLevel,
+            )
+            val applied =
+                StoreCosmeticCatalog
+                    .find(
+                        cosmetics.selectedId(
+                            CosmeticCategory.BOARD,
+                        ),
+                    )
+                    ?.title
+                    ?.uppercase()
+                    ?: "CLASSIC"
+            boardField.text =
+                settingsDropdownLabel(
+                    applied,
+                )
+            GameSoundFeedback.click(
+                context,
+            )
+            notifyChanged(
+                refreshCosmetics =
+                    true,
             )
         }
     }
+    panel.addView(
+        settingsDivider(context),
+    )
+    panel.addView(
+        settingsCompactRow(
+            context = context,
+            label = "Boards",
+            control = boardField,
+        ),
+    )
 
+    val ownedDice =
+        StoreCosmeticCatalog
+            .forCategory(
+                CosmeticCategory.DICE,
+            )
+            .filter {
+                cosmetics.isOwned(
+                    it.id,
+                )
+            }
     val selectedDice =
         StoreCosmeticCatalog
             .find(
@@ -302,33 +363,94 @@ internal fun showSettingsDialog(
                     CosmeticCategory.DICE,
                 ),
             )
-    addClickableRow(
-        title = "Dice",
-        value =
+    val diceField =
+        settingsDropdownField(
+            context,
             selectedDice
                 ?.title
                 ?.uppercase()
                 ?: "CLASSIC",
-        detail =
-            "Tap to cycle through dice you already unlocked.",
-    ) {
-        refresh {
-            nextOwnedCosmetic(
-                CosmeticCategory.DICE,
+        )
+    diceField.setOnClickListener {
+        val currentTitle =
+            StoreCosmeticCatalog
+                .find(
+                    cosmetics.selectedId(
+                        CosmeticCategory.DICE,
+                    ),
+                )
+                ?.title
+                ?.uppercase()
+                ?: "CLASSIC"
+        showSettingsChoiceDialog(
+            context = context,
+            title = "DICE",
+            options =
+                ownedDice.map {
+                    it.title.uppercase()
+                },
+            selected = currentTitle,
+        ) { selected ->
+            val cosmetic =
+                ownedDice
+                    .firstOrNull {
+                        it.title
+                            .uppercase() ==
+                            selected
+                    }
+                    ?: return@showSettingsChoiceDialog
+            cosmetics.acquireOrSelect(
+                cosmetic = cosmetic,
+                currentLevel =
+                    profileLevel,
+            )
+            val applied =
+                StoreCosmeticCatalog
+                    .find(
+                        cosmetics.selectedId(
+                            CosmeticCategory.DICE,
+                        ),
+                    )
+                    ?.title
+                    ?.uppercase()
+                    ?: "CLASSIC"
+            diceField.text =
+                settingsDropdownLabel(
+                    applied,
+                )
+            GameSoundFeedback.click(
+                context,
+            )
+            notifyChanged(
+                refreshCosmetics =
+                    true,
             )
         }
     }
+    panel.addView(
+        settingsDivider(context),
+    )
+    panel.addView(
+        settingsCompactRow(
+            context = context,
+            label = "Dice",
+            control = diceField,
+        ),
+    )
 
     panel.addView(
-        trustStrip(
+        settingsPrivacyLink(
             context,
-            "FAIRNESS IS UNCHANGED",
-            "These options change presentation, audio and animation timing only. Dice outcomes and Ludo rules are not changed.",
-        ),
-        fullWidthParams(
-            context,
-            topDp = 12,
-        ),
+        ).apply {
+            setOnClickListener {
+                GameSoundFeedback.click(
+                    context,
+                )
+                showPrivacyPolicyDialog(
+                    context,
+                )
+            }
+        },
     )
 
     dialog.setContentView(
@@ -336,7 +458,32 @@ internal fun showSettingsDialog(
     )
     sizeDialog(
         dialog,
-        .92f,
+        .91f,
     )
     dialog.show()
+}
+
+private fun reloadVisibleCosmetics(
+    view: View,
+) {
+    when (view) {
+        is LudoBoardView ->
+            view.reloadStyle()
+        is DiceView ->
+            view.reloadStyle()
+    }
+
+    if (view is ViewGroup) {
+        for (
+            index in
+            0 until
+                view.childCount
+        ) {
+            reloadVisibleCosmetics(
+                view.getChildAt(
+                    index,
+                ),
+            )
+        }
+    }
 }

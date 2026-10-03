@@ -4,37 +4,30 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import com.ludoproof.game.feature.friends.data.FriendPresenceController
+import com.ludoproof.game.feature.settings.data.local.GameMusicController
 
 class LudoProofApplication :
     Application(),
     Application.ActivityLifecycleCallbacks {
     private lateinit var friendPresence:
         FriendPresenceController
-    private var resumedActivities =
-        0
+    private var resumedActivities = 0
 
     override fun onCreate() {
         super.onCreate()
         friendPresence =
-            FriendPresenceController(
-                this,
-            )
-        registerActivityLifecycleCallbacks(
-            this,
-        )
+            FriendPresenceController(this)
+        registerActivityLifecycleCallbacks(this)
     }
 
     override fun onActivityResumed(
         activity: Activity,
     ) {
-        resumedActivities +=
-            1
-        if (
-            resumedActivities ==
-            1
-        ) {
-            friendPresence
-                .start()
+        resumedActivities += 1
+        if (resumedActivities == 1) {
+            friendPresence.start()
+            GameMusicController
+                .onAppForeground(this)
         }
     }
 
@@ -42,19 +35,12 @@ class LudoProofApplication :
         activity: Activity,
     ) {
         resumedActivities =
-            (
-                resumedActivities -
-                    1
-                )
-                .coerceAtLeast(
-                    0,
-                )
-        if (
-            resumedActivities ==
-            0
-        ) {
-            friendPresence
-                .stop()
+            (resumedActivities - 1)
+                .coerceAtLeast(0)
+        if (resumedActivities == 0) {
+            friendPresence.stop()
+            GameMusicController
+                .onAppBackground()
         }
     }
 
