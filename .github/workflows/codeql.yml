@@ -1,4 +1,4 @@
-name: LudoProof CodeQL
+name: Ludo Paws CodeQL
 
 on:
   push:
