@@ -1,11 +1,9 @@
 package com.ludoproof.game
 
 import android.app.Activity
-import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -26,8 +24,6 @@ class HomeActivity : Activity() {
         View? = null
     internal var homeGemBalanceText:
         TextView? = null
-    internal lateinit var homeContinueHost:
-        FrameLayout
     internal lateinit var connectivityMonitor:
         ConnectivityMonitor
 
@@ -108,12 +104,6 @@ class HomeActivity : Activity() {
                     0.92f
                 )
                 .toInt()
-        val continueButtonWidth =
-            (
-                lowerContentWidth *
-                    0.70f
-                )
-                .toInt()
 
         val content =
             LinearLayout(this).apply {
@@ -179,22 +169,6 @@ class HomeActivity : Activity() {
             },
         )
 
-        homeContinueHost =
-            FrameLayout(this)
-        content.addView(
-            homeContinueHost,
-            LinearLayout.LayoutParams(
-                continueButtonWidth,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                gravity =
-                    Gravity.CENTER_HORIZONTAL
-                topMargin =
-                    dp(16)
-            },
-        )
-        refreshHomeContinueButton()
-
         setContentView(root)
 
         connectivityMonitor =
@@ -239,7 +213,7 @@ class HomeActivity : Activity() {
         // Remote matches are never resumable from Home. Returning Home means
         // the remote match was abandoned, so stale remote credentials and
         // cached state must not survive into a future ONLINE/FRIENDS/TEAM_UP
-        // entry. Local CPU and Pass & Play snapshots are intentionally kept.
+        // entry. Local modes start from their normal Computer/Pass & Play card.
         SecureSessionStore(this).clear()
         PendingRollStore(this).clear()
         CachedMatchStore(this).clear()
@@ -247,7 +221,6 @@ class HomeActivity : Activity() {
 
         refreshHomeProfileSummary()
         refreshHomeGemBalance()
-        refreshHomeContinueButton()
     }
 
     private fun recordAbandonedRemoteLossIfNeeded() {
