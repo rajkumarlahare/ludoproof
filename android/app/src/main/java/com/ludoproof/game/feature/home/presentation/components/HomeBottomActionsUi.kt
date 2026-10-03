@@ -9,6 +9,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import com.ludoproof.game.HomeActivity
+import com.ludoproof.game.R
 import com.ludoproof.game.ui.dialogs.showSettingsDialog
 
 internal fun HomeActivity.homeBottomActions():
@@ -23,7 +24,7 @@ internal fun HomeActivity.homeBottomActions():
             bottomActionButton(
                 symbol = "",
                 description =
-                    "Rate LudoProof",
+                    getString(R.string.rate_accessibility_label),
                 iconKind =
                     HomeIconKind.RATING,
             ) {
@@ -40,7 +41,7 @@ internal fun HomeActivity.homeBottomActions():
                 iconKind =
                     HomeIconKind.SHARE,
             ) {
-                shareLudoProof()
+                shareLudoPaws()
             },
             bottomActionParams(),
         )
