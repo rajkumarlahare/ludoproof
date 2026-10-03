@@ -1,6 +1,6 @@
 export {
   default,
-} from "./index-team.js";
+} from "./index-social.js";
 
 export {
   ApiGate,
@@ -18,5 +18,10 @@ export {
 } from "./match-receipt-archive.js";
 
 export {
+  FriendConversation,
+  FriendRecentRoom,
+} from "./friend-social.js";
+
+export {
   MatchRoom,
-} from "./match-room-proof.js";
+} from "./match-room-social.js";
