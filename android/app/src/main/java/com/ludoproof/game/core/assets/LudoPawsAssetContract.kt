@@ -196,13 +196,15 @@ internal object LudoPawsAssetContract {
             "Target dimension must be positive"
         }
 
+        val maxDimension =
+            maxOf(
+                width,
+                height,
+            )
         var sample =
             1
         while (
-            width /
-                (sample * 2) >=
-            targetMaxDimensionPx &&
-            height /
+            maxDimension /
                 (sample * 2) >=
             targetMaxDimensionPx
         ) {
