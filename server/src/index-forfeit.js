@@ -8,4 +8,4 @@ export {
 
 export {
   MatchRoom,
-} from "./match-room-forfeit.js";
+} from "./match-room-safe.js";
