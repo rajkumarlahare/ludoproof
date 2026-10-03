@@ -1,15 +1,10 @@
 package com.ludoproof.game.ui.home
 
-import android.app.Activity
-import android.graphics.drawable.GradientDrawable
 import android.content.Intent
-import android.os.Bundle
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
-import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import com.ludoproof.game.*
 
@@ -201,88 +196,6 @@ private fun HomeActivity.homeGameCard(
             ),
         )
     }
-
-private fun HomeActivity.localContinueButton(
-    mode: GameMode,
-    label: String,
-): Button =
-    Button(this).apply {
-        text = label
-        LudoProofTheme.positive(this)
-        textSize = if (isCompact()) 14.5f else 16f
-        setOnClickListener {
-            openGameMode(
-                mode,
-                resumeSavedMatch = true,
-            )
-        }
-    }
-
-internal fun HomeActivity.refreshHomeContinueButton() {
-    homeContinueHost.removeAllViews()
-
-    val hasPassAndPlay =
-        LocalMatchSession(
-            context = this,
-            mode = GameMode.PASS_AND_PLAY,
-        ).hasSavedGame()
-    val hasComputer =
-        LocalMatchSession(
-            context = this,
-            mode = GameMode.COMPUTER,
-        ).hasSavedGame()
-
-    if (!hasPassAndPlay && !hasComputer) {
-        homeContinueHost.visibility = View.GONE
-        return
-    }
-
-    homeContinueHost.visibility = View.VISIBLE
-
-    val stack =
-        LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-        }
-
-    if (hasPassAndPlay) {
-        stack.addView(
-            localContinueButton(
-                GameMode.PASS_AND_PLAY,
-                "Continue Pass & Play  ›",
-            ),
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(if (isCompact()) 42 else 44),
-            ),
-        )
-    }
-
-    if (hasComputer) {
-        stack.addView(
-            localContinueButton(
-                GameMode.COMPUTER,
-                "Continue Computer Game  ›",
-            ),
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(if (isCompact()) 42 else 44),
-            ).apply {
-                if (hasPassAndPlay) {
-                    topMargin = dp(8)
-                }
-            },
-        )
-    }
-
-    homeContinueHost.addView(
-        stack,
-        FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-        ),
-    )
-}
 
 internal fun HomeActivity.fairPlayStrip(): TextView =
     TextView(this).apply {

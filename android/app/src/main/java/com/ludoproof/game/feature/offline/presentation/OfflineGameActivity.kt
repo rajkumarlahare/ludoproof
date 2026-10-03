@@ -1,6 +1,6 @@
 package com.ludoproof.game
 
-import android.app.Activity
+import android.app.Dialog
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
@@ -12,12 +12,14 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import com.ludoproof.game.ui.offline.common.*
 import com.ludoproof.game.ui.offline.setup.*
 import com.ludoproof.game.ui.offline.gameplay.*
 import com.ludoproof.game.feature.offline.*
 
-class OfflineGameActivity : Activity() {
+class OfflineGameActivity : ComponentActivity() {
     internal val handler = Handler(Looper.getMainLooper())
 
     internal val gameMode:
@@ -85,6 +87,7 @@ class OfflineGameActivity : Activity() {
     internal var infoText: TextView? = null
     internal var statusText: TextView? = null
     internal var computerActionRevision: Int? = null
+    internal var exitConfirmationDialog: Dialog? = null
     internal lateinit var resultPanel: FrameLayout
     internal lateinit var resultTitleText: TextView
     internal lateinit var resultSubtitleText: TextView
@@ -92,6 +95,15 @@ class OfflineGameActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         LudoProofTheme.configureWindow(this)
+
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    requestOfflineExit()
+                }
+            },
+        )
 
         if (
             shouldResumeSavedGame &&
@@ -130,6 +142,10 @@ class OfflineGameActivity : Activity() {
     }
 
     override fun onDestroy() {
+        exitConfirmationDialog
+            ?.dismiss()
+        exitConfirmationDialog =
+            null
         prepareOfflineUiTransition()
         super.onDestroy()
     }
