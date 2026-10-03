@@ -25,6 +25,10 @@
       {
         "name": "LUDOPROOF_FRIENDS",
         "class_name": "FriendDirectory"
+      },
+      {
+        "name": "LUDOPROOF_RECEIPTS",
+        "class_name": "MatchReceiptArchive"
       }
     ]
   },
@@ -57,6 +61,12 @@
       "tag": "v5-friends",
       "new_sqlite_classes": [
         "FriendDirectory"
+      ]
+    },
+    {
+      "tag": "v6-match-receipts",
+      "new_sqlite_classes": [
+        "MatchReceiptArchive"
       ]
     }
   ],
