@@ -57,7 +57,7 @@ internal fun HomeActivity.heroPanel():
         copy.addView(
             TextView(this@heroPanel).apply {
                 text =
-                    "PLAY LUDO."
+                    getString(R.string.home_hero_title)
                 LudoProofTheme.title(
                     this,
                     if (isCompact()) 22f else 28f,
@@ -67,7 +67,7 @@ internal fun HomeActivity.heroPanel():
         copy.addView(
             TextView(this@heroPanel).apply {
                 text =
-                    "VERIFY THE DICE."
+                    getString(R.string.home_hero_tagline)
                 LudoProofTheme.title(
                     this,
                     if (isCompact()) 22f else 28f,
@@ -78,7 +78,7 @@ internal fun HomeActivity.heroPanel():
         copy.addView(
             TextView(this@heroPanel).apply {
                 text =
-                    "Online uses remote EntroNex authority.\nLocal keeps the same v4 derivation on-device."
+                    getString(R.string.home_hero_supporting_copy)
                 LudoProofTheme.body(
                     this,
                     if (isCompact()) 10.5f else 12f,
@@ -165,7 +165,7 @@ internal fun HomeActivity.quickActions():
                 iconKind =
                     HomeIconKind.SHARE,
             ) {
-                shareLudoProof()
+                shareLudoPaws()
             },
             weighted(),
         )

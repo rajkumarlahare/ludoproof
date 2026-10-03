@@ -104,10 +104,10 @@ internal fun showPrivacyPolicyDialog(
 private const val PRIVACY_POLICY_TEXT =
     """Last updated: October 3, 2026
 
-LudoProof uses information that is necessary to provide its game features. Depending on the features you use, this can include your in-game display/profile information, Friend ID and friend relationships, match and proof data, leaderboard/progression information, and game settings or cosmetic selections.
+Ludo Paws uses information that is necessary to provide its game features. Depending on the features you use, this can include your in-game display/profile information, Friend ID and friend relationships, match and proof data, leaderboard/progression information, and game settings or cosmetic selections.
 
 ONLINE FEATURES
-Online matchmaking, Team Up, Friends, private rooms, leaderboards and proof verification communicate with LudoProof game services. The app is configured to use encrypted network connections for these services.
+Online matchmaking, Team Up, Friends, private rooms, leaderboards and proof verification communicate with Ludo Paws game services. The app is configured to use encrypted network connections for these services.
 
 ON-DEVICE DATA
 Gameplay preferences such as music, sound, quick chat and game speed are stored on the device. Cosmetic selections and local game state can also be stored locally so the app can render the selected experience and operate supported local features.
@@ -116,10 +116,10 @@ ACCOUNT AND SESSION SECURITY
 Public Friend IDs are designed to be shareable. Private friend credentials and match/session credentials are separate from the public Friend ID and are handled by the app's protected local-storage and authenticated service flows.
 
 MATCH INTEGRITY
-LudoProof can retain match and proof information needed to operate multiplayer features, verify game integrity, resolve match state and support match history. Settings that change audio, appearance or animation timing do not change dice outcomes or Ludo rules.
+Ludo Paws can retain match and proof information needed to operate multiplayer features, verify game integrity, resolve match state and support match history. Settings that change audio, appearance or animation timing do not change dice outcomes or Ludo rules.
 
 THIRD-PARTY PLATFORM SERVICES
 Android, Google Play features when enabled, and infrastructure/network providers can process technical information needed to deliver their respective services under their own terms and privacy practices.
 
 RETENTION AND CHANGES
-Service data can be retained for as long as reasonably needed to operate game, friend, integrity and security features. This policy may be updated as LudoProof features and data flows change. The policy shown in the app should be reviewed together with the current store listing before a public release."""
+Service data can be retained for as long as reasonably needed to operate game, friend, integrity and security features. This policy may be updated as Ludo Paws features and data flows change. The policy shown in the app should be reviewed together with the current store listing before a public release."""

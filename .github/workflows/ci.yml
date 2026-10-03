@@ -1,4 +1,4 @@
-name: LudoProof CI
+name: Ludo Paws CI
 
 on:
   pull_request:
@@ -73,6 +73,8 @@ jobs:
             SDKMANAGER="$(command -v sdkmanager)"
           fi
           "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - name: Ludo Paws consumer brand gate
+        run: node scripts/check-ludo-paws-brand.mjs
       - name: Android 16 release gate
         run: node scripts/android16-release-check.mjs
       - name: Android unit tests
@@ -112,7 +114,6 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
-
 
   windows-runner-script:
     runs-on: windows-latest
