@@ -23,6 +23,8 @@ class HomeActivity : Activity() {
         View? = null
     internal var homeGemBalanceText:
         TextView? = null
+    internal lateinit var homeContinueHost:
+        FrameLayout
     internal lateinit var connectivityMonitor:
         ConnectivityMonitor
 
@@ -174,23 +176,21 @@ class HomeActivity : Activity() {
             },
         )
 
-        continueButton()
-            ?.let { button ->
-                content.addView(
-                    button,
-                    LinearLayout.LayoutParams(
-                        continueButtonWidth,
-                        dp(
-                            if (isCompact()) 42 else 44,
-                        ),
-                    ).apply {
-                        gravity =
-                            Gravity.CENTER_HORIZONTAL
-                        topMargin =
-                            dp(16)
-                    },
-                )
-            }
+        homeContinueHost =
+            FrameLayout(this)
+        content.addView(
+            homeContinueHost,
+            LinearLayout.LayoutParams(
+                continueButtonWidth,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                gravity =
+                    Gravity.CENTER_HORIZONTAL
+                topMargin =
+                    dp(16)
+            },
+        )
+        refreshHomeContinueButton()
 
         setContentView(root)
 
@@ -242,6 +242,7 @@ class HomeActivity : Activity() {
 
         refreshHomeProfileSummary()
         refreshHomeGemBalance()
+        refreshHomeContinueButton()
     }
 
     override fun onStart() {
