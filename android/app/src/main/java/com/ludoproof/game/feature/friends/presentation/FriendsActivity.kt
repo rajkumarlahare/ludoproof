@@ -1107,7 +1107,7 @@ class FriendsActivity : Activity() {
             setOnMenuItemClickListener { item ->
                 when (item.title.toString()) {
                     "Copy Friend ID" -> {
-                        copyText("LudoProof Friend ID", friend.optString("friendId"))
+                        copyText("Ludo Paws Friend ID", friend.optString("friendId"))
                         showStatus("Friend ID copied.")
                         true
                     }
@@ -1592,7 +1592,7 @@ class FriendsActivity : Activity() {
             showStatus("Friend ID is still being created.")
             return
         }
-        copyText("LudoProof Friend ID", id)
+        copyText("Ludo Paws Friend ID", id)
         showStatus("Friend ID copied.")
     }
 
@@ -1607,14 +1607,14 @@ class FriendsActivity : Activity() {
             return
         }
         shareText(
-            "Add me on LudoProof\nFriend ID: $id\n\n${playStoreUrl()}",
+            "Add me on Ludo Paws\nFriend ID: $id\n\n${playStoreUrl()}",
             "Share Friend ID",
         )
     }
 
     private fun shareRoom(matchId: String) {
         shareText(
-            "Join my private LudoProof room: $matchId\n\n${playStoreUrl()}",
+            "Join my private Ludo Paws room: $matchId\n\n${playStoreUrl()}",
             "Share private room",
         )
     }
