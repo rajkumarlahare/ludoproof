@@ -1,5 +1,8 @@
 export {
   default,
+} from "./index-hardening.js";
+
+export {
   ApiGate,
   LeaderboardRoom,
   MatchmakerQueue,
@@ -7,5 +10,9 @@ export {
 } from "./index.js";
 
 export {
+  MatchReceiptArchive,
+} from "./match-receipt-archive.js";
+
+export {
   MatchRoom,
-} from "./match-room-safe.js";
+} from "./match-room-proof.js";
