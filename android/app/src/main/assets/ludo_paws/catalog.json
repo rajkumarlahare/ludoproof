@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "packId": "starter_paws",
+  "displayName": "Starter Paws",
+  "memoryBudget": {
+    "singleBitmapDecodedBytes": 3145728,
+    "activeCharacterArtBytes": 12582912
+  },
+  "limits": {
+    "pawnBytes": 122880,
+    "portraitBytes": 266240,
+    "fullBodyBytes": 491520,
+    "expressionBytes": 266240,
+    "voiceBytes": 184320,
+    "voiceDurationMs": 2500
+  },
+  "allowedExpressions": [
+    "happy",
+    "sad",
+    "angry",
+    "nervous",
+    "excited",
+    "victory",
+    "defeat"
+  ],
+  "allowedVoiceCues": [
+    "six",
+    "capture",
+    "captured",
+    "safe",
+    "home",
+    "frustrated",
+    "third_six",
+    "idle",
+    "nervous",
+    "victory",
+    "defeat"
+  ],
+  "characters": [
+    {
+      "id": "duck",
+      "species": "DUCK",
+      "fallbackDrawable": "lp_starter_duck",
+      "visuals": {
+        "productionReady": false,
+        "pawn": "ludo_paws/characters/duck/pawn.webp",
+        "portrait": "ludo_paws/characters/duck/portrait.webp",
+        "fullBody": "ludo_paws/characters/duck/full_body.webp",
+        "expressions": {}
+      },
+      "audio": {
+        "productionReady": false,
+        "root": "ludo_paws/audio/duck"
+      }
+    },
+    {
+      "id": "squirrel",
+      "species": "SQUIRREL",
+      "fallbackDrawable": "lp_starter_squirrel",
+      "visuals": {
+        "productionReady": false,
+        "pawn": "ludo_paws/characters/squirrel/pawn.webp",
+        "portrait": "ludo_paws/characters/squirrel/portrait.webp",
+        "fullBody": "ludo_paws/characters/squirrel/full_body.webp",
+        "expressions": {}
+      },
+      "audio": {
+        "productionReady": false,
+        "root": "ludo_paws/audio/squirrel"
+      }
+    },
+    {
+      "id": "hedgehog",
+      "species": "HEDGEHOG",
+      "fallbackDrawable": "lp_starter_hedgehog",
+      "visuals": {
+        "productionReady": false,
+        "pawn": "ludo_paws/characters/hedgehog/pawn.webp",
+        "portrait": "ludo_paws/characters/hedgehog/portrait.webp",
+        "fullBody": "ludo_paws/characters/hedgehog/full_body.webp",
+        "expressions": {}
+      },
+      "audio": {
+        "productionReady": false,
+        "root": "ludo_paws/audio/hedgehog"
+      }
+    },
+    {
+      "id": "sheep",
+      "species": "SHEEP",
+      "fallbackDrawable": "lp_starter_sheep",
+      "visuals": {
+        "productionReady": false,
+        "pawn": "ludo_paws/characters/sheep/pawn.webp",
+        "portrait": "ludo_paws/characters/sheep/portrait.webp",
+        "fullBody": "ludo_paws/characters/sheep/full_body.webp",
+        "expressions": {}
+      },
+      "audio": {
+        "productionReady": false,
+        "root": "ludo_paws/audio/sheep"
+      }
+    }
+  ]
+}

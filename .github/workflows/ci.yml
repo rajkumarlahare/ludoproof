@@ -75,6 +75,8 @@ jobs:
           "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
       - name: Ludo Paws consumer brand gate
         run: node scripts/check-ludo-paws-brand.mjs
+      - name: Ludo Paws animal asset gate
+        run: node scripts/check-ludo-paws-assets.mjs
       - name: Android 16 release gate
         run: node scripts/android16-release-check.mjs
       - name: Android unit tests
