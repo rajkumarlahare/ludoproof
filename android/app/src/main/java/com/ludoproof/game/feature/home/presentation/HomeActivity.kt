@@ -10,6 +10,9 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import com.ludoproof.game.feature.profile.data.local.ProfileStore
+import com.ludoproof.game.feature.profile.domain.model.ProfileGameMode
+import com.ludoproof.game.feature.profile.domain.model.ProfileMatchSource
 import com.ludoproof.game.ui.home.*
 
 class HomeActivity : Activity() {
@@ -231,6 +234,8 @@ class HomeActivity : Activity() {
     override fun onResume() {
         super.onResume()
 
+        recordAbandonedRemoteLossIfNeeded()
+
         // Remote matches are never resumable from Home. Returning Home means
         // the remote match was abandoned, so stale remote credentials and
         // cached state must not survive into a future ONLINE/FRIENDS/TEAM_UP
@@ -243,6 +248,45 @@ class HomeActivity : Activity() {
         refreshHomeProfileSummary()
         refreshHomeGemBalance()
         refreshHomeContinueButton()
+    }
+
+    private fun recordAbandonedRemoteLossIfNeeded() {
+        val session =
+            SecureSessionStore(this)
+                .load()
+                ?: return
+        val cached =
+            CachedMatchStore(this)
+                .load()
+                ?.optJSONObject(
+                    "state",
+                )
+                ?: return
+
+        if (
+            cached.optString(
+                "matchId",
+            ) !=
+            session.matchId ||
+            cached.optString(
+                "status",
+            ) !=
+            "ACTIVE"
+        ) {
+            return
+        }
+
+        ProfileStore(this)
+            .recordCompletedMatch(
+                matchId =
+                    session.matchId,
+                mode =
+                    ProfileGameMode.CLASSIC,
+                source =
+                    ProfileMatchSource.ONLINE,
+                won =
+                    false,
+            )
     }
 
     override fun onStart() {
