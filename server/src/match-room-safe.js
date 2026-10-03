@@ -33,14 +33,20 @@ const DIGEST =
 export class MatchRoom extends ForfeitMatchRoom {
   async fetch(request) {
     const replay =
-      await this.#resolvedCommitReplay(
-        request,
+      await this.#enqueue(
+        () =>
+          this.#resolvedCommitReplay(
+            request,
+          ),
       );
 
     if (
       replay != null
     ) {
-      await this.#preservePendingRevealAlarm();
+      await this.#enqueue(
+        () =>
+          this.#preservePendingRevealAlarm(),
+      );
       return replay;
     }
 
@@ -49,8 +55,24 @@ export class MatchRoom extends ForfeitMatchRoom {
         request,
       );
 
-    await this.#preservePendingRevealAlarm();
+    await this.#enqueue(
+      () =>
+        this.#preservePendingRevealAlarm(),
+    );
     return response;
+  }
+
+  #enqueue(work) {
+    const run =
+      this.mutationTail.then(
+        work,
+        work,
+      );
+    this.mutationTail =
+      run.catch(
+        () => {},
+      );
+    return run;
   }
 
   async #preservePendingRevealAlarm() {
