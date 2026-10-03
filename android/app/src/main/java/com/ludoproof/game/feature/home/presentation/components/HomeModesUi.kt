@@ -332,10 +332,6 @@ private fun HomeActivity.homeGameCard(
 
 internal fun HomeActivity.continueButton():
     Button? {
-    val online =
-        SecureSessionStore(
-            this,
-        ).load()
     val local =
         LocalMatchSession(
             context =
@@ -354,8 +350,6 @@ internal fun HomeActivity.continueButton():
             .hasSavedGame()
 
     if (
-        online ==
-            null &&
         !local &&
         !computer
     ) {
@@ -364,16 +358,12 @@ internal fun HomeActivity.continueButton():
 
     return Button(this).apply {
         text =
-            when {
-                online !=
-                    null ->
-                    "Continue Online Match  ›"
-
-                local ->
-                    "Continue Pass & Play  ›"
-
-                else ->
-                    "Continue Computer Game  ›"
+            if (
+                local
+            ) {
+                "Continue Pass & Play  ›"
+            } else {
+                "Continue Computer Game  ›"
             }
         LudoProofTheme.positive(
             this,
@@ -387,24 +377,6 @@ internal fun HomeActivity.continueButton():
                 16f
             }
         setOnClickListener {
-            if (
-                online !=
-                null
-            ) {
-                openGameMode(
-                    GameMode
-                        .fromWireValue(
-                            online.modeWire,
-                        )
-                        ?.takeIf {
-                            it.isRemote
-                        }
-                        ?: GameMode.ONLINE,
-                    resumeSavedMatch = true,
-                )
-                return@setOnClickListener
-            }
-
             openGameMode(
                 if (
                     local
@@ -413,6 +385,7 @@ internal fun HomeActivity.continueButton():
                 } else {
                     GameMode.COMPUTER
                 },
+                resumeSavedMatch = true,
             )
         }
     }
