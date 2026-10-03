@@ -142,7 +142,7 @@ class StoreActivity :
                 return@runOnUiThread
             }
             showStoreMessage(
-                "Google Play returned a completed purchase for $productId. LudoProof will not grant gems or remove ads until the purchase token is verified by the secure backend.",
+                "Google Play returned a completed purchase for $productId. Ludo Paws will not grant gems or remove ads until the purchase token is verified by the secure backend.",
             )
         }
     }
@@ -326,7 +326,7 @@ class StoreActivity :
         AlertDialog
             .Builder(this)
             .setTitle(
-                "LudoProof Store",
+                "Ludo Paws Store",
             )
             .setMessage(
                 message,
