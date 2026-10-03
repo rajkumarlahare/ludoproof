@@ -230,6 +230,16 @@ class HomeActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+
+        // Remote matches are never resumable from Home. Returning Home means
+        // the remote match was abandoned, so stale remote credentials and
+        // cached state must not survive into a future ONLINE/FRIENDS/TEAM_UP
+        // entry. Local CPU and Pass & Play snapshots are intentionally kept.
+        SecureSessionStore(this).clear()
+        PendingRollStore(this).clear()
+        CachedMatchStore(this).clear()
+        PublicMatchmakingStore(this).clear()
+
         refreshHomeProfileSummary()
         refreshHomeGemBalance()
     }
