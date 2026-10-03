@@ -1,6 +1,7 @@
 package com.ludoproof.game
 
 import android.app.Activity
+import android.app.Dialog
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
@@ -85,6 +86,7 @@ class OfflineGameActivity : Activity() {
     internal var infoText: TextView? = null
     internal var statusText: TextView? = null
     internal var computerActionRevision: Int? = null
+    internal var exitConfirmationDialog: Dialog? = null
     internal lateinit var resultPanel: FrameLayout
     internal lateinit var resultTitleText: TextView
     internal lateinit var resultSubtitleText: TextView
@@ -103,6 +105,11 @@ class OfflineGameActivity : Activity() {
         } else {
             showSetup()
         }
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        requestOfflineExit()
     }
 
     internal fun prepareOfflineUiTransition() {
@@ -130,6 +137,10 @@ class OfflineGameActivity : Activity() {
     }
 
     override fun onDestroy() {
+        exitConfirmationDialog
+            ?.dismiss()
+        exitConfirmationDialog =
+            null
         prepareOfflineUiTransition()
         super.onDestroy()
     }
