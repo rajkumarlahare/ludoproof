@@ -25,49 +25,34 @@ internal fun HomeActivity.modeSection():
             homeModeRow(
                 listOf(
                     HomeModeCard(
-                        mode =
-                            GameMode.ONLINE,
-                        title =
-                            "ONLINE",
-                        subtitle =
-                            "MATCHMAKING",
-                        artMode =
-                            ModeArtView.Mode.ONLINE,
-                        labelColors =
-                            intArrayOf(
-                                0xFF28C7FF.toInt(),
-                                0xFF126FD6.toInt(),
-                            ),
+                        mode = GameMode.ONLINE,
+                        title = "ONLINE",
+                        subtitle = "MATCHMAKING",
+                        artMode = ModeArtView.Mode.ONLINE,
+                        labelColors = intArrayOf(
+                            0xFF28C7FF.toInt(),
+                            0xFF126FD6.toInt(),
+                        ),
                     ),
                     HomeModeCard(
-                        mode =
-                            GameMode.TEAM_UP,
-                        title =
-                            "TEAM UP",
-                        subtitle =
-                            "2 VS 2",
-                        artMode =
-                            ModeArtView.Mode.TEAM_UP,
-                        labelColors =
-                            intArrayOf(
-                                0xFFFFC62E.toInt(),
-                                0xFFE38700.toInt(),
-                            ),
+                        mode = GameMode.TEAM_UP,
+                        title = "TEAM UP",
+                        subtitle = "2 VS 2",
+                        artMode = ModeArtView.Mode.TEAM_UP,
+                        labelColors = intArrayOf(
+                            0xFFFFC62E.toInt(),
+                            0xFFE38700.toInt(),
+                        ),
                     ),
                     HomeModeCard(
-                        mode =
-                            GameMode.FRIENDS,
-                        title =
-                            "FRIENDS",
-                        subtitle =
-                            "PRIVATE ROOM",
-                        artMode =
-                            ModeArtView.Mode.FRIENDS,
-                        labelColors =
-                            intArrayOf(
-                                0xFFFF6B8A.toInt(),
-                                0xFFD7285C.toInt(),
-                            ),
+                        mode = GameMode.FRIENDS,
+                        title = "FRIENDS",
+                        subtitle = "PRIVATE ROOM",
+                        artMode = ModeArtView.Mode.FRIENDS,
+                        labelColors = intArrayOf(
+                            0xFFFF6B8A.toInt(),
+                            0xFFD7285C.toInt(),
+                        ),
                     ),
                 ),
             ),
@@ -77,34 +62,24 @@ internal fun HomeActivity.modeSection():
             homeModeRow(
                 listOf(
                     HomeModeCard(
-                        mode =
-                            GameMode.COMPUTER,
-                        title =
-                            "COMPUTER",
-                        subtitle =
-                            "CPU",
-                        artMode =
-                            ModeArtView.Mode.COMPUTER,
-                        labelColors =
-                            intArrayOf(
-                                0xFF70D82F.toInt(),
-                                0xFF2FA91F.toInt(),
-                            ),
+                        mode = GameMode.COMPUTER,
+                        title = "COMPUTER",
+                        subtitle = "CPU",
+                        artMode = ModeArtView.Mode.COMPUTER,
+                        labelColors = intArrayOf(
+                            0xFF70D82F.toInt(),
+                            0xFF2FA91F.toInt(),
+                        ),
                     ),
                     HomeModeCard(
-                        mode =
-                            GameMode.PASS_AND_PLAY,
-                        title =
-                            "PASS & PLAY",
-                        subtitle =
-                            "OFFLINE",
-                        artMode =
-                            ModeArtView.Mode.PASS_AND_PLAY,
-                        labelColors =
-                            intArrayOf(
-                                0xFFFFC32A.toInt(),
-                                0xFFF08A00.toInt(),
-                            ),
+                        mode = GameMode.PASS_AND_PLAY,
+                        title = "PASS & PLAY",
+                        subtitle = "OFFLINE",
+                        artMode = ModeArtView.Mode.PASS_AND_PLAY,
+                        labelColors = intArrayOf(
+                            0xFFFFC32A.toInt(),
+                            0xFFF08A00.toInt(),
+                        ),
                     ),
                 ),
             ),
@@ -112,16 +87,7 @@ internal fun HomeActivity.modeSection():
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                topMargin =
-                    dp(
-                        if (
-                            isCompact()
-                        ) {
-                            10
-                        } else {
-                            12
-                        },
-                    )
+                topMargin = dp(if (isCompact()) 10 else 12)
             },
         )
     }
@@ -138,45 +104,19 @@ private fun HomeActivity.homeModeRow(
     cards: List<HomeModeCard>,
 ): LinearLayout =
     LinearLayout(this).apply {
-        orientation =
-            LinearLayout.HORIZONTAL
-        gravity =
-            Gravity.CENTER
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER
 
-        cards.forEachIndexed {
-                index,
-                card ->
+        cards.forEachIndexed { index, card ->
             addView(
-                homeGameCard(
-                    card,
-                ),
+                homeGameCard(card),
                 LinearLayout.LayoutParams(
                     0,
-                    dp(
-                        if (
-                            isCompact()
-                        ) {
-                            126
-                        } else {
-                            142
-                        },
-                    ),
+                    dp(if (isCompact()) 126 else 142),
                     1f,
                 ).apply {
-                    if (
-                        index >
-                        0
-                    ) {
-                        marginStart =
-                            dp(
-                                if (
-                                    isCompact()
-                                ) {
-                                    5
-                                } else {
-                                    7
-                                },
-                            )
+                    if (index > 0) {
+                        marginStart = dp(if (isCompact()) 5 else 7)
                     }
                 },
             )
@@ -187,14 +127,8 @@ private fun HomeActivity.homeGameCard(
     card: HomeModeCard,
 ): LinearLayout =
     LinearLayout(this).apply {
-        orientation =
-            LinearLayout.VERTICAL
-        setPadding(
-            dp(3),
-            dp(3),
-            dp(3),
-            dp(3),
-        )
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(3), dp(3), dp(3), dp(3))
         background =
             GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
@@ -204,37 +138,21 @@ private fun HomeActivity.homeGameCard(
                     0xFF073E91.toInt(),
                 ),
             ).apply {
-                cornerRadius =
-                    dp(13).toFloat()
-                setStroke(
-                    dp(2),
-                    0xFF5BE0FF.toInt(),
-                )
+                cornerRadius = dp(13).toFloat()
+                setStroke(dp(2), 0xFF5BE0FF.toInt())
             }
-        elevation =
-            dp(6).toFloat()
-        isClickable =
-            true
-        isFocusable =
-            true
-        contentDescription =
-            card.title +
-                ", " +
-                card.subtitle
+        elevation = dp(6).toFloat()
+        isClickable = true
+        isFocusable = true
+        contentDescription = card.title + ", " + card.subtitle
         setOnClickListener {
-            openGameMode(
-                card.mode,
-            )
+            openGameMode(card.mode)
         }
 
         addView(
-            ModeArtView(
-                this@homeGameCard,
-            ).apply {
-                mode =
-                    card.artMode
-                importantForAccessibility =
-                    View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            ModeArtView(this@homeGameCard).apply {
+                mode = card.artMode
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             },
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -244,155 +162,105 @@ private fun HomeActivity.homeGameCard(
         )
 
         addView(
-            LinearLayout(
-                this@homeGameCard,
-            ).apply {
-                orientation =
-                    LinearLayout.VERTICAL
-                gravity =
-                    Gravity.CENTER
+            LinearLayout(this@homeGameCard).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
                 background =
                     GradientDrawable(
                         GradientDrawable.Orientation.TOP_BOTTOM,
                         card.labelColors,
                     ).apply {
-                        cornerRadius =
-                            dp(9).toFloat()
-                        setStroke(
-                            dp(1),
-                            0x66FFFFFF,
-                        )
+                        cornerRadius = dp(9).toFloat()
+                        setStroke(dp(1), 0x66FFFFFF)
                     }
 
                 addView(
-                    TextView(
-                        this@homeGameCard,
-                    ).apply {
-                        text =
-                            card.title
-                        textSize =
-                            if (
-                                isCompact()
-                            ) {
-                                11f
-                            } else {
-                                12.5f
-                            }
-                        setTypeface(
-                            android.graphics.Typeface.DEFAULT_BOLD,
-                        )
-                        setTextColor(
-                            0xFFFFFFFF.toInt(),
-                        )
-                        gravity =
-                            Gravity.CENTER
-                        maxLines =
-                            1
+                    TextView(this@homeGameCard).apply {
+                        text = card.title
+                        textSize = if (isCompact()) 11f else 12.5f
+                        setTypeface(android.graphics.Typeface.DEFAULT_BOLD)
+                        setTextColor(0xFFFFFFFF.toInt())
+                        gravity = Gravity.CENTER
+                        maxLines = 1
                     },
                 )
 
                 addView(
-                    TextView(
-                        this@homeGameCard,
-                    ).apply {
-                        text =
-                            card.subtitle
-                        textSize =
-                            if (
-                                isCompact()
-                            ) {
-                                8.5f
-                            } else {
-                                9.5f
-                            }
-                        setTextColor(
-                            0xE6FFFFFF.toInt(),
-                        )
-                        gravity =
-                            Gravity.CENTER
-                        maxLines =
-                            1
+                    TextView(this@homeGameCard).apply {
+                        text = card.subtitle
+                        textSize = if (isCompact()) 8.5f else 9.5f
+                        setTextColor(0xE6FFFFFF.toInt())
+                        gravity = Gravity.CENTER
+                        maxLines = 1
                     },
                 )
             },
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(
-                    if (
-                        isCompact()
-                    ) {
-                        38
-                    } else {
-                        42
-                    },
-                ),
+                dp(if (isCompact()) 38 else 42),
             ),
         )
     }
 
-internal fun HomeActivity.continueButton():
-    Button? {
+internal fun HomeActivity.continueButton(): Button? {
     val local =
         LocalMatchSession(
-            context =
-                this,
-            mode =
-                GameMode.PASS_AND_PLAY,
-        )
-            .hasSavedGame()
+            context = this,
+            mode = GameMode.PASS_AND_PLAY,
+        ).hasSavedGame()
     val computer =
         LocalMatchSession(
-            context =
-                this,
-            mode =
-                GameMode.COMPUTER,
-        )
-            .hasSavedGame()
+            context = this,
+            mode = GameMode.COMPUTER,
+        ).hasSavedGame()
 
-    if (
-        !local &&
-        !computer
-    ) {
+    if (!local && !computer) {
         return null
     }
 
     return Button(this).apply {
         text =
-            if (
-                local
-            ) {
+            if (local) {
                 "Continue Pass & Play  ›"
             } else {
                 "Continue Computer Game  ›"
             }
-        LudoProofTheme.positive(
-            this,
-        )
-        textSize =
-            if (
-                isCompact()
-            ) {
-                14.5f
-            } else {
-                16f
-            }
+        LudoProofTheme.positive(this)
+        textSize = if (isCompact()) 14.5f else 16f
         setOnClickListener {
             openGameMode(
-                if (
-                    local
-                ) {
-                    GameMode.PASS_AND_PLAY
-                } else {
-                    GameMode.COMPUTER
-                },
+                if (local) GameMode.PASS_AND_PLAY else GameMode.COMPUTER,
                 resumeSavedMatch = true,
             )
         }
     }
 }
 
-internal fun HomeActivity.fairPlayStrip():
-    TextView =
+internal fun HomeActivity.refreshHomeContinueButton() {
+    if (!::homeContinueHost.isInitialized) {
+        return
+    }
+
+    homeContinueHost.removeAllViews()
+    val button =
+        continueButton()
+
+    if (button == null) {
+        homeContinueHost.visibility = View.GONE
+        return
+    }
+
+    homeContinueHost.visibility = View.VISIBLE
+    homeContinueHost.addView(
+        button,
+        FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            dp(if (isCompact()) 42 else 44),
+        ),
+    )
+}
+
+internal fun HomeActivity.fairPlayStrip(): TextView =
     TextView(this).apply {
         text =
             "✓  FAIR PLAY\nOnline: remote authority  •  Local: on-device v4 recomputation"
@@ -402,52 +270,34 @@ internal fun HomeActivity.fairPlayStrip():
             centered = true,
             bright = true,
         )
-        setPadding(
-            dp(14),
-            dp(13),
-            dp(14),
-            dp(13),
-        )
+        setPadding(dp(14), dp(13), dp(14), dp(13))
         background =
-            LudoProofTheme
-                .hudPanelDrawable(
-                    this@fairPlayStrip,
-                    goldBorder = true,
-                )
-        elevation =
-            dp(4).toFloat()
-        isClickable =
-            true
-        isFocusable =
-            true
-        contentDescription =
-            "Fair play information"
+            LudoProofTheme.hudPanelDrawable(
+                this@fairPlayStrip,
+                goldBorder = true,
+            )
+        elevation = dp(4).toFloat()
+        isClickable = true
+        isFocusable = true
+        contentDescription = "Fair play information"
         setOnClickListener {
-            ArcadeDialogs
-                .showProofHistory(
-                    this@fairPlayStrip,
-                    "FAIR PLAY",
-                    "LudoProof uses the same v4 derivation math online and offline. Online adds remote EntroNex authority; offline is locally reproducible only.",
-                )
+            ArcadeDialogs.showProofHistory(
+                this@fairPlayStrip,
+                "FAIR PLAY",
+                "LudoProof uses the same v4 derivation math online and offline. Online adds remote EntroNex authority; offline is locally reproducible only.",
+            )
         }
     }
 
-internal fun HomeActivity.footer():
-    TextView =
+internal fun HomeActivity.footer(): TextView =
     TextView(this).apply {
-        text =
-            "SERVER-AUTHORITATIVE ONLINE • NO OUTCOME REROLLS"
+        text = "SERVER-AUTHORITATIVE ONLINE • NO OUTCOME REROLLS"
         LudoProofTheme.body(
             this,
             10f,
             centered = true,
         )
-        setPadding(
-            dp(8),
-            dp(4),
-            dp(8),
-            0,
-        )
+        setPadding(dp(8), dp(4), dp(8), 0)
     }
 
 internal fun HomeActivity.shareLudoProof() {
@@ -455,27 +305,16 @@ internal fun HomeActivity.shareLudoProof() {
         "https://play.google.com/store/apps/details?id=$packageName"
     val shareText =
         buildString {
-            append(
-                "Play LudoProof — fair, verifiable Ludo online or locally.",
-            )
+            append("Play LudoProof — fair, verifiable Ludo online or locally.")
             append("\n\n")
             append(storeUrl)
         }
 
     val share =
-        Intent(
-            Intent.ACTION_SEND,
-        ).apply {
-            type =
-                "text/plain"
-            putExtra(
-                Intent.EXTRA_SUBJECT,
-                "LudoProof",
-            )
-            putExtra(
-                Intent.EXTRA_TEXT,
-                shareText,
-            )
+        Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "LudoProof")
+            putExtra(Intent.EXTRA_TEXT, shareText)
         }
 
     startActivity(
