@@ -1,6 +1,6 @@
 import {
-  MatchRoom as SafeMatchRoom,
-} from "./match-room-safe.js";
+  MatchRoom as TeamMatchRoom,
+} from "./match-room-team.js";
 import {
   syncMatchReceipt,
 } from "./match-receipt-archive.js";
@@ -13,7 +13,7 @@ const STATE_KEY =
  * gameplay responses. Receipt storage is an evidence sink: gameplay remains
  * controlled by MatchRoom state and EntroNex verification.
  */
-export class MatchRoom extends SafeMatchRoom {
+export class MatchRoom extends TeamMatchRoom {
   async fetch(request) {
     const response =
       await super.fetch(
