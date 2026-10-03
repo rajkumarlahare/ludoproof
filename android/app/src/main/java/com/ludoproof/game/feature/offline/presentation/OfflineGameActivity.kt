@@ -1,6 +1,5 @@
 package com.ludoproof.game
 
-import android.app.Activity
 import android.app.Dialog
 import android.graphics.Color
 import android.os.Bundle
@@ -13,12 +12,14 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import com.ludoproof.game.ui.offline.common.*
 import com.ludoproof.game.ui.offline.setup.*
 import com.ludoproof.game.ui.offline.gameplay.*
 import com.ludoproof.game.feature.offline.*
 
-class OfflineGameActivity : Activity() {
+class OfflineGameActivity : ComponentActivity() {
     internal val handler = Handler(Looper.getMainLooper())
 
     internal val gameMode:
@@ -95,6 +96,15 @@ class OfflineGameActivity : Activity() {
         super.onCreate(savedInstanceState)
         LudoProofTheme.configureWindow(this)
 
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    requestOfflineExit()
+                }
+            },
+        )
+
         if (
             shouldResumeSavedGame &&
             session.hasSavedGame()
@@ -105,11 +115,6 @@ class OfflineGameActivity : Activity() {
         } else {
             showSetup()
         }
-    }
-
-    @Suppress("DEPRECATION")
-    override fun onBackPressed() {
-        requestOfflineExit()
     }
 
     internal fun prepareOfflineUiTransition() {
