@@ -19,9 +19,9 @@ internal fun MainActivity.shareMatch() {
 
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, "Join my LudoProof match: $code")
+        putExtra(Intent.EXTRA_TEXT, "Join my Ludo Paws match: $code")
     }
-    startActivity(Intent.createChooser(intent, "Share LudoProof match"))
+    startActivity(Intent.createChooser(intent, "Share Ludo Paws match"))
 }
 
 internal fun MainActivity.playerName(): String {
