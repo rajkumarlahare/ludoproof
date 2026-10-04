@@ -115,6 +115,12 @@ object LudoPawsCharacterCatalog {
             AnimationSet::id,
         )
 
+    val defaultSelection: CharacterSelection =
+        CharacterSelection(
+            packId = STARTER_PACK_ID,
+            characterId = DEFAULT_CHARACTER_ID,
+        )
+
     init {
         validateCatalog()
     }
@@ -130,12 +136,6 @@ object LudoPawsCharacterCatalog {
 
     val animationSets: List<AnimationSet>
         get() = animationSetList
-
-    val defaultSelection: CharacterSelection =
-        CharacterSelection(
-            packId = STARTER_PACK_ID,
-            characterId = DEFAULT_CHARACTER_ID,
-        )
 
     fun character(
         id: String,
