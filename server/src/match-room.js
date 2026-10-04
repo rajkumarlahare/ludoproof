@@ -41,6 +41,9 @@ import {
 import {
   normalizeLeaderboardProfileId,
 } from "./leaderboard-core.js";
+import {
+  normalizeCharacterId,
+} from "./ludo-paws-characters.js";
 
 const STATE_KEY = "match-state";
 const APP_ID = "ludoproof";
@@ -252,6 +255,10 @@ export class MatchRoom {
       normalizeDisplayName(
         body?.displayName,
       );
+    const characterId =
+      normalizeCharacterId(
+        body?.characterId,
+      );
     const matchId =
       String(
         body?.matchId ?? "",
@@ -356,6 +363,8 @@ export class MatchRoom {
         identity.playerId,
       hostDisplayName:
         displayName,
+      hostCharacterId:
+        characterId,
       now,
       targetPlayerCount,
       matchMode,
@@ -411,6 +420,10 @@ export class MatchRoom {
     const displayName =
       normalizeDisplayName(
         body?.displayName,
+      );
+    const characterId =
+      normalizeCharacterId(
+        body?.characterId,
       );
     const clientRequestId =
       requireClientRequestId(
@@ -591,6 +604,7 @@ export class MatchRoom {
         playerId:
           identity.playerId,
         displayName,
+        characterId,
         tokenAuthHash,
         now: Date.now(),
       },
