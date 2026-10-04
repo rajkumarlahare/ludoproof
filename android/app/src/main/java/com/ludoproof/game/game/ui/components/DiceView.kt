@@ -33,11 +33,11 @@ class DiceView @JvmOverloads constructor(
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = dp(2.4f)
-            color = 0xFF767676.toInt()
+            color = 0xFF8A8A8A.toInt()
         }
     private val pipPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xFF292929.toInt()
+            color = 0xFF3A3A3A.toInt()
             style = Paint.Style.FILL
             setShadowLayer(
                 dp(1.2f),
@@ -50,7 +50,7 @@ class DiceView @JvmOverloads constructor(
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = dp(5f)
-            color = 0xFFD0D0D0.toInt()
+            color = 0xFFB8B8B8.toInt()
             setShadowLayer(
                 dp(4f),
                 0f,
@@ -316,14 +316,16 @@ class DiceView @JvmOverloads constructor(
         val selectedStyle =
             diceStyleId
 
+        // All three stops intentionally use the same fully opaque neutral color.
+        // This prevents the gameplay HUD or selected cosmetic from tinting the face.
         return DicePalette(
             intArrayOf(
-                Color.WHITE,
-                0xFFFAFAFA.toInt(),
-                0xFFE8E8E8.toInt(),
+                0xFFF4F4F4.toInt(),
+                0xFFF4F4F4.toInt(),
+                0xFFF4F4F4.toInt(),
             ),
-            0xFF767676.toInt(),
-            0xFF292929.toInt(),
+            0xFF8A8A8A.toInt(),
+            0xFF3A3A3A.toInt(),
         )
     }
 

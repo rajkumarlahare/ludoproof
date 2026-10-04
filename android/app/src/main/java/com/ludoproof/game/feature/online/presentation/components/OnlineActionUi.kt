@@ -56,18 +56,12 @@ internal fun MainActivity.onlineActionPanel():
                         FrameLayout(
                             this@onlineActionPanel,
                         ).apply {
-                            background =
-                                LudoProofTheme
-                                    .rounded(
-                                        0xEE071A47.toInt(),
-                                        18f,
-                                        0xFF55E3FF.toInt(),
-                                        1.5f,
-                                        this@onlineActionPanel,
-                                    )
-                            elevation =
-                                dp(5)
-                                    .toFloat()
+                            // The dice owns its visual surface. Keep this host neutral
+                            // so remote modes cannot reintroduce the old navy/cyan skin.
+                            background = null
+                            elevation = 0f
+                            clipChildren = false
+                            clipToPadding = false
                         }
 
                     diceView =

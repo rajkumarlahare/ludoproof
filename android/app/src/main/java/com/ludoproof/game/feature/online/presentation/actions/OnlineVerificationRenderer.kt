@@ -90,6 +90,7 @@ internal fun MainActivity.updateControls(
         if (active || finished) View.VISIBLE else View.GONE
 
     diceView.visibility = View.VISIBLE
+    diceView.alpha = 1f
     verificationText.visibility = View.VISIBLE
 
     startButton.visibility = if (waiting) View.VISIBLE else View.GONE
