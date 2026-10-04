@@ -14,16 +14,17 @@ import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsVoiceLines
 import com.ludoproof.game.feature.settings.data.local.GameMusicController
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
+import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
+import com.ludoproof.game.feature.settings.data.local.LudoPawsHaptics
 import java.util.Locale
 
 /**
- * Animal voice renderer.
+ * Reaction-audio coordinator and animal voice renderer.
  *
- * Starter Paws species use low-latency nonverbal SoundPool clips. Characters
- * without a packaged species clip fall back to on-device TTS so future packs
- * still react before their final recorded/nonverbal voice assets arrive.
- * Animal voices have their own preference and never depend on the game-SFX
- * switch.
+ * Game SFX and haptics are dispatched independently of the Animal Voices
+ * preference. Starter Paws species then use low-latency nonverbal SoundPool
+ * clips. Characters without a packaged species clip fall back to on-device TTS
+ * so future packs can still react before their final voice assets arrive.
  */
 class LudoPawsVoicePlayer(
     context: Context,
@@ -101,11 +102,29 @@ class LudoPawsVoicePlayer(
     ) {
         if (
             closed ||
-            reactions.isEmpty() ||
+            reactions.isEmpty()
+        ) {
+            return
+        }
+
+        GameSoundFeedback.reaction(
+            context = appContext,
+            reactions = reactions,
+        )
+        LudoPawsHaptics.reaction(
+            context = appContext,
+            reactions = reactions,
+        )
+
+        if (
             !GameSettingsStore(appContext)
                 .snapshot()
                 .animalVoicesEnabled
         ) {
+            pending = null
+            runCatching {
+                textToSpeech?.stop()
+            }
             return
         }
 
