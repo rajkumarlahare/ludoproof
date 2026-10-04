@@ -11,6 +11,14 @@ const requiredSources = [
   'android/app/src/main/AndroidManifest.xml',
 ];
 
+const reactionFeedbackOwners = [
+  'android/app/src/main/java/com/ludoproof/game/feature/online/presentation/OnlineLudoPawsPresentation.kt',
+  'android/app/src/main/java/com/ludoproof/game/feature/offline/presentation/feedback/OfflineLudoPawsFeedback.kt',
+];
+
+const reactiveBoard =
+  'android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsReactiveBoardView.kt';
+
 const requiredAudio = [
   'android/app/src/main/res/raw/lp_sfx_click.wav',
   'android/app/src/main/res/raw/lp_sfx_move.wav',
@@ -26,7 +34,12 @@ const requiredAudio = [
   'android/app/src/main/res/raw/lp_voice_sheep.wav',
 ];
 
-for (const file of [...requiredSources, ...requiredAudio]) {
+for (const file of [
+  ...requiredSources,
+  ...reactionFeedbackOwners,
+  reactiveBoard,
+  ...requiredAudio,
+]) {
   if (!fs.existsSync(file)) {
     throw new Error(`Missing Phase 9 audio file: ${file}`);
   }
@@ -89,11 +102,40 @@ for (const marker of [
   'lp_voice_sheep',
   'TextToSpeech',
   'duckForVoice',
-  'GameSoundFeedback.reaction',
-  'LudoPawsHaptics.reaction',
 ]) {
   if (!voice.includes(marker)) {
-    throw new Error(`Animal voice coordinator is missing ${marker}`);
+    throw new Error(`Animal voice renderer is missing ${marker}`);
+  }
+}
+
+const forbiddenSecondaryFeedbackCalls = [
+  'GameSoundFeedback.reaction',
+  'LudoPawsHaptics.reaction',
+];
+for (const marker of forbiddenSecondaryFeedbackCalls) {
+  if (voice.includes(marker)) {
+    throw new Error(
+      `Animal voice renderer must remain voice-only; ${marker} belongs to the mode feedback dispatcher`,
+    );
+  }
+}
+
+const boardSource = fs.readFileSync(reactiveBoard, 'utf8');
+for (const marker of forbiddenSecondaryFeedbackCalls) {
+  if (boardSource.includes(marker)) {
+    throw new Error(
+      `Reactive board must not become a second reaction feedback owner: ${marker}`,
+    );
+  }
+}
+
+for (const file of reactionFeedbackOwners) {
+  const source = fs.readFileSync(file, 'utf8');
+  if (!source.includes('GameSoundFeedback.')) {
+    throw new Error(`Mode reaction feedback owner is missing GameSoundFeedback: ${file}`);
+  }
+  if (!source.includes('LudoPawsHaptics.reaction')) {
+    throw new Error(`Mode reaction feedback owner is missing LudoPawsHaptics.reaction: ${file}`);
   }
 }
 
