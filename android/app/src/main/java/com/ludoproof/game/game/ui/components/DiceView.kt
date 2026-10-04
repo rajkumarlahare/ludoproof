@@ -33,11 +33,11 @@ class DiceView @JvmOverloads constructor(
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = dp(2.4f)
-            color = 0xFF8B8B8B.toInt()
+            color = 0xFF767676.toInt()
         }
     private val pipPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xFF3F3F3F.toInt()
+            color = 0xFF292929.toInt()
             style = Paint.Style.FILL
             setShadowLayer(
                 dp(1.2f),
@@ -50,7 +50,7 @@ class DiceView @JvmOverloads constructor(
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = dp(5f)
-            color = 0xFFB8B8B8.toInt()
+            color = 0xFFD0D0D0.toInt()
             setShadowLayer(
                 dp(4f),
                 0f,
@@ -319,11 +319,11 @@ class DiceView @JvmOverloads constructor(
         return DicePalette(
             intArrayOf(
                 Color.WHITE,
-                0xFFF4F4F4.toInt(),
-                0xFFDCDCDC.toInt(),
+                0xFFFAFAFA.toInt(),
+                0xFFE8E8E8.toInt(),
             ),
-            0xFF8B8B8B.toInt(),
-            0xFF3F3F3F.toInt(),
+            0xFF767676.toInt(),
+            0xFF292929.toInt(),
         )
     }
 
