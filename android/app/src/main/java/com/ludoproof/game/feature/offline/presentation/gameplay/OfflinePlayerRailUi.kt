@@ -1,13 +1,8 @@
 package com.ludoproof.game.ui.offline.gameplay
 
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
-import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.TextView
 import com.ludoproof.game.*
 import com.ludoproof.game.feature.offline.*
 import com.ludoproof.game.ui.offline.common.*
@@ -23,9 +18,9 @@ internal fun OfflineGameActivity.playerRail():
         minimumHeight =
             dp(
                 if (isCompactSetup()) {
-                    72
-                } else {
                     82
+                } else {
+                    94
                 },
             )
     }
@@ -59,46 +54,30 @@ internal fun OfflineGameActivity.renderPlayerRails(
     addPlayerSlot(
         top,
         state,
-        OfflinePlayerLayout
-            .Slot
-            .TOP_LEFT,
-        alignEnd =
-            false,
-        activePlayer =
-            activePlayer,
+        OfflinePlayerLayout.Slot.TOP_LEFT,
+        alignEnd = false,
+        activePlayer = activePlayer,
     )
     addPlayerSlot(
         top,
         state,
-        OfflinePlayerLayout
-            .Slot
-            .TOP_RIGHT,
-        alignEnd =
-            true,
-        activePlayer =
-            activePlayer,
+        OfflinePlayerLayout.Slot.TOP_RIGHT,
+        alignEnd = true,
+        activePlayer = activePlayer,
     )
     addPlayerSlot(
         bottom,
         state,
-        OfflinePlayerLayout
-            .Slot
-            .BOTTOM_LEFT,
-        alignEnd =
-            false,
-        activePlayer =
-            activePlayer,
+        OfflinePlayerLayout.Slot.BOTTOM_LEFT,
+        alignEnd = false,
+        activePlayer = activePlayer,
     )
     addPlayerSlot(
         bottom,
         state,
-        OfflinePlayerLayout
-            .Slot
-            .BOTTOM_RIGHT,
-        alignEnd =
-            true,
-        activePlayer =
-            activePlayer,
+        OfflinePlayerLayout.Slot.BOTTOM_RIGHT,
+        alignEnd = true,
+        activePlayer = activePlayer,
     )
 }
 
@@ -114,15 +93,13 @@ private fun OfflineGameActivity.addPlayerSlot(
             .firstOrNull {
                 OfflinePlayerLayout
                     .slotForColor(
-                        color =
-                            it.color,
+                        color = it.color,
                         preferredBottomLeftColor =
                             state.players
                                 .firstOrNull()
                                 ?.color
                                 ?: "BLUE",
-                    ) ==
-                    slot
+                    ) == slot
             }
 
     val host =
@@ -142,27 +119,49 @@ private fun OfflineGameActivity.addPlayerSlot(
 
     if (player != null) {
         val active =
-            player.playerId ==
-                activePlayer
-                    ?.playerId &&
-                state.status ==
-                    "ACTIVE"
+            player.playerId == activePlayer?.playerId &&
+                state.status == "ACTIVE"
+        val characterId =
+            offlineCharacterSetupStore
+                .loadActive()
+                ?.takeIf {
+                    it.mode == gameMode &&
+                        it.playerCount == state.players.size
+                }
+                ?.characterIds
+                ?.getOrNull(player.seat)
 
         if (
             alignEnd &&
             active
         ) {
             host.addView(
-                activeDiceControl(
-                    player,
-                ),
+                activeDiceControl(player),
             )
         }
 
         host.addView(
-            playerProfile(
-                player,
-                active,
+            LudoPawsPlayerCardView(this).apply {
+                bind(
+                    player = player,
+                    characterId = characterId,
+                    active = active,
+                    computer =
+                        engine.isComputerPlayer(
+                            player.playerId,
+                        ),
+                    compact = isCompactSetup(),
+                )
+            },
+            LinearLayout.LayoutParams(
+                dp(
+                    if (isCompactSetup()) {
+                        108
+                    } else {
+                        124
+                    },
+                ),
+                LinearLayout.LayoutParams.WRAP_CONTENT,
             ),
         )
 
@@ -171,9 +170,7 @@ private fun OfflineGameActivity.addPlayerSlot(
             active
         ) {
             host.addView(
-                activeDiceControl(
-                    player,
-                ),
+                activeDiceControl(player),
             )
         }
     }
@@ -187,143 +184,6 @@ private fun OfflineGameActivity.addPlayerSlot(
         ),
     )
 }
-
-private fun OfflineGameActivity.playerProfile(
-    player: PlayerSnapshot,
-    active: Boolean,
-): LinearLayout =
-    LinearLayout(this).apply {
-        orientation =
-            LinearLayout.VERTICAL
-        gravity =
-            Gravity.CENTER
-        setPadding(
-            dp(2),
-            dp(2),
-            dp(2),
-            dp(2),
-        )
-
-        addView(
-            TextView(
-                this@playerProfile,
-            ).apply {
-                text =
-                    if (
-                        engine.isComputerPlayer(
-                            player.playerId,
-                        )
-                    ) {
-                        "CPU"
-                    } else {
-                        "P" +
-                            (
-                                player.seat +
-                                    1
-                                )
-                    }
-                textSize =
-                    if (isCompactSetup()) {
-                        16f
-                    } else {
-                        18f
-                    }
-                setTypeface(
-                    Typeface.DEFAULT_BOLD,
-                )
-                setTextColor(
-                    Color.WHITE,
-                )
-                gravity =
-                    Gravity.CENTER
-                background =
-                    playerAvatarBackground(
-                        player.color,
-                        active,
-                    )
-                elevation =
-                    dp(
-                        if (active) {
-                            7
-                        } else {
-                            3
-                        },
-                    ).toFloat()
-                contentDescription =
-                    player.displayName +
-                        ", " +
-                        player.color.lowercase() +
-                        (
-                            if (active) {
-                                ", active turn"
-                            } else {
-                                ""
-                            }
-                            )
-            },
-            LinearLayout.LayoutParams(
-                dp(
-                    if (isCompactSetup()) {
-                        54
-                    } else {
-                        60
-                    },
-                ),
-                dp(
-                    if (isCompactSetup()) {
-                        54
-                    } else {
-                        60
-                    },
-                ),
-            ),
-        )
-
-        addView(
-            TextView(
-                this@playerProfile,
-            ).apply {
-                text =
-                    player.displayName
-                textSize =
-                    if (isCompactSetup()) {
-                        9.5f
-                    } else {
-                        10.5f
-                    }
-                setTypeface(
-                    Typeface.DEFAULT_BOLD,
-                )
-                setTextColor(
-                    if (active) {
-                        LudoProofTheme.GOLD
-                    } else {
-                        Color.WHITE
-                    },
-                )
-                gravity =
-                    Gravity.CENTER
-                maxLines =
-                    1
-                setPadding(
-                    0,
-                    dp(3),
-                    0,
-                    0,
-                )
-            },
-            LinearLayout.LayoutParams(
-                dp(
-                    if (isCompactSetup()) {
-                        70
-                    } else {
-                        78
-                    },
-                ),
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ),
-        )
-    }
 
 private fun OfflineGameActivity.activeDiceControl(
     player: PlayerSnapshot,
@@ -391,102 +251,26 @@ private fun OfflineGameActivity.activeDiceControl(
         LinearLayout.LayoutParams(
             dp(
                 if (isCompactSetup()) {
-                    56
+                    52
                 } else {
-                    62
+                    58
                 },
             ),
             dp(
                 if (isCompactSetup()) {
-                    56
+                    52
                 } else {
-                    62
+                    58
                 },
             ),
         ).apply {
             setMargins(
-                dp(7),
+                dp(4),
                 0,
-                dp(7),
-                dp(14),
+                dp(4),
+                dp(12),
             )
         }
 
     return control
 }
-
-private fun OfflineGameActivity.playerAvatarBackground(
-    colorName: String,
-    active: Boolean,
-): GradientDrawable {
-    val color =
-        when (colorName) {
-            "RED" ->
-                0xFFF1252F.toInt()
-            "GREEN" ->
-                0xFF00A950.toInt()
-            "YELLOW" ->
-                0xFFFFD81B.toInt()
-            "BLUE" ->
-                0xFF3097D7.toInt()
-            else ->
-                0xFF6C757D.toInt()
-        }
-
-    return GradientDrawable(
-        GradientDrawable.Orientation.TOP_BOTTOM,
-        intArrayOf(
-            lightenPlayerColor(
-                color,
-            ),
-            color,
-        ),
-    ).apply {
-        cornerRadius =
-            dp(12).toFloat()
-        setStroke(
-            dp(
-                if (active) {
-                    3
-                } else {
-                    2
-                },
-            ),
-            if (active) {
-                LudoProofTheme.GOLD
-            } else {
-                0xFF62E6FF.toInt()
-            },
-        )
-    }
-}
-
-private fun lightenPlayerColor(
-    color: Int,
-): Int =
-    Color.rgb(
-        (
-            Color.red(color) +
-                (
-                    255 -
-                        Color.red(color)
-                    ) *
-                    .18f
-            ).toInt(),
-        (
-            Color.green(color) +
-                (
-                    255 -
-                        Color.green(color)
-                    ) *
-                    .18f
-            ).toInt(),
-        (
-            Color.blue(color) +
-                (
-                    255 -
-                        Color.blue(color)
-                    ) *
-                    .18f
-            ).toInt(),
-    )
