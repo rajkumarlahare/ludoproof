@@ -660,10 +660,12 @@ class OfflineGameEngine(
         }
 
         val extraTurn =
-            outcome ==
-                6 ||
-                captures >
-                0
+            LudoExtraTurnPolicy
+                .grantsExtraTurn(
+                    roll = outcome,
+                    captures = captures,
+                    destination = destination,
+                )
         if (
             !extraTurn
         ) {

@@ -534,7 +534,9 @@ export function applyMove(state, { playerId, tokenIndex, now }) {
     };
   }
 
+  const reachedHome = destination === ruleset.homePosition;
   const extraTurn =
+    reachedHome ||
     (ruleset.extraTurnOnSix && roll === 6) ||
     (ruleset.extraTurnOnCapture && captures > 0);
 
