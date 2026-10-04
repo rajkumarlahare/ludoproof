@@ -33,29 +33,29 @@ class DiceView @JvmOverloads constructor(
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = dp(2.4f)
-            color = 0xFF20344F.toInt()
+            color = 0xFF8B8B8B.toInt()
         }
     private val pipPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xFF111827.toInt()
+            color = 0xFF3F3F3F.toInt()
             style = Paint.Style.FILL
             setShadowLayer(
-                dp(1.5f),
+                dp(1.2f),
                 0f,
-                dp(1f),
-                0x38000000,
+                dp(.8f),
+                0x26000000,
             )
         }
     private val rollingPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = dp(5f)
-            color = LudoProofTheme.GOLD
+            color = 0xFFB8B8B8.toInt()
             setShadowLayer(
-                dp(6f),
+                dp(4f),
                 0f,
                 0f,
-                0xAAFFB000.toInt(),
+                0x446B7280,
             )
         }
 
@@ -174,12 +174,12 @@ class DiceView @JvmOverloads constructor(
             )
         facePaint.shader = null
         facePaint.color =
-            0x55000000
+            0x33000000
         facePaint.setShadowLayer(
-            dp(3.5f),
+            dp(3f),
             0f,
-            dp(2f),
-            0x3D000000,
+            dp(1.5f),
+            0x26000000,
         )
         canvas.drawRoundRect(
             shadow,
@@ -218,7 +218,7 @@ class DiceView @JvmOverloads constructor(
         )
         facePaint.shader = null
         facePaint.color =
-            0x2EFFFFFF
+            0x42FFFFFF
         canvas.drawRoundRect(
             RectF(
                 rect.left + size * .035f,
@@ -302,90 +302,30 @@ class DiceView @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Gameplay dice intentionally use one high-contrast neutral palette.
+     *
+     * The selected cosmetic id is still retained by the inventory/store contract,
+     * but the in-match face stays white/light-gray so it remains clearly visible
+     * against the dark gameplay HUD in every state.
+     */
     private fun dicePalette():
-        DicePalette =
-        when (diceStyleId) {
-            "dice_pumpkin" ->
-                DicePalette(
-                    intArrayOf(
-                        0xFFFFD59A.toInt(),
-                        0xFFFFAD55.toInt(),
-                        0xFFF47A2A.toInt(),
-                    ),
-                    0xFF5B2B18.toInt(),
-                    0xFF2E1A12.toInt(),
-                )
-            "dice_diwali" ->
-                DicePalette(
-                    intArrayOf(
-                        0xFFFF9A90.toInt(),
-                        0xFFF45361.toInt(),
-                        0xFFC92D48.toInt(),
-                    ),
-                    0xFFFFD44A.toInt(),
-                    Color.WHITE,
-                )
-            "dice_football" ->
-                DicePalette(
-                    intArrayOf(
-                        Color.WHITE,
-                        0xFFE6E6E6.toInt(),
-                        0xFFCFCFCF.toInt(),
-                    ),
-                    0xFF1A1A1A.toInt(),
-                    0xFF111111.toInt(),
-                )
-            "dice_cricket" ->
-                DicePalette(
-                    intArrayOf(
-                        0xFFF5FFE9.toInt(),
-                        0xFFA8D99A.toInt(),
-                        0xFF62A978.toInt(),
-                    ),
-                    0xFF174D35.toInt(),
-                    Color.WHITE,
-                )
-            "dice_summers" ->
-                DicePalette(
-                    intArrayOf(
-                        0xFFFFF7DE.toInt(),
-                        0xFFFFE1AE.toInt(),
-                        0xFFF3B08E.toInt(),
-                    ),
-                    0xFFAD5A44.toInt(),
-                    0xFFD92B32.toInt(),
-                )
-            "dice_colors" ->
-                DicePalette(
-                    intArrayOf(
-                        0xFFFFEA75.toInt(),
-                        0xFFFF7BB5.toInt(),
-                        0xFF6ADCE8.toInt(),
-                    ),
-                    0xFF6A267D.toInt(),
-                    0xFF3C235A.toInt(),
-                )
-            "dice_heart" ->
-                DicePalette(
-                    intArrayOf(
-                        Color.WHITE,
-                        0xFFF9ECEC.toInt(),
-                        0xFFE5D7D7.toInt(),
-                    ),
-                    0xFFB62534.toInt(),
-                    0xFFD82E3D.toInt(),
-                )
-            else ->
-                DicePalette(
-                    intArrayOf(
-                        Color.WHITE,
-                        0xFFF9FBFF.toInt(),
-                        0xFFEAF0F7.toInt(),
-                    ),
-                    0xFF20344F.toInt(),
-                    0xFF111827.toInt(),
-                )
-        }
+        DicePalette {
+        // Read the id so the existing cosmetic selection lifecycle remains wired.
+        @Suppress("UNUSED_VARIABLE")
+        val selectedStyle =
+            diceStyleId
+
+        return DicePalette(
+            intArrayOf(
+                Color.WHITE,
+                0xFFF4F4F4.toInt(),
+                0xFFDCDCDC.toInt(),
+            ),
+            0xFF8B8B8B.toInt(),
+            0xFF3F3F3F.toInt(),
+        )
+    }
 
     private data class DicePalette(
         val faceColors: IntArray,
