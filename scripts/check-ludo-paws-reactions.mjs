@@ -38,7 +38,11 @@ if (!voice.includes('GameSettingsStore') || !voice.includes('TextToSpeech')) {
   throw new Error('Phase 6 voice player must respect sound settings and use on-device TTS');
 }
 
-if (!board.includes('LudoPawsReactionEngine.detect') || !board.includes('LudoPawsVoicePlayer')) {
+if (
+  !board.includes('LudoPawsReactionEngine') ||
+  !board.includes('.detect(') ||
+  !board.includes('LudoPawsVoicePlayer')
+) {
   throw new Error('Reactive board is not wired to reactions and voice playback');
 }
 
