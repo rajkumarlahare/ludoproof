@@ -9,6 +9,7 @@ enum class GameMomentType {
     ROLL_STARTED,
     SIX_ROLLED,
     LOW_ROLL,
+    POOR_ROLL_STREAK,
     TOKEN_LEFT_YARD,
     TOKEN_MOVED,
     CAPTURE_MADE,
@@ -45,6 +46,8 @@ data class LudoPawsGameMoment(
  * authoritative snapshot shape into this class.
  */
 object LudoPawsGameMomentDetector {
+    private const val POOR_ROLL_STREAK_LENGTH = 3
+
     private val startOffsets =
         mapOf(
             "RED" to 0,
@@ -133,9 +136,12 @@ object LudoPawsGameMomentDetector {
             return null
         }
 
+        val activeSeat =
+            current.actingSeat
+                ?: current.turnSeat
         val active =
             current.players
-                .getOrNull(current.turnSeat)
+                .getOrNull(activeSeat)
                 ?: return null
 
         return moment(
@@ -158,9 +164,12 @@ object LudoPawsGameMomentDetector {
             return
         }
 
+        val activeSeat =
+            current.actingSeat
+                ?: current.turnSeat
         val active =
             current.players
-                .getOrNull(current.turnSeat)
+                .getOrNull(activeSeat)
                 ?: return
         sink +=
             moment(
@@ -252,7 +261,7 @@ object LudoPawsGameMomentDetector {
                                 value = outcome,
                             )
 
-                    outcome <= 2 ->
+                    outcome <= 2 -> {
                         sink +=
                             moment(
                                 current = current,
@@ -261,6 +270,22 @@ object LudoPawsGameMomentDetector {
                                 eventIndex = event.eventIndex,
                                 value = outcome,
                             )
+                        if (
+                            isPoorRollStreak(
+                                current = current,
+                                event = event,
+                            )
+                        ) {
+                            sink +=
+                                moment(
+                                    current = current,
+                                    type = GameMomentType.POOR_ROLL_STREAK,
+                                    player = player,
+                                    eventIndex = event.eventIndex,
+                                    value = POOR_ROLL_STREAK_LENGTH,
+                                )
+                        }
+                    }
                 }
 
                 val pendingForEvent =
@@ -501,6 +526,28 @@ object LudoPawsGameMomentDetector {
             recent.all {
                 it.playerId == event.playerId &&
                     it.outcome == 6
+            }
+    }
+
+    private fun isPoorRollStreak(
+        current: MatchSnapshot,
+        event: HistoryEventSnapshot,
+    ): Boolean {
+        val recentForPlayer =
+            current.history
+                .asSequence()
+                .filter {
+                    it.eventIndex <= event.eventIndex &&
+                        it.playerId == event.playerId &&
+                        it.outcome != null
+                }
+                .takeLast(POOR_ROLL_STREAK_LENGTH)
+                .toList()
+
+        return recentForPlayer.size ==
+            POOR_ROLL_STREAK_LENGTH &&
+            recentForPlayer.all {
+                requireNotNull(it.outcome) <= 2
             }
     }
 
