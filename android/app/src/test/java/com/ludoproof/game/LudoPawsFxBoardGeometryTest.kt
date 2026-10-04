@@ -40,6 +40,32 @@ class LudoPawsFxBoardGeometryTest {
     }
 
     @Test
+    fun `legacy position 51 renders on first home lane instead of extra white track cell`() {
+        val cell = 60f
+        val legacy =
+            requireNotNull(
+                LudoPawsFxBoardGeometry.tokenCenter(
+                    color = "BLUE",
+                    tokenIndex = 0,
+                    position = 51,
+                    cell = cell,
+                ),
+            )
+        val firstLane =
+            requireNotNull(
+                LudoPawsFxBoardGeometry.tokenCenter(
+                    color = "BLUE",
+                    tokenIndex = 0,
+                    position = 52,
+                    cell = cell,
+                ),
+            )
+
+        assertEquals(firstLane.first, legacy.first, EPSILON)
+        assertEquals(firstLane.second, legacy.second, EPSILON)
+    }
+
+    @Test
     fun `yard token slots match fixed half cell inset white home`() {
         val cell = 60f
         val redTopLeft =

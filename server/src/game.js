@@ -347,6 +347,34 @@ export function forfeitTimedOutRoll(state, {
   };
 }
 
+const LAST_RELATIVE_TRACK_POSITION = 50;
+const RESERVED_HOME_ENTRY_POSITION = 51;
+const FIRST_HOME_LANE_POSITION = 52;
+
+// Position 51 is a compatibility gap from the old off-by-one path encoding.
+// New moves leave the shared track after relative position 50 and jump directly
+// to encoded home-lane position 52 on the next movement step.
+export function destinationForRoll(position, roll) {
+  if (!Number.isInteger(roll) || roll < 1 || roll > 6) return null;
+  if (position === -1) return roll === 6 ? 0 : null;
+  if (position === RULESET.homePosition) return null;
+
+  const normalized =
+    position === RESERVED_HOME_ENTRY_POSITION
+      ? FIRST_HOME_LANE_POSITION
+      : position;
+  if (normalized < 0 || normalized > 56) return null;
+
+  let destination = normalized + roll;
+  if (
+    normalized <= LAST_RELATIVE_TRACK_POSITION &&
+    destination > LAST_RELATIVE_TRACK_POSITION
+  ) {
+    destination += 1;
+  }
+  return destination <= RULESET.homePosition ? destination : null;
+}
+
 export function legalTokenIndexes(state, seat, roll) {
   if (!Number.isInteger(roll) || roll < 1 || roll > 6) {
     throw gameError("INVALID_ROLL", "roll must be between 1 and 6");
@@ -356,12 +384,7 @@ export function legalTokenIndexes(state, seat, roll) {
 
   const legal = [];
   player.tokens.forEach((position, index) => {
-    if (position === 57) return;
-    if (position === -1) {
-      if (roll === 6) legal.push(index);
-      return;
-    }
-    if (position >= 0 && position <= 56 && position + roll <= 57) {
+    if (destinationForRoll(position, roll) !== null) {
       legal.push(index);
     }
   });
@@ -467,7 +490,10 @@ export function applyMove(state, { playerId, tokenIndex, now }) {
   const player = next.players[seat];
   const roll = pending.outcome;
   const current = player.tokens[tokenIndex];
-  const destination = current === -1 ? 0 : current + roll;
+  const destination = destinationForRoll(current, roll);
+  if (destination === null) {
+    throw gameError("ILLEGAL_TOKEN_MOVE", "verified roll exceeds the home path");
+  }
   player.tokens[tokenIndex] = destination;
 
   const captures = captureOpponents(next, seat, destination);
@@ -582,12 +608,12 @@ export function publicState(state) {
 }
 
 export function globalCellFor(color, relativePosition) {
-  if (relativePosition < 0 || relativePosition > 51) return null;
+  if (relativePosition < 0 || relativePosition > LAST_RELATIVE_TRACK_POSITION) return null;
   return (RULESET.startOffsets[color] + relativePosition) % RULESET.boardTrackCells;
 }
 
 function captureOpponents(state, movingSeat, destination) {
-  if (destination < 0 || destination > 51) return 0;
+  if (destination < 0 || destination > LAST_RELATIVE_TRACK_POSITION) return 0;
   const mover = state.players[movingSeat];
   const cell = globalCellFor(mover.color, destination);
   if (RULESET.safeGlobalCells.includes(cell)) return 0;

@@ -570,15 +570,14 @@ class OfflineGameEngine(
                 tokenIndex
             ]
         val destination =
-            if (
-                oldPosition ==
-                -1
-            ) {
-                0
-            } else {
-                oldPosition +
-                    outcome
-            }
+            LudoPathEncoding
+                .destinationForRoll(
+                    position = oldPosition,
+                    roll = outcome,
+                )
+                ?: error(
+                    "Offline move exceeded the home path",
+                )
         player.tokens[
             tokenIndex
         ] =
@@ -730,25 +729,15 @@ class OfflineGameEngine(
                 .forEachIndexed {
                         index,
                         position ->
-                    when {
-                        position ==
-                            HOME_POSITION ->
-                            Unit
-                        position ==
-                            -1 &&
-                            roll ==
-                            6 ->
-                            add(
-                                index,
-                            )
-                        position in
-                            0..56 &&
-                            position +
-                                roll <=
-                            HOME_POSITION ->
-                            add(
-                                index,
-                            )
+                    if (
+                        LudoPathEncoding
+                            .destinationForRoll(
+                                position = position,
+                                roll = roll,
+                            ) !=
+                        null
+                    ) {
+                        add(index)
                     }
                 }
         }
@@ -759,8 +748,10 @@ class OfflineGameEngine(
         destination: Int,
     ): Int {
         if (
-            destination !in
-            0..51
+            !LudoPathEncoding
+                .isTrackPosition(
+                    destination,
+                )
         ) {
             return 0
         }
@@ -823,8 +814,10 @@ class OfflineGameEngine(
         relativePosition: Int,
     ): Int? {
         if (
-            relativePosition !in
-            0..51
+            !LudoPathEncoding
+                .isTrackPosition(
+                    relativePosition,
+                )
         ) {
             return null
         }

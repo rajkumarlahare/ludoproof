@@ -21,6 +21,20 @@ class LudoPawsPawnAnimationPolicyTest {
     }
 
     @Test
+    fun homeEntryAnimationSkipsReservedPosition51() {
+        val motion =
+            LudoPawsPawnAnimationPolicy.transition(
+                playerId = "p1",
+                tokenIndex = 0,
+                from = 50,
+                to = 52,
+            )
+
+        assertEquals(LudoPawsPawnMotionKind.FORWARD, motion?.kind)
+        assertEquals(1, motion?.visualSteps)
+    }
+
+    @Test
     fun capturedTrackTokenGetsReturnToYardMotion() {
         val motion =
             LudoPawsPawnAnimationPolicy.transition(
