@@ -67,6 +67,28 @@ object LudoPawsReactionEngine {
             )
     }
 
+    /**
+     * Pure idle derivation for the board lifecycle scheduler. Idle playback is
+     * caller-timed so the domain detector stays deterministic in tests.
+     */
+    fun deriveIdle(
+        current: MatchSnapshot?,
+        nowMillis: Long,
+        lastMeaningfulChangeAtMillis: Long,
+        thresholdMillis: Long = 12_000L,
+    ): List<LudoPawsReaction> =
+        LudoPawsGameMomentDetector
+            .idleMoment(
+                current = current,
+                nowMillis = nowMillis,
+                lastMeaningfulChangeAtMillis =
+                    lastMeaningfulChangeAtMillis,
+                thresholdMillis = thresholdMillis,
+            )
+            ?.let(::toReaction)
+            ?.let(::listOf)
+            .orEmpty()
+
     internal fun resetPlaybackStateForTests() {
         playbackDirector.clear()
     }
@@ -162,6 +184,14 @@ object LudoPawsReactionEngine {
                     voiceCue = VoiceCue.HOME,
                     animationCue = AnimationCue.HOME,
                     priority = 82,
+                )
+
+            GameMomentType.POOR_ROLL_STREAK ->
+                reaction(
+                    moment = moment,
+                    voiceCue = VoiceCue.FRUSTRATED,
+                    animationCue = AnimationCue.SAD,
+                    priority = 52,
                 )
 
             GameMomentType.NO_LEGAL_MOVE ->
