@@ -163,8 +163,37 @@ internal fun showSettingsDialog(
     panel.addView(
         settingsCompactRow(
             context = context,
-            label = "Sound",
+            label = "Game Sounds",
             control = soundControl,
+        ),
+    )
+
+    val animalVoicesControl =
+        SettingsBooleanControl(
+            context = context,
+            initialValue =
+                settings.animalVoicesEnabled,
+        ) { enabled ->
+            settingsStore
+                .setAnimalVoicesEnabled(
+                    enabled,
+                )
+            settings =
+                settingsStore
+                    .snapshot()
+            GameSoundFeedback.click(
+                context,
+            )
+            notifyChanged()
+        }
+    panel.addView(
+        settingsDivider(context),
+    )
+    panel.addView(
+        settingsCompactRow(
+            context = context,
+            label = "Animal Voices",
+            control = animalVoicesControl,
         ),
     )
 
@@ -194,6 +223,64 @@ internal fun showSettingsDialog(
             context = context,
             label = "Quick chat",
             control = quickChatControl,
+        ),
+    )
+
+    val hapticsControl =
+        SettingsBooleanControl(
+            context = context,
+            initialValue =
+                settings.hapticsEnabled,
+        ) { enabled ->
+            settingsStore
+                .setHapticsEnabled(
+                    enabled,
+                )
+            settings =
+                settingsStore
+                    .snapshot()
+            GameSoundFeedback.click(
+                context,
+            )
+            notifyChanged()
+        }
+    panel.addView(
+        settingsDivider(context),
+    )
+    panel.addView(
+        settingsCompactRow(
+            context = context,
+            label = "Haptics",
+            control = hapticsControl,
+        ),
+    )
+
+    val reducedMotionControl =
+        SettingsBooleanControl(
+            context = context,
+            initialValue =
+                settings.reducedMotionEnabled,
+        ) { enabled ->
+            settingsStore
+                .setReducedMotionEnabled(
+                    enabled,
+                )
+            settings =
+                settingsStore
+                    .snapshot()
+            GameSoundFeedback.click(
+                context,
+            )
+            notifyChanged()
+        }
+    panel.addView(
+        settingsDivider(context),
+    )
+    panel.addView(
+        settingsCompactRow(
+            context = context,
+            label = "Reduced Motion",
+            control = reducedMotionControl,
         ),
     )
 
