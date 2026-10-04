@@ -1,6 +1,7 @@
 import { httpError } from "./crypto.js";
 
 export const DEFAULT_CHARACTER_ID = "duck";
+export const CHARACTER_ID_SCHEMA_VERSION = 1;
 
 export const LUDO_PAWS_CHARACTER_IDS = Object.freeze([
   "duck",
@@ -45,4 +46,16 @@ export function publicCharacterId(value) {
   return CHARACTER_IDS.has(characterId)
     ? characterId
     : DEFAULT_CHARACTER_ID;
+}
+
+/**
+ * Public cosmetic metadata is explicitly versioned so older Android clients can
+ * keep treating characterId as optional while future clients can fail closed on
+ * a schema they do not understand. The version is presentation-only.
+ */
+export function publicCharacterIdentity(value) {
+  return {
+    characterSchemaVersion: CHARACTER_ID_SCHEMA_VERSION,
+    characterId: publicCharacterId(value),
+  };
 }
