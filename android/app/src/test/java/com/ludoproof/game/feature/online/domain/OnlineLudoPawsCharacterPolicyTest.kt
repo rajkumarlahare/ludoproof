@@ -7,6 +7,18 @@ import org.junit.Test
 
 class OnlineLudoPawsCharacterPolicyTest {
     @Test
+    fun `freezes character identity wire contract`() {
+        assertEquals(
+            "characterId",
+            LudoPawsCharacterIdentityContract.WIRE_FIELD,
+        )
+        assertEquals(
+            1,
+            LudoPawsCharacterIdentityContract.SCHEMA_VERSION,
+        )
+    }
+
+    @Test
     fun `maps validated remote characters by seat`() {
         val state =
             match(
@@ -32,6 +44,26 @@ class OnlineLudoPawsCharacterPolicyTest {
             ),
             OnlineLudoPawsCharacterPolicy
                 .characterIdsBySeat(state),
+        )
+    }
+
+    @Test
+    fun `missing unknown blank and mixed case values resolve safely`() {
+        assertEquals(
+            "duck",
+            LudoPawsCharacterIdentityContract.resolveRemote(null),
+        )
+        assertEquals(
+            "duck",
+            LudoPawsCharacterIdentityContract.resolveRemote("  "),
+        )
+        assertEquals(
+            "duck",
+            LudoPawsCharacterIdentityContract.resolveRemote("dragon"),
+        )
+        assertEquals(
+            "squirrel",
+            LudoPawsCharacterIdentityContract.resolveRemote("  SQUIRREL  "),
         )
     }
 
