@@ -114,6 +114,13 @@ internal fun OfflineGameActivity.showSetup() {
     )
 
     content.addView(
+        characterPanel(),
+        setupSectionParams(
+            if (isCompactSetup()) 14 else 18,
+        ),
+    )
+
+    content.addView(
         colorPanel(),
         setupSectionParams(
             if (isCompactSetup()) 14 else 18,
@@ -131,6 +138,7 @@ internal fun OfflineGameActivity.showSetup() {
             LudoProofTheme
                 .primary(this)
             setOnClickListener {
+                persistActiveCharacterSetup()
                 showGame(
                     session.start(
                         playerCount =
