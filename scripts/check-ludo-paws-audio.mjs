@@ -11,6 +11,14 @@ const requiredSources = [
   'android/app/src/main/AndroidManifest.xml',
 ];
 
+const reactionFeedbackOwners = [
+  'android/app/src/main/java/com/ludoproof/game/feature/online/presentation/OnlineLudoPawsPresentation.kt',
+  'android/app/src/main/java/com/ludoproof/game/feature/offline/presentation/feedback/OfflineLudoPawsFeedback.kt',
+];
+
+const reactiveBoard =
+  'android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsReactiveBoardView.kt';
+
 const requiredAudio = [
   'android/app/src/main/res/raw/lp_sfx_click.wav',
   'android/app/src/main/res/raw/lp_sfx_move.wav',
@@ -26,7 +34,12 @@ const requiredAudio = [
   'android/app/src/main/res/raw/lp_voice_sheep.wav',
 ];
 
-for (const file of [...requiredSources, ...requiredAudio]) {
+for (const file of [
+  ...requiredSources,
+  ...reactionFeedbackOwners,
+  reactiveBoard,
+  ...requiredAudio,
+]) {
   if (!fs.existsSync(file)) {
     throw new Error(`Missing Phase 9 audio file: ${file}`);
   }
@@ -89,11 +102,39 @@ for (const marker of [
   'lp_voice_sheep',
   'TextToSpeech',
   'duckForVoice',
-  'GameSoundFeedback.reaction',
-  'LudoPawsHaptics.reaction',
 ]) {
   if (!voice.includes(marker)) {
-    throw new Error(`Animal voice coordinator is missing ${marker}`);
+    throw new Error(`Animal voice renderer is missing ${marker}`);
+  }
+}
+
+const reactionFeedbackCalls = [
+  'GameSoundFeedback.reaction',
+  'LudoPawsHaptics.reaction',
+];
+for (const marker of reactionFeedbackCalls) {
+  if (voice.includes(marker)) {
+    throw new Error(
+      `Animal voice renderer must remain voice-only; ${marker} belongs to the mode feedback dispatcher`,
+    );
+  }
+}
+
+const boardSource = fs.readFileSync(reactiveBoard, 'utf8');
+for (const marker of reactionFeedbackCalls) {
+  if (boardSource.includes(marker)) {
+    throw new Error(
+      `Reactive board must not become a second reaction feedback owner: ${marker}`,
+    );
+  }
+}
+
+for (const file of reactionFeedbackOwners) {
+  const source = fs.readFileSync(file, 'utf8');
+  for (const marker of reactionFeedbackCalls) {
+    if (!source.includes(marker)) {
+      throw new Error(`Mode reaction feedback owner is missing ${marker}: ${file}`);
+    }
   }
 }
 
