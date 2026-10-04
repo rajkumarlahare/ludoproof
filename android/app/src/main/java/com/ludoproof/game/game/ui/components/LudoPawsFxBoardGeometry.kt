@@ -1,5 +1,16 @@
 package com.ludoproof.game
 
+/**
+ * Presentation-geometry mirror for the approved/final Ludo board.
+ *
+ * IMPORTANT: gameplay stays on the logical 15x15 grid, but the released board is not rendered
+ * as 15 uniform visual cells. The four yards and the three-lane road are distributed through
+ * the locked axisBoundary() mapping used by LudoBoardView and AnimalPawnOverlayView.
+ *
+ * Do not replace these calculations with row/column * cell math. Capture-return animation,
+ * pawn trails, reaction FX, yard destinations, and finish FX must remain pixel-aligned with the
+ * locked board without changing any gameplay rules or token positions.
+ */
 internal object LudoPawsFxBoardGeometry {
     const val BOARD_SIZE = 15f
 
@@ -16,41 +27,73 @@ internal object LudoPawsFxBoardGeometry {
                 cell = cell,
             )
         }
+
         if (position in 0..51) {
             val offset = START_OFFSETS[color] ?: return null
             val coord = TRACK[(offset + position) % TRACK.size]
-            return centerForCell(coord.first, coord.second, cell)
+            return centerForCell(
+                row = coord.first,
+                col = coord.second,
+                cell = cell,
+            )
         }
+
         if (position in 52..56) {
             val lane = HOME_LANES[color] ?: return null
             val coord = lane[position - 52]
-            return centerForCell(coord.first, coord.second, cell)
+            return centerForCell(
+                row = coord.first,
+                col = coord.second,
+                cell = cell,
+            )
         }
+
         if (position == 57) {
-            val unit =
-                when (color) {
-                    "RED" -> 6.9f to 7.5f
-                    "GREEN" -> 7.5f to 6.9f
-                    "YELLOW" -> 8.1f to 7.5f
-                    "BLUE" -> 7.5f to 8.1f
-                    else -> 7.5f to 7.5f
-                }
-            return unit.first * cell to unit.second * cell
+            val left = axisBoundary(6, cell)
+            val top = axisBoundary(6, cell)
+            val right = axisBoundary(9, cell)
+            val bottom = axisBoundary(9, cell)
+            val cx = (left + right) / 2f
+            val cy = (top + bottom) / 2f
+            val offset = (right - left) * 0.20f
+
+            return when (color) {
+                "RED" -> cx - offset to cy
+                "GREEN" -> cx to cy - offset
+                "YELLOW" -> cx + offset to cy
+                "BLUE" -> cx to cy + offset
+                else -> cx to cy
+            }
         }
+
         return null
     }
 
+    /**
+     * Center of the fixed physical yard. Character-reaction portraits use this instead of the
+     * old logical 3/12-cell anchors so they stay centered after the road-stretch redesign.
+     */
     fun yardReactionAnchor(
         color: String,
         cell: Float,
-    ): Pair<Float, Float>? =
-        when (color) {
-            "RED" -> 3f * cell to 3f * cell
-            "GREEN" -> 12f * cell to 3f * cell
-            "YELLOW" -> 12f * cell to 12f * cell
-            "BLUE" -> 3f * cell to 12f * cell
-            else -> null
-        }
+    ): Pair<Float, Float>? {
+        val origin =
+            when (color) {
+                "RED" -> 0 to 0
+                "GREEN" -> 0 to 9
+                "YELLOW" -> 9 to 9
+                "BLUE" -> 9 to 0
+                else -> return null
+            }
+
+        val left = axisBoundary(origin.second, cell)
+        val top = axisBoundary(origin.first, cell)
+        val right = axisBoundary(origin.second + 6, cell)
+        val bottom = axisBoundary(origin.first + 6, cell)
+
+        return (left + right) / 2f to
+            (top + bottom) / 2f
+    }
 
     private fun yardTokenCenter(
         color: String,
@@ -59,21 +102,26 @@ internal object LudoPawsFxBoardGeometry {
     ): Pair<Float, Float>? {
         val origin =
             when (color) {
-                "RED" -> 0f to 0f
-                "GREEN" -> 0f to 9f
-                "YELLOW" -> 9f to 9f
-                "BLUE" -> 9f to 0f
+                "RED" -> 0 to 0
+                "GREEN" -> 0 to 9
+                "YELLOW" -> 9 to 9
+                "BLUE" -> 9 to 0
                 else -> return null
             }
-        val slot =
-            when (tokenIndex) {
-                0 -> 2f to 2f
-                1 -> 2f to 4f
-                2 -> 4f to 2f
-                else -> 4f to 4f
-            }
-        return (origin.second + slot.second) * cell to
-            (origin.first + slot.first) * cell
+
+        val yardLeft = axisBoundary(origin.second, cell)
+        val yardTop = axisBoundary(origin.first, cell)
+        val whiteLeft = yardLeft + cell * 0.5f
+        val whiteTop = yardTop + cell * 0.5f
+        val whiteSize = cell * 4f
+
+        val rowFraction =
+            if (tokenIndex < 2) 0.25f else 0.75f
+        val colFraction =
+            if (tokenIndex % 2 == 0) 0.25f else 0.75f
+
+        return (whiteLeft + whiteSize * colFraction) to
+            (whiteTop + whiteSize * rowFraction)
     }
 
     private fun centerForCell(
@@ -81,7 +129,37 @@ internal object LudoPawsFxBoardGeometry {
         col: Int,
         cell: Float,
     ): Pair<Float, Float> =
-        (col + .5f) * cell to (row + .5f) * cell
+        ((axisBoundary(col, cell) +
+            axisBoundary(col + 1, cell)) / 2f) to
+            ((axisBoundary(row, cell) +
+                axisBoundary(row + 1, cell)) / 2f)
+
+    /**
+     * FINAL BOARD GEOMETRY MIRROR — LOCKED.
+     *
+     * Must remain identical to LudoBoardView.axisBoundary() and
+     * AnimalPawnOverlayView.axisBoundary():
+     * - first yard span = 5 base cells
+     * - stretched three-lane road = 5 base cells
+     * - opposite yard span = 5 base cells
+     * - each six-logical-cell yard therefore uses a 5-cell physical span
+     * - each three-logical-cell road uses a 5-cell physical span
+     */
+    private fun axisBoundary(
+        index: Int,
+        cell: Float,
+    ): Float {
+        val yardSpan = cell * 5f
+        val roadSpan = cell * 5f
+        val yardStep = yardSpan / 6f
+        val roadStep = roadSpan / 3f
+
+        return when {
+            index <= 6 -> index * yardStep
+            index <= 9 -> yardSpan + (index - 6) * roadStep
+            else -> yardSpan + roadSpan + (index - 9) * yardStep
+        }
+    }
 
     private val START_OFFSETS =
         mapOf(

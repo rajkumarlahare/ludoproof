@@ -181,7 +181,15 @@ internal class LudoPawsCharacterReactionOverlayView(
                 )
                 ?: return
         val drawable = resolveDrawable(character.fallbackDrawableName)
-        val anchor = yardReactionAnchor(player.color, cell) ?: return
+        // Keep large character reactions centered on the same fixed physical yard geometry as
+        // the board/FX layers. Do not reintroduce logical 3/12-cell anchors here.
+        val anchor =
+            LudoPawsFxBoardGeometry
+                .yardReactionAnchor(
+                    color = player.color,
+                    cell = cell,
+                )
+                ?: return
         val cue = reaction.animationCue
         val plan = LudoPawsFxPolicy.plan(cue, reducedMotion)
         val alpha = ((1f - progress) * 255f).toInt().coerceIn(0, 255)
@@ -413,18 +421,6 @@ internal class LudoPawsCharacterReactionOverlayView(
                     context.getDrawable(id)?.mutate()
                 }.getOrNull()
             }
-        }
-
-    private fun yardReactionAnchor(
-        color: String,
-        cell: Float,
-    ): Pair<Float, Float>? =
-        when (color) {
-            "RED" -> 3.0f * cell to 3.0f * cell
-            "GREEN" -> 12.0f * cell to 3.0f * cell
-            "YELLOW" -> 12.0f * cell to 12.0f * cell
-            "BLUE" -> 3.0f * cell to 12.0f * cell
-            else -> null
         }
 
     private fun playerColor(color: String): Int =
