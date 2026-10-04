@@ -160,9 +160,9 @@ private fun OfflineGameActivity.addPlayerSlot(
             LinearLayout.LayoutParams(
                 dp(
                     if (isCompactSetup()) {
-                        138
+                        108
                     } else {
-                        158
+                        124
                     },
                 ),
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -255,24 +255,24 @@ private fun OfflineGameActivity.activeDiceControl(
         LinearLayout.LayoutParams(
             dp(
                 if (isCompactSetup()) {
-                    56
+                    52
                 } else {
-                    62
+                    58
                 },
             ),
             dp(
                 if (isCompactSetup()) {
-                    56
+                    52
                 } else {
-                    62
+                    58
                 },
             ),
         ).apply {
             setMargins(
-                dp(7),
+                dp(4),
                 0,
-                dp(7),
-                dp(14),
+                dp(4),
+                dp(12),
             )
         }
 
