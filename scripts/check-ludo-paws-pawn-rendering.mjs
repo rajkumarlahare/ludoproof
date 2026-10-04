@@ -72,6 +72,21 @@ requireText(
   "Phase 5 animal overlay must follow token movement animation.",
 );
 requireText(
+  board,
+  "movementHopScale",
+  "Gameplay pawn movement must keep the per-cell frog-hop scale pulse.",
+);
+requireText(
+  board,
+  "hopHeight",
+  "Gameplay pawn movement must use a visible take-off/landing arc instead of rail-like gliding.",
+);
+requireText(
+  board,
+  "reducedMotionEnabled",
+  "Gameplay pawn hop must respect the reduced-motion accessibility setting.",
+);
+requireText(
   layout,
   "radiusScale",
   "Phase 5 pawn sizing policy is missing.",
