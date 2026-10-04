@@ -1,6 +1,7 @@
 package com.ludoproof.game.feature.team.data.remote
 
 import com.ludoproof.game.BuildConfig
+import com.ludoproof.game.feature.characters.data.local.LudoPawsCharacterRuntime
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -16,13 +17,15 @@ class TeamMatchmakingApi(
         profileToken: String,
         displayName: String,
         clientRequestId: String,
+        characterId: String = LudoPawsCharacterRuntime.selectedCharacterId(),
     ): JSONObject =
         request(
             path = "/api/team-matchmaking/search",
             profileToken = profileToken,
             body = JSONObject()
                 .put("displayName", displayName)
-                .put("clientRequestId", clientRequestId),
+                .put("clientRequestId", clientRequestId)
+                .put("characterId", characterId),
         )
 
     fun status(
