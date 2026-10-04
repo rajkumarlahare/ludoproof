@@ -28,7 +28,7 @@ const storeActivity = read(
   "android/app/src/main/java/com/ludoproof/game/feature/store/presentation/StoreActivity.kt",
 );
 const buildGradle = read("android/app/build.gradle.kts");
-const wrangler = read("server/wrangler.toml");
+const wrangler = read("server/wrangler.json");
 
 requireText(
   strings,
@@ -137,7 +137,7 @@ requireText(
 );
 requireText(
   wrangler,
-  'name = "ludoproof-game-api"',
+  '"name": "ludoproof-game-api"',
   "Phase 15 must not rename the deployed Cloudflare Worker.",
 );
 
