@@ -30,6 +30,11 @@ const reactiveBoardPath =
 const reactiveBoard = fs.existsSync(reactiveBoardPath)
   ? read(reactiveBoardPath)
   : "";
+const characterStatePath =
+  "android/app/src/main/java/com/ludoproof/game/feature/offline/presentation/state/OfflineCharacterPresentationState.kt";
+const characterState = fs.existsSync(characterStatePath)
+  ? read(characterStatePath)
+  : "";
 
 requireText(
   board,
@@ -86,11 +91,17 @@ if (!directHost && !reactiveHost) {
   );
 }
 
-requireText(
-  controls,
-  ".loadActive()",
-  "Offline gameplay must consume the persisted active character assignment.",
-);
+const consumesPersistedCharacterAssignment =
+  controls.includes(".loadActive()") ||
+  (controls.includes("resolveOfflineCharacterIds") &&
+    characterState.includes(".loadActive()"));
+
+if (!consumesPersistedCharacterAssignment) {
+  throw new Error(
+    "Offline gameplay must consume the persisted active character assignment directly or through the repaired character resolver.",
+  );
+}
+
 requireText(
   controls,
   "characterIdsBySeat",
