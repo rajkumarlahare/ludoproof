@@ -55,6 +55,10 @@ class CharacterSelectionStore(
             storedCharacter != resolved.characterId
         ) {
             persist(resolved)
+        } else {
+            LudoPawsCharacterRuntime.update(
+                resolved.characterId,
+            )
         }
         return resolved
     }
@@ -117,6 +121,9 @@ class CharacterSelectionStore(
                 selection.characterId,
             )
             .apply()
+        LudoPawsCharacterRuntime.update(
+            selection.characterId,
+        )
     }
 
     private companion object {
