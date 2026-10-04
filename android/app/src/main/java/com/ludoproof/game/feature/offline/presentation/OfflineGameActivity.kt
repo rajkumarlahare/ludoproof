@@ -14,9 +14,11 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import com.ludoproof.game.feature.characters.data.local.CharacterSelectionStore
+import com.ludoproof.game.feature.offline.data.local.OfflineCharacterSetupStore
 import com.ludoproof.game.ui.offline.common.*
-import com.ludoproof.game.ui.offline.setup.*
 import com.ludoproof.game.ui.offline.gameplay.*
+import com.ludoproof.game.ui.offline.setup.*
 import com.ludoproof.game.feature.offline.*
 
 class OfflineGameActivity : ComponentActivity() {
@@ -66,6 +68,14 @@ class OfflineGameActivity : ComponentActivity() {
         get() =
             session.engine
 
+    internal val characterSelectionStore by lazy {
+        CharacterSelectionStore(this)
+    }
+
+    internal val offlineCharacterSetupStore by lazy {
+        OfflineCharacterSetupStore(this)
+    }
+
     internal val setupStateHolder = OfflineSetupStateHolder()
 
     internal var selectedPlayers: Int
@@ -75,8 +85,15 @@ class OfflineGameActivity : ComponentActivity() {
     internal var selectedColor: String
         get() = setupStateHolder.value.selectedColor
         set(value) { setupStateHolder.update { it.copy(selectedColor = value) } }
+
+    internal var selectedCharacterSlot: Int = 0
+    internal var selectedCharacterIds: List<String> = emptyList()
+
     internal var playerButtons: Map<Int, Button> = emptyMap()
     internal var colorButtons: Map<String, Button> = emptyMap()
+    internal var characterSlotButtons: Map<Int, Button> = emptyMap()
+    internal var characterCards: Map<String, LinearLayout> = emptyMap()
+    internal var characterSummaryText: TextView? = null
 
     internal var boardView: LudoBoardView? = null
     internal var diceView: DiceView? = null
@@ -104,6 +121,8 @@ class OfflineGameActivity : ComponentActivity() {
                 }
             },
         )
+
+        initializeCharacterSetup()
 
         if (
             shouldResumeSavedGame &&
@@ -138,6 +157,12 @@ class OfflineGameActivity : ComponentActivity() {
         infoText =
             null
         statusText =
+            null
+        characterSlotButtons =
+            emptyMap()
+        characterCards =
+            emptyMap()
+        characterSummaryText =
             null
     }
 
