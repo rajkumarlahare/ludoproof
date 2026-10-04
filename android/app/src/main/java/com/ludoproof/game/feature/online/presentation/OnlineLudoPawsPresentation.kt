@@ -306,6 +306,7 @@ internal object OnlineLudoPawsPresentation {
         }
         val keep =
             host.consumedFeedbackKeys
+                .toList()
                 .takeLast(MAX_FEEDBACK_KEYS / 2)
         host.consumedFeedbackKeys.clear()
         host.consumedFeedbackKeys.addAll(keep)
