@@ -5,7 +5,11 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import com.ludoproof.game.R
+import kotlin.math.max
 
 object GameMusicController {
     private var appForeground = false
@@ -13,6 +17,26 @@ object GameMusicController {
     private var audioManager: AudioManager? = null
     private var focusRequest: AudioFocusRequest? = null
     private var hasAudioFocus = false
+    private var voiceDuckUntilMillis = 0L
+    private val mainHandler =
+        Handler(
+            Looper.getMainLooper(),
+        )
+
+    private val restoreVolumeRunnable =
+        Runnable {
+            synchronized(this) {
+                if (
+                    SystemClock.elapsedRealtime() >=
+                    voiceDuckUntilMillis
+                ) {
+                    voiceDuckUntilMillis = 0L
+                    applyCurrentVolume()
+                } else {
+                    scheduleDuckRestore()
+                }
+            }
+        }
 
     private val focusListener =
         AudioManager.OnAudioFocusChangeListener { change ->
@@ -20,7 +44,7 @@ object GameMusicController {
                 when (change) {
                     AudioManager.AUDIOFOCUS_GAIN -> {
                         hasAudioFocus = true
-                        player?.setVolume(MUSIC_VOLUME, MUSIC_VOLUME)
+                        applyCurrentVolume()
                         if (
                             appForeground &&
                             player?.isPlaying == false
@@ -32,7 +56,10 @@ object GameMusicController {
                     }
 
                     AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK ->
-                        player?.setVolume(DUCK_VOLUME, DUCK_VOLUME)
+                        player?.setVolume(
+                            FOCUS_DUCK_VOLUME,
+                            FOCUS_DUCK_VOLUME,
+                        )
 
                     AudioManager.AUDIOFOCUS_LOSS,
                     AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
@@ -56,6 +83,10 @@ object GameMusicController {
     @Synchronized
     fun onAppBackground() {
         appForeground = false
+        voiceDuckUntilMillis = 0L
+        mainHandler.removeCallbacks(
+            restoreVolumeRunnable,
+        )
         runCatching {
             player?.pause()
         }
@@ -69,8 +100,33 @@ object GameMusicController {
         sync(context.applicationContext)
     }
 
+    /**
+     * Temporarily lowers music under an animal call or spoken fallback without
+     * surrendering the app's existing game-audio focus ownership.
+     */
+    @Synchronized
+    fun duckForVoice(
+        durationMillis: Long,
+    ) {
+        if (durationMillis <= 0L) {
+            return
+        }
+        voiceDuckUntilMillis =
+            max(
+                voiceDuckUntilMillis,
+                SystemClock.elapsedRealtime() +
+                    durationMillis,
+            )
+        applyCurrentVolume()
+        scheduleDuckRestore()
+    }
+
     @Synchronized
     fun release() {
+        mainHandler.removeCallbacks(
+            restoreVolumeRunnable,
+        )
+        voiceDuckUntilMillis = 0L
         abandonFocus()
         runCatching {
             player?.release()
@@ -112,7 +168,7 @@ object GameMusicController {
             return
         }
 
-        player?.setVolume(MUSIC_VOLUME, MUSIC_VOLUME)
+        applyCurrentVolume()
         if (player?.isPlaying == false) {
             runCatching {
                 player?.start()
@@ -134,7 +190,10 @@ object GameMusicController {
             )
                 ?.apply {
                     isLooping = true
-                    setVolume(MUSIC_VOLUME, MUSIC_VOLUME)
+                    setVolume(
+                        currentTargetVolume(),
+                        currentTargetVolume(),
+                    )
                 }
     }
 
@@ -181,6 +240,42 @@ object GameMusicController {
         return hasAudioFocus
     }
 
+    private fun scheduleDuckRestore() {
+        mainHandler.removeCallbacks(
+            restoreVolumeRunnable,
+        )
+        val remaining =
+            voiceDuckUntilMillis -
+                SystemClock.elapsedRealtime()
+        if (remaining > 0L) {
+            mainHandler.postDelayed(
+                restoreVolumeRunnable,
+                remaining + 20L,
+            )
+        }
+    }
+
+    private fun currentTargetVolume(): Float =
+        if (
+            SystemClock.elapsedRealtime() <
+            voiceDuckUntilMillis
+        ) {
+            VOICE_DUCK_VOLUME
+        } else {
+            MUSIC_VOLUME
+        }
+
+    private fun applyCurrentVolume() {
+        val volume =
+            currentTargetVolume()
+        runCatching {
+            player?.setVolume(
+                volume,
+                volume,
+            )
+        }
+    }
+
     private fun abandonFocus() {
         val manager = audioManager
         val request = focusRequest
@@ -197,5 +292,6 @@ object GameMusicController {
     }
 
     private const val MUSIC_VOLUME = .16f
-    private const val DUCK_VOLUME = .05f
+    private const val VOICE_DUCK_VOLUME = .075f
+    private const val FOCUS_DUCK_VOLUME = .05f
 }
