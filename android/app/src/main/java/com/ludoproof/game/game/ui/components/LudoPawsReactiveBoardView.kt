@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.AttributeSet
 import android.widget.FrameLayout
 import com.ludoproof.game.feature.characters.data.audio.LudoPawsVoicePlayer
+import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsIdleReactionPolicy
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReactionEngine
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import kotlin.math.min
@@ -14,7 +15,8 @@ import kotlin.math.roundToInt
  *
  * Authoritative gameplay remains inside the existing board/engine stack. Phase
  * 10 presentation layers add capture-return pawn motion, board particles/token
- * FX, and larger character personality reactions without mutating game state.
+ * FX, timed idle personality, and larger character reactions without mutating
+ * game state.
  */
 class LudoPawsReactiveBoardView @JvmOverloads constructor(
     context: Context,
@@ -32,7 +34,18 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         LudoPawsVoicePlayer(context)
     private val settingsStore =
         GameSettingsStore(context)
+
     private var previousSnapshot: MatchSnapshot? = null
+    private var currentSnapshot: MatchSnapshot? = null
+    private var currentCharacterIdsBySeat: List<String> = emptyList()
+    private var meaningfulStateKey: String? = null
+    private var lastMeaningfulChangeAtMillis: Long = monotonicMillis()
+    private var lastIdleReactionKey: String? = null
+
+    private val idleReactionRunnable =
+        Runnable {
+            playIdleReactionIfEligible()
+        }
 
     var onTokenSelected: ((Int) -> Unit)?
         get() = board.onTokenSelected
@@ -80,6 +93,16 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         perspectiveColor: String? = null,
         characterIdsBySeat: List<String> = emptyList(),
     ) {
+        val nowMillis =
+            monotonicMillis()
+        updateIdleClock(
+            state = state,
+            nowMillis = nowMillis,
+        )
+        currentSnapshot = state
+        currentCharacterIdsBySeat =
+            characterIdsBySeat.take(4)
+
         val previous = previousSnapshot
         val reactions =
             LudoPawsReactionEngine.detect(
@@ -117,20 +140,15 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         )
         previousSnapshot = state
 
-        if (reactions.isNotEmpty()) {
-            gameFxOverlay.play(
-                reactions = reactions,
-                reducedMotion = reducedMotion,
-            )
-            characterReactionOverlay.play(
-                reactions = reactions,
-                reducedMotion = reducedMotion,
-            )
-            voicePlayer.playHighestPriority(
-                reactions = reactions,
-                characterIdsBySeat = characterIdsBySeat,
-            )
-        }
+        playReactions(
+            reactions = reactions,
+            characterIdsBySeat = characterIdsBySeat,
+            reducedMotion = reducedMotion,
+        )
+        scheduleIdleReaction(
+            state = state,
+            nowMillis = nowMillis,
+        )
     }
 
     fun reloadStyle() {
@@ -138,11 +156,16 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
+        removeCallbacks(idleReactionRunnable)
         captureReturnOverlay.stop()
         gameFxOverlay.stop()
         characterReactionOverlay.stop()
         voicePlayer.shutdown()
         previousSnapshot = null
+        currentSnapshot = null
+        currentCharacterIdsBySeat = emptyList()
+        meaningfulStateKey = null
+        lastIdleReactionKey = null
         super.onDetachedFromWindow()
     }
 
@@ -157,6 +180,136 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         val exact = MeasureSpec.makeMeasureSpec(size, MeasureSpec.EXACTLY)
         super.onMeasure(exact, exact)
     }
+
+    private fun updateIdleClock(
+        state: MatchSnapshot?,
+        nowMillis: Long,
+    ) {
+        val nextKey =
+            LudoPawsIdleReactionPolicy
+                .meaningfulStateKey(state)
+
+        if (
+            state == null ||
+            state.status != "ACTIVE"
+        ) {
+            removeCallbacks(idleReactionRunnable)
+            meaningfulStateKey = nextKey
+            lastMeaningfulChangeAtMillis = nowMillis
+            lastIdleReactionKey = null
+            return
+        }
+
+        if (nextKey != meaningfulStateKey) {
+            meaningfulStateKey = nextKey
+            lastMeaningfulChangeAtMillis = nowMillis
+            lastIdleReactionKey = null
+        }
+    }
+
+    private fun scheduleIdleReaction(
+        state: MatchSnapshot?,
+        nowMillis: Long,
+    ) {
+        removeCallbacks(idleReactionRunnable)
+        val delay =
+            LudoPawsIdleReactionPolicy
+                .delayUntilEligibleMillis(
+                    state = state,
+                    lastMeaningfulChangeAtMillis =
+                        lastMeaningfulChangeAtMillis,
+                    nowMillis = nowMillis,
+                )
+                ?: return
+        postDelayed(
+            idleReactionRunnable,
+            delay,
+        )
+    }
+
+    private fun playIdleReactionIfEligible() {
+        val state =
+            currentSnapshot
+                ?: return
+        val nowMillis =
+            monotonicMillis()
+        val remaining =
+            LudoPawsIdleReactionPolicy
+                .delayUntilEligibleMillis(
+                    state = state,
+                    lastMeaningfulChangeAtMillis =
+                        lastMeaningfulChangeAtMillis,
+                    nowMillis = nowMillis,
+                )
+                ?: return
+        if (remaining > 0L) {
+            postDelayed(
+                idleReactionRunnable,
+                remaining,
+            )
+            return
+        }
+
+        val idleKey =
+            LudoPawsIdleReactionPolicy
+                .idleReactionKey(state)
+                ?: return
+        if (idleKey == lastIdleReactionKey) {
+            return
+        }
+
+        val reactions =
+            LudoPawsReactionEngine
+                .deriveIdle(
+                    current = state,
+                    nowMillis = nowMillis,
+                    lastMeaningfulChangeAtMillis =
+                        lastMeaningfulChangeAtMillis,
+                    thresholdMillis =
+                        LudoPawsIdleReactionPolicy
+                            .IDLE_THRESHOLD_MILLIS,
+                )
+        if (reactions.isEmpty()) {
+            return
+        }
+        lastIdleReactionKey = idleKey
+
+        playReactions(
+            reactions = reactions,
+            characterIdsBySeat =
+                currentCharacterIdsBySeat,
+            reducedMotion =
+                settingsStore
+                    .snapshot()
+                    .reducedMotionEnabled,
+        )
+    }
+
+    private fun playReactions(
+        reactions: List<com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction>,
+        characterIdsBySeat: List<String>,
+        reducedMotion: Boolean,
+    ) {
+        if (reactions.isEmpty()) {
+            return
+        }
+        gameFxOverlay.play(
+            reactions = reactions,
+            reducedMotion = reducedMotion,
+        )
+        characterReactionOverlay.play(
+            reactions = reactions,
+            reducedMotion = reducedMotion,
+        )
+        voicePlayer.playHighestPriority(
+            reactions = reactions,
+            characterIdsBySeat = characterIdsBySeat,
+        )
+    }
+
+    private fun monotonicMillis(): Long =
+        System.nanoTime() /
+            1_000_000L
 
     private fun density(value: Float): Float =
         value * resources.displayMetrics.density
