@@ -24,7 +24,6 @@ object LudoPawsSoundPool {
     )
 
     private var pool: SoundPool? = null
-    private var appContext: Context? = null
     private val samplesByResource = mutableMapOf<Int, Sample>()
     private val resourceBySoundId = mutableMapOf<Int, Int>()
     private val readySoundIds = mutableSetOf<Int>()
@@ -38,7 +37,7 @@ object LudoPawsSoundPool {
         rate: Float = 1f,
     ): Boolean {
         val soundPool =
-            ensurePool(context.applicationContext)
+            ensurePool()
                 ?: return false
         val sample =
             samplesByResource[resourceId]
@@ -96,16 +95,13 @@ object LudoPawsSoundPool {
             pool?.release()
         }
         pool = null
-        appContext = null
         samplesByResource.clear()
         resourceBySoundId.clear()
         readySoundIds.clear()
         pendingByResource.clear()
     }
 
-    private fun ensurePool(
-        context: Context,
-    ): SoundPool? {
+    private fun ensurePool(): SoundPool? {
         pool?.let {
             return it
         }
@@ -131,11 +127,7 @@ object LudoPawsSoundPool {
                 .getOrNull()
                 ?: return null
 
-        created.setOnLoadCompleteListener {
-                soundPool,
-                soundId,
-                status,
-            ->
+        created.setOnLoadCompleteListener { soundPool, soundId, status ->
             synchronized(this) {
                 if (
                     soundPool !== pool ||
@@ -159,7 +151,6 @@ object LudoPawsSoundPool {
             }
         }
 
-        appContext = context
         pool = created
         return created
     }
@@ -210,8 +201,7 @@ object LudoPawsSoundPool {
             pendingByResource
                 .remove(resourceId)
                 .orEmpty()
-        pending.forEach {
-                play ->
+        pending.forEach { play ->
             playNow(
                 soundPool = soundPool,
                 soundId = sample.soundId,
