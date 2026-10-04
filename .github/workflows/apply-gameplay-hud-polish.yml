@@ -21,6 +21,7 @@ jobs:
 
       - name: Apply gameplay HUD polish
         run: |
+          python3 scripts/repair-gameplay-hud-patcher.py
           python3 scripts/apply-gameplay-hud-polish.py
           git diff --check
 
@@ -63,6 +64,7 @@ jobs:
         run: |
           rm .github/workflows/apply-gameplay-hud-polish.yml
           rm scripts/apply-gameplay-hud-polish.py
+          rm scripts/repair-gameplay-hud-patcher.py
           git diff --check
           git config user.name "rekixo-ui-bot"
           git config user.email "ai@rekixo.com"
