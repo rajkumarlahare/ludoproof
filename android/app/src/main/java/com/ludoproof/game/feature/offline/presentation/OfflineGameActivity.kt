@@ -15,6 +15,7 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import com.ludoproof.game.feature.characters.data.local.CharacterSelectionStore
+import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsFeedbackLedger
 import com.ludoproof.game.feature.offline.data.local.OfflineCharacterSetupStore
 import com.ludoproof.game.ui.offline.common.*
 import com.ludoproof.game.ui.offline.gameplay.*
@@ -23,6 +24,7 @@ import com.ludoproof.game.feature.offline.*
 
 class OfflineGameActivity : ComponentActivity() {
     internal val handler = Handler(Looper.getMainLooper())
+    internal val feedbackLedger = LudoPawsFeedbackLedger()
 
     internal val gameMode:
         GameMode by lazy {
@@ -143,6 +145,7 @@ class OfflineGameActivity : ComponentActivity() {
         handler.removeCallbacksAndMessages(null)
         computerActionRevision =
             null
+        feedbackLedger.clear()
         activeCharacterMatchId =
             null
         activeCharacterIdsBySeat =
