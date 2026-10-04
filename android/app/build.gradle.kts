@@ -28,6 +28,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0-rc1"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField(
             "String",
@@ -80,6 +81,11 @@ dependencies {
     implementation("androidx.activity:activity:1.13.0")
     implementation("com.android.billingclient:billing:9.1.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
+
+    androidTestImplementation("androidx.test:core-ktx:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
 }
