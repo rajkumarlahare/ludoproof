@@ -70,9 +70,6 @@ class MatchRealtimeClient(
             ?.cancel()
         socket =
             null
-        onConnectionChanged(
-            false,
-        )
 
         val request =
             Request
