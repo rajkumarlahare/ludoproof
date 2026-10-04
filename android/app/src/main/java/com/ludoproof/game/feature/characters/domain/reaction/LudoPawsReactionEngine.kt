@@ -11,17 +11,42 @@ data class LudoPawsReaction(
     val voiceCue: VoiceCue,
     val animationCue: AnimationCue,
     val priority: Int,
+    val matchId: String = "",
+    val eventIndex: Int = -1,
+    val momentType: GameMomentType? = null,
+    val reactionKey: String = "",
 )
 
 /**
- * Presentation reaction adapter for the Phase 7 game-moment detector.
+ * Presentation reaction adapter for the shared game-moment detector.
  *
- * Game moments remain richer than reactions: turn/move/lead events are exposed
- * for panels and later directors, while only moments that should currently make
- * a visible/audible reaction are mapped here.
+ * [derive] is pure and is used by unit tests/domain consumers. [detect] is the
+ * playback entry point used by the UI: it sends derived reactions through the
+ * Phase 8 director so reconnect/re-render duplicates, cooldown spam, priority,
+ * queueing, and interruption policy are handled before animation/voice output.
  */
 object LudoPawsReactionEngine {
+    private val playbackDirector =
+        LudoPawsReactionDirector()
+
     fun detect(
+        previous: MatchSnapshot?,
+        current: MatchSnapshot?,
+    ): List<LudoPawsReaction> {
+        val raw =
+            derive(
+                previous = previous,
+                current = current,
+            )
+        return playbackDirector
+            .submit(
+                reactions = raw,
+                nowMillis = monotonicMillis(),
+            )
+            .reactions
+    }
+
+    fun derive(
         previous: MatchSnapshot?,
         current: MatchSnapshot?,
     ): List<LudoPawsReaction> =
@@ -31,16 +56,16 @@ object LudoPawsReactionEngine {
                 current = current,
             )
             .mapNotNull(::toReaction)
-            .distinctBy {
-                listOf(
-                    it.playerId,
-                    it.tokenIndex?.toString().orEmpty(),
-                    it.voiceCue.name,
-                ).joinToString(":")
-            }
+            .distinctBy(
+                LudoPawsReaction::reactionKey,
+            )
             .sortedByDescending(
                 LudoPawsReaction::priority,
             )
+
+    internal fun resetPlaybackStateForTests() {
+        playbackDirector.clear()
+    }
 
     private fun toReaction(
         moment: LudoPawsGameMoment,
@@ -159,5 +184,22 @@ object LudoPawsReactionEngine {
             voiceCue = voiceCue,
             animationCue = animationCue,
             priority = priority,
+            matchId = moment.matchId,
+            eventIndex = moment.eventIndex,
+            momentType = moment.type,
+            reactionKey =
+                listOf(
+                    moment.matchId,
+                    moment.eventIndex.toString(),
+                    moment.type.name,
+                    moment.playerId,
+                    moment.tokenIndex
+                        ?.toString()
+                        .orEmpty(),
+                ).joinToString(":"),
         )
+
+    private fun monotonicMillis(): Long =
+        System.nanoTime() /
+            1_000_000L
 }
