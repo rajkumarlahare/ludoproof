@@ -13,8 +13,8 @@ import kotlin.math.roundToInt
  * Shared Ludo Paws board shell.
  *
  * Authoritative gameplay remains inside the existing board/engine stack. Phase
- * 10 adds two presentation-only layers above it: one for board particles and
- * token-transition FX, and one for larger character personality reactions.
+ * 10 presentation layers add capture-return pawn motion, board particles/token
+ * FX, and larger character personality reactions without mutating game state.
  */
 class LudoPawsReactiveBoardView @JvmOverloads constructor(
     context: Context,
@@ -22,6 +22,8 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
 ) : FrameLayout(context, attrs) {
     private val board =
         LudoPawsBoardView(context)
+    private val captureReturnOverlay =
+        LudoPawsCaptureReturnOverlayView(context)
     private val gameFxOverlay =
         LudoPawsGameFxOverlayView(context)
     private val characterReactionOverlay =
@@ -44,6 +46,13 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
 
         addView(
             board,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT,
+            ),
+        )
+        addView(
+            captureReturnOverlay,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.MATCH_PARENT,
@@ -88,6 +97,13 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             perspectiveColor = perspectiveColor,
             characterIdsBySeat = characterIdsBySeat,
         )
+        captureReturnOverlay.bind(
+            previous = previous,
+            current = state,
+            perspectiveColor = perspectiveColor,
+            characterIdsBySeat = characterIdsBySeat,
+            reducedMotion = reducedMotion,
+        )
         gameFxOverlay.bind(
             previous = previous,
             current = state,
@@ -122,6 +138,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
+        captureReturnOverlay.stop()
         gameFxOverlay.stop()
         characterReactionOverlay.stop()
         voicePlayer.shutdown()
