@@ -12,6 +12,7 @@ import com.ludoproof.game.feature.profile.data.local.ProfileStore
 import com.ludoproof.game.feature.profile.presentation.components.profileBadgesPanel
 import com.ludoproof.game.feature.profile.presentation.components.profileIdentityPanel
 import com.ludoproof.game.feature.profile.presentation.components.profileModeStatsPanel
+import com.ludoproof.game.feature.profile.presentation.components.profilePawIdentityPanel
 import com.ludoproof.game.feature.profile.presentation.components.profilePurchasesPanel
 import com.ludoproof.game.feature.profile.presentation.components.profileTopBar
 
@@ -30,6 +31,11 @@ class ProfileActivity : Activity() {
             .configureWindow(
                 this,
             )
+        renderProfile()
+    }
+
+    override fun onRestart() {
+        super.onRestart()
         renderProfile()
     }
 
@@ -129,6 +135,12 @@ class ProfileActivity : Activity() {
             ),
             sectionParams(
                 14,
+            ),
+        )
+        content.addView(
+            profilePawIdentityPanel(),
+            sectionParams(
+                12,
             ),
         )
         content.addView(

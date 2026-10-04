@@ -101,6 +101,8 @@ jobs:
         run: node scripts/check-ludo-paws-character-schema.mjs
       - name: Ludo Paws animal store gate
         run: node scripts/check-ludo-paws-animal-store.mjs
+      - name: Ludo Paws social and Fair Dice hardening gate
+        run: node scripts/check-ludo-paws-phase15.mjs
       - name: Android 16 release gate
         run: node scripts/android16-release-check.mjs
       - name: Android unit tests

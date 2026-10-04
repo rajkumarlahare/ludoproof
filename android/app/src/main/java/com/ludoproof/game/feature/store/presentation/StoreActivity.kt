@@ -11,8 +11,8 @@ import android.widget.ScrollView
 import com.ludoproof.game.BuildConfig
 import com.ludoproof.game.LudoProofTheme
 import com.ludoproof.game.feature.store.data.billing.GooglePlayBillingGateway
-import com.ludoproof.game.feature.store.data.local.GemWalletStore
 import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
+import com.ludoproof.game.feature.store.data.local.GemWalletStore
 import com.ludoproof.game.feature.store.domain.model.StoreBillingProduct
 import com.ludoproof.game.feature.store.domain.model.StoreTab
 import com.ludoproof.game.feature.store.presentation.components.storeContent
@@ -61,6 +61,9 @@ class StoreActivity :
             .configureWindow(
                 this,
             )
+        selectedTab =
+            requestedInitialTab()
+                ?: StoreTab.GEMS
         renderStore()
     }
 
@@ -117,7 +120,7 @@ class StoreActivity :
             Map<
                 String,
                 StoreBillingProduct,
-                >,
+            >,
     ) {
         runOnUiThread {
             if (
@@ -186,6 +189,22 @@ class StoreActivity :
                 this,
                 value,
             )
+
+    private fun requestedInitialTab(): StoreTab? {
+        val requested =
+            intent
+                ?.getStringExtra(
+                    EXTRA_INITIAL_TAB,
+                )
+                ?.trim()
+                ?.uppercase()
+                ?: return null
+        return StoreTab.entries
+            .firstOrNull {
+                it.name ==
+                    requested
+            }
+    }
 
     private fun canRenderStoreUi(): Boolean =
         !isFinishing &&
@@ -336,5 +355,10 @@ class StoreActivity :
                 null,
             )
             .show()
+    }
+
+    companion object {
+        const val EXTRA_INITIAL_TAB =
+            "ludo_paws_store_initial_tab"
     }
 }
