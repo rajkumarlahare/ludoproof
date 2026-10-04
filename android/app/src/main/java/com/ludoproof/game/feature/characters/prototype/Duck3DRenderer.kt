@@ -98,44 +98,11 @@ internal class Duck3DRenderer : GLSurfaceView.Renderer {
 
         val pose = currentPose()
 
-        drawPart(
-            parent = identityMatrix(),
-            translateX = 0f,
-            translateY = -1.12f,
-            translateZ = 0f,
-            scaleX = 0.92f,
-            scaleY = 0.045f,
-            scaleZ = 0.58f,
-            color = floatArrayOf(0f, 0f, 0f, 0.28f),
-        )
-
         Matrix.setIdentityM(root, 0)
         Matrix.translateM(root, 0, 0f, pose.liftY, 0f)
         Matrix.rotateM(root, 0, pose.bodyYawDegrees, 0f, 1f, 0f)
 
-        // Rounded Ludo pawn base.
-        drawPart(
-            parent = root,
-            translateX = 0f,
-            translateY = -0.92f,
-            translateZ = 0f,
-            scaleX = 0.82f,
-            scaleY = 0.20f,
-            scaleZ = 0.72f,
-            color = YELLOW_BASE,
-        )
-        drawPart(
-            parent = root,
-            translateX = 0f,
-            translateY = -0.73f,
-            translateZ = 0f,
-            scaleX = 0.56f,
-            scaleY = 0.18f,
-            scaleZ = 0.48f,
-            color = YELLOW_HIGHLIGHT,
-        )
-
-        // Feet.
+        // Feet are now the lowest visible part of the character.
         drawPart(
             parent = root,
             translateX = -0.25f,
@@ -343,11 +310,6 @@ internal class Duck3DRenderer : GLSurfaceView.Renderer {
         )
     }
 
-    private fun identityMatrix(): FloatArray =
-        FloatArray(16).also {
-            Matrix.setIdentityM(it, 0)
-        }
-
     private fun createProgram(
         vertexSource: String,
         fragmentSource: String,
@@ -504,8 +466,6 @@ internal class Duck3DRenderer : GLSurfaceView.Renderer {
     private companion object {
         val DUCK_YELLOW = floatArrayOf(1.00f, 0.78f, 0.08f, 1f)
         val BELLY_YELLOW = floatArrayOf(1.00f, 0.88f, 0.34f, 1f)
-        val YELLOW_BASE = floatArrayOf(0.98f, 0.67f, 0.02f, 1f)
-        val YELLOW_HIGHLIGHT = floatArrayOf(1.00f, 0.82f, 0.10f, 1f)
         val ORANGE = floatArrayOf(1.00f, 0.42f, 0.03f, 1f)
         val EYE_DARK = floatArrayOf(0.025f, 0.035f, 0.045f, 1f)
         val WHITE = floatArrayOf(1f, 1f, 1f, 1f)
