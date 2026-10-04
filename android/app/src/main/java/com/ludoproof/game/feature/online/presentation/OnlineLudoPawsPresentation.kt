@@ -9,6 +9,7 @@ import com.ludoproof.game.LudoPawsPlayerCardView
 import com.ludoproof.game.LudoPawsReactiveBoardView
 import com.ludoproof.game.MainActivity
 import com.ludoproof.game.MatchSnapshot
+import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsFeedbackLedger
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReactionEngine
 import com.ludoproof.game.feature.online.domain.OnlineLudoPawsCharacterPolicy
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
@@ -28,8 +29,7 @@ internal object OnlineLudoPawsPresentation {
         val board: LudoPawsReactiveBoardView,
         val railScroll: HorizontalScrollView,
         val rail: LinearLayout,
-        var matchId: String? = null,
-        val consumedFeedbackKeys: MutableSet<String> = linkedSetOf(),
+        val feedbackLedger: LudoPawsFeedbackLedger = LudoPawsFeedbackLedger(),
     )
 
     fun render(
@@ -43,11 +43,6 @@ internal object OnlineLudoPawsPresentation {
                     .also {
                         activity.boardFrame.tag = it
                     }
-
-        if (host.matchId != current.matchId) {
-            host.matchId = current.matchId
-            host.consumedFeedbackKeys.clear()
-        }
 
         val characterIdsBySeat =
             OnlineLudoPawsCharacterPolicy
@@ -87,6 +82,7 @@ internal object OnlineLudoPawsPresentation {
         val host =
             host(activity)
                 ?: return
+        host.feedbackLedger.clear()
         host.board.bind(
             state = null,
             playerId = null,
@@ -233,25 +229,24 @@ internal object OnlineLudoPawsPresentation {
             (
                 previousPending == null ||
                     previousPending.eventIndex != pending.eventIndex
-                )
+                ) &&
+            host.feedbackLedger.once(
+                matchId = current.matchId,
+                key = "ROLL:${pending.eventIndex}",
+            )
         ) {
-            val key =
-                "${current.matchId}:${pending.eventIndex}:ROLL_SFX"
-            if (host.consumedFeedbackKeys.add(key)) {
-                GameSoundFeedback.roll(activity)
-            }
+            GameSoundFeedback.roll(activity)
         }
 
         val reactions =
-            LudoPawsReactionEngine
-                .derive(
-                    previous = previous,
-                    current = current,
+            host.feedbackLedger
+                .filterReactions(
+                    LudoPawsReactionEngine
+                        .derive(
+                            previous = previous,
+                            current = current,
+                        ),
                 )
-                .filter {
-                    host.consumedFeedbackKeys
-                        .add("REACTION:${it.reactionKey}")
-                }
 
         if (reactions.isNotEmpty()) {
             GameSoundFeedback.reaction(
@@ -273,14 +268,15 @@ internal object OnlineLudoPawsPresentation {
                     .lastOrNull()
                     ?.eventIndex
                     ?: current.randomEventIndex
-            val key =
-                "${current.matchId}:$eventIndex:MOVE_SFX"
-            if (host.consumedFeedbackKeys.add(key)) {
+            if (
+                host.feedbackLedger.once(
+                    matchId = current.matchId,
+                    key = "MOVE:$eventIndex",
+                )
+            ) {
                 GameSoundFeedback.move(activity)
             }
         }
-
-        trimConsumed(host)
     }
 
     private fun hasTokenMovement(
@@ -298,20 +294,6 @@ internal object OnlineLudoPawsPresentation {
             before.tokens != player.tokens
         }
 
-    private fun trimConsumed(
-        host: Host,
-    ) {
-        if (host.consumedFeedbackKeys.size <= MAX_FEEDBACK_KEYS) {
-            return
-        }
-        val keep =
-            host.consumedFeedbackKeys
-                .toList()
-                .takeLast(MAX_FEEDBACK_KEYS / 2)
-        host.consumedFeedbackKeys.clear()
-        host.consumedFeedbackKeys.addAll(keep)
-    }
-
     private fun dp(
         activity: MainActivity,
         value: Int,
@@ -321,6 +303,4 @@ internal object OnlineLudoPawsPresentation {
                 activity.resources.displayMetrics.density
             )
             .roundToInt()
-
-    private const val MAX_FEEDBACK_KEYS = 256
 }
