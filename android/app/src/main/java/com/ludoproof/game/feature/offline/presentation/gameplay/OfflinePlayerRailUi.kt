@@ -122,14 +122,10 @@ private fun OfflineGameActivity.addPlayerSlot(
             player.playerId == activePlayer?.playerId &&
                 state.status == "ACTIVE"
         val characterId =
-            offlineCharacterSetupStore
-                .loadActive()
-                ?.takeIf {
-                    it.mode == gameMode &&
-                        it.playerCount == state.players.size
-                }
-                ?.characterIds
-                ?.getOrNull(player.seat)
+            activeCharacterIdsBySeat
+                .getOrNull(
+                    player.seat,
+                )
 
         if (
             alignEnd &&
