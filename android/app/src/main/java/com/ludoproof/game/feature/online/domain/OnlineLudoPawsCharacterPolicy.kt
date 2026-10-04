@@ -39,11 +39,8 @@ object OnlineLudoPawsCharacterPolicy {
                     return@forEach
                 }
                 result[player.seat] =
-                    player.characterId
-                        ?.takeIf {
-                            LudoPawsCharacterCatalog.character(it) != null
-                        }
-                        ?: LudoPawsCharacterCatalog.DEFAULT_CHARACTER_ID
+                    LudoPawsCharacterIdentityContract
+                        .resolveRemote(player.characterId)
             }
         }
     }
