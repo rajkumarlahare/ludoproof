@@ -49,22 +49,67 @@ object LudoPawsReactionEngine {
     fun derive(
         previous: MatchSnapshot?,
         current: MatchSnapshot?,
-    ): List<LudoPawsReaction> =
-        LudoPawsGameMomentDetector
-            .detect(
-                previous = previous,
-                current = current,
-            )
-            .mapNotNull(::toReaction)
+    ): List<LudoPawsReaction> {
+        val mapped =
+            LudoPawsGameMomentDetector
+                .detect(
+                    previous = previous,
+                    current = current,
+                )
+                .mapNotNull(::toReaction)
+
+        return alignCapturePair(mapped)
             .distinctBy(
                 LudoPawsReaction::reactionKey,
             )
             .sortedByDescending(
                 LudoPawsReaction::priority,
             )
+    }
 
     internal fun resetPlaybackStateForTests() {
         playbackDirector.clear()
+    }
+
+    private fun alignCapturePair(
+        reactions: List<LudoPawsReaction>,
+    ): List<LudoPawsReaction> {
+        val captureMade =
+            reactions.filter {
+                it.momentType ==
+                    GameMomentType.CAPTURE_MADE
+            }
+        if (captureMade.size != 1) {
+            return reactions
+        }
+
+        val attacker =
+            captureMade.single()
+        return reactions.map {
+                reaction ->
+            if (
+                reaction.momentType ==
+                    GameMomentType.TOKEN_CAPTURED &&
+                reaction.matchId == attacker.matchId
+            ) {
+                reaction.copy(
+                    eventIndex = attacker.eventIndex,
+                    reactionKey =
+                        stableReactionKey(
+                            matchId = reaction.matchId,
+                            eventIndex = attacker.eventIndex,
+                            type =
+                                requireNotNull(
+                                    reaction.momentType,
+                                ),
+                            playerId = reaction.playerId,
+                            tokenIndex = reaction.tokenIndex,
+                        ),
+                )
+            } else {
+                reaction
+            }
+        }
     }
 
     private fun toReaction(
@@ -188,16 +233,31 @@ object LudoPawsReactionEngine {
             eventIndex = moment.eventIndex,
             momentType = moment.type,
             reactionKey =
-                listOf(
-                    moment.matchId,
-                    moment.eventIndex.toString(),
-                    moment.type.name,
-                    moment.playerId,
-                    moment.tokenIndex
-                        ?.toString()
-                        .orEmpty(),
-                ).joinToString(":"),
+                stableReactionKey(
+                    matchId = moment.matchId,
+                    eventIndex = moment.eventIndex,
+                    type = moment.type,
+                    playerId = moment.playerId,
+                    tokenIndex = moment.tokenIndex,
+                ),
         )
+
+    private fun stableReactionKey(
+        matchId: String,
+        eventIndex: Int,
+        type: GameMomentType,
+        playerId: String,
+        tokenIndex: Int?,
+    ): String =
+        listOf(
+            matchId,
+            eventIndex.toString(),
+            type.name,
+            playerId,
+            tokenIndex
+                ?.toString()
+                .orEmpty(),
+        ).joinToString(":")
 
     private fun monotonicMillis(): Long =
         System.nanoTime() /
