@@ -4,6 +4,7 @@ enum class StoreTab(
     val label: String,
 ) {
     GEMS("GEMS"),
+    PAWS("PAWS"),
     BOARD("BOARD"),
     DICE("DICE"),
     AVATAR("AVATAR"),

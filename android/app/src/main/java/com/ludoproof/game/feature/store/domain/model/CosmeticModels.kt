@@ -4,6 +4,7 @@ enum class CosmeticCategory {
     BOARD,
     DICE,
     AVATAR,
+    CHARACTER_PACK,
 }
 
 enum class CosmeticUnlockKind {
@@ -11,6 +12,7 @@ enum class CosmeticUnlockKind {
     GEMS,
     LEVEL,
     REWARDED_ADS,
+    EVENT,
 }
 
 data class StoreCosmetic(
@@ -24,6 +26,9 @@ data class StoreCosmetic(
     val previewSymbol: String,
     val previewPrimary: Int,
     val previewSecondary: Int,
+    val characterPackId: String? = null,
+    val eventKey: String? = null,
+    val contentAvailable: Boolean = true,
 )
 
 enum class CosmeticAcquireResult {
@@ -32,5 +37,7 @@ enum class CosmeticAcquireResult {
     NEED_LEVEL,
     NEED_GEMS,
     NEED_REWARDED_ADS,
+    NEED_EVENT,
+    CONTENT_UNAVAILABLE,
     INVALID,
 }

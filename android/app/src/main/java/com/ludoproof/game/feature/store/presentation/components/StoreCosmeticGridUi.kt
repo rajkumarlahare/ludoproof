@@ -137,10 +137,17 @@ private fun StoreActivity.cosmeticCard(
         background =
             GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(
-                    0xFF164FA3.toInt(),
-                    0xFF0C397D.toInt(),
-                ),
+                if (cosmetic.contentAvailable) {
+                    intArrayOf(
+                        0xFF164FA3.toInt(),
+                        0xFF0C397D.toInt(),
+                    )
+                } else {
+                    intArrayOf(
+                        0xFF34445F.toInt(),
+                        0xFF202D43.toInt(),
+                    )
+                },
             ).apply {
                 cornerRadius =
                     dp(13)
@@ -265,22 +272,22 @@ private fun StoreActivity.cosmeticCard(
                 background =
                     LudoProofTheme
                         .rounded(
-                            if (
-                                selected ||
-                                owned
-                            ) {
-                                0xFF08A849.toInt()
-                            } else {
-                                0xFFE23434.toInt()
+                            when {
+                                !cosmetic.contentAvailable ->
+                                    0xFF52657E.toInt()
+                                selected || owned ->
+                                    0xFF08A849.toInt()
+                                else ->
+                                    0xFFE23434.toInt()
                             },
                             10f,
-                            if (
-                                selected ||
-                                owned
-                            ) {
-                                0xFF40E47B.toInt()
-                            } else {
-                                0xFFFF6D6D.toInt()
+                            when {
+                                !cosmetic.contentAvailable ->
+                                    0xFF8195AE.toInt()
+                                selected || owned ->
+                                    0xFF40E47B.toInt()
+                                else ->
+                                    0xFFFF6D6D.toInt()
                             },
                             1f,
                             this@cosmeticCard,
@@ -354,6 +361,9 @@ private fun StoreActivity.cosmeticActionText(
     selected: Boolean,
 ): String =
     when {
+        !cosmetic.contentAvailable ->
+            "SOON"
+
         selected ->
             "✓"
 
@@ -379,6 +389,10 @@ private fun StoreActivity.cosmeticActionText(
         cosmetic.unlockKind ==
             CosmeticUnlockKind.LEVEL ->
             "UNLOCK"
+
+        cosmetic.unlockKind ==
+            CosmeticUnlockKind.EVENT ->
+            "EVENT"
 
         else ->
             "FREE"

@@ -20,6 +20,9 @@ internal fun StoreActivity.storeContent():
         StoreTab.GEMS ->
             gemsContent()
 
+        StoreTab.PAWS ->
+            pawsCatalogContent()
+
         StoreTab.BOARD ->
             boardCatalogContent()
 

@@ -11,6 +11,8 @@ object StoreCosmeticCatalog {
         "dice_classic"
     const val DEFAULT_AVATAR =
         "avatar_4"
+    const val DEFAULT_CHARACTER_PACK =
+        "character_pack_starter_paws"
 
     val boards =
         listOf(
@@ -51,16 +53,98 @@ object StoreCosmeticCatalog {
             cosmetic("avatar_10","Avatar 10",CosmeticCategory.AVATAR,CosmeticUnlockKind.GEMS,"A10",0xFFE14F7C.toInt(),0xFF79203D.toInt(),gems=500,level=30),
         )
 
+    /**
+     * Only Starter Paws is content-ready today. The remaining offers reserve
+     * stable store IDs and demonstrate every supported progression channel,
+     * but cannot consume gems/progress or become selected until their complete
+     * art/reaction/animation/voice pack is registered in the character catalog.
+     */
+    val characterPacks =
+        listOf(
+            cosmetic(
+                id = DEFAULT_CHARACTER_PACK,
+                title = "STARTER PAWS",
+                category = CosmeticCategory.CHARACTER_PACK,
+                unlockKind = CosmeticUnlockKind.FREE,
+                previewSymbol = "PAW",
+                previewPrimary = 0xFF20A86B.toInt(),
+                previewSecondary = 0xFF075B72.toInt(),
+                characterPackId = "starter_paws",
+            ),
+            cosmetic(
+                id = "character_pack_safari_paws",
+                title = "SAFARI PAWS",
+                category = CosmeticCategory.CHARACTER_PACK,
+                unlockKind = CosmeticUnlockKind.LEVEL,
+                previewSymbol = "SA",
+                previewPrimary = 0xFFE0A12A.toInt(),
+                previewSecondary = 0xFF8A4C18.toInt(),
+                level = 8,
+                characterPackId = "safari_paws",
+                contentAvailable = false,
+            ),
+            cosmetic(
+                id = "character_pack_farm_paws",
+                title = "FARM PAWS",
+                category = CosmeticCategory.CHARACTER_PACK,
+                unlockKind = CosmeticUnlockKind.GEMS,
+                previewSymbol = "FA",
+                previewPrimary = 0xFF5EB34D.toInt(),
+                previewSecondary = 0xFF2B6C36.toInt(),
+                gems = 300,
+                characterPackId = "farm_paws",
+                contentAvailable = false,
+            ),
+            cosmetic(
+                id = "character_pack_cozy_paws",
+                title = "COZY PAWS",
+                category = CosmeticCategory.CHARACTER_PACK,
+                unlockKind = CosmeticUnlockKind.REWARDED_ADS,
+                previewSymbol = "CO",
+                previewPrimary = 0xFF7E74D9.toInt(),
+                previewSecondary = 0xFF463A94.toInt(),
+                ads = 10,
+                characterPackId = "cozy_paws",
+                contentAvailable = false,
+            ),
+            cosmetic(
+                id = "character_pack_wild_paws",
+                title = "WILD PAWS",
+                category = CosmeticCategory.CHARACTER_PACK,
+                unlockKind = CosmeticUnlockKind.EVENT,
+                previewSymbol = "WI",
+                previewPrimary = 0xFFD95A36.toInt(),
+                previewSecondary = 0xFF7B2B37.toInt(),
+                characterPackId = "wild_paws",
+                eventKey = "wild_paws_event_v1",
+                contentAvailable = false,
+            ),
+            cosmetic(
+                id = "character_pack_pet_paws",
+                title = "PET PAWS",
+                category = CosmeticCategory.CHARACTER_PACK,
+                unlockKind = CosmeticUnlockKind.GEMS,
+                previewSymbol = "PE",
+                previewPrimary = 0xFF3D9BE9.toInt(),
+                previewSecondary = 0xFF3155A7.toInt(),
+                gems = 450,
+                characterPackId = "pet_paws",
+                contentAvailable = false,
+            ),
+        )
+
     val all =
         boards +
             dice +
-            avatars
+            avatars +
+            characterPacks
 
     val defaultOwnedIds =
         all
             .filter {
                 it.unlockKind ==
-                    CosmeticUnlockKind.FREE
+                    CosmeticUnlockKind.FREE &&
+                    it.contentAvailable
             }
             .map {
                 it.id
@@ -82,6 +166,7 @@ object StoreCosmeticCatalog {
             CosmeticCategory.BOARD -> boards
             CosmeticCategory.DICE -> dice
             CosmeticCategory.AVATAR -> avatars
+            CosmeticCategory.CHARACTER_PACK -> characterPacks
         }
 
     fun defaultId(
@@ -91,6 +176,7 @@ object StoreCosmeticCatalog {
             CosmeticCategory.BOARD -> DEFAULT_BOARD
             CosmeticCategory.DICE -> DEFAULT_DICE
             CosmeticCategory.AVATAR -> DEFAULT_AVATAR
+            CosmeticCategory.CHARACTER_PACK -> DEFAULT_CHARACTER_PACK
         }
 
     private fun cosmetic(
@@ -104,6 +190,9 @@ object StoreCosmeticCatalog {
         gems: Int = 0,
         level: Int = 0,
         ads: Int = 0,
+        characterPackId: String? = null,
+        eventKey: String? = null,
+        contentAvailable: Boolean = true,
     ) =
         StoreCosmetic(
             id = id,
@@ -116,5 +205,8 @@ object StoreCosmeticCatalog {
             previewSymbol = previewSymbol,
             previewPrimary = previewPrimary,
             previewSecondary = previewSecondary,
+            characterPackId = characterPackId,
+            eventKey = eventKey,
+            contentAvailable = contentAvailable,
         )
 }

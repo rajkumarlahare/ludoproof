@@ -70,6 +70,20 @@ internal fun StoreActivity.handleCosmeticTap(
             )
         }
 
+        CosmeticAcquireResult.NEED_EVENT -> {
+            showStoreMessage(
+                cosmetic.title +
+                    " is an event pack. It unlocks only after a verified Ludo Paws event entitlement is received.",
+            )
+        }
+
+        CosmeticAcquireResult.CONTENT_UNAVAILABLE -> {
+            showStoreMessage(
+                cosmetic.title +
+                    " is reserved for a future complete animal-pack drop. No gems, ad progress, or event entitlement was spent.",
+            )
+        }
+
         CosmeticAcquireResult.INVALID -> {
             showStoreMessage(
                 "This cosmetic could not be updated. Please try again.",
