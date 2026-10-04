@@ -13,10 +13,46 @@ const requireText = (path, needles) => {
 requireText(
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsReactiveBoardView.kt",
   [
+    "LudoPawsCaptureReturnOverlayView",
+    "captureReturnOverlay.bind",
+    "captureReturnOverlay.stop",
     "LudoPawsGameFxOverlayView",
     "LudoPawsCharacterReactionOverlayView",
     "reducedMotionEnabled",
     "previous = previous",
+  ],
+);
+
+requireText(
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsCaptureReturnOverlayView.kt",
+  [
+    "LudoPawsPawnAnimationPolicy",
+    ".plans(",
+    "LudoPawsPawnMotionKind.CAPTURE_RETURN",
+    "captureReturnFrame",
+    "DESTINATION_REVEAL_PROGRESS",
+    "LudoPawsCharacterCatalog",
+    "reducedMotion",
+  ],
+);
+
+requireText(
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsPawnAnimationPolicy.kt",
+  [
+    "CAPTURE_RETURN",
+    "IMPACT_SHAKE",
+    "RETURN_TO_YARD",
+    "SETTLE",
+    "captureReturnFrame",
+  ],
+);
+
+requireText(
+  "android/app/src/test/java/com/ludoproof/game/LudoPawsPawnAnimationPolicyTest.kt",
+  [
+    "captureSnapshotProducesMoverAndVictimAnimationsTogether",
+    "captureReturnUsesImpactPopTravelAndSettleStages",
+    "captureReturnEndsExactlyAtStableYardPose",
   ],
 );
 
