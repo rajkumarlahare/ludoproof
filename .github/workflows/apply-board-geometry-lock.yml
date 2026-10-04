@@ -1,0 +1,48 @@
+name: Apply locked Ludo board geometry
+
+on:
+  push:
+    branches:
+      - docs/lock-final-ludo-board-geometry-20261004
+    paths:
+      - .github/board-geometry-lock.patch
+      - .github/workflows/apply-board-geometry-lock.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+
+      - name: Apply approved final board geometry and lock comments
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --check .github/board-geometry-lock.patch
+          git apply .github/board-geometry-lock.patch
+
+          BOARD="android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoBoardView.kt"
+          PAWS="android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsBoardView.kt"
+
+          grep -q "FINAL BOARD GEOMETRY — LOCKED" "$BOARD"
+          grep -q "val yardSpan = cell \* 5f" "$BOARD"
+          grep -q "val roadSpan = cell \* 5f" "$BOARD"
+          grep -q "WHITE-HOME GEOMETRY LOCK: 0.5 base-cell margin on ALL four sides" "$BOARD"
+          grep -q "FINAL BOARD GEOMETRY MIRROR — LOCKED" "$PAWS"
+          grep -q "val yardSpan = cell \* 5f" "$PAWS"
+          grep -q "val roadSpan = cell \* 5f" "$PAWS"
+
+          git diff --check
+          git add "$BOARD" "$PAWS"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "ui: lock final Ludo board geometry"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
