@@ -7,9 +7,15 @@ import com.ludoproof.game.PlayerSnapshot
 import com.ludoproof.game.feature.characters.domain.model.VoiceCue
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class LudoPawsReactionEngineTest {
+    @Before
+    fun resetPlaybackDirector() {
+        LudoPawsReactionEngine.resetPlaybackStateForTests()
+    }
+
     @Test
     fun detectsSixWithoutTouchingGameplayState() {
         val previous =
@@ -249,7 +255,7 @@ class LudoPawsReactionEngineTest {
             )
         assertTrue(
             LudoPawsReactionEngine
-                .detect(
+                .derive(
                     safePrevious,
                     safeCurrent,
                 )
@@ -317,7 +323,7 @@ class LudoPawsReactionEngineTest {
                     ),
             )
         val finishReactions =
-            LudoPawsReactionEngine.detect(
+            LudoPawsReactionEngine.derive(
                 homePrevious,
                 homeCurrent,
             )
@@ -340,7 +346,7 @@ class LudoPawsReactionEngineTest {
         )
 
         val frustrated =
-            LudoPawsReactionEngine.detect(
+            LudoPawsReactionEngine.derive(
                 state(
                     history = emptyList(),
                 ),
