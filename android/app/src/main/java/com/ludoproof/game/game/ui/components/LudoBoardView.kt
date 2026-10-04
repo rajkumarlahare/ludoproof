@@ -20,6 +20,17 @@ import com.ludoproof.game.feature.store.domain.model.CosmeticCategory
 import kotlin.math.hypot
 import kotlin.math.min
 
+/**
+ * BOARD GEOMETRY LOCK (approved final layout).
+ *
+ * The board position and all board geometry in this view are fixed by product decision:
+ * board size/aspect, four yard locations, white-home size and margins, all road squares,
+ * home lanes, center triangles, safe cells, track order, and token coordinate mapping.
+ *
+ * Do not move, resize, redistribute, reorder, or "normalize" any board geometry unless an
+ * explicit future board-redesign task requires it. Any intentional geometry change here must
+ * be mirrored in LudoPawsBoardView/AnimalPawnOverlayView so cosmetics remain pixel-aligned.
+ */
 class LudoBoardView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -166,6 +177,8 @@ class LudoBoardView @JvmOverloads constructor(
         super.onDetachedFromWindow()
     }
 
+    // BOARD SIZE LOCK: keep the board square. Do not change this sizing contract as part of
+    // unrelated UI work; all approved board geometry scales inside this square.
     override fun onMeasure(
         widthMeasureSpec: Int,
         heightMeasureSpec: Int,
@@ -185,6 +198,9 @@ class LudoBoardView @JvmOverloads constructor(
 
         val size = min(width, height).toFloat()
         if (size <= 0f) return
+
+        // BASE COORDINATE LOCK: gameplay remains a logical 15x15 board. The approved visual
+        // stretching is handled only by axisBoundary(); do not replace it with uniform cells.
         val cell = size / 15f
 
         canvas.drawColor(boardSurfaceColor())
@@ -333,6 +349,8 @@ class LudoBoardView @JvmOverloads constructor(
                     y
         }
 
+    // YARD POSITION LOCK: these four logical origins permanently anchor the four color homes.
+    // RED=top-left, GREEN=top-right, YELLOW=bottom-right, BLUE=bottom-left.
     private fun drawYards(
         canvas: Canvas,
         cell: Float,
@@ -374,23 +392,34 @@ class LudoBoardView @JvmOverloads constructor(
         col: Int,
         color: Int,
     ) {
+        val yardRect =
+            RectF(
+                axisBoundary(col, cell),
+                axisBoundary(row, cell),
+                axisBoundary(col + 6, cell),
+                axisBoundary(row + 6, cell),
+            )
+
+        // WHITE-HOME GEOMETRY LOCK: 0.5 base-cell margin on ALL four sides.
+        // The white home remains exactly 4 x 4 base cells. Do not move or resize it independently;
+        // the released road stretch, yard token centers, and overlay geometry depend on this.
+        val whiteRect =
+            RectF(
+                yardRect.left + cell * 0.5f,
+                yardRect.top + cell * 0.5f,
+                yardRect.right - cell * 0.5f,
+                yardRect.bottom - cell * 0.5f,
+            )
+
         fillPaint.color = color
         canvas.drawRect(
-            col * cell,
-            row * cell,
-            (col + 6) * cell,
-            (row + 6) * cell,
+            yardRect,
             fillPaint,
         )
 
         fillPaint.color = neutralCellColor()
         canvas.drawRoundRect(
-            RectF(
-                (col + 1) * cell,
-                (row + 1) * cell,
-                (col + 5) * cell,
-                (row + 5) * cell,
-            ),
+            whiteRect,
             cell * 0.35f,
             cell * 0.35f,
             fillPaint,
@@ -404,12 +433,7 @@ class LudoBoardView @JvmOverloads constructor(
         )
         strokePaint.strokeWidth = density(1.4f)
         canvas.drawRoundRect(
-            RectF(
-                (col + 1) * cell,
-                (row + 1) * cell,
-                (col + 5) * cell,
-                (row + 5) * cell,
-            ),
+            whiteRect,
             cell * 0.35f,
             cell * 0.35f,
             strokePaint,
@@ -418,6 +442,8 @@ class LudoBoardView @JvmOverloads constructor(
         strokePaint.color = Color.rgb(70, 70, 70)
     }
 
+    // ROAD/TRACK LOCK: draw the approved 52-square movement path exactly from TRACK.
+    // Do not change road-square positions, order, start cells, or safe-cell alignment here.
     private fun drawTrack(
         canvas: Canvas,
         cell: Float,
@@ -463,6 +489,8 @@ class LudoBoardView @JvmOverloads constructor(
         }
     }
 
+    // HOME-LANE LOCK: each color keeps the approved five-cell lane into the center.
+    // These coordinates are part of the fixed board and must stay synchronized with tokenCenter().
     private fun drawHomeLanes(
         canvas: Canvas,
         cell: Float,
@@ -481,16 +509,18 @@ class LudoBoardView @JvmOverloads constructor(
         }
     }
 
+    // CENTER LOCK: the four finish triangles are permanently bounded by logical indices 6..9.
+    // Derive them from axisBoundary() so they always meet the stretched three-lane road exactly.
     private fun drawCenter(
         canvas: Canvas,
         cell: Float,
     ) {
-        val left = 6f * cell
-        val top = 6f * cell
-        val right = 9f * cell
-        val bottom = 9f * cell
-        val cx = 7.5f * cell
-        val cy = 7.5f * cell
+        val left = axisBoundary(6, cell)
+        val top = axisBoundary(6, cell)
+        val right = axisBoundary(9, cell)
+        val bottom = axisBoundary(9, cell)
+        val cx = (left + right) / 2f
+        val cy = (top + bottom) / 2f
 
         triangle(
             canvas,
@@ -556,6 +586,8 @@ class LudoBoardView @JvmOverloads constructor(
         canvas.drawPath(path, strokePaint)
     }
 
+    // ROAD CELL RECT LOCK: every square/rectangle must come from axisBoundary().
+    // Do not calculate track cells with col * cell / row * cell; that would break the final layout.
     private fun drawCell(
         canvas: Canvas,
         cell: Float,
@@ -566,10 +598,10 @@ class LudoBoardView @JvmOverloads constructor(
         fillPaint.color = color
         val rect =
             RectF(
-                col * cell,
-                row * cell,
-                (col + 1) * cell,
-                (row + 1) * cell,
+                axisBoundary(col, cell),
+                axisBoundary(row, cell),
+                axisBoundary(col + 1, cell),
+                axisBoundary(row + 1, cell),
             )
         canvas.drawRect(rect, fillPaint)
         canvas.drawRect(rect, strokePaint)
@@ -1014,6 +1046,8 @@ class LudoBoardView @JvmOverloads constructor(
                 .toInt(),
         )
 
+    // TOKEN POSITION LOCK: token centers must follow the exact fixed road/home/center geometry.
+    // Keep movement rules logical; only map their coordinates through the approved geometry below.
     private fun tokenCenter(
         player: PlayerSnapshot,
         tokenIndex: Int,
@@ -1057,21 +1091,27 @@ class LudoBoardView @JvmOverloads constructor(
         }
 
         if (position == 57) {
-            val unit =
-                when (player.color) {
-                    "RED" -> 6.9f to 7.5f
-                    "GREEN" -> 7.5f to 6.9f
-                    "YELLOW" -> 8.1f to 7.5f
-                    "BLUE" -> 7.5f to 8.1f
-                    else -> 7.5f to 7.5f
-                }
-            return unit.first * cell to
-                unit.second * cell
+            val left = axisBoundary(6, cell)
+            val top = axisBoundary(6, cell)
+            val right = axisBoundary(9, cell)
+            val bottom = axisBoundary(9, cell)
+            val cx = (left + right) / 2f
+            val cy = (top + bottom) / 2f
+            val offset = (right - left) * 0.20f
+            return when (player.color) {
+                "RED" -> cx - offset to cy
+                "GREEN" -> cx to cy - offset
+                "YELLOW" -> cx + offset to cy
+                "BLUE" -> cx to cy + offset
+                else -> cx to cy
+            }
         }
 
         return null
     }
 
+    // YARD TOKEN LOCK: the four resting-token slots are tied to the fixed 4x4 white home.
+    // Keep the 0.5-cell inset and 25%/75% slot fractions unchanged unless the board is redesigned.
     private fun yardTokenCenter(
         color: String,
         tokenIndex: Int,
@@ -1079,23 +1119,31 @@ class LudoBoardView @JvmOverloads constructor(
     ): Pair<Float, Float>? {
         val origin =
             when (color) {
-                "RED" -> 0f to 0f
-                "GREEN" -> 0f to 9f
-                "YELLOW" -> 9f to 9f
-                "BLUE" -> 9f to 0f
+                "RED" -> 0 to 0
+                "GREEN" -> 0 to 9
+                "YELLOW" -> 9 to 9
+                "BLUE" -> 9 to 0
                 else -> return null
             }
 
-        val slot =
-            when (tokenIndex) {
-                0 -> 2f to 2f
-                1 -> 2f to 4f
-                2 -> 4f to 2f
-                else -> 4f to 4f
-            }
-        val row = origin.first + slot.first
-        val col = origin.second + slot.second
-        return col * cell to row * cell
+        val yardRect =
+            RectF(
+                axisBoundary(origin.second, cell),
+                axisBoundary(origin.first, cell),
+                axisBoundary(origin.second + 6, cell),
+                axisBoundary(origin.first + 6, cell),
+            )
+        val whiteLeft = yardRect.left + cell * 0.5f
+        val whiteTop = yardRect.top + cell * 0.5f
+        val whiteSize = cell * 4f
+
+        val rowFraction =
+            if (tokenIndex < 2) 0.25f else 0.75f
+        val colFraction =
+            if (tokenIndex % 2 == 0) 0.25f else 0.75f
+
+        return (whiteLeft + whiteSize * colFraction) to
+            (whiteTop + whiteSize * rowFraction)
     }
 
     private fun tokenOffset(
@@ -1109,13 +1157,48 @@ class LudoBoardView @JvmOverloads constructor(
             else -> cell * 0.13f to cell * 0.13f
         }
 
+    // CELL CENTER LOCK: road/home-lane token centers are the midpoint of the same boundaries
+    // used to draw their cells. This keeps hit-testing, animation, and visuals aligned.
     private fun centerForCell(
         row: Int,
         col: Int,
         cell: Float,
     ): Pair<Float, Float> =
-        (col + 0.5f) * cell to
-            (row + 0.5f) * cell
+        ((axisBoundary(col, cell) +
+            axisBoundary(col + 1, cell)) / 2f) to
+            ((axisBoundary(row, cell) +
+                axisBoundary(row + 1, cell)) / 2f)
+
+    /**
+     * FINAL BOARD GEOMETRY — LOCKED.
+     *
+     * Maps the logical 15x15 Ludo grid onto the approved final visual geometry:
+     * - left/top corner-home span: 5 base cells
+     * - middle three-lane road span: 5 base cells
+     * - right/bottom corner-home span: 5 base cells
+     * - white home inside each yard: 0.5 + 4 + 0.5 base cells
+     *
+     * Six logical yard rows/columns share a 5-cell physical span, while the three logical road
+     * rows/columns share a 5-cell physical span. This is the intentional road stretch.
+     *
+     * DO NOT change yardSpan, roadSpan, yardStep, roadStep, or the boundary ranges for routine UI
+     * work. Changing this method moves every road square, yard, center triangle, and token center.
+     */
+    private fun axisBoundary(
+        index: Int,
+        cell: Float,
+    ): Float {
+        val yardSpan = cell * 5f
+        val roadSpan = cell * 5f
+        val yardStep = yardSpan / 6f
+        val roadStep = roadSpan / 3f
+
+        return when {
+            index <= 6 -> index * yardStep
+            index <= 9 -> yardSpan + (index - 6) * roadStep
+            else -> yardSpan + roadSpan + (index - 9) * yardStep
+        }
+    }
 
     private fun colorFor(
         name: String,
@@ -1271,6 +1354,8 @@ class LudoBoardView @JvmOverloads constructor(
                 "BLUE" to 39,
             )
 
+        // LOGICAL TRACK LOCK: exactly 52 movement positions in this exact order.
+        // Geometry may scale through axisBoundary(), but these logical coordinates must not drift.
         val TRACK =
             listOf(
                 6 to 1,
@@ -1327,6 +1412,7 @@ class LudoBoardView @JvmOverloads constructor(
                 6 to 0,
             )
 
+        // LOGICAL HOME-LANE LOCK: exactly five approach cells per color in these positions.
         val HOME_LANES =
             mapOf(
                 "RED" to
