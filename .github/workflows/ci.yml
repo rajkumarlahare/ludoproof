@@ -146,6 +146,8 @@ jobs:
   android-instrumentation:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      ANDROID_AVD_HOME: ${{ runner.temp }}/ludopaws-avd
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -187,11 +189,14 @@ jobs:
         run: |
           SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
           AVDMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/avdmanager"
+          mkdir -p "$ANDROID_AVD_HOME"
           echo "no" | "$AVDMANAGER" create avd \
             --force \
             --name ludopaws-ci \
             --package "system-images;android-35;google_apis;x86_64" \
             --device "pixel_6"
+          "$SDK_ROOT/emulator/emulator" -list-avds | tee /tmp/ludopaws-avd-list.txt
+          grep -qx "ludopaws-ci" /tmp/ludopaws-avd-list.txt
       - name: Boot Android emulator
         shell: bash
         run: |
@@ -271,6 +276,7 @@ jobs:
           path: |
             android/app/build/reports/androidTests/connected/**
             android/app/build/outputs/androidTest-results/connected/**
+            /tmp/ludopaws-avd-list.txt
             /tmp/ludopaws-emulator.log
             /tmp/ludopaws-logcat.txt
             /tmp/ludopaws-activities.txt
