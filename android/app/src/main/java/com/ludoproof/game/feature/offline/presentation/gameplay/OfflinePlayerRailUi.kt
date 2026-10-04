@@ -237,12 +237,10 @@ private fun OfflineGameActivity.activeDiceControl(
         }
     control.isEnabled =
         !cpuTurn
+    // Keep opponent/CPU dice at full visual contrast as well. Interaction is
+    // controlled by isEnabled; opacity must not make the neutral face unreadable.
     control.alpha =
-        if (cpuTurn) {
-            .82f
-        } else {
-            1f
-        }
+        1f
     control.layoutParams =
         LinearLayout.LayoutParams(
             dp(

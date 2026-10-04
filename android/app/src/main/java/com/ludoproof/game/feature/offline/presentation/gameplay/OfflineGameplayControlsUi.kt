@@ -371,12 +371,10 @@ internal fun OfflineGameActivity.renderGame(
 
     diceHost?.isEnabled =
         canRoll
+    // Disabled means non-interactive only. Never fade the dice itself: after a
+    // resolved roll the player still needs to read that face while choosing a token.
     diceHost?.alpha =
-        if (canRoll) {
-            1f
-        } else {
-            .58f
-        }
+        1f
 
     when {
         state.status ==
