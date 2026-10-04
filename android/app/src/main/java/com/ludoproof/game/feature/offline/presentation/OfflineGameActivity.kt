@@ -91,6 +91,7 @@ class OfflineGameActivity : ComponentActivity() {
 
     internal var playerButtons: Map<Int, Button> = emptyMap()
     internal var colorButtons: Map<String, Button> = emptyMap()
+    internal var characterSlotsRow: LinearLayout? = null
     internal var characterSlotButtons: Map<Int, Button> = emptyMap()
     internal var characterCards: Map<String, LinearLayout> = emptyMap()
     internal var characterSummaryText: TextView? = null
@@ -157,6 +158,8 @@ class OfflineGameActivity : ComponentActivity() {
         infoText =
             null
         statusText =
+            null
+        characterSlotsRow =
             null
         characterSlotButtons =
             emptyMap()
