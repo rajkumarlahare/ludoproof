@@ -22,6 +22,7 @@ jobs:
       - name: Apply requested gameplay polish
         run: |
           python3 scripts/apply-pawn-hop-bright-dice.py
+          python3 scripts/repair-pawn-hop-patcher.py
           git diff --check
 
       - name: Node.js 22
@@ -60,6 +61,7 @@ jobs:
         run: |
           rm .github/workflows/apply-pawn-hop-bright-dice.yml
           rm scripts/apply-pawn-hop-bright-dice.py
+          rm scripts/repair-pawn-hop-patcher.py
           git diff --check
           git config user.name "rekixo-ui-bot"
           git config user.email "ai@rekixo.com"
