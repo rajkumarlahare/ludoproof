@@ -54,9 +54,9 @@ internal fun OfflineGameActivity.playersPanel():
                         entry.first +
                         " PLAYERS",
                 ) {
-                    selectedPlayers =
-                        entry.first
-                    refreshSetupSelections()
+                    updateSelectedPlayerCount(
+                        entry.first,
+                    )
                 }
             playerMap[entry.first] =
                 button
@@ -398,22 +398,25 @@ internal fun OfflineGameActivity.tileButton(
     }
 
 internal fun OfflineGameActivity.refreshSetupSelections() {
-    if (playerButtons.isEmpty() || colorButtons.isEmpty()) return
-
-    playerButtons.forEach { entry ->
-        if (entry.key == selectedPlayers) {
-            LudoProofTheme.selectedTile(entry.value)
-        } else {
-            LudoProofTheme.normalTile(entry.value)
+    if (playerButtons.isNotEmpty()) {
+        playerButtons.forEach { entry ->
+            if (entry.key == selectedPlayers) {
+                LudoProofTheme.selectedTile(entry.value)
+            } else {
+                LudoProofTheme.normalTile(entry.value)
+            }
         }
     }
-    colorButtons.forEach { entry ->
-        if (entry.key == selectedColor) {
-            LudoProofTheme.selectedTile(entry.value)
-        } else {
-            LudoProofTheme.normalTile(entry.value)
+    if (colorButtons.isNotEmpty()) {
+        colorButtons.forEach { entry ->
+            if (entry.key == selectedColor) {
+                LudoProofTheme.selectedTile(entry.value)
+            } else {
+                LudoProofTheme.normalTile(entry.value)
+            }
         }
     }
+    refreshCharacterSelectionUi()
 }
 
 internal fun OfflineGameActivity.setupSectionParams(
