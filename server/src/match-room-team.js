@@ -2,7 +2,6 @@ import {
   MatchRoom as SafeMatchRoom,
 } from "./match-room-safe.js";
 import {
-  TEAM_ASSIGNMENTS,
   isTeamUp,
   publicState,
   teamIdForSeat,
@@ -22,20 +21,14 @@ const FINISHED_IDLE_TTL_MS = 24 * 60 * 60 * 1000;
 /**
  * Team-aware compatibility layer.
  *
- * Base MatchRoom remains byte-for-byte compatible with deployed ONLINE games.
- * TEAM_UP creation is translated through the reviewed ONLINE creation path and
- * then atomically upgraded in this Durable Object before the caller receives
- * the response. All later roll/move semantics come from game.js and are bound
- * into the authoritative-state hash used by EntroNex.
+ * TEAM_UP creation is handled directly by the base authoritative MatchRoom so
+ * the final team state is constructed and persisted once. This layer remains
+ * only for Team Up lifecycle behavior that is not yet part of the base room,
+ * such as team forfeiture.
  */
 export class MatchRoom extends SafeMatchRoom {
   async fetch(request) {
     const url = new URL(request.url);
-
-    if (request.method === "POST" && url.pathname === "/create") {
-      const teamResponse = await this.#createTeamUp(request);
-      if (teamResponse != null) return teamResponse;
-    }
 
     if (request.method === "POST" && url.pathname === "/start") {
       const teamForfeit = await this.#teamForfeit(request);
@@ -43,65 +36,6 @@ export class MatchRoom extends SafeMatchRoom {
     }
 
     return super.fetch(request);
-  }
-
-  async #createTeamUp(request) {
-    let body;
-    try {
-      body = await request.clone().json();
-    } catch {
-      return null;
-    }
-
-    if (String(body?.matchMode ?? "").trim().toUpperCase() !== "TEAM_UP") {
-      return null;
-    }
-
-    if (Number(body?.targetPlayerCount) !== 4) {
-      return json(400, {
-        error: "TEAM_UP_REQUIRES_FOUR_PLAYERS",
-        message: "team up requires exactly four players",
-      });
-    }
-
-    const headers = new Headers(request.headers);
-    headers.set("content-type", "application/json");
-    const translated = {
-      ...body,
-      matchMode: "ONLINE",
-      targetPlayerCount: 4,
-    };
-
-    const response = await super.fetch(
-      new Request(request.url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(translated),
-      }),
-    );
-
-    if (!response.ok) return response;
-
-    const state = await this.ctx.storage.get(STATE_KEY);
-    if (!state) return response;
-
-    const firstUpgrade = !isTeamUp(state);
-    state.matchMode = "TEAM_UP";
-    state.teamAssignments = [...TEAM_ASSIGNMENTS];
-    state.winnerTeamId = state.winnerTeamId ?? null;
-    state.players = (state.players ?? []).map((player, seat) => ({
-      ...player,
-      teamId: TEAM_ASSIGNMENTS[seat] ?? null,
-    }));
-
-    if (firstUpgrade) {
-      state.updatedAt = Date.now();
-      state.revision = Number(state.revision ?? 0) + 1;
-      await this.ctx.storage.put(STATE_KEY, state);
-      broadcastStateChanged(this.ctx, state);
-    }
-
-    return replaceState(response, decoratedState(state));
   }
 
   async #teamForfeit(request) {
@@ -210,22 +144,6 @@ function decoratedState(state) {
     history,
     fairness: fairnessSummary(history),
   };
-}
-
-async function replaceState(response, state) {
-  const type = response.headers.get("content-type") ?? "";
-  if (!type.includes("application/json")) return response;
-  let payload;
-  try {
-    payload = await response.clone().json();
-  } catch {
-    return response;
-  }
-  if (!payload || typeof payload !== "object") return response;
-  return json(response.status, {
-    ...payload,
-    state,
-  });
 }
 
 function broadcastStateChanged(ctx, state) {
