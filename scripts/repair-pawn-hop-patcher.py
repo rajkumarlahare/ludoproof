@@ -45,5 +45,18 @@ if old_move not in text:
     raise SystemExit("board: move animation marker missing")
 text = text.replace(old_move, new_move, 1)
 
+old_model = '''        val toPosition: Int,
+        val progress: Float,
+    )
+'''
+new_model = '''        val toPosition: Int,
+        val progress: Float,
+        val hopEnabled: Boolean = true,
+    )
+'''
+if old_model not in text:
+    raise SystemExit("board: TokenMoveAnimation model marker missing")
+text = text.replace(old_model, new_model, 1)
+
 path.write_text(text, encoding="utf-8")
-print("Repaired pawn hop patch ordering and reduced-motion wiring.")
+print("Repaired pawn hop patch ordering, data model, and reduced-motion wiring.")
