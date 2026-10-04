@@ -261,8 +261,8 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          adb logcat -d > /tmp/ludopaws-logcat.txt || true
-          adb shell dumpsys activity activities > /tmp/ludopaws-activities.txt || true
+          timeout 10s adb logcat -d > /tmp/ludopaws-logcat.txt || true
+          timeout 10s adb shell dumpsys activity activities > /tmp/ludopaws-activities.txt || true
       - name: Upload instrumentation evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -279,7 +279,7 @@ jobs:
       - name: Stop Android emulator
         if: always()
         shell: bash
-        run: adb emu kill || true
+        run: timeout 10s adb emu kill || true
 
   windows-runner-script:
     runs-on: windows-latest
