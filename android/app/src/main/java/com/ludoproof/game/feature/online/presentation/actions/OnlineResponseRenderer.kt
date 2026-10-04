@@ -33,6 +33,7 @@ internal fun MainActivity.applyResponse(
         return
     }
 
+    val previousState = currentState
     currentState = state
     matchId = state.matchId
 
@@ -71,7 +72,15 @@ internal fun MainActivity.applyResponse(
     }
 
     reconcilePendingSecret(state)
+
+    // Keep the proven legacy board synchronized as a safe fallback while the
+    // presentation-only Ludo Paws shell owns visible remote rendering.
     boardView.bind(state, playerId)
+    OnlineLudoPawsPresentation.render(
+        activity = this,
+        previous = previousState,
+        current = state,
+    )
 
     matchInfoText.text =
         buildString {
