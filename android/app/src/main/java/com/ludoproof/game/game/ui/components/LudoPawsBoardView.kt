@@ -1,0 +1,1025 @@
+package com.ludoproof.game
+
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Outline
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Rect
+import android.util.AttributeSet
+import android.view.View
+import android.view.ViewOutlineProvider
+import android.widget.FrameLayout
+import com.ludoproof.game.feature.characters.domain.catalog.LudoPawsCharacterCatalog
+import com.ludoproof.game.feature.characters.domain.model.AnimalCharacter
+import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
+import kotlin.math.floor
+import kotlin.math.min
+import kotlin.math.roundToInt
+
+/**
+ * Local-game board shell that keeps the proven LudoBoardView responsible for
+ * board geometry and touch hit-testing while layering cosmetic Ludo Paws
+ * characters on top of its authoritative token positions.
+ *
+ * The overlay consumes only MatchSnapshot + persisted cosmetic assignments.
+ * It never changes dice, moves, captures, proof material, or engine state.
+ */
+class LudoPawsBoardView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+) : FrameLayout(context, attrs) {
+    private val baseBoard =
+        LudoBoardView(context)
+    private val pawnOverlay =
+        AnimalPawnOverlayView(context)
+
+    var onTokenSelected: ((Int) -> Unit)?
+        get() =
+            baseBoard.onTokenSelected
+        set(value) {
+            baseBoard.onTokenSelected =
+                value
+        }
+
+    init {
+        isFocusable =
+            false
+        importantForAccessibility =
+            IMPORTANT_FOR_ACCESSIBILITY_NO
+        outlineProvider =
+            object : ViewOutlineProvider() {
+                override fun getOutline(
+                    view: View,
+                    outline: Outline,
+                ) {
+                    outline.setRoundRect(
+                        0,
+                        0,
+                        view.width,
+                        view.height,
+                        density(3f),
+                    )
+                }
+            }
+        clipToOutline =
+            true
+
+        addView(
+            baseBoard,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT,
+            ),
+        )
+        addView(
+            pawnOverlay,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT,
+            ),
+        )
+    }
+
+    fun bind(
+        state: MatchSnapshot?,
+        playerId: String?,
+        perspectiveColor: String? = null,
+        characterIdsBySeat: List<String> = emptyList(),
+    ) {
+        baseBoard.bind(
+            state = state,
+            playerId = playerId,
+            perspectiveColor = perspectiveColor,
+        )
+        pawnOverlay.bind(
+            state = state,
+            playerId = playerId,
+            perspectiveColor = perspectiveColor,
+            characterIdsBySeat = characterIdsBySeat,
+        )
+    }
+
+    fun reloadStyle() {
+        baseBoard.reloadStyle()
+    }
+
+    override fun onMeasure(
+        widthMeasureSpec: Int,
+        heightMeasureSpec: Int,
+    ) {
+        val desired =
+            density(380f)
+                .roundToInt()
+        val resolvedWidth =
+            resolveSize(
+                desired,
+                widthMeasureSpec,
+            )
+        val resolvedHeight =
+            resolveSize(
+                resolvedWidth,
+                heightMeasureSpec,
+            )
+        val size =
+            min(
+                resolvedWidth,
+                resolvedHeight,
+            )
+        val exact =
+            MeasureSpec.makeMeasureSpec(
+                size,
+                MeasureSpec.EXACTLY,
+            )
+        super.onMeasure(
+            exact,
+            exact,
+        )
+    }
+
+    private fun density(
+        value: Float,
+    ): Float =
+        value *
+            resources.displayMetrics.density
+}
+
+private class AnimalPawnOverlayView(
+    context: Context,
+) : View(context) {
+    private var snapshot: MatchSnapshot? =
+        null
+    private var localPlayerId: String? =
+        null
+    private var perspectiveColor: String? =
+        null
+    private var characterIdsBySeat: List<String> =
+        emptyList()
+    private var moveAnimator: ValueAnimator? =
+        null
+    private var moveAnimation: TokenMoveAnimation? =
+        null
+
+    private val drawableCache =
+        mutableMapOf<String, android.graphics.drawable.Drawable?>()
+    private val shadowPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style =
+                Paint.Style.FILL
+            color =
+                Color.argb(
+                    76,
+                    0,
+                    0,
+                    0,
+                )
+        }
+    private val ringPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style =
+                Paint.Style.FILL
+        }
+    private val innerPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style =
+                Paint.Style.FILL
+            color =
+                Color.argb(
+                    248,
+                    255,
+                    255,
+                    255,
+                )
+        }
+    private val legalHaloPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style =
+                Paint.Style.STROKE
+            strokeWidth =
+                density(4.5f)
+            color =
+                Color.argb(
+                    235,
+                    255,
+                    193,
+                    7,
+                )
+        }
+    private val legalCorePaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style =
+                Paint.Style.STROKE
+            strokeWidth =
+                density(1.6f)
+            color =
+                Color.WHITE
+        }
+    private val clipPath =
+        Path()
+
+    init {
+        isClickable =
+            false
+        isFocusable =
+            false
+        importantForAccessibility =
+            IMPORTANT_FOR_ACCESSIBILITY_NO
+    }
+
+    fun bind(
+        state: MatchSnapshot?,
+        playerId: String?,
+        perspectiveColor: String?,
+        characterIdsBySeat: List<String>,
+    ) {
+        val previous =
+            snapshot
+        snapshot =
+            state
+        localPlayerId =
+            playerId
+        this.perspectiveColor =
+            perspectiveColor
+                ?.takeIf {
+                    it in
+                        OfflinePlayerLayout.COLORS
+                }
+        this.characterIdsBySeat =
+            characterIdsBySeat
+                .take(4)
+
+        startMoveAnimationIfNeeded(
+            previous = previous,
+            current = state,
+        )
+        invalidate()
+    }
+
+    override fun onDetachedFromWindow() {
+        moveAnimator
+            ?.cancel()
+        moveAnimator =
+            null
+        moveAnimation =
+            null
+        super.onDetachedFromWindow()
+    }
+
+    override fun onDraw(
+        canvas: Canvas,
+    ) {
+        super.onDraw(canvas)
+        val state =
+            snapshot
+                ?: return
+        val size =
+            min(
+                width,
+                height,
+            ).toFloat()
+        if (size <= 0f) {
+            return
+        }
+        val cell =
+            size /
+                15f
+        val turns =
+            perspectiveColor
+                ?.let(
+                    OfflinePlayerLayout::rotationQuarterTurns,
+                )
+                ?: 0
+
+        if (turns != 0) {
+            canvas.save()
+            canvas.rotate(
+                turns * 90f,
+                size / 2f,
+                size / 2f,
+            )
+        }
+
+        drawAnimalTokens(
+            canvas = canvas,
+            state = state,
+            cell = cell,
+        )
+
+        if (turns != 0) {
+            canvas.restore()
+        }
+    }
+
+    private fun drawAnimalTokens(
+        canvas: Canvas,
+        state: MatchSnapshot,
+        cell: Float,
+    ) {
+        val legal =
+            state.pendingRoll
+                ?.legalTokenIndexes
+                .orEmpty()
+        val localId =
+            localPlayerId
+        val occupancy =
+            occupancyByCell(state)
+
+        state.players.forEach {
+                player ->
+            val characterId =
+                LudoPawsPawnLayout
+                    .characterIdForSeat(
+                        characterIdsBySeat =
+                            characterIdsBySeat,
+                        seat =
+                            player.seat,
+                    )
+                    ?: return@forEach
+            val character =
+                LudoPawsCharacterCatalog
+                    .character(
+                        characterId,
+                    )
+                    ?: return@forEach
+            val drawable =
+                drawableFor(character)
+                    ?: return@forEach
+
+            player.tokens.forEachIndexed {
+                    tokenIndex,
+                    position,
+                ->
+                val base =
+                    animatedTokenCenter(
+                        player = player,
+                        tokenIndex = tokenIndex,
+                        currentPosition = position,
+                        cell = cell,
+                    )
+                        ?: return@forEachIndexed
+                val offsetFraction =
+                    LudoPawsPawnLayout
+                        .tokenOffsetFraction(
+                            slot =
+                                tokenIndex +
+                                    player.seat,
+                            position =
+                                position,
+                        )
+                val x =
+                    base.first +
+                        offsetFraction.first *
+                        cell
+                val y =
+                    base.second +
+                        offsetFraction.second *
+                        cell
+                val occupants =
+                    occupancy[
+                        occupancyKey(
+                            player = player,
+                            tokenIndex = tokenIndex,
+                            position = position,
+                        ),
+                    ]
+                        ?: 1
+                val radius =
+                    cell *
+                        LudoPawsPawnLayout
+                            .radiusScale(
+                                position = position,
+                                occupancy = occupants,
+                            )
+                val isLegal =
+                    player.playerId == localId &&
+                        tokenIndex in legal &&
+                        state.pendingRoll?.status ==
+                        "RESOLVED"
+
+                drawAnimalPawn(
+                    canvas = canvas,
+                    drawable = drawable,
+                    x = x,
+                    y = y,
+                    radius = radius,
+                    playerColor =
+                        playerColor(
+                            player.color,
+                        ),
+                    legal = isLegal,
+                )
+            }
+        }
+    }
+
+    private fun occupancyByCell(
+        state: MatchSnapshot,
+    ): Map<String, Int> {
+        val counts =
+            mutableMapOf<String, Int>()
+        state.players.forEach {
+                player ->
+            player.tokens.forEachIndexed {
+                    tokenIndex,
+                    position,
+                ->
+                val key =
+                    occupancyKey(
+                        player = player,
+                        tokenIndex = tokenIndex,
+                        position = position,
+                    )
+                counts[key] =
+                    (counts[key] ?: 0) +
+                        1
+            }
+        }
+        return counts
+    }
+
+    private fun occupancyKey(
+        player: PlayerSnapshot,
+        tokenIndex: Int,
+        position: Int,
+    ): String =
+        when {
+            position == -1 ->
+                "Y:${player.seat}:$tokenIndex"
+            position in 0..51 -> {
+                val start =
+                    START_OFFSETS[player.color]
+                        ?: 0
+                "T:${(start + position) % TRACK.size}"
+            }
+            position in 52..56 ->
+                "H:${player.color}:$position"
+            position == 57 ->
+                "C:${player.color}"
+            else ->
+                "X:${player.seat}:$tokenIndex:$position"
+        }
+
+    private fun drawAnimalPawn(
+        canvas: Canvas,
+        drawable: android.graphics.drawable.Drawable,
+        x: Float,
+        y: Float,
+        radius: Float,
+        playerColor: Int,
+        legal: Boolean,
+    ) {
+        shadowPaint.color =
+            Color.argb(
+                74,
+                0,
+                0,
+                0,
+            )
+        canvas.drawOval(
+            x - radius * 0.80f,
+            y + radius * 0.67f,
+            x + radius * 0.80f,
+            y + radius * 1.02f,
+            shadowPaint,
+        )
+
+        if (legal) {
+            canvas.drawCircle(
+                x,
+                y,
+                radius * 1.14f,
+                legalHaloPaint,
+            )
+            canvas.drawCircle(
+                x,
+                y,
+                radius * 1.03f,
+                legalCorePaint,
+            )
+        }
+
+        ringPaint.color =
+            playerColor
+        canvas.drawCircle(
+            x,
+            y,
+            radius,
+            ringPaint,
+        )
+        canvas.drawCircle(
+            x,
+            y,
+            radius * 0.84f,
+            innerPaint,
+        )
+
+        val artRadius =
+            radius *
+                0.80f
+        val bounds =
+            Rect(
+                (x - artRadius).roundToInt(),
+                (y - artRadius).roundToInt(),
+                (x + artRadius).roundToInt(),
+                (y + artRadius).roundToInt(),
+            )
+        clipPath.reset()
+        clipPath.addCircle(
+            x,
+            y,
+            artRadius,
+            Path.Direction.CW,
+        )
+        canvas.save()
+        canvas.clipPath(clipPath)
+        drawable.bounds =
+            bounds
+        drawable.draw(canvas)
+        canvas.restore()
+    }
+
+    private fun drawableFor(
+        character: AnimalCharacter,
+    ): android.graphics.drawable.Drawable? {
+        if (
+            drawableCache.containsKey(
+                character.id,
+            )
+        ) {
+            return drawableCache[character.id]
+        }
+
+        val drawableId =
+            resources.getIdentifier(
+                character.fallbackDrawableName,
+                "drawable",
+                context.packageName,
+            )
+        val drawable =
+            if (drawableId == 0) {
+                null
+            } else {
+                context.getDrawable(
+                    drawableId,
+                )
+            }
+        drawableCache[character.id] =
+            drawable
+        return drawable
+    }
+
+    private fun startMoveAnimationIfNeeded(
+        previous: MatchSnapshot?,
+        current: MatchSnapshot?,
+    ) {
+        moveAnimator
+            ?.cancel()
+        moveAnimator =
+            null
+        moveAnimation =
+            null
+
+        if (
+            previous == null ||
+            current == null ||
+            previous.matchId != current.matchId
+        ) {
+            return
+        }
+
+        val movement =
+            current.players
+                .asSequence()
+                .mapNotNull {
+                        currentPlayer ->
+                    val previousPlayer =
+                        previous.players
+                            .firstOrNull {
+                                it.playerId ==
+                                    currentPlayer.playerId
+                            }
+                            ?: return@mapNotNull null
+
+                    currentPlayer.tokens
+                        .indices
+                        .firstNotNullOfOrNull {
+                                tokenIndex ->
+                            val from =
+                                previousPlayer.tokens
+                                    .getOrNull(
+                                        tokenIndex,
+                                    )
+                                    ?: return@firstNotNullOfOrNull null
+                            val to =
+                                currentPlayer.tokens
+                                    .getOrNull(
+                                        tokenIndex,
+                                    )
+                                    ?: return@firstNotNullOfOrNull null
+
+                            if (to > from) {
+                                TokenMoveAnimation(
+                                    playerId =
+                                        currentPlayer.playerId,
+                                    tokenIndex =
+                                        tokenIndex,
+                                    fromPosition = from,
+                                    toPosition = to,
+                                    progress = 0f,
+                                )
+                            } else {
+                                null
+                            }
+                        }
+                }
+                .firstOrNull()
+                ?: return
+
+        val steps =
+            (
+                movement.toPosition -
+                    movement.fromPosition
+                )
+                .coerceAtLeast(1)
+        val speed =
+            GameSettingsStore(context)
+                .snapshot()
+                .gameSpeed
+        val duration =
+            (
+                steps.toLong() *
+                    speed.moveStepMs
+                )
+                .coerceAtLeast(
+                    speed.moveStepMs,
+                )
+
+        moveAnimation =
+            movement
+        moveAnimator =
+            ValueAnimator
+                .ofFloat(
+                    0f,
+                    steps.toFloat(),
+                )
+                .apply {
+                    this.duration =
+                        duration
+                    addUpdateListener {
+                            animator ->
+                        moveAnimation =
+                            moveAnimation
+                                ?.copy(
+                                    progress =
+                                        animator
+                                            .animatedValue as Float,
+                                )
+                        invalidate()
+                    }
+                    addListener(
+                        object :
+                            AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(
+                                animation: Animator,
+                            ) {
+                                moveAnimation =
+                                    null
+                                moveAnimator =
+                                    null
+                                invalidate()
+                            }
+
+                            override fun onAnimationCancel(
+                                animation: Animator,
+                            ) {
+                                moveAnimation =
+                                    null
+                                moveAnimator =
+                                    null
+                                invalidate()
+                            }
+                        },
+                    )
+                    start()
+                }
+    }
+
+    private fun animatedTokenCenter(
+        player: PlayerSnapshot,
+        tokenIndex: Int,
+        currentPosition: Int,
+        cell: Float,
+    ): Pair<Float, Float>? {
+        val animation =
+            moveAnimation
+                ?.takeIf {
+                    it.playerId == player.playerId &&
+                        it.tokenIndex == tokenIndex
+                }
+                ?: return tokenCenter(
+                    player = player,
+                    tokenIndex = tokenIndex,
+                    position = currentPosition,
+                    cell = cell,
+                )
+
+        val totalSteps =
+            (
+                animation.toPosition -
+                    animation.fromPosition
+                )
+                .coerceAtLeast(1)
+        val progress =
+            animation.progress
+                .coerceIn(
+                    0f,
+                    totalSteps.toFloat(),
+                )
+        val whole =
+            floor(progress)
+                .toInt()
+                .coerceAtMost(
+                    totalSteps - 1,
+                )
+        val fraction =
+            (
+                progress -
+                    whole
+                )
+                .coerceIn(
+                    0f,
+                    1f,
+                )
+        val fromPosition =
+            animation.fromPosition +
+                whole
+        val toPosition =
+            (
+                fromPosition + 1
+                )
+                .coerceAtMost(
+                    animation.toPosition,
+                )
+        val from =
+            tokenCenter(
+                player = player,
+                tokenIndex = tokenIndex,
+                position = fromPosition,
+                cell = cell,
+            )
+                ?: return null
+        val to =
+            tokenCenter(
+                player = player,
+                tokenIndex = tokenIndex,
+                position = toPosition,
+                cell = cell,
+            )
+                ?: return from
+
+        return (
+            from.first +
+                (
+                    to.first -
+                        from.first
+                    ) *
+                fraction
+            ) to
+            (
+                from.second +
+                    (
+                        to.second -
+                            from.second
+                        ) *
+                    fraction
+                )
+    }
+
+    private fun tokenCenter(
+        player: PlayerSnapshot,
+        tokenIndex: Int,
+        position: Int,
+        cell: Float,
+    ): Pair<Float, Float>? {
+        if (position == -1) {
+            return yardTokenCenter(
+                color = player.color,
+                tokenIndex = tokenIndex,
+                cell = cell,
+            )
+        }
+
+        if (position in 0..51) {
+            val offset =
+                START_OFFSETS[player.color]
+                    ?: return null
+            val global =
+                (offset + position) %
+                    TRACK.size
+            val coord =
+                TRACK[global]
+            return centerForCell(
+                row = coord.first,
+                col = coord.second,
+                cell = cell,
+            )
+        }
+
+        if (position in 52..56) {
+            val lane =
+                HOME_LANES[player.color]
+                    ?: return null
+            val coord =
+                lane[position - 52]
+            return centerForCell(
+                row = coord.first,
+                col = coord.second,
+                cell = cell,
+            )
+        }
+
+        if (position == 57) {
+            val unit =
+                when (player.color) {
+                    "RED" -> 6.9f to 7.5f
+                    "GREEN" -> 7.5f to 6.9f
+                    "YELLOW" -> 8.1f to 7.5f
+                    "BLUE" -> 7.5f to 8.1f
+                    else -> 7.5f to 7.5f
+                }
+            return unit.first * cell to
+                unit.second * cell
+        }
+
+        return null
+    }
+
+    private fun yardTokenCenter(
+        color: String,
+        tokenIndex: Int,
+        cell: Float,
+    ): Pair<Float, Float>? {
+        val origin =
+            when (color) {
+                "RED" -> 0f to 0f
+                "GREEN" -> 0f to 9f
+                "YELLOW" -> 9f to 9f
+                "BLUE" -> 9f to 0f
+                else -> return null
+            }
+        val slot =
+            when (tokenIndex) {
+                0 -> 2f to 2f
+                1 -> 2f to 4f
+                2 -> 4f to 2f
+                else -> 4f to 4f
+            }
+        val row =
+            origin.first +
+                slot.first
+        val col =
+            origin.second +
+                slot.second
+        return col * cell to
+            row * cell
+    }
+
+    private fun centerForCell(
+        row: Int,
+        col: Int,
+        cell: Float,
+    ): Pair<Float, Float> =
+        (col + 0.5f) * cell to
+            (row + 0.5f) * cell
+
+    private fun playerColor(
+        name: String,
+    ): Int =
+        when (name) {
+            "RED" -> Color.rgb(241, 37, 47)
+            "GREEN" -> Color.rgb(0, 169, 80)
+            "YELLOW" -> Color.rgb(255, 216, 27)
+            "BLUE" -> Color.rgb(48, 151, 215)
+            else -> Color.rgb(108, 117, 125)
+        }
+
+    private fun density(
+        value: Float,
+    ): Float =
+        value *
+            resources.displayMetrics.density
+
+    private data class TokenMoveAnimation(
+        val playerId: String,
+        val tokenIndex: Int,
+        val fromPosition: Int,
+        val toPosition: Int,
+        val progress: Float,
+    )
+
+    private companion object {
+        val START_OFFSETS =
+            mapOf(
+                "RED" to 0,
+                "GREEN" to 13,
+                "YELLOW" to 26,
+                "BLUE" to 39,
+            )
+
+        val TRACK =
+            listOf(
+                6 to 1,
+                6 to 2,
+                6 to 3,
+                6 to 4,
+                6 to 5,
+                5 to 6,
+                4 to 6,
+                3 to 6,
+                2 to 6,
+                1 to 6,
+                0 to 6,
+                0 to 7,
+                0 to 8,
+                1 to 8,
+                2 to 8,
+                3 to 8,
+                4 to 8,
+                5 to 8,
+                6 to 9,
+                6 to 10,
+                6 to 11,
+                6 to 12,
+                6 to 13,
+                6 to 14,
+                7 to 14,
+                8 to 14,
+                8 to 13,
+                8 to 12,
+                8 to 11,
+                8 to 10,
+                8 to 9,
+                9 to 8,
+                10 to 8,
+                11 to 8,
+                12 to 8,
+                13 to 8,
+                14 to 8,
+                14 to 7,
+                14 to 6,
+                13 to 6,
+                12 to 6,
+                11 to 6,
+                10 to 6,
+                9 to 6,
+                8 to 5,
+                8 to 4,
+                8 to 3,
+                8 to 2,
+                8 to 1,
+                8 to 0,
+                7 to 0,
+                6 to 0,
+            )
+
+        val HOME_LANES =
+            mapOf(
+                "RED" to
+                    listOf(
+                        7 to 1,
+                        7 to 2,
+                        7 to 3,
+                        7 to 4,
+                        7 to 5,
+                    ),
+                "GREEN" to
+                    listOf(
+                        1 to 7,
+                        2 to 7,
+                        3 to 7,
+                        4 to 7,
+                        5 to 7,
+                    ),
+                "YELLOW" to
+                    listOf(
+                        7 to 13,
+                        7 to 12,
+                        7 to 11,
+                        7 to 10,
+                        7 to 9,
+                    ),
+                "BLUE" to
+                    listOf(
+                        13 to 7,
+                        12 to 7,
+                        11 to 7,
+                        10 to 7,
+                        9 to 7,
+                    ),
+            )
+    }
+}
