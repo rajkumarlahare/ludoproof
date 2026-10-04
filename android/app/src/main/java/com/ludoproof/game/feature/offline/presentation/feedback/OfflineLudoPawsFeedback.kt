@@ -2,6 +2,7 @@ package com.ludoproof.game.feature.offline.presentation.feedback
 
 import android.content.Context
 import com.ludoproof.game.MatchSnapshot
+import com.ludoproof.game.OfflineGameActivity
 import com.ludoproof.game.feature.characters.domain.model.VoiceCue
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsFeedbackLedger
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
@@ -165,10 +166,29 @@ object OfflineLudoPawsFeedbackPolicy {
 /**
  * Android side-effect adapter for [OfflineLudoPawsFeedbackPolicy].
  *
- * [ledger] makes a successful local action idempotent at the sound/haptic
- * boundary, so a duplicated callback or UI replay cannot emit feedback twice.
+ * The activity-owned ledger makes a successful local action idempotent at the
+ * sound/haptic boundary, so duplicated callbacks cannot emit feedback twice.
  */
 object OfflineLudoPawsFeedbackDispatcher {
+    fun committed(
+        context: Context,
+        previous: MatchSnapshot?,
+        current: MatchSnapshot?,
+        action: OfflineFeedbackAction,
+    ) {
+        val ledger =
+            (context as? OfflineGameActivity)
+                ?.feedbackLedger
+                ?: return
+        committed(
+            context = context,
+            ledger = ledger,
+            previous = previous,
+            current = current,
+            action = action,
+        )
+    }
+
     fun committed(
         context: Context,
         ledger: LudoPawsFeedbackLedger,
