@@ -11,7 +11,22 @@ internal fun MainActivity.applyResponse(
     response: JSONObject,
     announce: Boolean = true,
 ) {
-    val envelope = GameJson.envelope(response)
+    val envelope =
+        try {
+            GameJson.envelope(response)
+        } catch (error: GameSchemaException) {
+            // Fail closed at the server-response boundary. Do not replace the
+            // last known-good state or cache malformed authoritative data.
+            diceView.stopRolling()
+            showStatus(
+                "Server state validation failed. Your last verified state was kept; refresh to retry.",
+            )
+            currentState?.let { safeState ->
+                updateControls(safeState)
+            }
+            updateRollButton()
+            return
+        }
 
     envelope.playerId?.let { resolvedPlayerId ->
         playerId = resolvedPlayerId
