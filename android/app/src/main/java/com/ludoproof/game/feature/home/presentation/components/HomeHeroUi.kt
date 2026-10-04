@@ -11,6 +11,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.ludoproof.game.*
+import com.ludoproof.game.feature.proof.domain.core.FairDiceExplainer
 
 internal fun HomeActivity.heroPanel():
     FrameLayout =
@@ -147,13 +148,13 @@ internal fun HomeActivity.quickActions():
         row.addView(
             quickAction(
                 "✓",
-                "PROOFS",
+                FairDiceExplainer.HOME_ACTION_LABEL,
             ) {
                 ArcadeDialogs
                     .showProofHistory(
                         this@quickActions,
-                        "PROOF MODE",
-                        "Online matches use server-authoritative EntroNex v4 commitments and attestations.\n\nOffline matches use the same v4 HKDF, rejection sampling and Natural World derivation locally, then recompute the local proof. Offline has no remote EntroNex attestation.",
+                        FairDiceExplainer.DIALOG_TITLE,
+                        FairDiceExplainer.dialogBody(),
                     )
             },
             weighted(),
