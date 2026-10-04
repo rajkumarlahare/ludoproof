@@ -8,6 +8,7 @@ import {
   attachRoundCommitment,
   authoritativeStateForRandomness,
   forfeitTimedOutRoll,
+  destinationForRoll,
   globalCellFor,
   legalTokenIndexes,
   newMatch,
@@ -185,6 +186,35 @@ test("third consecutive six forfeits the roll and passes turn", () => {
   assert.equal(resolved.state.turnSeat, 1);
   assert.equal(resolved.state.pendingRoll, null);
   assert.equal(resolved.state.consecutiveSixes[0], 0);
+});
+
+test("home lane starts immediately after relative track position 50", () => {
+  assert.equal(destinationForRoll(50, 1), 52);
+  assert.equal(destinationForRoll(49, 2), 52);
+  assert.equal(destinationForRoll(50, 6), 57);
+  assert.equal(destinationForRoll(51, 1), 53);
+  assert.equal(destinationForRoll(56, 2), null);
+
+  for (const color of ["RED", "GREEN", "YELLOW", "BLUE"]) {
+    assert.notEqual(globalCellFor(color, 50), null);
+    assert.equal(globalCellFor(color, 51), null);
+  }
+
+  const state = activeMatch();
+  state.players[0].tokens[0] = 50;
+  state.pendingRoll = {
+    status: "RESOLVED",
+    seat: 0,
+    playerId: "p1",
+    outcome: 1,
+    legalTokenIndexes: [0],
+  };
+  const moved = applyMove(state, {
+    playerId: "p1",
+    tokenIndex: 0,
+    now: 9,
+  });
+  assert.equal(moved.state.players[0].tokens[0], 52);
 });
 
 test("exact roll is required to reach home", () => {

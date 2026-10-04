@@ -20,7 +20,11 @@ internal object LudoPawsFxBoardGeometry {
         position: Int,
         cell: Float,
     ): Pair<Float, Float>? {
-        if (position == -1) {
+        val renderPosition =
+            LudoPathEncoding
+                .normalizeLegacyEntry(position)
+
+        if (renderPosition == -1) {
             return yardTokenCenter(
                 color = color,
                 tokenIndex = tokenIndex,
@@ -28,9 +32,9 @@ internal object LudoPawsFxBoardGeometry {
             )
         }
 
-        if (position in 0..51) {
+        if (LudoPathEncoding.isTrackPosition(renderPosition)) {
             val offset = START_OFFSETS[color] ?: return null
-            val coord = TRACK[(offset + position) % TRACK.size]
+            val coord = TRACK[(offset + renderPosition) % TRACK.size]
             return centerForCell(
                 row = coord.first,
                 col = coord.second,
@@ -38,9 +42,17 @@ internal object LudoPawsFxBoardGeometry {
             )
         }
 
-        if (position in 52..56) {
+        if (
+            renderPosition in
+            LudoPathEncoding.FIRST_HOME_LANE_POSITION..
+                LudoPathEncoding.LAST_HOME_LANE_POSITION
+        ) {
             val lane = HOME_LANES[color] ?: return null
-            val coord = lane[position - 52]
+            val coord =
+                lane[
+                    renderPosition -
+                        LudoPathEncoding.FIRST_HOME_LANE_POSITION
+                ]
             return centerForCell(
                 row = coord.first,
                 col = coord.second,
@@ -48,7 +60,7 @@ internal object LudoPawsFxBoardGeometry {
             )
         }
 
-        if (position == 57) {
+        if (renderPosition == LudoPathEncoding.HOME_POSITION) {
             val left = axisBoundary(6, cell)
             val top = axisBoundary(6, cell)
             val right = axisBoundary(9, cell)

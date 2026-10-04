@@ -93,7 +93,7 @@ object LudoPawsPawnAnimationPolicy {
         when {
             to > from &&
                 from >= -1 &&
-                to <= 57 ->
+                to <= LudoPathEncoding.HOME_POSITION ->
                 LudoPawsPawnMotion(
                     playerId = playerId,
                     tokenIndex = tokenIndex,
@@ -101,11 +101,15 @@ object LudoPawsPawnAnimationPolicy {
                     toPosition = to,
                     kind = LudoPawsPawnMotionKind.FORWARD,
                     visualSteps =
-                        (to - from)
+                        LudoPathEncoding
+                            .visualStepCount(
+                                fromPosition = from,
+                                toPosition = to,
+                            )
                             .coerceAtLeast(1),
                 )
 
-            from in 0..51 &&
+            LudoPathEncoding.isTrackPosition(from) &&
                 to == -1 ->
                 LudoPawsPawnMotion(
                     playerId = playerId,

@@ -460,23 +460,29 @@ private class AnimalPawnOverlayView(
         player: PlayerSnapshot,
         tokenIndex: Int,
         position: Int,
-    ): String =
-        when {
-            position == -1 ->
+    ): String {
+        val renderPosition =
+            LudoPathEncoding
+                .normalizeLegacyEntry(position)
+        return when {
+            renderPosition == -1 ->
                 "Y:${player.seat}:$tokenIndex"
-            position in 0..51 -> {
+            LudoPathEncoding.isTrackPosition(renderPosition) -> {
                 val start =
                     START_OFFSETS[player.color]
                         ?: 0
-                "T:${(start + position) % TRACK.size}"
+                "T:${(start + renderPosition) % TRACK.size}"
             }
-            position in 52..56 ->
-                "H:${player.color}:$position"
-            position == 57 ->
+            renderPosition in
+                LudoPathEncoding.FIRST_HOME_LANE_POSITION..
+                    LudoPathEncoding.LAST_HOME_LANE_POSITION ->
+                "H:${player.color}:$renderPosition"
+            renderPosition == LudoPathEncoding.HOME_POSITION ->
                 "C:${player.color}"
             else ->
                 "X:${player.seat}:$tokenIndex:$position"
         }
+    }
 
     private fun drawAnimalPawn(
         canvas: Canvas,
@@ -655,9 +661,10 @@ private class AnimalPawnOverlayView(
                 ?: return
 
         val steps =
-            (
-                movement.toPosition -
-                    movement.fromPosition
+            LudoPathEncoding
+                .visualStepCount(
+                    fromPosition = movement.fromPosition,
+                    toPosition = movement.toPosition,
                 )
                 .coerceAtLeast(1)
         val speed =
@@ -743,9 +750,10 @@ private class AnimalPawnOverlayView(
                 )
 
         val totalSteps =
-            (
-                animation.toPosition -
-                    animation.fromPosition
+            LudoPathEncoding
+                .visualStepCount(
+                    fromPosition = animation.fromPosition,
+                    toPosition = animation.toPosition,
                 )
                 .coerceAtLeast(1)
         val progress =
@@ -770,15 +778,21 @@ private class AnimalPawnOverlayView(
                     1f,
                 )
         val fromPosition =
-            animation.fromPosition +
-                whole
+            LudoPathEncoding
+                .positionAtVisualStep(
+                    fromPosition = animation.fromPosition,
+                    step = whole,
+                )
+                ?: return null
         val toPosition =
-            (
-                fromPosition + 1
+            LudoPathEncoding
+                .positionAtVisualStep(
+                    fromPosition = animation.fromPosition,
+                    step =
+                        (whole + 1)
+                            .coerceAtMost(totalSteps),
                 )
-                .coerceAtMost(
-                    animation.toPosition,
-                )
+                ?: return null
         val from =
             tokenCenter(
                 player = player,
@@ -814,15 +828,18 @@ private class AnimalPawnOverlayView(
                 )
     }
 
-    // TOKEN POSITION MIRROR LOCK: every cosmetic pawn center must match LudoBoardView.
-    // Never introduce an overlay-only road, yard, home-lane, or center offset.
+    // TOKEN POSITION MIRROR LOCK: mirror the corrected shared-track exit exactly.
     private fun tokenCenter(
         player: PlayerSnapshot,
         tokenIndex: Int,
         position: Int,
         cell: Float,
     ): Pair<Float, Float>? {
-        if (position == -1) {
+        val renderPosition =
+            LudoPathEncoding
+                .normalizeLegacyEntry(position)
+
+        if (renderPosition == -1) {
             return yardTokenCenter(
                 color = player.color,
                 tokenIndex = tokenIndex,
@@ -830,12 +847,12 @@ private class AnimalPawnOverlayView(
             )
         }
 
-        if (position in 0..51) {
+        if (LudoPathEncoding.isTrackPosition(renderPosition)) {
             val offset =
                 START_OFFSETS[player.color]
                     ?: return null
             val global =
-                (offset + position) %
+                (offset + renderPosition) %
                     TRACK.size
             val coord =
                 TRACK[global]
@@ -846,12 +863,19 @@ private class AnimalPawnOverlayView(
             )
         }
 
-        if (position in 52..56) {
+        if (
+            renderPosition in
+            LudoPathEncoding.FIRST_HOME_LANE_POSITION..
+                LudoPathEncoding.LAST_HOME_LANE_POSITION
+        ) {
             val lane =
                 HOME_LANES[player.color]
                     ?: return null
             val coord =
-                lane[position - 52]
+                lane[
+                    renderPosition -
+                        LudoPathEncoding.FIRST_HOME_LANE_POSITION
+                ]
             return centerForCell(
                 row = coord.first,
                 col = coord.second,
@@ -859,7 +883,7 @@ private class AnimalPawnOverlayView(
             )
         }
 
-        if (position == 57) {
+        if (renderPosition == LudoPathEncoding.HOME_POSITION) {
             val left = axisBoundary(6, cell)
             val top = axisBoundary(6, cell)
             val right = axisBoundary(9, cell)

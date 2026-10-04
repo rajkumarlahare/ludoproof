@@ -759,13 +759,12 @@ class LudoBoardView @JvmOverloads constructor(
                 ?: return
 
         val steps =
-            (
-                movement.toPosition -
-                    movement.fromPosition
+            LudoPathEncoding
+                .visualStepCount(
+                    fromPosition = movement.fromPosition,
+                    toPosition = movement.toPosition,
                 )
-                .coerceAtLeast(
-                    1,
-                )
+                .coerceAtLeast(1)
         val speed =
             GameSettingsStore(
                 context,
@@ -853,13 +852,12 @@ class LudoBoardView @JvmOverloads constructor(
                 )
 
         val totalSteps =
-            (
-                animation.toPosition -
-                    animation.fromPosition
+            LudoPathEncoding
+                .visualStepCount(
+                    fromPosition = animation.fromPosition,
+                    toPosition = animation.toPosition,
                 )
-                .coerceAtLeast(
-                    1,
-                )
+                .coerceAtLeast(1)
         val progress =
             animation.progress
                 .coerceIn(
@@ -885,16 +883,21 @@ class LudoBoardView @JvmOverloads constructor(
                     1f,
                 )
         val fromPosition =
-            animation.fromPosition +
-                whole
+            LudoPathEncoding
+                .positionAtVisualStep(
+                    fromPosition = animation.fromPosition,
+                    step = whole,
+                )
+                ?: return null
         val toPosition =
-            (
-                fromPosition +
-                    1
+            LudoPathEncoding
+                .positionAtVisualStep(
+                    fromPosition = animation.fromPosition,
+                    step =
+                        (whole + 1)
+                            .coerceAtMost(totalSteps),
                 )
-                .coerceAtMost(
-                    animation.toPosition,
-                )
+                ?: return null
         val from =
             tokenCenter(
                 player,
@@ -1046,15 +1049,19 @@ class LudoBoardView @JvmOverloads constructor(
                 .toInt(),
         )
 
-    // TOKEN POSITION LOCK: token centers must follow the exact fixed road/home/center geometry.
-    // Keep movement rules logical; only map their coordinates through the approved geometry below.
+    // TOKEN POSITION LOCK: movement exits the shared track after relative position 50.
+    // Encoded position 51 is legacy-only and is rendered as the first home-lane position.
     private fun tokenCenter(
         player: PlayerSnapshot,
         tokenIndex: Int,
         position: Int,
         cell: Float,
     ): Pair<Float, Float>? {
-        if (position == -1) {
+        val renderPosition =
+            LudoPathEncoding
+                .normalizeLegacyEntry(position)
+
+        if (renderPosition == -1) {
             return yardTokenCenter(
                 player.color,
                 tokenIndex,
@@ -1062,12 +1069,12 @@ class LudoBoardView @JvmOverloads constructor(
             )
         }
 
-        if (position in 0..51) {
+        if (LudoPathEncoding.isTrackPosition(renderPosition)) {
             val offset =
                 START_OFFSETS[player.color]
                     ?: return null
             val global =
-                (offset + position) %
+                (offset + renderPosition) %
                     TRACK.size
             val coord = TRACK[global]
             return centerForCell(
@@ -1077,12 +1084,19 @@ class LudoBoardView @JvmOverloads constructor(
             )
         }
 
-        if (position in 52..56) {
+        if (
+            renderPosition in
+            LudoPathEncoding.FIRST_HOME_LANE_POSITION..
+                LudoPathEncoding.LAST_HOME_LANE_POSITION
+        ) {
             val lane =
                 HOME_LANES[player.color]
                     ?: return null
             val coord =
-                lane[position - 52]
+                lane[
+                    renderPosition -
+                        LudoPathEncoding.FIRST_HOME_LANE_POSITION
+                ]
             return centerForCell(
                 coord.first,
                 coord.second,
@@ -1090,7 +1104,7 @@ class LudoBoardView @JvmOverloads constructor(
             )
         }
 
-        if (position == 57) {
+        if (renderPosition == LudoPathEncoding.HOME_POSITION) {
             val left = axisBoundary(6, cell)
             val top = axisBoundary(6, cell)
             val right = axisBoundary(9, cell)
