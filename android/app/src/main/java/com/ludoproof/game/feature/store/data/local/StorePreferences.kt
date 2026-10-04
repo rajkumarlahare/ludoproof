@@ -17,6 +17,10 @@ internal object StorePreferences {
         "selected_dice"
     const val KEY_SELECTED_AVATAR =
         "selected_avatar"
+    const val KEY_SELECTED_CHARACTER_PACK =
+        "selected_character_pack"
+    const val KEY_EVENT_ENTITLEMENTS =
+        "verified_event_entitlements"
     const val KEY_AD_PROGRESS_PREFIX =
         "ad_progress_"
 }
