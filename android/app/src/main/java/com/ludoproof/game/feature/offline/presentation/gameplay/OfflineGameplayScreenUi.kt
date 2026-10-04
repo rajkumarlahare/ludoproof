@@ -137,7 +137,7 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
     )
 
     boardView =
-        LudoBoardView(this).apply {
+        LudoPawsBoardView(this).apply {
             onTokenSelected = {
                     tokenIndex ->
                 runCatching {
