@@ -43,7 +43,7 @@ class DiceView @JvmOverloads constructor(
                 dp(1.5f),
                 0f,
                 dp(1f),
-                0x55000000,
+                0x38000000,
             )
         }
     private val rollingPaint =
@@ -179,7 +179,7 @@ class DiceView @JvmOverloads constructor(
             dp(3.5f),
             0f,
             dp(2f),
-            0x52000000,
+            0x3D000000,
         )
         canvas.drawRoundRect(
             shadow,
@@ -217,6 +217,19 @@ class DiceView @JvmOverloads constructor(
             facePaint,
         )
         facePaint.shader = null
+        facePaint.color =
+            0x2EFFFFFF
+        canvas.drawRoundRect(
+            RectF(
+                rect.left + size * .035f,
+                rect.top + size * .035f,
+                rect.right - size * .035f,
+                rect.top + rect.height() * .43f,
+            ),
+            size * .13f,
+            size * .13f,
+            facePaint,
+        )
 
         borderPaint.color =
             palette.borderColor
@@ -295,9 +308,9 @@ class DiceView @JvmOverloads constructor(
             "dice_pumpkin" ->
                 DicePalette(
                     intArrayOf(
-                        0xFFF6A24D.toInt(),
-                        0xFFD16D25.toInt(),
-                        0xFFA84819.toInt(),
+                        0xFFFFD59A.toInt(),
+                        0xFFFFAD55.toInt(),
+                        0xFFF47A2A.toInt(),
                     ),
                     0xFF5B2B18.toInt(),
                     0xFF2E1A12.toInt(),
@@ -305,9 +318,9 @@ class DiceView @JvmOverloads constructor(
             "dice_diwali" ->
                 DicePalette(
                     intArrayOf(
-                        0xFFE2463D.toInt(),
-                        0xFFB51E39.toInt(),
-                        0xFF7C1930.toInt(),
+                        0xFFFF9A90.toInt(),
+                        0xFFF45361.toInt(),
+                        0xFFC92D48.toInt(),
                     ),
                     0xFFFFD44A.toInt(),
                     Color.WHITE,
@@ -325,9 +338,9 @@ class DiceView @JvmOverloads constructor(
             "dice_cricket" ->
                 DicePalette(
                     intArrayOf(
-                        0xFFE6F5DA.toInt(),
-                        0xFF73B86A.toInt(),
-                        0xFF2F6F47.toInt(),
+                        0xFFF5FFE9.toInt(),
+                        0xFFA8D99A.toInt(),
+                        0xFF62A978.toInt(),
                     ),
                     0xFF174D35.toInt(),
                     Color.WHITE,
@@ -345,9 +358,9 @@ class DiceView @JvmOverloads constructor(
             "dice_colors" ->
                 DicePalette(
                     intArrayOf(
-                        0xFFFFD83D.toInt(),
-                        0xFFEF4F9A.toInt(),
-                        0xFF45C7D8.toInt(),
+                        0xFFFFEA75.toInt(),
+                        0xFFFF7BB5.toInt(),
+                        0xFF6ADCE8.toInt(),
                     ),
                     0xFF6A267D.toInt(),
                     0xFF3C235A.toInt(),
@@ -366,8 +379,8 @@ class DiceView @JvmOverloads constructor(
                 DicePalette(
                     intArrayOf(
                         Color.WHITE,
-                        0xFFF3F6FA.toInt(),
-                        0xFFD5DDE8.toInt(),
+                        0xFFF9FBFF.toInt(),
+                        0xFFEAF0F7.toInt(),
                     ),
                     0xFF20344F.toInt(),
                     0xFF111827.toInt(),

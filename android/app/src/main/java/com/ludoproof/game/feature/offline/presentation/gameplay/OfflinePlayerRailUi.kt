@@ -239,7 +239,7 @@ private fun OfflineGameActivity.activeDiceControl(
         !cpuTurn
     control.alpha =
         if (cpuTurn) {
-            .58f
+            .82f
         } else {
             1f
         }

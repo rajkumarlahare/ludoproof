@@ -17,9 +17,12 @@ import android.widget.FrameLayout
 import com.ludoproof.game.feature.characters.domain.catalog.LudoPawsCharacterCatalog
 import com.ludoproof.game.feature.characters.domain.model.AnimalCharacter
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
+import kotlin.math.PI
 import kotlin.math.floor
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * Local-game board shell that keeps the proven LudoBoardView responsible for
@@ -391,7 +394,11 @@ private class AnimalPawnOverlayView(
                             .radiusScale(
                                 position = position,
                                 occupancy = occupants,
-                            )
+                            ) *
+                        movementHopScale(
+                            playerId = player.playerId,
+                            tokenIndex = tokenIndex,
+                        )
                 val isLegal =
                     player.playerId == localId &&
                         tokenIndex in legal &&
@@ -632,10 +639,11 @@ private class AnimalPawnOverlayView(
                     toPosition = movement.toPosition,
                 )
                 .coerceAtLeast(1)
-        val speed =
+        val settings =
             GameSettingsStore(context)
                 .snapshot()
-                .gameSpeed
+        val speed =
+            settings.gameSpeed
         val duration =
             (
                 steps.toLong() *
@@ -646,7 +654,10 @@ private class AnimalPawnOverlayView(
                 )
 
         moveAnimation =
-            movement
+            movement.copy(
+                hopEnabled =
+                    !settings.reducedMotionEnabled,
+            )
         moveAnimator =
             ValueAnimator
                 .ofFloat(
@@ -775,22 +786,93 @@ private class AnimalPawnOverlayView(
             )
                 ?: return from
 
-        return (
+        // Move one board cell at a time with a visible take-off and landing.
+        // Smoothstep removes the old rail-like constant-speed glide; the sine lift
+        // gives every visual step a small frog-hop arc before it lands in the next cell.
+        val easedFraction =
+            fraction *
+                fraction *
+                (3f - 2f * fraction)
+        val hopFraction =
+            if (animation.hopEnabled) {
+                sin(
+                    PI *
+                        fraction.toDouble(),
+                ).toFloat()
+            } else {
+                0f
+            }
+        val linearX =
             from.first +
-                (
-                    to.first -
-                        from.first
-                    ) *
-                fraction
+                (to.first - from.first) *
+                easedFraction
+        val linearY =
+            from.second +
+                (to.second - from.second) *
+                easedFraction
+
+        if (!animation.hopEnabled || hopFraction <= 0f) {
+            return linearX to linearY
+        }
+
+        // Curve the visual hop slightly toward the board center. Unlike a fixed
+        // upward offset, this keeps edge-row pawns inside the clipped board while
+        // still giving every cell transition a clear take-off/apex/landing arc.
+        val boardCenter =
+            cell * 7.5f
+        val towardCenterX =
+            boardCenter - linearX
+        val towardCenterY =
+            boardCenter - linearY
+        val towardCenterDistance =
+            sqrt(
+                towardCenterX * towardCenterX +
+                    towardCenterY * towardCenterY,
+            )
+        if (towardCenterDistance <= 0.001f) {
+            return linearX to linearY
+        }
+        val arcOffset =
+            cell * 0.22f * hopFraction
+
+        return (
+            linearX +
+                towardCenterX /
+                towardCenterDistance *
+                arcOffset
             ) to
             (
-                from.second +
-                    (
-                        to.second -
-                            from.second
-                        ) *
-                    fraction
+                linearY +
+                    towardCenterY /
+                    towardCenterDistance *
+                    arcOffset
                 )
+    }
+
+    private fun movementHopScale(
+        playerId: String,
+        tokenIndex: Int,
+    ): Float {
+        val animation =
+            moveAnimation
+                ?.takeIf {
+                    it.playerId == playerId &&
+                        it.tokenIndex == tokenIndex &&
+                        it.hopEnabled
+                }
+                ?: return 1f
+        val whole =
+            floor(animation.progress)
+        val fraction =
+            (animation.progress - whole)
+                .coerceIn(0f, 1f)
+        val hop =
+            sin(
+                PI *
+                    fraction.toDouble(),
+            ).toFloat()
+                .coerceAtLeast(0f)
+        return 1f + hop * 0.08f
     }
 
     // TOKEN POSITION MIRROR LOCK: mirror the corrected shared-track exit exactly.
@@ -957,6 +1039,7 @@ private class AnimalPawnOverlayView(
         val fromPosition: Int,
         val toPosition: Int,
         val progress: Float,
+        val hopEnabled: Boolean = true,
     )
 
     private companion object {
