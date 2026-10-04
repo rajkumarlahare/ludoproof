@@ -14,17 +14,19 @@ import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsVoiceLines
 import com.ludoproof.game.feature.settings.data.local.GameMusicController
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
-import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
-import com.ludoproof.game.feature.settings.data.local.LudoPawsHaptics
 import java.util.Locale
 
 /**
- * Reaction-audio coordinator and animal voice renderer.
+ * Animal voice renderer for reaction playback.
  *
- * Game SFX and haptics are dispatched independently of the Animal Voices
- * preference. Starter Paws species then use low-latency nonverbal SoundPool
- * clips. Characters without a packaged species clip fall back to on-device TTS
- * so future packs can still react before their final voice assets arrive.
+ * Reaction SFX and haptics intentionally belong to the mode-specific feedback
+ * dispatchers. Keeping this class voice-only prevents one game transition from
+ * playing the same feedback twice through both the reactive board and its
+ * presentation layer.
+ *
+ * Starter Paws species use low-latency nonverbal SoundPool clips. Characters
+ * without a packaged species clip fall back to on-device TTS so future packs
+ * can still react before their final voice assets arrive.
  */
 class LudoPawsVoicePlayer(
     context: Context,
@@ -106,15 +108,6 @@ class LudoPawsVoicePlayer(
         ) {
             return
         }
-
-        GameSoundFeedback.reaction(
-            context = appContext,
-            reactions = reactions,
-        )
-        LudoPawsHaptics.reaction(
-            context = appContext,
-            reactions = reactions,
-        )
 
         if (
             !GameSettingsStore(appContext)
