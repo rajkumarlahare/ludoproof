@@ -13,12 +13,15 @@ import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReactionEng
 import com.ludoproof.game.feature.online.domain.OnlineLudoPawsCharacterPolicy
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.feature.settings.data.local.LudoPawsHaptics
-import java.util.WeakHashMap
 import kotlin.math.roundToInt
 
 /**
  * Presentation-only bridge that upgrades the existing remote screen to the
  * shared Ludo Paws reactive board without changing network/game authority.
+ *
+ * Host state is attached to boardFrame instead of a static Activity map so the
+ * view hierarchy owns the same lifecycle as MainActivity and cannot retain a
+ * destroyed Activity through a process-global value.
  */
 internal object OnlineLudoPawsPresentation {
     private data class Host(
@@ -29,19 +32,16 @@ internal object OnlineLudoPawsPresentation {
         val consumedFeedbackKeys: MutableSet<String> = linkedSetOf(),
     )
 
-    private val hosts =
-        WeakHashMap<MainActivity, Host>()
-
     fun render(
         activity: MainActivity,
         previous: MatchSnapshot?,
         current: MatchSnapshot,
     ) {
         val host =
-            hosts[activity]
+            host(activity)
                 ?: createHost(activity)
                     .also {
-                        hosts[activity] = it
+                        activity.boardFrame.tag = it
                     }
 
         if (host.matchId != current.matchId) {
@@ -85,7 +85,7 @@ internal object OnlineLudoPawsPresentation {
         activity: MainActivity,
     ) {
         val host =
-            hosts.remove(activity)
+            host(activity)
                 ?: return
         host.board.bind(
             state = null,
@@ -98,8 +98,14 @@ internal object OnlineLudoPawsPresentation {
             activity.boardFrame.removeView(host.board)
             activity.matchStatusPanel.removeView(host.railScroll)
         }
+        activity.boardFrame.tag = null
         activity.boardView.visibility = View.VISIBLE
     }
+
+    private fun host(
+        activity: MainActivity,
+    ): Host? =
+        activity.boardFrame.tag as? Host
 
     private fun createHost(
         activity: MainActivity,
@@ -171,7 +177,9 @@ internal object OnlineLudoPawsPresentation {
         host.rail.removeAllViews()
         val activePlayerId =
             state.players
-                .getOrNull(state.turnSeat)
+                .getOrNull(
+                    state.actingSeat ?: state.turnSeat,
+                )
                 ?.playerId
 
         state.players
@@ -281,11 +289,13 @@ internal object OnlineLudoPawsPresentation {
     ): Boolean =
         current.players.any {
                 player ->
-            previous.players
-                .firstOrNull {
-                    it.playerId == player.playerId
-                }
-                ?.tokens != player.tokens
+            val before =
+                previous.players
+                    .firstOrNull {
+                        it.playerId == player.playerId
+                    }
+                    ?: return@any false
+            before.tokens != player.tokens
         }
 
     private fun trimConsumed(
