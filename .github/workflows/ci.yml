@@ -79,6 +79,8 @@ jobs:
         run: node scripts/check-ludo-paws-assets.mjs
       - name: Ludo Paws character domain gate
         run: node scripts/check-ludo-paws-character-domain.mjs
+      - name: Ludo Paws character selection UX gate
+        run: node scripts/check-ludo-paws-selection-ux.mjs
       - name: Android 16 release gate
         run: node scripts/android16-release-check.mjs
       - name: Android unit tests
