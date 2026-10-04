@@ -200,6 +200,12 @@ class DiceView @JvmOverloads constructor(
             )
         val palette =
             dicePalette()
+
+        // IMPORTANT: drawing the shadow above sets facePaint to 0x33 alpha.
+        // A Shader does not reset Paint alpha, so the previous code rendered the
+        // supposedly white dice at only about 20% opacity and let the dark-blue
+        // gameplay background show through. Reset alpha before every face draw.
+        facePaint.alpha = 255
         facePaint.shader =
             LinearGradient(
                 rect.left,
