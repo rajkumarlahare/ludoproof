@@ -13,7 +13,7 @@ import com.ludoproof.game.feature.characters.domain.catalog.LudoPawsCharacterCat
 import kotlin.math.roundToInt
 
 /**
- * Compact Phase 6/7 character panel used by gameplay rails.
+ * Compact character panel used by offline and remote gameplay rails.
  *
  * The card is presentation-only: token progress is read from PlayerSnapshot and
  * the selected animal is cosmetic metadata supplied by the caller.
@@ -87,6 +87,7 @@ class LudoPawsPlayerCardView(
         active: Boolean,
         computer: Boolean,
         compact: Boolean,
+        localPlayer: Boolean = true,
     ) {
         val character =
             characterId
@@ -132,7 +133,9 @@ class LudoPawsPlayerCardView(
         stateText.text =
             when {
                 active && computer -> "CPU TURN"
-                active -> "YOUR TURN"
+                active && localPlayer -> "YOUR TURN"
+                active && player.teamId != null -> "TEAM ${player.teamId} • TURN"
+                active -> "TURN"
                 player.teamId != null -> "TEAM ${player.teamId} • WAITING"
                 else -> "WAITING"
             }
