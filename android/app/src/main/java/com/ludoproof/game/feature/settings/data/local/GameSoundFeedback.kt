@@ -38,6 +38,17 @@ object GameSoundFeedback {
         )
     }
 
+    fun six(
+        context: Context,
+    ) {
+        play(
+            context = context,
+            resourceId = R.raw.lp_sfx_safe,
+            volume = .45f,
+            rate = 1.18f,
+        )
+    }
+
     fun capture(
         context: Context,
     ) {
@@ -109,13 +120,7 @@ object GameSoundFeedback {
             VoiceCue.HOME -> home(context)
             VoiceCue.VICTORY -> victory(context)
             VoiceCue.DEFEAT -> defeat(context)
-            VoiceCue.SIX ->
-                play(
-                    context = context,
-                    resourceId = R.raw.lp_sfx_safe,
-                    volume = .45f,
-                    rate = 1.18f,
-                )
+            VoiceCue.SIX -> six(context)
 
             VoiceCue.THIRD_SIX,
             VoiceCue.FRUSTRATED,

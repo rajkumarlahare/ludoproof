@@ -18,6 +18,7 @@ import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.ui.offline.common.*
 import com.ludoproof.game.ui.offline.setup.*
+import com.ludoproof.game.ui.offline.state.resolveOfflineCharacterIds
 
 internal fun OfflineGameActivity.gameplayActionPanel():
     LinearLayout =
@@ -318,15 +319,9 @@ internal fun OfflineGameActivity.renderGame(
             activePlayerId
         }
     val characterIdsBySeat =
-        offlineCharacterSetupStore
-            .loadActive()
-            ?.takeIf {
-                it.mode == gameMode &&
-                    it.playerCount ==
-                    state.players.size
-            }
-            ?.characterIds
-            .orEmpty()
+        resolveOfflineCharacterIds(
+            state,
+        )
 
     boardView?.bind(
         state =

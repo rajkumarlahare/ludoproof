@@ -53,7 +53,10 @@ if (!card.includes('fallbackDrawableName') || !card.includes('HOME') || !card.in
   throw new Error('Character player card must render selected animal identity and token progress.');
 }
 
-if (!rail.includes('LudoPawsPlayerCardView') || !rail.includes('characterIds')) {
+const railConsumesCharacters =
+  rail.includes('characterIds') ||
+  rail.includes('activeCharacterIdsBySeat');
+if (!rail.includes('LudoPawsPlayerCardView') || !railConsumesCharacters) {
   throw new Error('Offline player rails must use selected Ludo Paws character cards.');
 }
 

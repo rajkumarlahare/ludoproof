@@ -3,6 +3,8 @@ package com.ludoproof.game.feature.offline
 import com.ludoproof.game.MatchSnapshot
 import com.ludoproof.game.OfflineGameActivity
 import com.ludoproof.game.PlayerSnapshot
+import com.ludoproof.game.feature.offline.presentation.feedback.OfflineFeedbackAction
+import com.ludoproof.game.feature.offline.presentation.feedback.OfflineLudoPawsFeedbackDispatcher
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.ui.offline.gameplay.renderGame
@@ -31,7 +33,7 @@ internal fun OfflineGameActivity.rollOffline() {
         false
     control.alpha =
         .58f
-    GameSoundFeedback.click(
+    GameSoundFeedback.roll(
         this,
     )
     diceView
@@ -50,10 +52,18 @@ internal fun OfflineGameActivity.rollOffline() {
 
     handler.postDelayed(
         {
+            val previous =
+                session.snapshot()
             runCatching {
                 session.roll()
             }.onSuccess {
                     state ->
+                OfflineLudoPawsFeedbackDispatcher.committed(
+                    context = this,
+                    previous = previous,
+                    current = state,
+                    action = OfflineFeedbackAction.ROLL,
+                )
                 renderGame(
                     state,
                 )
@@ -139,6 +149,9 @@ internal fun OfflineGameActivity.scheduleComputerTurnIfNeeded(
         state.pendingRoll ==
         null
     ) {
+        GameSoundFeedback.roll(
+            this,
+        )
         diceView
             ?.startRolling()
         showStatus(
@@ -173,6 +186,12 @@ internal fun OfflineGameActivity.scheduleComputerTurnIfNeeded(
                     session.roll()
                 }.onSuccess {
                         next ->
+                    OfflineLudoPawsFeedbackDispatcher.committed(
+                        context = this,
+                        previous = latest,
+                        current = next,
+                        action = OfflineFeedbackAction.ROLL,
+                    )
                     renderGame(
                         next,
                     )
@@ -259,8 +278,11 @@ internal fun OfflineGameActivity.scheduleComputerTurnIfNeeded(
                 )
             }.onSuccess {
                     next ->
-                GameSoundFeedback.move(
-                    this,
+                OfflineLudoPawsFeedbackDispatcher.committed(
+                    context = this,
+                    previous = latest,
+                    current = next,
+                    action = OfflineFeedbackAction.MOVE,
                 )
                 renderGame(
                     next,
