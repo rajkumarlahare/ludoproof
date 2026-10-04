@@ -25,6 +25,9 @@
             android:name=".feature.characters.prototype.Duck3DPrototypeActivity"
             android:exported="false" />
         <activity
+            android:name=".feature.characters.prototype.Dog3DPrototypeActivity"
+            android:exported="false" />
+        <activity
             android:name=".feature.mode.presentation.RemoteModeEntryActivity"
             android:exported="false" />
         <activity
