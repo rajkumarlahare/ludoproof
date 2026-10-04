@@ -133,6 +133,7 @@ internal fun MainActivity.resetInvalidSessionIfNeeded(
     cachedMatchStore.clear()
     realtimeClient.disconnect()
     realtimeConnected = false
+    OnlineLudoPawsPresentation.clear(this)
 
     if (gameMode != GameMode.ONLINE) {
         showStatus(
