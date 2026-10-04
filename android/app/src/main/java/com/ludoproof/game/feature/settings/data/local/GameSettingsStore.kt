@@ -40,6 +40,9 @@ enum class GameSpeed(
 data class GameSettings(
     val musicEnabled: Boolean = true,
     val soundEnabled: Boolean = true,
+    val animalVoicesEnabled: Boolean = true,
+    val hapticsEnabled: Boolean = true,
+    val reducedMotionEnabled: Boolean = false,
     val quickChatEnabled: Boolean = true,
     val gameSpeed: GameSpeed = GameSpeed.NORMAL,
 )
@@ -65,6 +68,21 @@ class GameSettingsStore(
                 prefs.getBoolean(
                     KEY_SOUND,
                     true,
+                ),
+            animalVoicesEnabled =
+                prefs.getBoolean(
+                    KEY_ANIMAL_VOICES,
+                    true,
+                ),
+            hapticsEnabled =
+                prefs.getBoolean(
+                    KEY_HAPTICS,
+                    true,
+                ),
+            reducedMotionEnabled =
+                prefs.getBoolean(
+                    KEY_REDUCED_MOTION,
+                    false,
                 ),
             quickChatEnabled =
                 prefs.getBoolean(
@@ -107,6 +125,39 @@ class GameSettingsStore(
             .apply()
     }
 
+    fun setAnimalVoicesEnabled(
+        enabled: Boolean,
+    ) {
+        prefs.edit()
+            .putBoolean(
+                KEY_ANIMAL_VOICES,
+                enabled,
+            )
+            .apply()
+    }
+
+    fun setHapticsEnabled(
+        enabled: Boolean,
+    ) {
+        prefs.edit()
+            .putBoolean(
+                KEY_HAPTICS,
+                enabled,
+            )
+            .apply()
+    }
+
+    fun setReducedMotionEnabled(
+        enabled: Boolean,
+    ) {
+        prefs.edit()
+            .putBoolean(
+                KEY_REDUCED_MOTION,
+                enabled,
+            )
+            .apply()
+    }
+
     fun setQuickChatEnabled(
         enabled: Boolean,
     ) {
@@ -136,6 +187,12 @@ class GameSettingsStore(
             "music_enabled"
         const val KEY_SOUND =
             "sound_enabled"
+        const val KEY_ANIMAL_VOICES =
+            "animal_voices_enabled"
+        const val KEY_HAPTICS =
+            "haptics_enabled"
+        const val KEY_REDUCED_MOTION =
+            "reduced_motion_enabled"
         const val KEY_QUICK_CHAT =
             "quick_chat_enabled"
         const val KEY_GAME_SPEED =

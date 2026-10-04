@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ScrollView
 import com.ludoproof.game.DiceView
 import com.ludoproof.game.LudoBoardView
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
@@ -163,8 +164,37 @@ internal fun showSettingsDialog(
     panel.addView(
         settingsCompactRow(
             context = context,
-            label = "Sound",
+            label = "Game Sounds",
             control = soundControl,
+        ),
+    )
+
+    val animalVoicesControl =
+        SettingsBooleanControl(
+            context = context,
+            initialValue =
+                settings.animalVoicesEnabled,
+        ) { enabled ->
+            settingsStore
+                .setAnimalVoicesEnabled(
+                    enabled,
+                )
+            settings =
+                settingsStore
+                    .snapshot()
+            GameSoundFeedback.click(
+                context,
+            )
+            notifyChanged()
+        }
+    panel.addView(
+        settingsDivider(context),
+    )
+    panel.addView(
+        settingsCompactRow(
+            context = context,
+            label = "Animal Voices",
+            control = animalVoicesControl,
         ),
     )
 
@@ -194,6 +224,64 @@ internal fun showSettingsDialog(
             context = context,
             label = "Quick chat",
             control = quickChatControl,
+        ),
+    )
+
+    val hapticsControl =
+        SettingsBooleanControl(
+            context = context,
+            initialValue =
+                settings.hapticsEnabled,
+        ) { enabled ->
+            settingsStore
+                .setHapticsEnabled(
+                    enabled,
+                )
+            settings =
+                settingsStore
+                    .snapshot()
+            GameSoundFeedback.click(
+                context,
+            )
+            notifyChanged()
+        }
+    panel.addView(
+        settingsDivider(context),
+    )
+    panel.addView(
+        settingsCompactRow(
+            context = context,
+            label = "Haptics",
+            control = hapticsControl,
+        ),
+    )
+
+    val reducedMotionControl =
+        SettingsBooleanControl(
+            context = context,
+            initialValue =
+                settings.reducedMotionEnabled,
+        ) { enabled ->
+            settingsStore
+                .setReducedMotionEnabled(
+                    enabled,
+                )
+            settings =
+                settingsStore
+                    .snapshot()
+            GameSoundFeedback.click(
+                context,
+            )
+            notifyChanged()
+        }
+    panel.addView(
+        settingsDivider(context),
+    )
+    panel.addView(
+        settingsCompactRow(
+            context = context,
+            label = "Reduced Motion",
+            control = reducedMotionControl,
         ),
     )
 
@@ -453,8 +541,29 @@ internal fun showSettingsDialog(
         },
     )
 
+    val scroll =
+        ScrollView(context).apply {
+            isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            addView(
+                panel,
+                ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+        }
     dialog.setContentView(
-        panel,
+        scroll,
+        ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            (
+                context.resources
+                    .displayMetrics
+                    .heightPixels *
+                    .88f
+                ).toInt(),
+        ),
     )
     sizeDialog(
         dialog,
