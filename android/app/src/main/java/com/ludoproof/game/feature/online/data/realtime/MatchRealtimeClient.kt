@@ -24,6 +24,26 @@ class MatchRealtimeClient(
         (
             connected: Boolean,
         ) -> Unit = {},
+    private val client: OkHttpClient =
+        OkHttpClient
+            .Builder()
+            .pingInterval(
+                20,
+                TimeUnit.SECONDS,
+            )
+            .build(),
+    private val retryDelayMillis:
+        (attempt: Int) -> Long =
+        { attempt ->
+            RealtimeReconnectBackoff
+                .delayMillis(
+                    attempt = attempt,
+                    jitterUnit =
+                        ThreadLocalRandom
+                            .current()
+                            .nextDouble(),
+                )
+        },
 ) {
     private val wsBaseUrl =
         baseUrl
@@ -32,15 +52,6 @@ class MatchRealtimeClient(
                 "https://",
                 "wss://",
             )
-
-    private val client =
-        OkHttpClient
-            .Builder()
-            .pingInterval(
-                20,
-                TimeUnit.SECONDS,
-            )
-            .build()
 
     private val generation =
         AtomicLong(0L)
@@ -436,15 +447,9 @@ class MatchRealtimeClient(
         val attempt =
             reconnectAttempt
         val delayMillis =
-            RealtimeReconnectBackoff
-                .delayMillis(
-                    attempt =
-                        attempt,
-                    jitterUnit =
-                        ThreadLocalRandom
-                            .current()
-                            .nextDouble(),
-                )
+            retryDelayMillis(
+                attempt,
+            ).coerceAtLeast(0L)
         reconnectAttempt =
             (
                 reconnectAttempt +
