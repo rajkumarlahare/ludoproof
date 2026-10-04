@@ -25,6 +25,11 @@ const controls = read(
 const tests = read(
   "android/app/src/test/java/com/ludoproof/game/LudoPawsPawnLayoutTest.kt",
 );
+const reactiveBoardPath =
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsReactiveBoardView.kt";
+const reactiveBoard = fs.existsSync(reactiveBoardPath)
+  ? read(reactiveBoardPath)
+  : "";
 
 requireText(
   board,
@@ -66,16 +71,21 @@ requireText(
   "tokenOffsetFraction",
   "Phase 5 deterministic shared-cell placement is missing.",
 );
-requireText(
-  activity,
-  "LudoPawsBoardView?",
-  "Offline activity must host the Ludo Paws board.",
-);
-requireText(
-  screen,
-  "LudoPawsBoardView(this)",
-  "Offline gameplay must construct the Ludo Paws board.",
-);
+
+const directHost =
+  activity.includes("LudoPawsBoardView?") &&
+  screen.includes("LudoPawsBoardView(this)");
+const reactiveHost =
+  activity.includes("LudoPawsReactiveBoardView?") &&
+  screen.includes("LudoPawsReactiveBoardView(this)") &&
+  reactiveBoard.includes("LudoPawsBoardView(context)");
+
+if (!directHost && !reactiveHost) {
+  throw new Error(
+    "Offline gameplay must host the proven Ludo Paws board directly or through the Phase 6 reactive shell.",
+  );
+}
+
 requireText(
   controls,
   ".loadActive()",
