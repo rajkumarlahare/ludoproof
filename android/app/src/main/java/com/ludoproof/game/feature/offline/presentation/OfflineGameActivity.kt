@@ -96,7 +96,7 @@ class OfflineGameActivity : ComponentActivity() {
     internal var characterCards: Map<String, LinearLayout> = emptyMap()
     internal var characterSummaryText: TextView? = null
 
-    internal var boardView: LudoPawsBoardView? = null
+    internal var boardView: LudoPawsReactiveBoardView? = null
     internal var diceView: DiceView? = null
     internal var diceHost: FrameLayout? = null
     internal var topPlayerRail: LinearLayout? = null
