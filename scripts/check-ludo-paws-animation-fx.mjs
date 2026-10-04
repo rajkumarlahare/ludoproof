@@ -26,7 +26,8 @@ requireText(
 requireText(
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsCaptureReturnOverlayView.kt",
   [
-    "LudoPawsPawnAnimationPolicy.plans",
+    "LudoPawsPawnAnimationPolicy",
+    ".plans(",
     "LudoPawsPawnMotionKind.CAPTURE_RETURN",
     "captureReturnFrame",
     "DESTINATION_REVEAL_PROGRESS",
