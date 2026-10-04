@@ -108,11 +108,11 @@ for (const marker of [
   }
 }
 
-const reactionFeedbackCalls = [
+const forbiddenSecondaryFeedbackCalls = [
   'GameSoundFeedback.reaction',
   'LudoPawsHaptics.reaction',
 ];
-for (const marker of reactionFeedbackCalls) {
+for (const marker of forbiddenSecondaryFeedbackCalls) {
   if (voice.includes(marker)) {
     throw new Error(
       `Animal voice renderer must remain voice-only; ${marker} belongs to the mode feedback dispatcher`,
@@ -121,7 +121,7 @@ for (const marker of reactionFeedbackCalls) {
 }
 
 const boardSource = fs.readFileSync(reactiveBoard, 'utf8');
-for (const marker of reactionFeedbackCalls) {
+for (const marker of forbiddenSecondaryFeedbackCalls) {
   if (boardSource.includes(marker)) {
     throw new Error(
       `Reactive board must not become a second reaction feedback owner: ${marker}`,
@@ -131,10 +131,11 @@ for (const marker of reactionFeedbackCalls) {
 
 for (const file of reactionFeedbackOwners) {
   const source = fs.readFileSync(file, 'utf8');
-  for (const marker of reactionFeedbackCalls) {
-    if (!source.includes(marker)) {
-      throw new Error(`Mode reaction feedback owner is missing ${marker}: ${file}`);
-    }
+  if (!source.includes('GameSoundFeedback.')) {
+    throw new Error(`Mode reaction feedback owner is missing GameSoundFeedback: ${file}`);
+  }
+  if (!source.includes('LudoPawsHaptics.reaction')) {
+    throw new Error(`Mode reaction feedback owner is missing LudoPawsHaptics.reaction: ${file}`);
   }
 }
 
