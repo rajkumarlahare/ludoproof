@@ -1,5 +1,6 @@
 package com.ludoproof.game
 
+import com.ludoproof.game.feature.characters.data.local.LudoPawsCharacterRuntime
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -139,6 +140,7 @@ class GameApi(
         displayName: String,
         clientRequestId: String,
         playerCount: Int,
+        characterId: String = LudoPawsCharacterRuntime.selectedCharacterId(),
     ): JSONObject =
         request(
             method = "POST",
@@ -147,6 +149,7 @@ class GameApi(
             body = JSONObject()
                 .put("displayName", displayName)
                 .put("clientRequestId", clientRequestId)
+                .put("characterId", characterId)
                 .put("targetPlayerCount", playerCount)
                 .put("matchMode", "FRIENDS"),
         )
@@ -156,6 +159,7 @@ class GameApi(
         displayName: String,
         clientRequestId: String,
         playerCount: Int,
+        characterId: String = LudoPawsCharacterRuntime.selectedCharacterId(),
     ): JSONObject =
         request(
             method = "POST",
@@ -164,6 +168,7 @@ class GameApi(
             body = JSONObject()
                 .put("displayName", displayName)
                 .put("clientRequestId", clientRequestId)
+                .put("characterId", characterId)
                 .put("playerCount", playerCount),
         )
 
@@ -199,6 +204,7 @@ class GameApi(
         profileToken: String,
         displayName: String,
         clientRequestId: String,
+        characterId: String = LudoPawsCharacterRuntime.selectedCharacterId(),
     ): JSONObject =
         request(
             method = "POST",
@@ -206,7 +212,8 @@ class GameApi(
             profileToken = profileToken,
             body = JSONObject()
                 .put("displayName", displayName)
-                .put("clientRequestId", clientRequestId),
+                .put("clientRequestId", clientRequestId)
+                .put("characterId", characterId),
         )
 
     fun joinMatch(
@@ -215,6 +222,7 @@ class GameApi(
         clientRequestId: String,
         profileToken: String? = null,
         friendJoinToken: String? = null,
+        characterId: String = LudoPawsCharacterRuntime.selectedCharacterId(),
     ): JSONObject =
         request(
             method = "POST",
@@ -223,7 +231,8 @@ class GameApi(
             friendJoinToken = friendJoinToken,
             body = JSONObject()
                 .put("displayName", displayName)
-                .put("clientRequestId", clientRequestId),
+                .put("clientRequestId", clientRequestId)
+                .put("characterId", characterId),
         )
 
     fun state(matchId: String, playerToken: String): JSONObject =
