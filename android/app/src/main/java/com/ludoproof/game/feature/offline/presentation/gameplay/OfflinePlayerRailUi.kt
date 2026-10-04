@@ -3,14 +3,10 @@ package com.ludoproof.game.ui.offline.gameplay
 import android.view.Gravity
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import com.ludoproof.game.DiceView
-import com.ludoproof.game.LudoPawsPlayerCardView
-import com.ludoproof.game.MatchSnapshot
-import com.ludoproof.game.OfflineGameActivity
-import com.ludoproof.game.PlayerSnapshot
-import com.ludoproof.game.feature.offline.OfflinePlayerLayout
-import com.ludoproof.game.ui.offline.common.dp
-import com.ludoproof.game.ui.offline.setup.isCompactSetup
+import com.ludoproof.game.*
+import com.ludoproof.game.feature.offline.*
+import com.ludoproof.game.ui.offline.common.*
+import com.ludoproof.game.ui.offline.setup.*
 
 internal fun OfflineGameActivity.playerRail():
     LinearLayout =
@@ -199,7 +195,7 @@ private fun OfflineGameActivity.activeDiceControl(
             isFocusable =
                 true
             background =
-                com.ludoproof.game.LudoProofTheme
+                LudoProofTheme
                     .rounded(
                         0xECF8FAFF.toInt(),
                         12f,
