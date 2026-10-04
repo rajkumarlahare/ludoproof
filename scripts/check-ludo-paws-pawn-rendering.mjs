@@ -78,8 +78,8 @@ requireText(
 );
 requireText(
   board,
-  "hopHeight",
-  "Gameplay pawn movement must use a visible take-off/landing arc instead of rail-like gliding.",
+  "towardCenterDistance",
+  "Gameplay pawn movement must use a bounded take-off/landing arc instead of rail-like gliding.",
 );
 requireText(
   board,

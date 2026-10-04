@@ -22,6 +22,7 @@ import kotlin.math.floor
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * Local-game board shell that keeps the proven LudoBoardView responsible for
@@ -393,7 +394,11 @@ private class AnimalPawnOverlayView(
                             .radiusScale(
                                 position = position,
                                 occupancy = occupants,
-                            )
+                            ) *
+                        movementHopScale(
+                            playerId = player.playerId,
+                            tokenIndex = tokenIndex,
+                        )
                 val isLegal =
                     player.playerId == localId &&
                         tokenIndex in legal &&
@@ -797,26 +802,50 @@ private class AnimalPawnOverlayView(
             } else {
                 0f
             }
-        val hopHeight =
-            cell * 0.34f
+        val linearX =
+            from.first +
+                (to.first - from.first) *
+                easedFraction
+        val linearY =
+            from.second +
+                (to.second - from.second) *
+                easedFraction
+
+        if (!animation.hopEnabled || hopFraction <= 0f) {
+            return linearX to linearY
+        }
+
+        // Curve the visual hop slightly toward the board center. Unlike a fixed
+        // upward offset, this keeps edge-row pawns inside the clipped board while
+        // still giving every cell transition a clear take-off/apex/landing arc.
+        val boardCenter =
+            cell * 7.5f
+        val towardCenterX =
+            boardCenter - linearX
+        val towardCenterY =
+            boardCenter - linearY
+        val towardCenterDistance =
+            sqrt(
+                towardCenterX * towardCenterX +
+                    towardCenterY * towardCenterY,
+            )
+        if (towardCenterDistance <= 0.001f) {
+            return linearX to linearY
+        }
+        val arcOffset =
+            cell * 0.22f * hopFraction
 
         return (
-            from.first +
-                (
-                    to.first -
-                        from.first
-                    ) *
-                easedFraction
+            linearX +
+                towardCenterX /
+                towardCenterDistance *
+                arcOffset
             ) to
             (
-                from.second +
-                    (
-                        to.second -
-                            from.second
-                        ) *
-                    easedFraction -
-                    hopHeight *
-                    hopFraction
+                linearY +
+                    towardCenterY /
+                    towardCenterDistance *
+                    arcOffset
                 )
     }
 
@@ -843,7 +872,7 @@ private class AnimalPawnOverlayView(
                     fraction.toDouble(),
             ).toFloat()
                 .coerceAtLeast(0f)
-        return 1f + hop * 0.12f
+        return 1f + hop * 0.08f
     }
 
     // TOKEN POSITION MIRROR LOCK: mirror the corrected shared-track exit exactly.
