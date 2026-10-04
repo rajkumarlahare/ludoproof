@@ -16,6 +16,9 @@ const reactionFeedbackOwners = [
   'android/app/src/main/java/com/ludoproof/game/feature/offline/presentation/feedback/OfflineLudoPawsFeedback.kt',
 ];
 
+const feedbackLedger =
+  'android/app/src/main/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsFeedbackLedger.kt';
+
 const reactiveBoard =
   'android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsReactiveBoardView.kt';
 
@@ -37,6 +40,7 @@ const requiredAudio = [
 for (const file of [
   ...requiredSources,
   ...reactionFeedbackOwners,
+  feedbackLedger,
   reactiveBoard,
   ...requiredAudio,
 ]) {
@@ -53,6 +57,7 @@ const haptics = fs.readFileSync(requiredSources[4], 'utf8');
 const voice = fs.readFileSync(requiredSources[5], 'utf8');
 const settingsUi = fs.readFileSync(requiredSources[6], 'utf8');
 const manifest = fs.readFileSync(requiredSources[7], 'utf8');
+const ledgerSource = fs.readFileSync(feedbackLedger, 'utf8');
 
 for (const marker of ['SoundPool', 'USAGE_GAME', 'CONTENT_TYPE_SONIFICATION', 'pendingByResource']) {
   if (!soundPool.includes(marker)) {
@@ -108,6 +113,17 @@ for (const marker of [
   }
 }
 
+for (const marker of [
+  'class LudoPawsFeedbackLedger',
+  'LinkedHashSet',
+  'fun once(',
+  'fun filterReactions(',
+]) {
+  if (!ledgerSource.includes(marker)) {
+    throw new Error(`Exactly-once feedback ledger is missing ${marker}`);
+  }
+}
+
 const forbiddenSecondaryFeedbackCalls = [
   'GameSoundFeedback.reaction',
   'LudoPawsHaptics.reaction',
@@ -136,6 +152,12 @@ for (const file of reactionFeedbackOwners) {
   }
   if (!source.includes('LudoPawsHaptics.reaction')) {
     throw new Error(`Mode reaction feedback owner is missing LudoPawsHaptics.reaction: ${file}`);
+  }
+  if (!source.includes('LudoPawsFeedbackLedger')) {
+    throw new Error(`Mode reaction feedback owner is missing exactly-once ledger: ${file}`);
+  }
+  if (!source.includes('.once(')) {
+    throw new Error(`Mode reaction feedback owner is not gating side effects exactly once: ${file}`);
   }
 }
 

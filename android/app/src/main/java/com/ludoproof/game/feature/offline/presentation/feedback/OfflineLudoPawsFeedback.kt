@@ -2,7 +2,9 @@ package com.ludoproof.game.feature.offline.presentation.feedback
 
 import android.content.Context
 import com.ludoproof.game.MatchSnapshot
+import com.ludoproof.game.OfflineGameActivity
 import com.ludoproof.game.feature.characters.domain.model.VoiceCue
+import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsFeedbackLedger
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReactionEngine
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
@@ -99,6 +101,44 @@ object OfflineLudoPawsFeedbackPolicy {
         )
     }
 
+    /**
+     * Stable key for one already-committed local action. Roll and move are
+     * intentionally distinct even when they share one fairness event index.
+     */
+    fun committedActionKey(
+        current: MatchSnapshot?,
+        action: OfflineFeedbackAction,
+    ): String? {
+        current ?: return null
+
+        val eventIndex =
+            when (action) {
+                OfflineFeedbackAction.ROLL ->
+                    current.pendingRoll
+                        ?.eventIndex
+                        ?: current.history
+                            .lastOrNull()
+                            ?.eventIndex
+                        ?: (current.randomEventIndex - 1)
+                            .takeIf { it >= 0 }
+
+                OfflineFeedbackAction.MOVE ->
+                    current.history
+                        .lastOrNull {
+                            it.moveTokenIndex != null
+                        }
+                        ?.eventIndex
+                        ?: current.history
+                            .lastOrNull()
+                            ?.eventIndex
+                        ?: current.pendingRoll
+                            ?.eventIndex
+            }
+                ?: return null
+
+        return "${action.name}:$eventIndex"
+    }
+
     private fun hasCommittedTokenMovement(
         previous: MatchSnapshot?,
         current: MatchSnapshot?,
@@ -125,7 +165,9 @@ object OfflineLudoPawsFeedbackPolicy {
 
 /**
  * Android side-effect adapter for [OfflineLudoPawsFeedbackPolicy].
- * Call exactly once after a successful session.roll()/session.move().
+ *
+ * The activity-owned ledger makes a successful local action idempotent at the
+ * sound/haptic boundary, so duplicated callbacks cannot emit feedback twice.
  */
 object OfflineLudoPawsFeedbackDispatcher {
     fun committed(
@@ -134,10 +176,49 @@ object OfflineLudoPawsFeedbackDispatcher {
         current: MatchSnapshot?,
         action: OfflineFeedbackAction,
     ) {
+        val ledger =
+            (context as? OfflineGameActivity)
+                ?.feedbackLedger
+                ?: return
+        committed(
+            context = context,
+            ledger = ledger,
+            previous = previous,
+            current = current,
+            action = action,
+        )
+    }
+
+    fun committed(
+        context: Context,
+        ledger: LudoPawsFeedbackLedger,
+        previous: MatchSnapshot?,
+        current: MatchSnapshot?,
+        action: OfflineFeedbackAction,
+    ) {
+        val safeCurrent =
+            current
+                ?: return
+        val actionKey =
+            OfflineLudoPawsFeedbackPolicy
+                .committedActionKey(
+                    current = safeCurrent,
+                    action = action,
+                )
+                ?: return
+        if (
+            !ledger.once(
+                matchId = safeCurrent.matchId,
+                key = "OFFLINE:$actionKey",
+            )
+        ) {
+            return
+        }
+
         val decision =
             OfflineLudoPawsFeedbackPolicy.decide(
                 previous = previous,
-                current = current,
+                current = safeCurrent,
                 action = action,
             )
 
