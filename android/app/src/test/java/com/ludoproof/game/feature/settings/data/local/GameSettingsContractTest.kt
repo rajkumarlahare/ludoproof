@@ -19,6 +19,18 @@ class GameSettingsContractTest {
 
     @Test
     fun fasterSpeedUsesShorterPresentationTiming() {
+        assertEquals(
+            180L,
+            GameSpeed.FAST.moveStepMs,
+        )
+        assertEquals(
+            240L,
+            GameSpeed.NORMAL.moveStepMs,
+        )
+        assertEquals(
+            320L,
+            GameSpeed.SLOW.moveStepMs,
+        )
         assertTrue(
             GameSpeed.FAST.moveStepMs <
                 GameSpeed.NORMAL.moveStepMs,
