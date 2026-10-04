@@ -10,6 +10,7 @@ data class PlayerSnapshot(
     val seat: Int,
     val tokens: List<Int>,
     val teamId: String? = null,
+    val characterId: String? = null,
 )
 
 data class PendingRollSnapshot(
@@ -179,6 +180,11 @@ object GameJson {
                         teamId =
                             player.optString("teamId")
                                 .takeIf { it == "A" || it == "B" },
+                        characterId =
+                            player.optString("characterId")
+                                .trim()
+                                .lowercase()
+                                .takeIf { it.isNotBlank() && it != "null" },
                     ),
                 )
             }
