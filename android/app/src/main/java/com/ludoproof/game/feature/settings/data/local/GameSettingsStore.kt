@@ -10,19 +10,19 @@ enum class GameSpeed(
 ) {
     SLOW(
         label = "SLOW",
-        moveStepMs = 180L,
+        moveStepMs = 320L,
         rollDelayMs = 620L,
         cpuThinkMs = 850L,
     ),
     NORMAL(
         label = "NORMAL",
-        moveStepMs = 120L,
+        moveStepMs = 240L,
         rollDelayMs = 430L,
         cpuThinkMs = 600L,
     ),
     FAST(
         label = "FAST",
-        moveStepMs = 70L,
+        moveStepMs = 180L,
         rollDelayMs = 260L,
         cpuThinkMs = 380L,
     );
