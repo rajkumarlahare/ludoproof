@@ -3,9 +3,12 @@ package com.ludoproof.game.feature.characters.domain.reaction
 import com.ludoproof.game.MatchSnapshot
 import com.ludoproof.game.PendingRollSnapshot
 import com.ludoproof.game.PlayerSnapshot
+import com.ludoproof.game.feature.characters.domain.model.AnimationCue
+import com.ludoproof.game.feature.characters.domain.model.VoiceCue
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LudoPawsIdleReactionPolicyTest {
@@ -127,6 +130,38 @@ class LudoPawsIdleReactionPolicyTest {
         assertEquals(
             "idle-match:2:2:p3",
             LudoPawsIdleReactionPolicy.idleReactionKey(state),
+        )
+    }
+
+    @Test
+    fun eligibleIdleStateDerivesIdleVoiceAndAnimationForActingSeat() {
+        val state =
+            snapshot(
+                actingSeat = 2,
+                players =
+                    listOf(
+                        player("p1", 0),
+                        player("p2", 1),
+                        player("p3", 2),
+                        player("p4", 3),
+                    ),
+            )
+
+        val reactions =
+            LudoPawsReactionEngine.deriveIdle(
+                current = state,
+                nowMillis = 12_001L,
+                lastMeaningfulChangeAtMillis = 0L,
+            )
+
+        assertEquals(1, reactions.size)
+        assertTrue(
+            reactions.single().let {
+                it.playerId == "p3" &&
+                    it.momentType == GameMomentType.IDLE_WAITING &&
+                    it.voiceCue == VoiceCue.IDLE &&
+                    it.animationCue == AnimationCue.IDLE
+            },
         )
     }
 
