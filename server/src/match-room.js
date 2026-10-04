@@ -9,7 +9,6 @@ import {
 } from "./entronex-transport.js";
 import {
   ROLL_REVEAL_TIMEOUT_MS,
-  RULESET,
   addPlayer,
   applyMove,
   attachHostAuth,
@@ -20,6 +19,7 @@ import {
   publicState,
   registerResolvedRoll,
   reserveRoll,
+  rulesetForState,
   startMatch,
 } from "./game.js";
 import {
@@ -761,9 +761,8 @@ export class MatchRoom {
       const previousStateHash = await sha256Hex(
         "entronex:v4:game-state:" + canonicalJson(snapshot),
       );
-      const rulesetHash = await sha256Hex(
-        "entronex:v4:game-ruleset:" + canonicalJson(RULESET),
-      );
+      const rulesetHash =
+        await rulesetHashForState(state);
 
       state = reserveRoll(state, {
         playerId: player.playerId,
@@ -1976,6 +1975,15 @@ export class MatchRoom {
   }
 }
 
+export async function rulesetHashForState(state) {
+  return sha256Hex(
+    "entronex:v4:game-ruleset:" +
+      canonicalJson(
+        rulesetForState(state),
+      ),
+  );
+}
+
 export function buildEntroNexConfig(matchId, pending) {
   return {
     outcomes: [1, 2, 3, 4, 5, 6],
@@ -2345,12 +2353,14 @@ function normalizeMatchMode(
     normalized !==
       "ONLINE" &&
     normalized !==
-      "FRIENDS"
+      "FRIENDS" &&
+    normalized !==
+      "TEAM_UP"
   ) {
     throw httpError(
       400,
       "INVALID_MATCH_MODE",
-      "matchMode must be ONLINE or FRIENDS",
+      "matchMode must be ONLINE, FRIENDS, or TEAM_UP",
     );
   }
 
@@ -2365,6 +2375,18 @@ function normalizeMatchMode(
       400,
       "FRIEND_ROOM_PLAYER_COUNT_REQUIRED",
       "friend rooms require targetPlayerCount",
+    );
+  }
+
+  if (
+    normalized ===
+      "TEAM_UP" &&
+    targetPlayerCount !== 4
+  ) {
+    throw httpError(
+      400,
+      "TEAM_UP_REQUIRES_FOUR_PLAYERS",
+      "team up requires exactly four players",
     );
   }
 
