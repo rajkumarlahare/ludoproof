@@ -8,6 +8,9 @@ import {
 import {
   normalizeLeaderboardProfileId,
 } from "./leaderboard-core.js";
+import {
+  normalizeCharacterId,
+} from "./ludo-paws-characters.js";
 
 const STATE_KEY = "team-matchmaking-state-v1";
 const QUEUE_TTL_MS = 2 * 60 * 1000;
@@ -61,7 +64,13 @@ export class TeamMatchmakerQueue {
 
     const assigned = state.assignments[participant.clientRequestId];
     if (assigned) {
-      return this.#matchedResponse(participant, assigned);
+      return this.#matchedResponse(
+        {
+          ...participant,
+          characterId: normalizeCharacterId(assigned.characterId ?? participant.characterId),
+        },
+        assigned,
+      );
     }
 
     const existingIndex = state.queue.findIndex(
@@ -79,6 +88,7 @@ export class TeamMatchmakerQueue {
       state.queue[existingIndex] = {
         ...existing,
         displayName: participant.displayName,
+        characterId: participant.characterId,
         lastSeenAt: now,
       };
       await this.#persist(state);
@@ -128,12 +138,18 @@ export class TeamMatchmakerQueue {
           assignedAt: now,
           expiresAt: now + ASSIGNMENT_TTL_MS,
           displayName: candidate.displayName,
+          characterId: normalizeCharacterId(candidate.characterId),
           profileId: candidate.profileId,
         };
       });
       await this.#persist(state);
       return this.#matchedResponse(
-        participant,
+        {
+          ...participant,
+          characterId: normalizeCharacterId(
+            state.assignments[participant.clientRequestId]?.characterId,
+          ),
+        },
         state.assignments[participant.clientRequestId],
       );
     }
@@ -156,6 +172,7 @@ export class TeamMatchmakerQueue {
         {
           clientRequestId,
           displayName: assignment.displayName,
+          characterId: normalizeCharacterId(assignment.characterId),
           profileId,
         },
         assignment,
@@ -254,6 +271,7 @@ export class TeamMatchmakerQueue {
           body: JSON.stringify({
             matchId,
             displayName: host.displayName,
+            characterId: normalizeCharacterId(host.characterId),
             clientRequestId: host.clientRequestId,
             matchmaking: true,
             targetPlayerCount: TARGET_PLAYER_COUNT,
@@ -279,6 +297,7 @@ export class TeamMatchmakerQueue {
             },
             body: JSON.stringify({
               displayName: participant.displayName,
+              characterId: normalizeCharacterId(participant.characterId),
               clientRequestId: participant.clientRequestId,
             }),
           }),
@@ -313,6 +332,9 @@ export class TeamMatchmakerQueue {
     const host = assignment.role === "HOST";
     const body = {
       displayName: participant.displayName,
+      characterId: normalizeCharacterId(
+        assignment.characterId ?? participant.characterId,
+      ),
       clientRequestId: participant.clientRequestId,
       ...(host
         ? {
@@ -446,6 +468,7 @@ function normalizeParticipant(body, profileId) {
   return {
     clientRequestId: requireClientRequestId(body?.clientRequestId),
     displayName: normalizeDisplayName(body?.displayName),
+    characterId: normalizeCharacterId(body?.characterId),
     profileId,
   };
 }
