@@ -29,6 +29,8 @@ class LudoPawsPlayerCardView(
         TextView(context)
     private val progressText =
         TextView(context)
+    private val copy =
+        LinearLayout(context)
 
     init {
         orientation = HORIZONTAL
@@ -45,11 +47,11 @@ class LudoPawsPlayerCardView(
             },
         )
 
-        val copy =
-            LinearLayout(context).apply {
-                orientation = VERTICAL
-                gravity = Gravity.CENTER_VERTICAL
-            }
+        copy.apply {
+            orientation = VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+        }
 
         nameText.apply {
             setTypeface(Typeface.DEFAULT_BOLD)
@@ -88,7 +90,29 @@ class LudoPawsPlayerCardView(
         computer: Boolean,
         compact: Boolean,
         localPlayer: Boolean = true,
+        portraitOnEnd: Boolean = false,
     ) {
+        layoutDirection =
+            if (portraitOnEnd) {
+                View.LAYOUT_DIRECTION_RTL
+            } else {
+                View.LAYOUT_DIRECTION_LTR
+            }
+        copy.layoutDirection =
+            View.LAYOUT_DIRECTION_LTR
+        nameText.textDirection =
+            View.TEXT_DIRECTION_LTR
+        stateText.textDirection =
+            View.TEXT_DIRECTION_LTR
+        progressText.textDirection =
+            View.TEXT_DIRECTION_LTR
+        setPadding(
+            dp(if (portraitOnEnd) 8 else 2),
+            dp(6),
+            dp(if (portraitOnEnd) 2 else 8),
+            dp(6),
+        )
+
         val character =
             characterId
                 ?.let(LudoPawsCharacterCatalog::character)

@@ -174,12 +174,7 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         ),
         gameplaySectionParams(
             if (isCompactSetup()) 10 else 12,
-        ).apply {
-            leftMargin =
-                sectionSideMargin
-            rightMargin =
-                sectionSideMargin
-        },
+        ),
     )
 
     content.addView(
@@ -197,12 +192,7 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         ),
         gameplaySectionParams(
             if (isCompactSetup()) 6 else 8,
-        ).apply {
-            leftMargin =
-                sectionSideMargin
-            rightMargin =
-                sectionSideMargin
-        },
+        ),
     )
 
     setContentView(root)
