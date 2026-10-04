@@ -88,6 +88,8 @@ class OfflineGameActivity : ComponentActivity() {
 
     internal var selectedCharacterSlot: Int = 0
     internal var selectedCharacterIds: List<String> = emptyList()
+    internal var activeCharacterMatchId: String? = null
+    internal var activeCharacterIdsBySeat: List<String> = emptyList()
 
     internal var playerButtons: Map<Int, Button> = emptyMap()
     internal var colorButtons: Map<String, Button> = emptyMap()
@@ -141,6 +143,10 @@ class OfflineGameActivity : ComponentActivity() {
         handler.removeCallbacksAndMessages(null)
         computerActionRevision =
             null
+        activeCharacterMatchId =
+            null
+        activeCharacterIdsBySeat =
+            emptyList()
         diceView
             ?.stopRolling()
         boardView =
