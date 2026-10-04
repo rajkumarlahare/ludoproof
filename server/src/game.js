@@ -1,3 +1,8 @@
+import {
+  DEFAULT_CHARACTER_ID,
+  publicCharacterId,
+} from "./ludo-paws-characters.js";
+
 export const COLORS = ["RED", "GREEN", "YELLOW", "BLUE"];
 
 export const ROLL_REVEAL_TIMEOUT_MS = 4 * 60 * 1000;
@@ -70,6 +75,7 @@ export function newMatch({
   matchId,
   hostPlayerId,
   hostDisplayName,
+  hostCharacterId = DEFAULT_CHARACTER_ID,
   now,
   targetPlayerCount = null,
   matchMode = "ONLINE",
@@ -95,6 +101,7 @@ export function newMatch({
       {
         playerId: hostPlayerId,
         displayName: hostDisplayName,
+        characterId: publicCharacterId(hostCharacterId),
         color: COLORS[0],
         ...(teamUp ? { teamId: TEAM_ASSIGNMENTS[0] } : {}),
         tokenAuthHash: null,
@@ -110,7 +117,16 @@ export function newMatch({
   };
 }
 
-export function addPlayer(state, { playerId, displayName, tokenAuthHash, now }) {
+export function addPlayer(
+  state,
+  {
+    playerId,
+    displayName,
+    characterId = DEFAULT_CHARACTER_ID,
+    tokenAuthHash,
+    now,
+  },
+) {
   requireStatus(state, "WAITING");
   const playerLimit = Number.isInteger(state.targetPlayerCount)
     ? state.targetPlayerCount
@@ -127,6 +143,7 @@ export function addPlayer(state, { playerId, displayName, tokenAuthHash, now }) 
   next.players.push({
     playerId,
     displayName,
+    characterId: publicCharacterId(characterId),
     color: COLORS[seat],
     ...(isTeamUp(next) ? { teamId: teamIdForSeat(next, seat) } : {}),
     tokenAuthHash,
@@ -208,8 +225,10 @@ export function authoritativeStateForRandomness(state) {
     winnerPlayerId: state.winnerPlayerId,
   };
 
-  // Preserve the exact historical ONLINE proof-state shape. Team semantics are
-  // appended only for TEAM_UP so existing CLASSIC_V1 proofs remain compatible.
+  // Preserve the exact historical ONLINE proof-state shape. Character identity
+  // is deliberately excluded because cosmetics must never alter proof/dice.
+  // Team semantics are appended only for TEAM_UP so existing CLASSIC_V1 proofs
+  // remain compatible.
   if (!isTeamUp(state)) return base;
 
   return {
@@ -532,6 +551,7 @@ export function publicState(state) {
     players: state.players.map((player, seat) => ({
       playerId: player.playerId,
       displayName: player.displayName,
+      characterId: publicCharacterId(player.characterId),
       color: player.color,
       seat,
       ...(teamUp ? { teamId: teamIdForSeat(state, seat) } : {}),
