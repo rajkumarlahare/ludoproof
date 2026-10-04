@@ -1,6 +1,5 @@
 package com.ludoproof.game
 
-import okhttp3.Handshake
 import okhttp3.OkHttpClient
 import okhttp3.Response
 import okhttp3.WebSocket
@@ -102,6 +101,14 @@ class MatchRealtimeClientIntegrationTest {
                             webSocket.send(
                                 """{"type":"STATE_CHANGED","revision":42,"status":"ACTIVE"}""",
                             )
+                        }
+
+                        override fun onClosing(
+                            webSocket: WebSocket,
+                            code: Int,
+                            reason: String,
+                        ) {
+                            webSocket.close(code, reason)
                         }
                     },
                 ),
