@@ -1,15 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  CHARACTER_ID_SCHEMA_VERSION,
+  CHARACTER_ID_WIRE_FIELD,
   LUDO_PAWS_CHARACTER_IDS,
   normalizeCharacterId,
   publicCharacterId,
 } from "../src/ludo-paws-characters.js";
 import {
+  addPlayer,
   authoritativeStateForRandomness,
   newMatch,
   publicState,
 } from "../src/game.js";
+
+test("character identity wire contract stays backward compatible", () => {
+  assert.equal(CHARACTER_ID_WIRE_FIELD, "characterId");
+  assert.equal(CHARACTER_ID_SCHEMA_VERSION, 1);
+});
 
 test("starter Ludo Paws character IDs are accepted and normalized", () => {
   assert.deepEqual(
@@ -37,6 +45,28 @@ test("legacy persisted character values fall back without making rooms unreadabl
   assert.equal(publicCharacterId("SQUIRREL"), "squirrel");
 });
 
+test("legacy create and join calls that omit character identity still resolve to duck", () => {
+  const created = newMatch({
+    matchId: "LPPAWS1234",
+    hostPlayerId: "p1",
+    hostDisplayName: "Host",
+    now: 1,
+    targetPlayerCount: 2,
+    matchMode: "ONLINE",
+  });
+  const joined = addPlayer(created, {
+    playerId: "p2",
+    displayName: "Guest",
+    tokenAuthHash: "hash",
+    now: 2,
+  });
+
+  assert.deepEqual(
+    publicState(joined).players.map((player) => player.characterId),
+    ["duck", "duck"],
+  );
+});
+
 test("public player state exposes character identity but proof state ignores cosmetics", () => {
   const duck = newMatch({
     matchId: "LPPAWS1234",
@@ -57,7 +87,7 @@ test("public player state exposes character identity but proof state ignores cos
     authoritativeStateForRandomness(sheep),
   );
   assert.equal(
-    "characterId" in authoritativeStateForRandomness(duck).players[0],
+    CHARACTER_ID_WIRE_FIELD in authoritativeStateForRandomness(duck).players[0],
     false,
   );
 });

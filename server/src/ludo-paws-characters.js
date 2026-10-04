@@ -1,6 +1,8 @@
 import { httpError } from "./crypto.js";
 
 export const DEFAULT_CHARACTER_ID = "duck";
+export const CHARACTER_ID_WIRE_FIELD = "characterId";
+export const CHARACTER_ID_SCHEMA_VERSION = 1;
 
 export const LUDO_PAWS_CHARACTER_IDS = Object.freeze([
   "duck",
