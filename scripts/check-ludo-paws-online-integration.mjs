@@ -68,11 +68,12 @@ for (const marker of [
   "characterIdsBySeat",
   "GameSoundFeedback",
   "LudoPawsHaptics",
-  "consumedFeedbackKeys",
+  "LudoPawsFeedbackLedger",
+  "feedbackLedger.once",
 ]) {
   requireText(presentation, marker, `Remote Ludo Paws presentation is missing ${marker}.`);
 }
 
 console.log(
-  "Ludo Paws online integration gate passed: character identity sync, remote rendering, feedback dedupe and proof-state isolation are wired.",
+  "Ludo Paws online integration gate passed: character identity sync, remote rendering, exactly-once feedback and proof-state isolation are wired.",
 );
