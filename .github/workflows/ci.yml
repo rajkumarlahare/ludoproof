@@ -87,6 +87,8 @@ jobs:
         run: node scripts/check-ludo-paws-reactions.mjs
       - name: Ludo Paws game moment gate
         run: node scripts/check-ludo-paws-game-moments.mjs
+      - name: Ludo Paws reaction director gate
+        run: node scripts/check-ludo-paws-reaction-director.mjs
       - name: Android 16 release gate
         run: node scripts/android16-release-check.mjs
       - name: Android unit tests
