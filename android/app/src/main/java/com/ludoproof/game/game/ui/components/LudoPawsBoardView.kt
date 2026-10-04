@@ -191,23 +191,6 @@ private class AnimalPawnOverlayView(
                     0,
                 )
         }
-    private val ringPaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style =
-                Paint.Style.FILL
-        }
-    private val innerPaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style =
-                Paint.Style.FILL
-            color =
-                Color.argb(
-                    248,
-                    255,
-                    255,
-                    255,
-                )
-        }
     private val legalHaloPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style =
@@ -421,10 +404,6 @@ private class AnimalPawnOverlayView(
                     x = x,
                     y = y,
                     radius = radius,
-                    playerColor =
-                        playerColor(
-                            player.color,
-                        ),
                     legal = isLegal,
                 )
             }
@@ -490,7 +469,6 @@ private class AnimalPawnOverlayView(
         x: Float,
         y: Float,
         radius: Float,
-        playerColor: Int,
         legal: Boolean,
     ) {
         shadowPaint.color =
@@ -523,24 +501,11 @@ private class AnimalPawnOverlayView(
             )
         }
 
-        ringPaint.color =
-            playerColor
-        canvas.drawCircle(
-            x,
-            y,
-            radius,
-            ringPaint,
-        )
-        canvas.drawCircle(
-            x,
-            y,
-            radius * 0.84f,
-            innerPaint,
-        )
-
+        // Draw only the character art at rest. The old permanent colored/white
+        // outer disks made pawns look bulky and dated; legal moves still get a halo.
         val artRadius =
             radius *
-                0.80f
+                0.96f
         val bounds =
             Rect(
                 (x - artRadius).roundToInt(),

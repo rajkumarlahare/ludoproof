@@ -56,6 +56,11 @@ requireText(
   "legalHaloPaint",
   "Phase 5 board must keep legal-move highlighting visible around animal pawns.",
 );
+if (board.includes("ringPaint") || board.includes("innerPaint")) {
+  throw new Error(
+    "Gameplay pawns must render clean character art without the retired permanent outer safety rings.",
+  );
+}
 requireText(
   board,
   "occupancyByCell",

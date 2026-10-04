@@ -167,19 +167,19 @@ class DiceView @JvmOverloads constructor(
 
         val shadow =
             RectF(
+                size * .09f,
                 size * .11f,
-                size * .14f,
+                size * .91f,
                 size * .92f,
-                size * .94f,
             )
         facePaint.shader = null
         facePaint.color =
             0x55000000
         facePaint.setShadowLayer(
-            dp(8f),
+            dp(3.5f),
             0f,
-            dp(4f),
-            0x77000000,
+            dp(2f),
+            0x52000000,
         )
         canvas.drawRoundRect(
             shadow,
@@ -190,7 +190,7 @@ class DiceView @JvmOverloads constructor(
         facePaint.clearShadowLayer()
 
         val inset =
-            size * .10f
+            size * .07f
         val rect =
             RectF(
                 inset,

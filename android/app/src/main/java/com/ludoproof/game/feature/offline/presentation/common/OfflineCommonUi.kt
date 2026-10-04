@@ -16,7 +16,11 @@ internal fun OfflineGameActivity.backHeader(label: String?): LinearLayout =
         gravity = Gravity.CENTER_VERTICAL
         addView(
             Button(this@backHeader).apply {
-                LudoProofTheme.homeCircularAction(this, "‹")
+                LudoProofTheme.homeCircularAction(this, "←")
+                includeFontPadding = false
+                textSize = 28f
+                gravity = Gravity.CENTER
+                setPadding(0, 0, 0, 0)
                 contentDescription = "Back"
                 setOnClickListener {
                     requestOfflineExit()

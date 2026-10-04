@@ -15,6 +15,8 @@ internal fun OfflineGameActivity.playerRail():
             LinearLayout.HORIZONTAL
         gravity =
             Gravity.CENTER_VERTICAL
+        clipChildren = false
+        clipToPadding = false
         minimumHeight =
             dp(
                 if (isCompactSetup()) {
@@ -115,6 +117,8 @@ private fun OfflineGameActivity.addPlayerSlot(
                     }
                     ) or
                     Gravity.CENTER_VERTICAL
+            clipChildren = false
+            clipToPadding = false
         }
 
     if (player != null) {
@@ -147,6 +151,7 @@ private fun OfflineGameActivity.addPlayerSlot(
                             player.playerId,
                         ),
                     compact = isCompactSetup(),
+                    portraitOnEnd = alignEnd,
                 )
             },
             LinearLayout.LayoutParams(
@@ -190,17 +195,12 @@ private fun OfflineGameActivity.activeDiceControl(
                 true
             isFocusable =
                 true
-            background =
-                LudoProofTheme
-                    .rounded(
-                        0xECF8FAFF.toInt(),
-                        12f,
-                        0xFF5FE1FF.toInt(),
-                        2f,
-                        this@activeDiceControl,
-                    )
-            elevation =
-                dp(7).toFloat()
+            // The dice itself is the visual control. Keep this host transparent so
+            // no extra "safe" frame surrounds or clips the face/shadow.
+            background = null
+            elevation = 0f
+            clipChildren = false
+            clipToPadding = false
             setOnClickListener {
                 rollOffline()
             }
@@ -247,24 +247,25 @@ private fun OfflineGameActivity.activeDiceControl(
         LinearLayout.LayoutParams(
             dp(
                 if (isCompactSetup()) {
-                    52
-                } else {
                     58
+                } else {
+                    64
                 },
             ),
             dp(
                 if (isCompactSetup()) {
-                    52
-                } else {
                     58
+                } else {
+                    64
                 },
             ),
         ).apply {
+            gravity = Gravity.CENTER_VERTICAL
             setMargins(
-                dp(4),
+                dp(2),
                 0,
-                dp(4),
-                dp(12),
+                dp(2),
+                0,
             )
         }
 
