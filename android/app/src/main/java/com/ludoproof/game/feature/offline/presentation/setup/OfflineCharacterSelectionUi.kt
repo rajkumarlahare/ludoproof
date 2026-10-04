@@ -13,6 +13,7 @@ import com.ludoproof.game.feature.characters.domain.catalog.LudoPawsCharacterCat
 import com.ludoproof.game.feature.characters.domain.model.AnimalCharacter
 import com.ludoproof.game.feature.characters.domain.selection.StarterPawsAssignmentPolicy
 import com.ludoproof.game.feature.offline.data.local.OfflineCharacterSetupSnapshot
+import com.ludoproof.game.ui.offline.common.*
 
 internal fun OfflineGameActivity.initializeCharacterSetup() {
     val preferred =
