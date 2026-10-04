@@ -14,7 +14,8 @@ import android.widget.ScrollView
 import android.widget.TextView
 import com.ludoproof.game.*
 import com.ludoproof.game.feature.offline.*
-import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
+import com.ludoproof.game.feature.offline.presentation.feedback.OfflineFeedbackAction
+import com.ludoproof.game.feature.offline.presentation.feedback.OfflineLudoPawsFeedbackDispatcher
 import com.ludoproof.game.ui.offline.common.*
 import com.ludoproof.game.ui.offline.setup.*
 
@@ -140,14 +141,19 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         LudoPawsReactiveBoardView(this).apply {
             onTokenSelected = {
                     tokenIndex ->
+                val previous =
+                    session.snapshot()
                 runCatching {
                     session.move(
                         tokenIndex,
                     )
                 }.onSuccess {
                         next ->
-                    GameSoundFeedback.move(
-                        this@showGame,
+                    OfflineLudoPawsFeedbackDispatcher.committed(
+                        context = this@showGame,
+                        previous = previous,
+                        current = next,
+                        action = OfflineFeedbackAction.MOVE,
                     )
                     renderGame(next)
                 }.onFailure {
