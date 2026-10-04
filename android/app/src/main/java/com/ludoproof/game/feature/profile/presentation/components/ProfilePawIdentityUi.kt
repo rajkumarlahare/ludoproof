@@ -104,7 +104,7 @@ internal fun ProfileActivity.profilePawIdentityPanel():
                             resources.getIdentifier(
                                 it,
                                 "drawable",
-                                packageName,
+                                this@profilePawIdentityPanel.packageName,
                             )
                         }
                         ?: 0
