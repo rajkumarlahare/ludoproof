@@ -26,6 +26,10 @@ import kotlin.math.roundToInt
  * board geometry and touch hit-testing while layering cosmetic Ludo Paws
  * characters on top of its authoritative token positions.
  *
+ * BOARD GEOMETRY LOCK: LudoBoardView is the approved/final board. This wrapper and its animal
+ * overlay must never independently move, resize, or reinterpret the board, road, yards, center,
+ * or token coordinates. Geometry here must remain an exact mirror of LudoBoardView.
+ *
  * The overlay consumes only MatchSnapshot + persisted cosmetic assignments.
  * It never changes dice, moves, captures, proof material, or engine state.
  */
@@ -108,6 +112,8 @@ class LudoPawsBoardView @JvmOverloads constructor(
         baseBoard.reloadStyle()
     }
 
+    // BOARD SIZE LOCK: this shell must exactly match the square measured by LudoBoardView.
+    // Do not give the pawn overlay a different aspect ratio, inset, or independent board size.
     override fun onMeasure(
         widthMeasureSpec: Int,
         heightMeasureSpec: Int,
@@ -148,6 +154,13 @@ class LudoPawsBoardView @JvmOverloads constructor(
             resources.displayMetrics.density
 }
 
+/**
+ * COSMETIC GEOMETRY MIRROR — LOCKED.
+ *
+ * This layer draws only animal pawns. Its coordinate math must stay pixel-identical to the fixed
+ * LudoBoardView geometry. Do not adjust overlay positions to "look right" independently; any
+ * explicit future board redesign must update both files together.
+ */
 private class AnimalPawnOverlayView(
     context: Context,
 ) : View(context) {
@@ -284,6 +297,8 @@ private class AnimalPawnOverlayView(
         if (size <= 0f) {
             return
         }
+        // BASE COORDINATE LOCK: mirror LudoBoardView's logical 15x15 coordinate base exactly.
+        // Visual stretching is applied only through the matching axisBoundary() below.
         val cell =
             size /
                 15f
@@ -799,6 +814,8 @@ private class AnimalPawnOverlayView(
                 )
     }
 
+    // TOKEN POSITION MIRROR LOCK: every cosmetic pawn center must match LudoBoardView.
+    // Never introduce an overlay-only road, yard, home-lane, or center offset.
     private fun tokenCenter(
         player: PlayerSnapshot,
         tokenIndex: Int,
@@ -843,21 +860,26 @@ private class AnimalPawnOverlayView(
         }
 
         if (position == 57) {
-            val unit =
-                when (player.color) {
-                    "RED" -> 6.9f to 7.5f
-                    "GREEN" -> 7.5f to 6.9f
-                    "YELLOW" -> 8.1f to 7.5f
-                    "BLUE" -> 7.5f to 8.1f
-                    else -> 7.5f to 7.5f
-                }
-            return unit.first * cell to
-                unit.second * cell
+            val left = axisBoundary(6, cell)
+            val top = axisBoundary(6, cell)
+            val right = axisBoundary(9, cell)
+            val bottom = axisBoundary(9, cell)
+            val cx = (left + right) / 2f
+            val cy = (top + bottom) / 2f
+            val offset = (right - left) * 0.20f
+            return when (player.color) {
+                "RED" -> cx - offset to cy
+                "GREEN" -> cx to cy - offset
+                "YELLOW" -> cx + offset to cy
+                "BLUE" -> cx to cy + offset
+                else -> cx to cy
+            }
         }
 
         return null
     }
 
+    // YARD TOKEN MIRROR LOCK: fixed 0.5-cell inset, fixed 4x4 white home, fixed 25%/75% slots.
     private fun yardTokenCenter(
         color: String,
         tokenIndex: Int,
@@ -865,36 +887,63 @@ private class AnimalPawnOverlayView(
     ): Pair<Float, Float>? {
         val origin =
             when (color) {
-                "RED" -> 0f to 0f
-                "GREEN" -> 0f to 9f
-                "YELLOW" -> 9f to 9f
-                "BLUE" -> 9f to 0f
+                "RED" -> 0 to 0
+                "GREEN" -> 0 to 9
+                "YELLOW" -> 9 to 9
+                "BLUE" -> 9 to 0
                 else -> return null
             }
-        val slot =
-            when (tokenIndex) {
-                0 -> 2f to 2f
-                1 -> 2f to 4f
-                2 -> 4f to 2f
-                else -> 4f to 4f
-            }
-        val row =
-            origin.first +
-                slot.first
-        val col =
-            origin.second +
-                slot.second
-        return col * cell to
-            row * cell
+
+        val yardLeft = axisBoundary(origin.second, cell)
+        val yardTop = axisBoundary(origin.first, cell)
+        val whiteLeft = yardLeft + cell * 0.5f
+        val whiteTop = yardTop + cell * 0.5f
+        val whiteSize = cell * 4f
+
+        val rowFraction =
+            if (tokenIndex < 2) 0.25f else 0.75f
+        val colFraction =
+            if (tokenIndex % 2 == 0) 0.25f else 0.75f
+
+        return (whiteLeft + whiteSize * colFraction) to
+            (whiteTop + whiteSize * rowFraction)
     }
 
+    // CELL CENTER MIRROR LOCK: use the exact same boundary midpoints as LudoBoardView.
     private fun centerForCell(
         row: Int,
         col: Int,
         cell: Float,
     ): Pair<Float, Float> =
-        (col + 0.5f) * cell to
-            (row + 0.5f) * cell
+        ((axisBoundary(col, cell) +
+            axisBoundary(col + 1, cell)) / 2f) to
+            ((axisBoundary(row, cell) +
+                axisBoundary(row + 1, cell)) / 2f)
+
+    /**
+     * FINAL BOARD GEOMETRY MIRROR — LOCKED.
+     *
+     * Must stay identical to LudoBoardView.axisBoundary() so the cosmetic animal layer remains
+     * exactly on top of the authoritative board. The approved distribution is 5 base cells for
+     * the first yard span, 5 for the stretched three-lane road, and 5 for the opposite yard span.
+     *
+     * Do not change these ratios or boundary ranges independently of LudoBoardView.
+     */
+    private fun axisBoundary(
+        index: Int,
+        cell: Float,
+    ): Float {
+        val yardSpan = cell * 5f
+        val roadSpan = cell * 5f
+        val yardStep = yardSpan / 6f
+        val roadStep = roadSpan / 3f
+
+        return when {
+            index <= 6 -> index * yardStep
+            index <= 9 -> yardSpan + (index - 6) * roadStep
+            else -> yardSpan + roadSpan + (index - 9) * yardStep
+        }
+    }
 
     private fun playerColor(
         name: String,
@@ -930,6 +979,7 @@ private class AnimalPawnOverlayView(
                 "BLUE" to 39,
             )
 
+        // LOGICAL TRACK MIRROR LOCK: same 52 positions and order as LudoBoardView.TRACK.
         val TRACK =
             listOf(
                 6 to 1,
@@ -986,6 +1036,7 @@ private class AnimalPawnOverlayView(
                 6 to 0,
             )
 
+        // LOGICAL HOME-LANE MIRROR LOCK: same five cells per color as LudoBoardView.HOME_LANES.
         val HOME_LANES =
             mapOf(
                 "RED" to
