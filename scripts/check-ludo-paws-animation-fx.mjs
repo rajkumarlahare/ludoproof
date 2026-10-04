@@ -26,11 +26,30 @@ requireText(
     "isCaptureReturn",
     "drawCaptureReturn",
     "drawPawTrail",
-    "drawSafeShield",
     "drawHomeStars",
+    "LudoPawsFxPolicy",
+  ],
+);
+
+requireText(
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsFxPainter.kt",
+  [
+    "drawSafeShield",
     "drawConfetti",
     "drawAngryBolts",
+    "drawNervousOrbit",
     "drawSadDrops",
+    "drawPawMark",
+  ],
+);
+
+requireText(
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsFxBoardGeometry.kt",
+  [
+    "tokenCenter",
+    "yardReactionAnchor",
+    "HOME_LANES",
+    "START_OFFSETS",
   ],
 );
 
