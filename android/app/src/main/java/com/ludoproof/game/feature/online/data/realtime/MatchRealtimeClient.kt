@@ -214,7 +214,11 @@ class MatchRealtimeClient(
                 desiredSession ==
                     session &&
                     generation.get() ==
-                    currentGeneration
+                    currentGeneration &&
+                    (
+                        connecting ||
+                            connected
+                    )
             }
         if (keepSocket) {
             socket =
