@@ -317,6 +317,16 @@ internal fun OfflineGameActivity.renderGame(
         } else {
             activePlayerId
         }
+    val characterIdsBySeat =
+        offlineCharacterSetupStore
+            .loadActive()
+            ?.takeIf {
+                it.mode == gameMode &&
+                    it.playerCount ==
+                    state.players.size
+            }
+            ?.characterIds
+            .orEmpty()
 
     boardView?.bind(
         state =
@@ -327,6 +337,8 @@ internal fun OfflineGameActivity.renderGame(
             state.players
                 .firstOrNull()
                 ?.color,
+        characterIdsBySeat =
+            characterIdsBySeat,
     )
 
     renderPlayerRails(
