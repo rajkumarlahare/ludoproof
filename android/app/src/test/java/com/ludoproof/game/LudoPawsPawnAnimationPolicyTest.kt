@@ -85,6 +85,61 @@ class LudoPawsPawnAnimationPolicyTest {
         )
     }
 
+    @Test
+    fun captureReturnUsesImpactPopTravelAndSettleStages() {
+        val impact =
+            LudoPawsPawnAnimationPolicy.captureReturnFrame(.08f)
+        val pop =
+            LudoPawsPawnAnimationPolicy.captureReturnFrame(.25f)
+        val travel =
+            LudoPawsPawnAnimationPolicy.captureReturnFrame(.62f)
+        val settle =
+            LudoPawsPawnAnimationPolicy.captureReturnFrame(.96f)
+
+        assertEquals(
+            LudoPawsCaptureReturnPhase.IMPACT_SHAKE,
+            impact.phase,
+        )
+        assertEquals(0f, impact.routeProgress, 0.0001f)
+        assertTrue(kotlin.math.abs(impact.shakeXCells) > 0.001f)
+
+        assertEquals(
+            LudoPawsCaptureReturnPhase.POP,
+            pop.phase,
+        )
+        assertEquals(0f, pop.routeProgress, 0.0001f)
+        assertTrue(pop.liftCells > 0f)
+        assertTrue(pop.scale > 1f)
+
+        assertEquals(
+            LudoPawsCaptureReturnPhase.RETURN_TO_YARD,
+            travel.phase,
+        )
+        assertTrue(travel.routeProgress in 0.01f..0.99f)
+        assertTrue(travel.liftCells > 0f)
+
+        assertEquals(
+            LudoPawsCaptureReturnPhase.SETTLE,
+            settle.phase,
+        )
+        assertEquals(1f, settle.routeProgress, 0.0001f)
+    }
+
+    @Test
+    fun captureReturnEndsExactlyAtStableYardPose() {
+        val end =
+            LudoPawsPawnAnimationPolicy.captureReturnFrame(1f)
+
+        assertEquals(
+            LudoPawsCaptureReturnPhase.SETTLE,
+            end.phase,
+        )
+        assertEquals(1f, end.routeProgress, 0.0001f)
+        assertEquals(0f, end.shakeXCells, 0.0001f)
+        assertEquals(0f, end.liftCells, 0.0001f)
+        assertEquals(1f, end.scale, 0.0001f)
+    }
+
     private fun snapshot(players: List<PlayerSnapshot>): MatchSnapshot =
         MatchSnapshot(
             matchId = "capture-animation-match",
