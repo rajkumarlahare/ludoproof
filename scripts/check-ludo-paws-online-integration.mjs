@@ -40,6 +40,15 @@ const verifiedDicePolicy = read(
 const verifiedDiceTests = read(
   "android/app/src/test/java/com/ludoproof/game/OnlineVerifiedDicePresentationPolicyTest.kt",
 );
+const rollActionPolicy = read(
+  "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/state/OnlineRollActionPolicy.kt",
+);
+const rollActionTests = read(
+  "android/app/src/test/java/com/ludoproof/game/OnlineRollActionPolicyTest.kt",
+);
+const matchActions = read(
+  "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/actions/OnlineMatchActions.kt",
+);
 const presentation = read(
   "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/OnlineLudoPawsPresentation.kt",
 );
@@ -104,11 +113,12 @@ for (const marker of [
   "presentedDiceEventKey",
   "animate = shouldAnimate",
   "Waiting for the complete proof",
+  "onlineRollActionDecision(state)",
 ]) {
   requireText(
     verificationRenderer,
     marker,
-    `Remote verified-dice renderer is missing ${marker}.`,
+    `Remote verified-dice/recovery renderer is missing ${marker}.`,
   );
 }
 for (const marker of [
@@ -125,6 +135,60 @@ for (const marker of [
 }
 
 for (const marker of [
+  "NEW_ROLL",
+  "RESUME_COMMIT_THEN_REVEAL",
+  "RESUME_REVEAL_ONLY",
+  "WAIT_FOR_RECOVERY",
+  "MOVE_REQUIRED",
+  "localClientCommitment == remoteClientCommitment",
+]) {
+  requireText(
+    rollActionPolicy,
+    marker,
+    `Online roll recovery policy is missing ${marker}.`,
+  );
+}
+for (const marker of [
+  "creatingRoundWithMatchingSecretResumesCommitThenReveal",
+  "committedRoundWithMatchingSecretResumesRevealOnly",
+  "resolvingRoundWithMatchingSecretRetriesRevealOnly",
+  "lockedRoundWithoutLocalSecretWaitsInsteadOfStartingAnotherRoll",
+  "commitmentMismatchFailsClosed",
+  "resolvedRoundRequiresMoveNotAnotherRoll",
+]) {
+  requireText(
+    rollActionTests,
+    marker,
+    `Online roll recovery regression coverage is missing ${marker}.`,
+  );
+}
+for (const marker of [
+  "val decision = onlineRollActionDecision(state)",
+  "OnlineRollActionKind.RESUME_COMMIT_THEN_REVEAL",
+  "OnlineRollActionKind.RESUME_REVEAL_ONLY",
+  "api.commitRoll",
+  "api.revealRoll",
+  "pendingRollStore.save",
+]) {
+  requireText(
+    matchActions,
+    marker,
+    `Online roll action flow is missing ${marker}.`,
+  );
+}
+for (const marker of [
+  "pending == null || pending.status == \"RESOLVED\"",
+  "remoteCommitment != null",
+  "remoteCommitment != secret.clientCommitment",
+]) {
+  requireText(
+    renderer,
+    marker,
+    `Pending reveal-secret reconciliation is missing ${marker}.`,
+  );
+}
+
+for (const marker of [
   "LudoPawsReactiveBoardView",
   "LudoPawsPlayerCardView",
   "characterIdsBySeat",
@@ -137,5 +201,5 @@ for (const marker of [
 }
 
 console.log(
-  "Ludo Paws online integration gate passed: canonical Dog/Goat/Duck/Cat identity, legacy alias compatibility, remote 3D presentation, exactly-once feedback, fail-closed verified-dice presentation and proof-state isolation are wired.",
+  "Ludo Paws online integration gate passed: canonical Dog/Goat/Duck/Cat identity, legacy alias compatibility, remote 3D presentation, exactly-once feedback, fail-closed verified-dice presentation, reconnect-safe commit/reveal recovery and proof-state isolation are wired.",
 );
