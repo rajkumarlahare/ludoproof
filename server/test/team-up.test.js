@@ -50,7 +50,7 @@ test("Team Up assigns opposite colors to the same team", () => {
     ["A", "B", "A", "B"],
   );
   const publicValue = publicState(state);
-  assert.equal(publicValue.rulesetId, "ludoproof-team-v1");
+  assert.equal(publicValue.rulesetId, "ludoproof-team-v2");
   assert.equal(publicValue.actingSeat, 0);
 });
 
@@ -152,5 +152,5 @@ test("classic Online proof-state shape remains free of Team Up fields", () => {
   const teamProofState = authoritativeStateForRandomness(team);
   assert.equal(teamProofState.matchMode, "TEAM_UP");
   assert.deepEqual(teamProofState.teamAssignments, ["A", "B", "A", "B"]);
-  assert.equal(teamProofState.teamRulesetId, "ludoproof-team-v1");
+  assert.equal(teamProofState.teamRulesetId, "ludoproof-team-v2");
 });
