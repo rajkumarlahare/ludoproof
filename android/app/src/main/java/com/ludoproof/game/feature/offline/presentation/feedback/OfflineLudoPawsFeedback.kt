@@ -3,7 +3,7 @@ package com.ludoproof.game.feature.offline.presentation.feedback
 import android.content.Context
 import com.ludoproof.game.MatchSnapshot
 import com.ludoproof.game.OfflineGameActivity
-import com.ludoproof.game.feature.characters.domain.model.VoiceCue
+import com.ludoproof.game.feature.characters.domain.reaction.GameMomentType
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsFeedbackLedger
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReactionEngine
@@ -19,9 +19,13 @@ enum class OfflineFeedbackSound {
     NONE,
     MOVE,
     SIX,
+    YARD_EXIT,
     CAPTURE,
     SAFE,
+    HOME_LANE,
     HOME,
+    FRUSTRATED,
+    THIRD_SIX,
     VICTORY,
     DEFEAT,
 }
@@ -31,12 +35,7 @@ data class OfflineFeedbackDecision(
     val reactions: List<LudoPawsReaction>,
 )
 
-/**
- * Pure policy for presentation feedback after an already-committed local action.
- *
- * It only compares immutable snapshots and never participates in dice, move,
- * capture, turn, CPU, proof, or winner decisions.
- */
+/** Pure policy for presentation feedback after an already-committed local action. */
 object OfflineLudoPawsFeedbackPolicy {
     fun decide(
         previous: MatchSnapshot?,
@@ -65,24 +64,36 @@ object OfflineLudoPawsFeedbackPolicy {
         tokenMovementCommitted: Boolean,
     ): OfflineFeedbackDecision {
         val highest =
-            reactions.maxByOrNull(
-                LudoPawsReaction::priority,
-            )
+            reactions.maxByOrNull(LudoPawsReaction::priority)
         val dedicatedSound =
-            when (highest?.voiceCue) {
-                VoiceCue.VICTORY -> OfflineFeedbackSound.VICTORY
-                VoiceCue.DEFEAT -> OfflineFeedbackSound.DEFEAT
-                VoiceCue.CAPTURE,
-                VoiceCue.CAPTURED,
+            when (highest?.momentType) {
+                GameMomentType.SIX_ROLLED -> OfflineFeedbackSound.SIX
+                GameMomentType.TOKEN_LEFT_YARD -> OfflineFeedbackSound.YARD_EXIT
+                GameMomentType.ONLY_LEGAL_MOVE -> OfflineFeedbackSound.MOVE
+                GameMomentType.CAPTURE_MADE,
+                GameMomentType.TOKEN_CAPTURED,
                 -> OfflineFeedbackSound.CAPTURE
-
-                VoiceCue.HOME -> OfflineFeedbackSound.HOME
-                VoiceCue.SAFE -> OfflineFeedbackSound.SAFE
-                VoiceCue.SIX -> OfflineFeedbackSound.SIX
-                VoiceCue.THIRD_SIX,
-                VoiceCue.FRUSTRATED,
-                VoiceCue.IDLE,
-                VoiceCue.NERVOUS,
+                GameMomentType.SAFE_REACHED -> OfflineFeedbackSound.SAFE
+                GameMomentType.HOME_LANE_ENTERED -> OfflineFeedbackSound.HOME_LANE
+                GameMomentType.HOME_REACHED -> OfflineFeedbackSound.HOME
+                GameMomentType.POOR_ROLL_STREAK,
+                GameMomentType.EXACT_HOME_MISS,
+                GameMomentType.NO_LEGAL_MOVE,
+                -> OfflineFeedbackSound.FRUSTRATED
+                GameMomentType.THIRD_SIX_FORFEIT -> OfflineFeedbackSound.THIRD_SIX
+                GameMomentType.MATCH_WIN,
+                GameMomentType.TEAM_WIN,
+                -> OfflineFeedbackSound.VICTORY
+                GameMomentType.MATCH_LOSS,
+                GameMomentType.TEAM_LOSS,
+                -> OfflineFeedbackSound.DEFEAT
+                GameMomentType.TURN_STARTED,
+                GameMomentType.ROLL_STARTED,
+                GameMomentType.LOW_ROLL,
+                GameMomentType.TOKEN_MOVED,
+                GameMomentType.TOKEN_THREATENED,
+                GameMomentType.PLAYER_LEADING,
+                GameMomentType.IDLE_WAITING,
                 null,
                 -> OfflineFeedbackSound.NONE
             }
@@ -90,8 +101,8 @@ object OfflineLudoPawsFeedbackPolicy {
         val sound =
             when {
                 dedicatedSound != OfflineFeedbackSound.NONE -> dedicatedSound
-                action == OfflineFeedbackAction.MOVE &&
-                    tokenMovementCommitted -> OfflineFeedbackSound.MOVE
+                action == OfflineFeedbackAction.MOVE && tokenMovementCommitted ->
+                    OfflineFeedbackSound.MOVE
                 else -> OfflineFeedbackSound.NONE
             }
 
@@ -101,41 +112,24 @@ object OfflineLudoPawsFeedbackPolicy {
         )
     }
 
-    /**
-     * Stable key for one already-committed local action. Roll and move are
-     * intentionally distinct even when they share one fairness event index.
-     */
     fun committedActionKey(
         current: MatchSnapshot?,
         action: OfflineFeedbackAction,
     ): String? {
         current ?: return null
-
         val eventIndex =
             when (action) {
                 OfflineFeedbackAction.ROLL ->
-                    current.pendingRoll
-                        ?.eventIndex
-                        ?: current.history
-                            .lastOrNull()
-                            ?.eventIndex
-                        ?: (current.randomEventIndex - 1)
-                            .takeIf { it >= 0 }
-
+                    current.pendingRoll?.eventIndex
+                        ?: current.history.lastOrNull()?.eventIndex
+                        ?: (current.randomEventIndex - 1).takeIf { it >= 0 }
                 OfflineFeedbackAction.MOVE ->
-                    current.history
-                        .lastOrNull {
-                            it.moveTokenIndex != null
-                        }
-                        ?.eventIndex
-                        ?: current.history
-                            .lastOrNull()
-                            ?.eventIndex
-                        ?: current.pendingRoll
-                            ?.eventIndex
-            }
-                ?: return null
-
+                    current.history.lastOrNull {
+                        it.moveTokenIndex != null
+                    }?.eventIndex
+                        ?: current.history.lastOrNull()?.eventIndex
+                        ?: current.pendingRoll?.eventIndex
+            } ?: return null
         return "${action.name}:$eventIndex"
     }
 
@@ -150,25 +144,17 @@ object OfflineLudoPawsFeedbackPolicy {
         ) {
             return false
         }
-
-        return current.players.any {
-                currentPlayer ->
+        return current.players.any { currentPlayer ->
             val previousPlayer =
                 previous.players.firstOrNull {
                     it.playerId == currentPlayer.playerId
-                }
-                    ?: return@any false
+                } ?: return@any false
             previousPlayer.tokens != currentPlayer.tokens
         }
     }
 }
 
-/**
- * Android side-effect adapter for [OfflineLudoPawsFeedbackPolicy].
- *
- * The activity-owned ledger makes a successful local action idempotent at the
- * sound/haptic boundary, so duplicated callbacks cannot emit feedback twice.
- */
+/** Android side-effect adapter with exactly-once feedback gating. */
 object OfflineLudoPawsFeedbackDispatcher {
     fun committed(
         context: Context,
@@ -177,8 +163,7 @@ object OfflineLudoPawsFeedbackDispatcher {
         action: OfflineFeedbackAction,
     ) {
         val ledger =
-            (context as? OfflineGameActivity)
-                ?.feedbackLedger
+            (context as? OfflineGameActivity)?.feedbackLedger
                 ?: return
         committed(
             context = context,
@@ -196,16 +181,13 @@ object OfflineLudoPawsFeedbackDispatcher {
         current: MatchSnapshot?,
         action: OfflineFeedbackAction,
     ) {
-        val safeCurrent =
-            current
-                ?: return
+        val safeCurrent = current ?: return
         val actionKey =
             OfflineLudoPawsFeedbackPolicy
                 .committedActionKey(
                     current = safeCurrent,
                     action = action,
-                )
-                ?: return
+                ) ?: return
         if (
             !ledger.once(
                 matchId = safeCurrent.matchId,
@@ -221,14 +203,21 @@ object OfflineLudoPawsFeedbackDispatcher {
                 current = safeCurrent,
                 action = action,
             )
+        val moverCharacterId =
+            movementSeat(previous, safeCurrent)
+                ?.let { seat -> characterIdForSeat(safeCurrent, seat) }
 
         when (decision.sound) {
             OfflineFeedbackSound.NONE -> Unit
-            OfflineFeedbackSound.MOVE -> GameSoundFeedback.move(context)
+            OfflineFeedbackSound.MOVE -> GameSoundFeedback.move(context, moverCharacterId)
             OfflineFeedbackSound.SIX -> GameSoundFeedback.six(context)
+            OfflineFeedbackSound.YARD_EXIT -> GameSoundFeedback.yardExit(context)
             OfflineFeedbackSound.CAPTURE -> GameSoundFeedback.capture(context)
             OfflineFeedbackSound.SAFE -> GameSoundFeedback.safe(context)
+            OfflineFeedbackSound.HOME_LANE -> GameSoundFeedback.homeLane(context)
             OfflineFeedbackSound.HOME -> GameSoundFeedback.home(context)
+            OfflineFeedbackSound.FRUSTRATED -> GameSoundFeedback.frustrated(context)
+            OfflineFeedbackSound.THIRD_SIX -> GameSoundFeedback.thirdSix(context)
             OfflineFeedbackSound.VICTORY -> GameSoundFeedback.victory(context)
             OfflineFeedbackSound.DEFEAT -> GameSoundFeedback.defeat(context)
         }
@@ -238,4 +227,37 @@ object OfflineLudoPawsFeedbackDispatcher {
             reactions = decision.reactions,
         )
     }
+
+    private fun movementSeat(
+        previous: MatchSnapshot?,
+        current: MatchSnapshot,
+    ): Int? {
+        previous ?: return null
+        return current.players.firstOrNull { player ->
+            val before =
+                previous.players.firstOrNull {
+                    it.playerId == player.playerId
+                } ?: return@firstOrNull false
+            before.tokens != player.tokens &&
+                player.tokens.indices.any { index ->
+                    val from = before.tokens.getOrNull(index) ?: -1
+                    val to = player.tokens.getOrNull(index) ?: -1
+                    to > from
+                }
+        }?.seat
+    }
+
+    private fun characterIdForSeat(
+        state: MatchSnapshot,
+        seat: Int,
+    ): String =
+        state.players.getOrNull(seat)?.characterId
+            ?.takeIf(String::isNotBlank)
+            ?: when (seat) {
+                0 -> "dog"
+                1 -> "goat"
+                2 -> "duck"
+                3 -> "cat"
+                else -> "dog"
+            }
 }
