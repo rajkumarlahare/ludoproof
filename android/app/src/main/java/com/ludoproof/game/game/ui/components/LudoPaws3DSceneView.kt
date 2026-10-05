@@ -40,7 +40,8 @@ internal data class LudoPaws3DSceneState(
  * touch hit-testing; this layer is visual only and never mutates game state.
  *
  * If ES 3.0/EGL initialization fails, [onOperationalChanged] reports false and
- * the existing 2D animal pawn layer remains the safe fallback.
+ * the authoritative classic board remains the safe pawn fallback. No retired
+ * 2D animal drawable renderer is restored.
  */
 internal class LudoPaws3DSceneView @JvmOverloads constructor(
     context: Context,
@@ -343,7 +344,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             } catch (error: Throwable) {
                 Log.w(
                     TAG,
-                    "3D pawn runtime unavailable; keeping 2D fallback",
+                    "3D pawn runtime unavailable; keeping authoritative board fallback",
                     error,
                 )
             } finally {
