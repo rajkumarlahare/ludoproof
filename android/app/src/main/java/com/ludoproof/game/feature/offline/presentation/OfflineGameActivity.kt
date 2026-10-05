@@ -109,6 +109,7 @@ class OfflineGameActivity : ComponentActivity() {
     internal var infoText: TextView? = null
     internal var statusText: TextView? = null
     internal var computerActionRevision: Int? = null
+    internal var presentedDiceEventKey: String? = null
     internal var exitConfirmationDialog: Dialog? = null
     internal lateinit var resultPanel: FrameLayout
     internal lateinit var resultTitleText: TextView
@@ -144,6 +145,8 @@ class OfflineGameActivity : ComponentActivity() {
     internal fun prepareOfflineUiTransition() {
         handler.removeCallbacksAndMessages(null)
         computerActionRevision =
+            null
+        presentedDiceEventKey =
             null
         feedbackLedger.clear()
         activeCharacterMatchId =
