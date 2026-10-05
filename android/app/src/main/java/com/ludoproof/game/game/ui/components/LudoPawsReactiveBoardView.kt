@@ -2,6 +2,7 @@ package com.ludoproof.game
 
 import android.content.Context
 import android.util.AttributeSet
+import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
 import com.ludoproof.game.feature.characters.data.audio.LudoPawsVoicePlayer
@@ -27,6 +28,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
     private val pawn3DScene = LudoPaws3DSceneView(context)
     private val pawn3DLegalHalo = LudoPaws3DLegalHaloView(context)
     private val gameFxOverlay = LudoPawsGameFxOverlayView(context)
+    private val quickReactionOverlay = LudoPawsQuickReactionOverlayView(context)
     private val voicePlayer = LudoPawsVoicePlayer(context)
     private val settingsStore = GameSettingsStore(context)
 
@@ -79,6 +81,16 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.MATCH_PARENT,
             ),
+        )
+        addView(
+            quickReactionOverlay,
+            LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT,
+                Gravity.TOP or Gravity.CENTER_HORIZONTAL,
+            ).apply {
+                topMargin = density(24f).roundToInt()
+            },
         )
 
         pawn3DLegalHalo.visibility = View.GONE
@@ -149,6 +161,16 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         scheduleIdleReaction(
             state = state,
             nowMillis = nowMillis,
+        )
+    }
+
+    fun showQuickReaction(emoji: String) {
+        quickReactionOverlay.showReaction(
+            emoji = emoji,
+            reducedMotion =
+                settingsStore
+                    .snapshot()
+                    .reducedMotionEnabled,
         )
     }
 
@@ -251,13 +273,18 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         if (idleKey == lastIdleReactionKey) return
 
         val reactions =
-            LudoPawsReactionEngine
-                .deriveIdle(
-                    current = state,
-                    nowMillis = nowMillis,
-                    lastMeaningfulChangeAtMillis = lastMeaningfulChangeAtMillis,
-                    thresholdMillis = LudoPawsIdleReactionPolicy.IDLE_THRESHOLD_MILLIS,
-                )
+            LudoPawsIdleReactionPolicy
+                .idleReactionKey(state)
+                ?.let {
+                    LudoPawsReactionEngine
+                        .deriveIdle(
+                            current = state,
+                            nowMillis = nowMillis,
+                            lastMeaningfulChangeAtMillis = lastMeaningfulChangeAtMillis,
+                            thresholdMillis = LudoPawsIdleReactionPolicy.IDLE_THRESHOLD_MILLIS,
+                        )
+                }
+                .orEmpty()
         if (reactions.isEmpty()) return
         lastIdleReactionKey = idleKey
 
