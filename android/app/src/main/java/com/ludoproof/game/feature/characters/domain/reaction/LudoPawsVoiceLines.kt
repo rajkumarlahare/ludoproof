@@ -9,59 +9,41 @@ object LudoPawsVoiceLines {
         character: AnimalCharacter,
         cue: VoiceCue,
     ): String {
-        val sound =
-            speciesSound(
-                character.species,
-            )
+        val sound = speciesSound(character.species)
         val phrase =
             when (cue) {
-                VoiceCue.SIX ->
-                    "Six! Let's go!"
-                VoiceCue.CAPTURE ->
-                    "Got you!"
-                VoiceCue.CAPTURED ->
-                    "Ouch! Back to the yard."
-                VoiceCue.SAFE ->
-                    "Safe at last."
-                VoiceCue.HOME ->
-                    "Home sweet home!"
-                VoiceCue.FRUSTRATED ->
-                    "No move this time."
-                VoiceCue.THIRD_SIX ->
-                    "Three sixes. Turn over!"
-                VoiceCue.IDLE ->
-                    "Your turn."
-                VoiceCue.NERVOUS ->
-                    "This is close."
-                VoiceCue.VICTORY ->
-                    "I win!"
-                VoiceCue.DEFEAT ->
-                    "Good game."
+                VoiceCue.SIX -> "Six! Let's go!"
+                VoiceCue.CAPTURE -> "Got you!"
+                VoiceCue.CAPTURED -> "Ouch! Back to the yard."
+                VoiceCue.SAFE -> "Safe at last."
+                VoiceCue.HOME -> "Home sweet home!"
+                VoiceCue.FRUSTRATED -> "No move this time."
+                VoiceCue.THIRD_SIX -> "Three sixes. Turn over!"
+                VoiceCue.IDLE -> "Your turn."
+                VoiceCue.NERVOUS -> "This is close."
+                VoiceCue.VICTORY -> "I win!"
+                VoiceCue.DEFEAT -> "Good game."
             }
 
         return "$sound $phrase"
     }
 
-    private fun speciesSound(
-        species: AnimalSpecies,
-    ): String =
+    private fun speciesSound(species: AnimalSpecies): String =
         when (species) {
+            AnimalSpecies.DOG -> "Woof!"
+            AnimalSpecies.GOAT,
+            AnimalSpecies.SHEEP,
+            -> "Baa!"
             AnimalSpecies.DUCK,
             AnimalSpecies.CHICK,
             -> "Quack!"
-
+            AnimalSpecies.CAT -> "Meow!"
             AnimalSpecies.SQUIRREL,
             AnimalSpecies.MONKEY,
             -> "Chirp!"
-
             AnimalSpecies.HEDGEHOG,
             AnimalSpecies.PIG,
             -> "Snuffle!"
-
-            AnimalSpecies.SHEEP,
-            AnimalSpecies.GOAT,
-            -> "Baa!"
-
             AnimalSpecies.DEER,
             AnimalSpecies.GIRAFFE,
             AnimalSpecies.ZEBRA,
@@ -79,8 +61,6 @@ object LudoPawsVoiceLines {
             AnimalSpecies.LION,
             AnimalSpecies.RABBIT,
             AnimalSpecies.FROG,
-            AnimalSpecies.DOG,
-            AnimalSpecies.CAT,
             -> "Hey!"
         }
 }
