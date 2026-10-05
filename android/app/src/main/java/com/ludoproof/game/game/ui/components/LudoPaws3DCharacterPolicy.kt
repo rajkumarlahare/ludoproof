@@ -18,6 +18,17 @@ internal enum class LudoPaws3DSpecies {
 }
 
 internal object LudoPaws3DCharacterPolicy {
+    /**
+     * The shared renderer currently asks for species by board color. Install a
+     * render-thread-local color -> selected-character mapping before each frame
+     * so production rendering follows the real seat selection without leaking
+     * cosmetics into MatchSnapshot's authoritative gameplay fields.
+     */
+    private val renderSpeciesByColor =
+        ThreadLocal.withInitial<Map<String, LudoPaws3DSpecies>> {
+            emptyMap()
+        }
+
     fun speciesForCharacterId(
         characterId: String?,
     ): LudoPaws3DSpecies? =
@@ -39,10 +50,47 @@ internal object LudoPaws3DCharacterPolicy {
     ): LudoPaws3DSpecies? =
         speciesForCharacterId(
             characterIdsBySeat.getOrNull(seat),
-        ) ?: speciesForColor(fallbackColor)
+        ) ?: fallbackSpeciesForColor(fallbackColor)
 
-    /** Compatibility only for legacy states that have no characterId. */
+    fun bindRenderAssignments(
+        snapshot: MatchSnapshot?,
+        characterIdsBySeat: List<String>,
+    ) {
+        val mapping =
+            snapshot
+                ?.players
+                ?.mapNotNull {
+                    player ->
+                    speciesForSeat(
+                        characterIdsBySeat = characterIdsBySeat,
+                        seat = player.seat,
+                        fallbackColor = player.color,
+                    )
+                        ?.let {
+                            player.color to it
+                        }
+                }
+                ?.toMap()
+                .orEmpty()
+        renderSpeciesByColor.set(mapping)
+    }
+
+    fun clearRenderAssignments() {
+        renderSpeciesByColor.remove()
+    }
+
+    /**
+     * Renderer-facing lookup. Selected seat identity wins when installed for
+     * the current render thread; color mapping is compatibility fallback only.
+     */
     fun speciesForColor(
+        color: String,
+    ): LudoPaws3DSpecies? =
+        renderSpeciesByColor
+            .get()[color]
+            ?: fallbackSpeciesForColor(color)
+
+    private fun fallbackSpeciesForColor(
         color: String,
     ): LudoPaws3DSpecies? =
         when (color) {
