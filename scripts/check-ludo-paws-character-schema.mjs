@@ -26,7 +26,8 @@ const models = read(
 
 requireText(serverContract, 'CHARACTER_ID_WIRE_FIELD = "characterId"', "Server character wire field changed unexpectedly.");
 requireText(serverContract, "CHARACTER_ID_SCHEMA_VERSION = 1", "Server character schema version must stay explicit.");
-requireText(serverContract, "DEFAULT_CHARACTER_ID", "Server must retain deterministic legacy fallback.");
+requireText(serverContract, 'DEFAULT_CHARACTER_ID = "dog"', "Server must retain deterministic canonical Dog fallback.");
+requireText(serverContract, "LEGACY_CHARACTER_ALIASES", "Server must retain an explicit legacy-id compatibility bridge.");
 requireText(serverContract, "INVALID_CHARACTER_ID", "Unsupported new-client character IDs must be rejected.");
 
 requireText(androidContract, 'WIRE_FIELD = "characterId"', "Android character wire field must match server.");
@@ -51,13 +52,15 @@ if (proofState.includes("characterId") || proofState.includes("characterSchema")
 }
 
 for (const marker of [
-  "legacy create and join calls that omit character identity still resolve to duck",
-  "legacy persisted character values fall back without making rooms unreadable",
+  "canonical 3D Ludo Paws character IDs are accepted and normalized",
+  "legacy starter IDs migrate to the canonical 3D animals",
+  "unknown persisted character values fall back without making rooms unreadable",
+  "legacy create and join calls that omit character identity resolve to dog",
   "proof state ignores cosmetics",
 ]) {
-  requireText(serverTests, marker, `Phase 13 compatibility coverage is missing: ${marker}`);
+  requireText(serverTests, marker, `Character-schema compatibility coverage is missing: ${marker}`);
 }
 
 console.log(
-  "Ludo Paws Phase 13 character-schema gate passed: wire compatibility, legacy fallback, request validation and proof isolation are locked.",
+  "Ludo Paws character-schema gate passed: canonical 3D roster, stable wire/schema contract, legacy aliases, request validation and proof isolation are locked.",
 );

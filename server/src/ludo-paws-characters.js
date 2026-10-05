@@ -1,29 +1,39 @@
 import { httpError } from "./crypto.js";
 
-export const DEFAULT_CHARACTER_ID = "duck";
+export const DEFAULT_CHARACTER_ID = "dog";
 export const CHARACTER_ID_WIRE_FIELD = "characterId";
 export const CHARACTER_ID_SCHEMA_VERSION = 1;
 
 export const LUDO_PAWS_CHARACTER_IDS = Object.freeze([
+  "dog",
+  "goat",
   "duck",
-  "squirrel",
-  "hedgehog",
-  "sheep",
+  "cat",
 ]);
 
 const CHARACTER_IDS = new Set(LUDO_PAWS_CHARACTER_IDS);
+const LEGACY_CHARACTER_ALIASES = new Map([
+  ["squirrel", "dog"],
+  ["hedgehog", "goat"],
+  ["sheep", "cat"],
+]);
+
+function canonicalCharacterId(value) {
+  const characterId = String(value).trim().toLowerCase();
+  return LEGACY_CHARACTER_ALIASES.get(characterId) ?? characterId;
+}
 
 /**
  * Normalizes presentation-only Ludo Paws identity coming from an Android client.
- * Missing values intentionally fall back to duck so old installed clients and
- * already-created rooms remain compatible during the rollout.
+ * The wire field/schema stay stable while old starter ids are migrated onto the
+ * canonical 3D Dog/Goat/Duck/Cat roster.
  */
 export function normalizeCharacterId(value) {
   if (value == null || String(value).trim() === "") {
     return DEFAULT_CHARACTER_ID;
   }
 
-  const characterId = String(value).trim().toLowerCase();
+  const characterId = canonicalCharacterId(value);
   if (!CHARACTER_IDS.has(characterId)) {
     throw httpError(
       400,
@@ -36,14 +46,17 @@ export function normalizeCharacterId(value) {
 
 /**
  * Reads legacy persisted state safely without trusting arbitrary stored values.
- * Unlike request normalization this never throws, because old state must remain
- * readable across a deployment.
+ * Old valid starter ids are translated; unrelated values fall back to Dog.
  */
 export function publicCharacterId(value) {
-  const characterId =
+  const raw =
     typeof value === "string"
       ? value.trim().toLowerCase()
       : "";
+  if (!raw) {
+    return DEFAULT_CHARACTER_ID;
+  }
+  const characterId = canonicalCharacterId(raw);
   return CHARACTER_IDS.has(characterId)
     ? characterId
     : DEFAULT_CHARACTER_ID;

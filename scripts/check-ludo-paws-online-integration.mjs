@@ -32,11 +32,22 @@ const presentation = read(
   "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/OnlineLudoPawsPresentation.kt",
 );
 
-for (const id of ["duck", "squirrel", "hedgehog", "sheep"]) {
-  requireText(characters, `"${id}"`, `Server character allowlist is missing ${id}.`);
+for (const id of ["dog", "goat", "duck", "cat"]) {
+  requireText(characters, `"${id}"`, `Server canonical 3D character roster is missing ${id}.`);
 }
+for (const alias of [
+  '["squirrel", "dog"]',
+  '["hedgehog", "goat"]',
+  '["sheep", "cat"]',
+]) {
+  requireText(
+    characters,
+    alias,
+    `Server compatibility bridge is missing legacy alias ${alias}.`,
+  );
+}
+requireText(characters, 'DEFAULT_CHARACTER_ID = "dog"', "Legacy clients need Dog as the deterministic canonical fallback.");
 requireText(characters, "INVALID_CHARACTER_ID", "Invalid remote character IDs must be rejected.");
-requireText(characters, "DEFAULT_CHARACTER_ID", "Legacy clients need a deterministic character fallback.");
 
 requireText(game, "hostCharacterId", "Match creation must persist the host character.");
 requireText(game, "characterId: publicCharacterId", "Public player state must expose character identity.");
@@ -60,7 +71,7 @@ requireText(gameApi, ".put(\"characterId\", characterId)", "Online/Friends reque
 requireText(teamApi, ".put(\"characterId\", characterId)", "Team Up search must send selected character identity.");
 requireText(models, "val characterId: String? = null", "Remote player snapshots must parse character identity.");
 requireText(policy, "LudoPawsCharacterCatalog", "Remote character policy must validate IDs against the local catalog.");
-requireText(policy, "DEFAULT_CHARACTER_ID", "Remote character policy must support legacy rooms.");
+requireText(policy, "LudoPawsCharacterIdentityContract", "Remote character policy must use the centralized compatibility contract.");
 requireText(renderer, "OnlineLudoPawsPresentation.render", "Remote response rendering must drive Ludo Paws presentation.");
 for (const marker of [
   "LudoPawsReactiveBoardView",
@@ -75,5 +86,5 @@ for (const marker of [
 }
 
 console.log(
-  "Ludo Paws online integration gate passed: character identity sync, remote rendering, exactly-once feedback and proof-state isolation are wired.",
+  "Ludo Paws online integration gate passed: canonical Dog/Goat/Duck/Cat identity, legacy alias compatibility, remote 3D presentation, exactly-once feedback and proof-state isolation are wired.",
 );

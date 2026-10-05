@@ -24,6 +24,7 @@ internal data class LudoPaws3DSceneState(
     val snapshot: MatchSnapshot? = null,
     val localPlayerId: String? = null,
     val perspectiveColor: String? = null,
+    val characterIdsBySeat: List<String> = emptyList(),
     val forwardMotion: LudoPawsPawnMotion? = null,
     val forwardStartedAtMillis: Long = 0L,
     val forwardDurationMillis: Long = 0L,
@@ -40,7 +41,8 @@ internal data class LudoPaws3DSceneState(
  * touch hit-testing; this layer is visual only and never mutates game state.
  *
  * If ES 3.0/EGL initialization fails, [onOperationalChanged] reports false and
- * the existing 2D animal pawn layer remains the safe fallback.
+ * the authoritative classic board remains the safe pawn fallback. No retired
+ * 2D animal drawable renderer is restored.
  */
 internal class LudoPaws3DSceneView @JvmOverloads constructor(
     context: Context,
@@ -73,6 +75,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         state: MatchSnapshot?,
         playerId: String?,
         perspectiveColor: String?,
+        characterIdsBySeat: List<String> = emptyList(),
     ) {
         val now =
             SystemClock.uptimeMillis()
@@ -176,6 +179,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                         ?.takeIf {
                             it in OfflinePlayerLayout.COLORS
                         },
+                characterIdsBySeat = characterIdsBySeat.take(4),
                 forwardMotion = forward,
                 forwardStartedAtMillis = forwardStartedAtMillis,
                 forwardDurationMillis = forwardDurationMillis,
@@ -329,8 +333,13 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                         renderedHeight = height
                     }
 
+                    val frameState = sceneState
+                    LudoPaws3DCharacterPolicy.bindRenderAssignments(
+                        snapshot = frameState.snapshot,
+                        characterIdsBySeat = frameState.characterIdsBySeat,
+                    )
                     renderer.drawFrame(
-                        state = sceneState,
+                        state = frameState,
                         nowMillis = SystemClock.uptimeMillis(),
                     )
                     if (!egl.swapBuffers()) {
@@ -343,10 +352,11 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             } catch (error: Throwable) {
                 Log.w(
                     TAG,
-                    "3D pawn runtime unavailable; keeping 2D fallback",
+                    "3D pawn runtime unavailable; keeping authoritative board fallback",
                     error,
                 )
             } finally {
+                LudoPaws3DCharacterPolicy.clearRenderAssignments()
                 runCatching {
                     egl?.release()
                 }

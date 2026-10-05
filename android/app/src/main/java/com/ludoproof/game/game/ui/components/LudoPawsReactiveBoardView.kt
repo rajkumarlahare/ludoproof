@@ -6,22 +6,19 @@ import android.view.View
 import android.widget.FrameLayout
 import com.ludoproof.game.feature.characters.data.audio.LudoPawsVoicePlayer
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsIdleReactionPolicy
+import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReactionEngine
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Shared Ludo Paws board shell.
+ * Production Ludo Paws board shell.
  *
- * Authoritative gameplay remains inside the existing board/engine stack. Phase
- * 10 presentation layers add capture-return pawn motion, board particles/token
- * FX, timed idle personality, and larger character reactions without mutating
- * game state.
- *
- * The production 3D pawn runtime is composited above the authoritative board.
- * It is presentation-only and automatically falls back to the previous 2D pawn
- * overlay if ES3/EGL initialization is unavailable on a device.
+ * Character visuals are exclusively rendered by the shared 3D runtime. The old
+ * drawable pawn, drawable capture-return and large drawable reaction layers have
+ * been retired. The proven board remains authoritative for geometry/touch/game
+ * state, while board FX, legal halos and animal audio stay presentation-only.
  */
 class LudoPawsReactiveBoardView @JvmOverloads constructor(
     context: Context,
@@ -33,12 +30,8 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         LudoPaws3DSceneView(context)
     private val pawn3DLegalHalo =
         LudoPaws3DLegalHaloView(context)
-    private val captureReturnOverlay =
-        LudoPawsCaptureReturnOverlayView(context)
     private val gameFxOverlay =
         LudoPawsGameFxOverlayView(context)
-    private val characterReactionOverlay =
-        LudoPawsCharacterReactionOverlayView(context)
     private val voicePlayer =
         LudoPawsVoicePlayer(context)
     private val settingsStore =
@@ -88,37 +81,21 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             ),
         )
         addView(
-            captureReturnOverlay,
-            LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                LayoutParams.MATCH_PARENT,
-            ),
-        )
-        addView(
             gameFxOverlay,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.MATCH_PARENT,
             ),
         )
-        addView(
-            characterReactionOverlay,
-            LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                LayoutParams.MATCH_PARENT,
-            ),
-        )
 
+        // The authoritative board remains a safe classic-pawn fallback if a
+        // device cannot create the ES3 surface. No legacy animal drawable layer
+        // is re-enabled.
         pawn3DLegalHalo.visibility = View.GONE
         pawn3DScene.onOperationalChanged =
             { available ->
-                setLegacyPawnOverlayVisible(!available)
                 pawn3DLegalHalo.visibility =
-                    if (available) {
-                        View.VISIBLE
-                    } else {
-                        View.GONE
-                    }
+                    if (available) View.VISIBLE else View.GONE
             }
     }
 
@@ -128,15 +105,13 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         perspectiveColor: String? = null,
         characterIdsBySeat: List<String> = emptyList(),
     ) {
-        val nowMillis =
-            monotonicMillis()
+        val nowMillis = monotonicMillis()
         updateIdleClock(
             state = state,
             nowMillis = nowMillis,
         )
         currentSnapshot = state
-        currentCharacterIdsBySeat =
-            characterIdsBySeat.take(4)
+        currentCharacterIdsBySeat = characterIdsBySeat.take(4)
 
         val previous = previousSnapshot
         val reactions =
@@ -159,29 +134,18 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             state = state,
             playerId = playerId,
             perspectiveColor = perspectiveColor,
+            characterIdsBySeat = characterIdsBySeat,
         )
         pawn3DLegalHalo.bind(
             state = state,
             playerId = playerId,
             perspectiveColor = perspectiveColor,
         )
-        captureReturnOverlay.bind(
-            previous = previous,
-            current = state,
-            perspectiveColor = perspectiveColor,
-            characterIdsBySeat = characterIdsBySeat,
-            reducedMotion = reducedMotion,
-        )
         gameFxOverlay.bind(
             previous = previous,
             current = state,
             perspectiveColor = perspectiveColor,
             reducedMotion = reducedMotion,
-        )
-        characterReactionOverlay.bind(
-            state = state,
-            perspectiveColor = perspectiveColor,
-            characterIdsBySeat = characterIdsBySeat,
         )
         previousSnapshot = state
 
@@ -202,16 +166,13 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         removeCallbacks(idleReactionRunnable)
-        captureReturnOverlay.stop()
         gameFxOverlay.stop()
-        characterReactionOverlay.stop()
         voicePlayer.shutdown()
         previousSnapshot = null
         currentSnapshot = null
         currentCharacterIdsBySeat = emptyList()
         meaningfulStateKey = null
         lastIdleReactionKey = null
-        setLegacyPawnOverlayVisible(true)
         super.onDetachedFromWindow()
     }
 
@@ -225,29 +186,6 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         val size = min(resolvedWidth, resolvedHeight)
         val exact = MeasureSpec.makeMeasureSpec(size, MeasureSpec.EXACTLY)
         super.onMeasure(exact, exact)
-    }
-
-    /**
-     * Compatibility bridge for the first production 3D rollout.
-     *
-     * LudoPawsBoardView intentionally keeps its authoritative board/touch layer
-     * untouched. Its second child is the legacy cosmetic pawn overlay. We hide
-     * only that child after the 3D EGL surface is confirmed operational; on any
-     * renderer failure it is restored immediately. Legal-move halos are then
-     * supplied by [pawn3DLegalHalo].
-     */
-    private fun setLegacyPawnOverlayVisible(
-        visible: Boolean,
-    ) {
-        if (board.childCount < 2) {
-            return
-        }
-        board.getChildAt(1).visibility =
-            if (visible) {
-                View.VISIBLE
-            } else {
-                View.INVISIBLE
-            }
     }
 
     private fun updateIdleClock(
@@ -285,8 +223,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             LudoPawsIdleReactionPolicy
                 .delayUntilEligibleMillis(
                     state = state,
-                    lastMeaningfulChangeAtMillis =
-                        lastMeaningfulChangeAtMillis,
+                    lastMeaningfulChangeAtMillis = lastMeaningfulChangeAtMillis,
                     nowMillis = nowMillis,
                 )
                 ?: return
@@ -300,14 +237,12 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         val state =
             currentSnapshot
                 ?: return
-        val nowMillis =
-            monotonicMillis()
+        val nowMillis = monotonicMillis()
         val remaining =
             LudoPawsIdleReactionPolicy
                 .delayUntilEligibleMillis(
                     state = state,
-                    lastMeaningfulChangeAtMillis =
-                        lastMeaningfulChangeAtMillis,
+                    lastMeaningfulChangeAtMillis = lastMeaningfulChangeAtMillis,
                     nowMillis = nowMillis,
                 )
                 ?: return
@@ -332,11 +267,8 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
                 .deriveIdle(
                     current = state,
                     nowMillis = nowMillis,
-                    lastMeaningfulChangeAtMillis =
-                        lastMeaningfulChangeAtMillis,
-                    thresholdMillis =
-                        LudoPawsIdleReactionPolicy
-                            .IDLE_THRESHOLD_MILLIS,
+                    lastMeaningfulChangeAtMillis = lastMeaningfulChangeAtMillis,
+                    thresholdMillis = LudoPawsIdleReactionPolicy.IDLE_THRESHOLD_MILLIS,
                 )
         if (reactions.isEmpty()) {
             return
@@ -345,8 +277,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
 
         playReactions(
             reactions = reactions,
-            characterIdsBySeat =
-                currentCharacterIdsBySeat,
+            characterIdsBySeat = currentCharacterIdsBySeat,
             reducedMotion =
                 settingsStore
                     .snapshot()
@@ -355,7 +286,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
     }
 
     private fun playReactions(
-        reactions: List<com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction>,
+        reactions: List<LudoPawsReaction>,
         characterIdsBySeat: List<String>,
         reducedMotion: Boolean,
     ) {
@@ -366,10 +297,6 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             reactions = reactions,
             reducedMotion = reducedMotion,
         )
-        characterReactionOverlay.play(
-            reactions = reactions,
-            reducedMotion = reducedMotion,
-        )
         voicePlayer.playHighestPriority(
             reactions = reactions,
             characterIdsBySeat = characterIdsBySeat,
@@ -377,8 +304,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
     }
 
     private fun monotonicMillis(): Long =
-        System.nanoTime() /
-            1_000_000L
+        System.nanoTime() / 1_000_000L
 
     private fun density(value: Float): Float =
         value * resources.displayMetrics.density

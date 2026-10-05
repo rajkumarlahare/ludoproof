@@ -10,14 +10,14 @@ class LudoPawsPawnLayoutTest {
     fun `character assignment resolves by seat`() {
         val ids =
             listOf(
+                "dog",
+                "goat",
                 "duck",
-                "squirrel",
-                "hedgehog",
-                "sheep",
+                "cat",
             )
 
         assertEquals(
-            "hedgehog",
+            "duck",
             LudoPawsPawnLayout.characterIdForSeat(
                 ids,
                 2,
@@ -35,7 +35,7 @@ class LudoPawsPawnLayoutTest {
     fun `blank character assignment falls back to base pawn`() {
         assertNull(
             LudoPawsPawnLayout.characterIdForSeat(
-                listOf("duck", "   "),
+                listOf("dog", "   "),
                 1,
             ),
         )

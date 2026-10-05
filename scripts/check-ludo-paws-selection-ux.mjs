@@ -88,14 +88,16 @@ requireText(selection, "refreshCharacterSelectionUi()", "setup refresh integrati
 
 for (const required of [
   "computer mode keeps human preference first and assigns unique cpus",
+  "pass and play defaults to unique production animals",
   "selecting an animal owned by another local player swaps slots",
-  "invalid character request repairs to safe starter assignment",
+  "legacy ids are normalized before assignment",
+  "invalid character request repairs to safe production assignment",
   "only two to four local players are accepted",
 ]) {
   requireText(tests, required, "Phase 4 unit tests");
 }
 
-// Phase 4 must remain cosmetic. The local session still starts only with
+// Character selection is cosmetic. The local session still starts only with
 // player count and preferred color; character assignment must not enter the
 // authoritative OfflineGameEngine start contract or proof binding.
 const session = read(
@@ -108,5 +110,5 @@ if (/character(Id|Ids|Selection)/.test(session)) {
 }
 
 console.log(
-  "Ludo Paws selection UX gate passed: starter assignment, local persistence, setup UI and gameplay isolation are intact.",
+  "Ludo Paws selection UX gate passed: canonical 3D-animal assignment, local persistence, setup UI and gameplay isolation are intact.",
 );

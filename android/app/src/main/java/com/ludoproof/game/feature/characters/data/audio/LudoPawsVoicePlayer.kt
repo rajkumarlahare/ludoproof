@@ -3,13 +3,9 @@ package com.ludoproof.game.feature.characters.data.audio
 import android.content.Context
 import android.media.AudioAttributes
 import android.speech.tts.TextToSpeech
-import com.ludoproof.game.R
-import com.ludoproof.game.core.audio.LudoPawsSoundPool
 import com.ludoproof.game.feature.characters.domain.catalog.LudoPawsCharacterCatalog
 import com.ludoproof.game.feature.characters.domain.model.AnimalCharacter
 import com.ludoproof.game.feature.characters.domain.model.AnimalPersonality
-import com.ludoproof.game.feature.characters.domain.model.AnimalSpecies
-import com.ludoproof.game.feature.characters.domain.model.VoiceCue
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsVoiceLines
 import com.ludoproof.game.feature.settings.data.local.GameMusicController
@@ -17,30 +13,21 @@ import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import java.util.Locale
 
 /**
- * Animal voice renderer for reaction playback.
+ * Voice renderer for the canonical 3D animal reactions.
  *
- * Reaction SFX and haptics intentionally belong to the mode-specific feedback
- * dispatchers. Keeping this class voice-only prevents one game transition from
- * playing the same feedback twice through both the reactive board and its
- * presentation layer.
- *
- * Starter Paws species use low-latency nonverbal SoundPool clips. Characters
- * without a packaged species clip fall back to on-device TTS so future packs
- * can still react before their final voice assets arrive.
+ * The old starter-pack WAV files were generic duplicated effects rather than
+ * trustworthy dog/goat/duck/cat recordings, so they are intentionally not used
+ * by production playback. Species-correct reaction lines are rendered through
+ * on-device TTS until dedicated licensed recordings are packaged.
  */
 class LudoPawsVoicePlayer(
     context: Context,
 ) : TextToSpeech.OnInitListener {
-    private val appContext =
-        context.applicationContext
-    private var textToSpeech: TextToSpeech? =
-        null
-    private var ready =
-        false
-    private var closed =
-        false
-    private var pending: PendingSpeech? =
-        null
+    private val appContext = context.applicationContext
+    private var textToSpeech: TextToSpeech? = null
+    private var ready = false
+    private var closed = false
+    private var pending: PendingSpeech? = null
 
     init {
         textToSpeech =
@@ -53,48 +40,30 @@ class LudoPawsVoicePlayer(
                 .getOrNull()
     }
 
-    override fun onInit(
-        status: Int,
-    ) {
-        if (closed) {
-            return
-        }
+    override fun onInit(status: Int) {
+        if (closed) return
 
-        ready =
-            status ==
-                TextToSpeech.SUCCESS
+        ready = status == TextToSpeech.SUCCESS
         if (!ready) {
-            pending =
-                null
+            pending = null
             return
         }
 
         runCatching {
-            textToSpeech
-                ?.language =
-                Locale.US
-            textToSpeech
-                ?.setAudioAttributes(
-                    AudioAttributes
-                        .Builder()
-                        .setUsage(
-                            AudioAttributes.USAGE_GAME,
-                        )
-                        .setContentType(
-                            AudioAttributes.CONTENT_TYPE_SPEECH,
-                        )
-                        .build(),
-                )
+            textToSpeech?.language = Locale.US
+            textToSpeech?.setAudioAttributes(
+                AudioAttributes
+                    .Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build(),
+            )
         }
 
-        val queued =
-            pending
-        pending =
-            null
+        val queued = pending
+        pending = null
         if (queued != null) {
-            playPrepared(
-                queued,
-            )
+            playPrepared(queued)
         }
     }
 
@@ -102,12 +71,7 @@ class LudoPawsVoicePlayer(
         reactions: List<LudoPawsReaction>,
         characterIdsBySeat: List<String>,
     ) {
-        if (
-            closed ||
-            reactions.isEmpty()
-        ) {
-            return
-        }
+        if (closed || reactions.isEmpty()) return
 
         if (
             !GameSettingsStore(appContext)
@@ -124,33 +88,21 @@ class LudoPawsVoicePlayer(
         val candidate =
             reactions
                 .asSequence()
-                .sortedByDescending(
-                    LudoPawsReaction::priority,
-                )
-                .mapNotNull {
-                        reaction ->
-                    val characterId =
+                .sortedByDescending(LudoPawsReaction::priority)
+                .mapNotNull { reaction ->
+                    val requestedCharacterId =
                         characterIdsBySeat
-                            .getOrNull(
-                                reaction.seat,
-                            )
-                            ?: return@mapNotNull null
+                            .getOrNull(reaction.seat)
+                            ?: canonicalCharacterForSeat(reaction.seat)
                     val character =
                         LudoPawsCharacterCatalog
-                            .character(
-                                characterId,
-                            )
+                            .character(requestedCharacterId)
                             ?: return@mapNotNull null
                     val voiceSet =
                         LudoPawsCharacterCatalog
-                            .voiceSet(
-                                character.voiceSetId,
-                            )
+                            .voiceSet(character.voiceSetId)
                             ?: return@mapNotNull null
-                    if (
-                        reaction.voiceCue !in
-                        voiceSet.supportedCues
-                    ) {
+                    if (reaction.voiceCue !in voiceSet.supportedCues) {
                         return@mapNotNull null
                     }
                     PendingSpeech(
@@ -167,145 +119,56 @@ class LudoPawsVoicePlayer(
                 .firstOrNull()
                 ?: return
 
-        playPrepared(
-            candidate,
-        )
+        playPrepared(candidate)
     }
 
     fun shutdown() {
-        if (closed) {
-            return
-        }
-        closed =
-            true
-        ready =
-            false
-        pending =
-            null
+        if (closed) return
+        closed = true
+        ready = false
+        pending = null
         runCatching {
-            textToSpeech
-                ?.stop()
-            textToSpeech
-                ?.shutdown()
+            textToSpeech?.stop()
+            textToSpeech?.shutdown()
         }
-        textToSpeech =
-            null
+        textToSpeech = null
     }
 
-    private fun playPrepared(
-        speech: PendingSpeech,
-    ) {
-        if (
-            playSpeciesClip(
-                character = speech.character,
-                cue = speech.reaction.voiceCue,
-            )
-        ) {
-            pending = null
-            return
-        }
-
+    private fun playPrepared(speech: PendingSpeech) {
         if (ready) {
-            speakNow(
-                speech,
-            )
+            speakNow(speech)
         } else {
-            pending =
-                speech
+            pending = speech
         }
     }
 
-    private fun playSpeciesClip(
-        character: AnimalCharacter,
-        cue: VoiceCue,
-    ): Boolean {
-        val resourceId =
-            when (character.species) {
-                AnimalSpecies.DUCK ->
-                    R.raw.lp_voice_duck
-                AnimalSpecies.SQUIRREL ->
-                    R.raw.lp_voice_squirrel
-                AnimalSpecies.HEDGEHOG ->
-                    R.raw.lp_voice_hedgehog
-                AnimalSpecies.SHEEP ->
-                    R.raw.lp_voice_sheep
-                else ->
-                    return false
-            }
+    private fun speakNow(speech: PendingSpeech) {
+        if (closed || !ready) return
 
-        val scheduled =
-            LudoPawsSoundPool.play(
-                context = appContext,
-                resourceId = resourceId,
-                volume = .62f,
-                rate = clipRate(cue),
-            )
-        if (scheduled) {
-            GameMusicController
-                .duckForVoice(
-                    SPECIES_DUCK_MILLIS,
-                )
-        }
-        return scheduled
-    }
-
-    private fun speakNow(
-        speech: PendingSpeech,
-    ) {
-        if (
-            closed ||
-            !ready
-        ) {
-            return
-        }
-
-        val profile =
-            voiceProfile(
-                speech.character,
-            )
-        GameMusicController
-            .duckForVoice(
-                TTS_DUCK_MILLIS,
-            )
+        val profile = voiceProfile(speech.character)
+        GameMusicController.duckForVoice(TTS_DUCK_MILLIS)
         runCatching {
-            textToSpeech
-                ?.setPitch(
-                    profile.pitch,
-                )
-            textToSpeech
-                ?.setSpeechRate(
-                    profile.rate,
-                )
-            textToSpeech
-                ?.speak(
-                    speech.line,
-                    TextToSpeech.QUEUE_FLUSH,
-                    null,
-                    "ludo_paws_${speech.reaction.playerId}_${speech.reaction.voiceCue.wireName}",
-                )
+            textToSpeech?.setPitch(profile.pitch)
+            textToSpeech?.setSpeechRate(profile.rate)
+            textToSpeech?.speak(
+                speech.line,
+                TextToSpeech.QUEUE_FLUSH,
+                null,
+                "ludo_paws_${speech.reaction.playerId}_${speech.reaction.voiceCue.wireName}",
+            )
         }
     }
 
-    private fun clipRate(
-        cue: VoiceCue,
-    ): Float =
-        when (cue) {
-            VoiceCue.SIX -> 1.15f
-            VoiceCue.CAPTURE -> 1.12f
-            VoiceCue.CAPTURED -> .84f
-            VoiceCue.SAFE -> 1.05f
-            VoiceCue.HOME -> 1.10f
-            VoiceCue.FRUSTRATED -> .82f
-            VoiceCue.THIRD_SIX -> .76f
-            VoiceCue.IDLE -> .92f
-            VoiceCue.NERVOUS -> 1.20f
-            VoiceCue.VICTORY -> 1.18f
-            VoiceCue.DEFEAT -> .78f
+    private fun canonicalCharacterForSeat(seat: Int): String =
+        when (seat) {
+            0 -> "dog"
+            1 -> "goat"
+            2 -> "duck"
+            3 -> "cat"
+            else -> LudoPawsCharacterCatalog.DEFAULT_CHARACTER_ID
         }
 
-    private fun voiceProfile(
-        character: AnimalCharacter,
-    ): VoiceProfile =
+    private fun voiceProfile(character: AnimalCharacter): VoiceProfile =
         when (character.personality) {
             AnimalPersonality.CHEERFUL ->
                 VoiceProfile(
@@ -364,7 +227,6 @@ class LudoPawsVoicePlayer(
     )
 
     private companion object {
-        const val SPECIES_DUCK_MILLIS = 620L
         const val TTS_DUCK_MILLIS = 1_450L
     }
 }
