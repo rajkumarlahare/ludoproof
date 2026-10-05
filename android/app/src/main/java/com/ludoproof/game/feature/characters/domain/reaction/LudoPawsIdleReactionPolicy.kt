@@ -10,7 +10,7 @@ import com.ludoproof.game.MatchSnapshot
  * eligible. It never changes gameplay, turn ownership, proof state or timers.
  */
 object LudoPawsIdleReactionPolicy {
-    const val IDLE_THRESHOLD_MILLIS = 12_000L
+    const val IDLE_THRESHOLD_MILLIS = 24_000L
 
     fun meaningfulStateKey(
         state: MatchSnapshot?,
@@ -58,13 +58,8 @@ object LudoPawsIdleReactionPolicy {
         ) {
             return null
         }
-        val activeSeat =
-            state.actingSeat
-                ?: state.turnSeat
-        val player =
-            state.players
-                .getOrNull(activeSeat)
-                ?: return null
+        val activeSeat = state.actingSeat ?: state.turnSeat
+        val player = state.players.getOrNull(activeSeat) ?: return null
 
         return listOf(
             state.matchId,
@@ -91,9 +86,6 @@ object LudoPawsIdleReactionPolicy {
         val elapsed =
             (nowMillis - lastMeaningfulChangeAtMillis)
                 .coerceAtLeast(0L)
-        return (
-            thresholdMillis - elapsed
-            )
-            .coerceAtLeast(0L)
+        return (thresholdMillis - elapsed).coerceAtLeast(0L)
     }
 }
