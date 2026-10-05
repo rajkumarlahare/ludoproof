@@ -2,13 +2,7 @@ package com.ludoproof.game.feature.characters.domain.reaction
 
 import com.ludoproof.game.feature.characters.domain.model.VoiceCue
 
-/**
- * Stateful presentation scheduler for Ludo Paws reactions.
- *
- * This class never touches authoritative game state. It only decides which
- * already-derived presentation reactions are allowed to play, in what order,
- * and whether a high-priority reaction may interrupt a lower-priority one.
- */
+/** Stateful presentation scheduler; it never mutates authoritative game state. */
 class LudoPawsReactionDirector(
     private val playbackWindowMs: Long = 900L,
     private val maxConsumedKeys: Int = 512,
@@ -42,10 +36,7 @@ class LudoPawsReactionDirector(
         nowMillis: Long,
     ): Decision {
         val incomingMatchId =
-            reactions
-                .firstOrNull()
-                ?.matchId
-                ?.takeIf(String::isNotBlank)
+            reactions.firstOrNull()?.matchId?.takeIf(String::isNotBlank)
         if (
             incomingMatchId != null &&
             incomingMatchId != activeMatchId
@@ -54,20 +45,14 @@ class LudoPawsReactionDirector(
         }
 
         expireActiveIfNeeded(nowMillis)
-
         val accepted =
             reactions
                 .asSequence()
                 .sortedWith(
-                    compareByDescending<LudoPawsReaction> {
-                        it.priority
-                    }.thenBy {
-                        it.eventIndex
-                    }.thenBy {
-                        it.playerId
-                    }.thenBy {
-                        it.tokenIndex ?: -1
-                    },
+                    compareByDescending<LudoPawsReaction> { it.priority }
+                        .thenBy { it.eventIndex }
+                        .thenBy { it.playerId }
+                        .thenBy { it.tokenIndex ?: -1 },
                 )
                 .filter(::rememberOnce)
                 .filter {
@@ -78,15 +63,11 @@ class LudoPawsReactionDirector(
                 }
                 .toList()
 
-        enqueue(
-            batchesFor(accepted),
-        )
-
+        enqueue(batchesFor(accepted))
         val active =
             nowMillis < activeUntilMillis &&
                 activePriority != Int.MIN_VALUE
-        val bestQueued =
-            queuedBatches.firstOrNull()
+        val bestQueued = queuedBatches.firstOrNull()
 
         if (
             active &&
@@ -97,31 +78,22 @@ class LudoPawsReactionDirector(
             )
         ) {
             queuedBatches.removeAt(0)
-            start(
-                batch = bestQueued,
-                nowMillis = nowMillis,
-            )
+            start(bestQueued, nowMillis)
             return Decision(
                 reactions = bestQueued.reactions,
                 interrupted = true,
                 queuedBatchCount = queuedBatches.size,
             )
         }
-
         if (active) {
             return Decision(
                 queuedBatchCount = queuedBatches.size,
             )
         }
 
-        val next =
-            queuedBatches.firstOrNull()
-                ?: return Decision()
+        val next = queuedBatches.firstOrNull() ?: return Decision()
         queuedBatches.removeAt(0)
-        start(
-            batch = next,
-            nowMillis = nowMillis,
-        )
+        start(next, nowMillis)
         return Decision(
             reactions = next.reactions,
             queuedBatchCount = queuedBatches.size,
@@ -137,9 +109,7 @@ class LudoPawsReactionDirector(
         lastCueAtMillis.clear()
     }
 
-    private fun resetForMatch(
-        matchId: String,
-    ) {
+    private fun resetForMatch(matchId: String) {
         activeMatchId = matchId
         activeUntilMillis = Long.MIN_VALUE
         activePriority = Int.MIN_VALUE
@@ -148,28 +118,19 @@ class LudoPawsReactionDirector(
         lastCueAtMillis.clear()
     }
 
-    private fun expireActiveIfNeeded(
-        nowMillis: Long,
-    ) {
+    private fun expireActiveIfNeeded(nowMillis: Long) {
         if (nowMillis >= activeUntilMillis) {
             activeUntilMillis = Long.MIN_VALUE
             activePriority = Int.MIN_VALUE
         }
     }
 
-    private fun rememberOnce(
-        reaction: LudoPawsReaction,
-    ): Boolean {
-        val key =
-            reaction.stableKey()
-        if (!consumedKeys.add(key)) {
-            return false
-        }
+    private fun rememberOnce(reaction: LudoPawsReaction): Boolean {
+        val key = reaction.stableKey()
+        if (!consumedKeys.add(key)) return false
         while (consumedKeys.size > maxConsumedKeys) {
             val iterator = consumedKeys.iterator()
-            if (!iterator.hasNext()) {
-                break
-            }
+            if (!iterator.hasNext()) break
             iterator.next()
             iterator.remove()
         }
@@ -180,17 +141,10 @@ class LudoPawsReactionDirector(
         reaction: LudoPawsReaction,
         nowMillis: Long,
     ): Boolean {
-        val cooldown =
-            cooldownMillis(reaction.voiceCue)
-        if (cooldown <= 0L) {
-            return true
-        }
-        val key =
-            reaction.playerId +
-                ":" +
-                reaction.voiceCue.name
-        val previous =
-            lastCueAtMillis[key]
+        val cooldown = cooldownMillis(reaction.voiceCue)
+        if (cooldown <= 0L) return true
+        val key = reaction.playerId + ":" + reaction.voiceCue.name
+        val previous = lastCueAtMillis[key]
         if (
             previous != null &&
             nowMillis - previous < cooldown
@@ -201,15 +155,17 @@ class LudoPawsReactionDirector(
         return true
     }
 
-    private fun cooldownMillis(
-        cue: VoiceCue,
-    ): Long =
+    private fun cooldownMillis(cue: VoiceCue): Long =
         when (cue) {
-            VoiceCue.IDLE -> 12_000L
+            VoiceCue.SILENT -> 0L
+            VoiceCue.IDLE -> 24_000L
             VoiceCue.NERVOUS -> 8_000L
+            VoiceCue.PROUD -> 12_000L
             VoiceCue.FRUSTRATED -> 3_500L
             VoiceCue.SIX -> 750L
-            VoiceCue.SAFE -> 900L
+            VoiceCue.YARD_EXIT -> 1_000L
+            VoiceCue.SAFE -> 1_400L
+            VoiceCue.HOME_LANE -> 1_500L
             VoiceCue.CAPTURE,
             VoiceCue.CAPTURED,
             VoiceCue.HOME,
@@ -223,17 +179,10 @@ class LudoPawsReactionDirector(
         reactions: List<LudoPawsReaction>,
     ): List<ReactionBatch> =
         reactions
-            .groupBy {
-                it.matchId +
-                    ":" +
-                    it.eventIndex
-            }
+            .groupBy { it.matchId + ":" + it.eventIndex }
             .values
-            .mapNotNull {
-                    grouped ->
-                val first =
-                    grouped.firstOrNull()
-                        ?: return@mapNotNull null
+            .mapNotNull { grouped ->
+                val first = grouped.firstOrNull() ?: return@mapNotNull null
                 ReactionBatch(
                     matchId = first.matchId,
                     eventIndex = first.eventIndex,
@@ -244,31 +193,19 @@ class LudoPawsReactionDirector(
                 )
             }
             .sortedWith(
-                compareByDescending<ReactionBatch> {
-                    it.priority
-                }.thenBy {
-                    it.eventIndex
-                },
+                compareByDescending<ReactionBatch> { it.priority }
+                    .thenBy { it.eventIndex },
             )
 
-    private fun enqueue(
-        incoming: List<ReactionBatch>,
-    ) {
-        if (incoming.isEmpty()) {
-            return
-        }
+    private fun enqueue(incoming: List<ReactionBatch>) {
+        if (incoming.isEmpty()) return
         queuedBatches += incoming
         queuedBatches.sortWith(
-            compareByDescending<ReactionBatch> {
-                it.priority
-            }.thenBy {
-                it.eventIndex
-            },
+            compareByDescending<ReactionBatch> { it.priority }
+                .thenBy { it.eventIndex },
         )
         while (queuedBatches.size > maxQueuedBatches) {
-            queuedBatches.removeAt(
-                queuedBatches.lastIndex,
-            )
+            queuedBatches.removeAt(queuedBatches.lastIndex)
         }
     }
 
@@ -276,13 +213,9 @@ class LudoPawsReactionDirector(
         batch: ReactionBatch,
         nowMillis: Long,
     ) {
-        activeMatchId =
-            batch.matchId
-        activePriority =
-            batch.priority
-        activeUntilMillis =
-            nowMillis +
-                playbackWindowMs
+        activeMatchId = batch.matchId
+        activePriority = batch.priority
+        activeUntilMillis = nowMillis + playbackWindowMs
     }
 
     private fun shouldInterrupt(
@@ -296,8 +229,7 @@ class LudoPawsReactionDirector(
                 )
 
     private fun LudoPawsReaction.stableKey(): String =
-        reactionKey
-            .takeIf(String::isNotBlank)
+        reactionKey.takeIf(String::isNotBlank)
             ?: listOf(
                 matchId.ifBlank { "legacy" },
                 eventIndex.toString(),
