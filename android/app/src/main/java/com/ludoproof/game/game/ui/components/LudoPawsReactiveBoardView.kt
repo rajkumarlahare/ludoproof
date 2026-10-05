@@ -134,6 +134,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             state = state,
             playerId = playerId,
             perspectiveColor = perspectiveColor,
+            characterIdsBySeat = characterIdsBySeat,
         )
         pawn3DLegalHalo.bind(
             state = state,
