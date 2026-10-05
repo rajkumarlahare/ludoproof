@@ -7,6 +7,7 @@ internal data class OnlineGameUiState(
     val currentState: MatchSnapshot? = null,
     val pendingSecret: PendingRollSecret? = null,
     val isOnline: Boolean = false,
+    val presentedDiceEventKey: String? = null,
 )
 
 internal class OnlineGameStateHolder(

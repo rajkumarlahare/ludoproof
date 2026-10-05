@@ -8,44 +8,56 @@ internal fun MainActivity.updateVerification(
     state: MatchSnapshot,
 ) {
     val pending = state.pendingRoll
-    val latest = state.history.lastOrNull()
-
-    val outcome =
-        pending?.outcome
-            ?: latest?.effectiveOutcome
-            ?: latest?.outcome
-    val digest = pending?.proofDigest ?: latest?.proofDigest
-    val eventIndex =
-        if (pending?.eventIndex != null && pending.eventIndex >= 0) {
-            pending.eventIndex
-        } else {
-            latest?.eventIndex
-        }
+    val presentation =
+        OnlineVerifiedDicePresentationPolicy.resolve(state)
 
     verificationText.text =
-        if (outcome != null && digest != null) {
-            diceView.showOutcome(outcome)
+        if (presentation != null) {
+            val shouldAnimate =
+                uiStateHolder.value.presentedDiceEventKey !=
+                    presentation.eventKey
+            diceView.showOutcome(
+                outcome = presentation.outcome,
+                animate = shouldAnimate,
+            )
+            if (shouldAnimate) {
+                uiStateHolder.update {
+                    it.copy(
+                        presentedDiceEventKey = presentation.eventKey,
+                    )
+                }
+            }
+
             buildString {
                 append("✓ VERIFIED • Dice ")
-                append(outcome)
-                if (latest?.openingRollApplied == true && pending == null) {
-                    append(" • opening bonus")
-                } else if (pending?.openingRollApplied == true) {
+                append(presentation.outcome)
+                if (presentation.openingRollApplied) {
                     append(" • opening bonus")
                 }
-                if (eventIndex != null) {
+                presentation.eventIndex?.let { eventIndex ->
                     append("\nEvent ")
                     append(eventIndex)
                 }
                 append("  •  Proof ")
-                append(shortDigest(digest))
+                append(shortDigest(presentation.proofDigest))
             }
         } else {
+            if (pending != null) {
+                // A new authoritative event exists but is not fully verified yet.
+                // Keep the dice visibly in-progress rather than leaving the last
+                // verified face static beside the new event status.
+                diceView.startRolling()
+            } else {
+                diceView.stopRolling()
+            }
+
             when (pending?.status) {
                 "CREATING" -> "COMMITTING • Preparing server commitment…"
                 "COMMITTED" ->
                     "COMMITTED • Server commitment secured. Reveal can resume safely."
                 "RESOLVING" -> "VERIFYING • Resolving committed EntroNex round…"
+                "RESOLVED" ->
+                    "VERIFYING • Waiting for the complete proof before showing a verified result."
                 else -> "No verified roll yet."
             }
         }
