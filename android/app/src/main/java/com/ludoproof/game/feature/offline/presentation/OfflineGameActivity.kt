@@ -111,6 +111,7 @@ class OfflineGameActivity : ComponentActivity() {
     internal var computerActionRevision: Int? = null
     internal var presentedDiceEventKey: String? = null
     internal var exitConfirmationDialog: Dialog? = null
+    internal var turnHandoffDialog: Dialog? = null
     internal lateinit var resultPanel: FrameLayout
     internal lateinit var resultTitleText: TextView
     internal lateinit var resultSubtitleText: TextView
@@ -144,6 +145,10 @@ class OfflineGameActivity : ComponentActivity() {
 
     internal fun prepareOfflineUiTransition() {
         handler.removeCallbacksAndMessages(null)
+        turnHandoffDialog
+            ?.dismiss()
+        turnHandoffDialog =
+            null
         computerActionRevision =
             null
         presentedDiceEventKey =
@@ -185,6 +190,10 @@ class OfflineGameActivity : ComponentActivity() {
         exitConfirmationDialog
             ?.dismiss()
         exitConfirmationDialog =
+            null
+        turnHandoffDialog
+            ?.dismiss()
+        turnHandoffDialog =
             null
         prepareOfflineUiTransition()
         super.onDestroy()
