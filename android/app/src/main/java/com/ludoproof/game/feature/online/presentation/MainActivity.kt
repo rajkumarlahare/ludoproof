@@ -441,7 +441,7 @@ class MainActivity : Activity() {
                     0,
                     dp(28),
                 )
-            }
+        }
 
         contentHost.addView(
             content,
@@ -640,6 +640,12 @@ class MainActivity : Activity() {
     }
 
     override fun onStop() {
+        uiStateHolder.update {
+            it.copy(
+                currentStateSource = null,
+            )
+        }
+        realtimeConnected = false
         connectivityMonitor.stop()
         mainHandler.removeCallbacks(
             statePollRunnable,
