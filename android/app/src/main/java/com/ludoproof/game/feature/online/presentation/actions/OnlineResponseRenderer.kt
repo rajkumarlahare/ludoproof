@@ -151,8 +151,21 @@ internal fun MainActivity.reconcilePendingSecret(
         return
     }
 
-    val remoteCommitment = state.pendingRoll?.clientCommitment
-    if (remoteCommitment == null || remoteCommitment != secret.clientCommitment) {
+    val pending = state.pendingRoll
+    if (pending == null || pending.status == "RESOLVED") {
+        pendingRollStore.clear()
+        pendingSecret = null
+        return
+    }
+
+    // A missing commitment in an otherwise valid pending snapshot is treated
+    // fail-closed by OnlineRollActionPolicy. Keep the local seed for a later
+    // authoritative refresh instead of destroying the only reveal material.
+    val remoteCommitment = pending.clientCommitment
+    if (
+        remoteCommitment != null &&
+        remoteCommitment != secret.clientCommitment
+    ) {
         pendingRollStore.clear()
         pendingSecret = null
     }
