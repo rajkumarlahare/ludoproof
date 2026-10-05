@@ -22,13 +22,22 @@ val releaseStoreFile = providers.environmentVariable("LUDOPROOF_RELEASE_STORE_FI
 val releaseStorePassword = providers.environmentVariable("LUDOPROOF_RELEASE_STORE_PASSWORD").orNull
 val releaseKeyAlias = providers.environmentVariable("LUDOPROOF_RELEASE_KEY_ALIAS").orNull
 val releaseKeyPassword = providers.environmentVariable("LUDOPROOF_RELEASE_KEY_PASSWORD").orNull
-val releaseSigningConfigured =
+val releaseSigningValues =
     listOf(
         releaseStoreFile,
         releaseStorePassword,
         releaseKeyAlias,
         releaseKeyPassword,
-    ).all { !it.isNullOrBlank() }
+    )
+val releaseSigningConfigured = releaseSigningValues.all { !it.isNullOrBlank() }
+val releaseSigningPartiallyConfigured =
+    releaseSigningValues.any { !it.isNullOrBlank() } && !releaseSigningConfigured
+
+if (releaseSigningPartiallyConfigured) {
+    throw org.gradle.api.GradleException(
+        "Release signing is partially configured. Set all LUDOPROOF_RELEASE_* variables or none of them.",
+    )
+}
 
 android {
     namespace = "com.ludoproof.game"
