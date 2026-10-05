@@ -2,6 +2,7 @@ package com.ludoproof.game.feature.offline.presentation.feedback
 
 import com.ludoproof.game.feature.characters.domain.model.AnimationCue
 import com.ludoproof.game.feature.characters.domain.model.VoiceCue
+import com.ludoproof.game.feature.characters.domain.reaction.GameMomentType
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -16,17 +17,14 @@ class OfflineLudoPawsFeedbackPolicyTest {
                 reactions = emptyList(),
                 tokenMovementCommitted = true,
             )
-
-        assertEquals(
-            OfflineFeedbackSound.MOVE,
-            decision.sound,
-        )
+        assertEquals(OfflineFeedbackSound.MOVE, decision.sound)
     }
 
     @Test
     fun `capture replaces generic move sound`() {
         val capture =
             reaction(
+                type = GameMomentType.CAPTURE_MADE,
                 cue = VoiceCue.CAPTURE,
                 animation = AnimationCue.CAPTURE,
                 priority = 88,
@@ -37,23 +35,21 @@ class OfflineLudoPawsFeedbackPolicyTest {
                 reactions = listOf(capture),
                 tokenMovementCommitted = true,
             )
-
-        assertEquals(
-            OfflineFeedbackSound.CAPTURE,
-            decision.sound,
-        )
+        assertEquals(OfflineFeedbackSound.CAPTURE, decision.sound)
     }
 
     @Test
     fun `victory wins over home feedback`() {
         val home =
             reaction(
+                type = GameMomentType.HOME_REACHED,
                 cue = VoiceCue.HOME,
                 animation = AnimationCue.HOME,
                 priority = 82,
             )
         val victory =
             reaction(
+                type = GameMomentType.MATCH_WIN,
                 cue = VoiceCue.VICTORY,
                 animation = AnimationCue.VICTORY,
                 priority = 100,
@@ -64,17 +60,14 @@ class OfflineLudoPawsFeedbackPolicyTest {
                 reactions = listOf(home, victory),
                 tokenMovementCommitted = true,
             )
-
-        assertEquals(
-            OfflineFeedbackSound.VICTORY,
-            decision.sound,
-        )
+        assertEquals(OfflineFeedbackSound.VICTORY, decision.sound)
     }
 
     @Test
     fun `six gets result chime after roll`() {
         val six =
             reaction(
+                type = GameMomentType.SIX_ROLLED,
                 cue = VoiceCue.SIX,
                 animation = AnimationCue.EXCITED,
                 priority = 66,
@@ -85,17 +78,14 @@ class OfflineLudoPawsFeedbackPolicyTest {
                 reactions = listOf(six),
                 tokenMovementCommitted = false,
             )
-
-        assertEquals(
-            OfflineFeedbackSound.SIX,
-            decision.sound,
-        )
+        assertEquals(OfflineFeedbackSound.SIX, decision.sound)
     }
 
     @Test
-    fun `third six keeps haptic reaction without duplicate result sound`() {
+    fun `third six uses dedicated soft penalty sound and keeps haptic reaction`() {
         val thirdSix =
             reaction(
+                type = GameMomentType.THIRD_SIX_FORFEIT,
                 cue = VoiceCue.THIRD_SIX,
                 animation = AnimationCue.ANGRY,
                 priority = 92,
@@ -106,13 +96,41 @@ class OfflineLudoPawsFeedbackPolicyTest {
                 reactions = listOf(thirdSix),
                 tokenMovementCommitted = false,
             )
+        assertEquals(OfflineFeedbackSound.THIRD_SIX, decision.sound)
+        assertTrue(decision.reactions.contains(thirdSix))
+    }
 
+    @Test
+    fun `home lane and exact home miss have distinct sounds`() {
+        val homeLane =
+            reaction(
+                type = GameMomentType.HOME_LANE_ENTERED,
+                cue = VoiceCue.HOME_LANE,
+                animation = AnimationCue.EXCITED,
+                priority = 62,
+            )
+        val exactMiss =
+            reaction(
+                type = GameMomentType.EXACT_HOME_MISS,
+                cue = VoiceCue.FRUSTRATED,
+                animation = AnimationCue.SAD,
+                priority = 50,
+            )
         assertEquals(
-            OfflineFeedbackSound.NONE,
-            decision.sound,
+            OfflineFeedbackSound.HOME_LANE,
+            OfflineLudoPawsFeedbackPolicy.decide(
+                OfflineFeedbackAction.MOVE,
+                listOf(homeLane),
+                true,
+            ).sound,
         )
-        assertTrue(
-            decision.reactions.contains(thirdSix),
+        assertEquals(
+            OfflineFeedbackSound.FRUSTRATED,
+            OfflineLudoPawsFeedbackPolicy.decide(
+                OfflineFeedbackAction.ROLL,
+                listOf(exactMiss),
+                false,
+            ).sound,
         )
     }
 
@@ -124,17 +142,12 @@ class OfflineLudoPawsFeedbackPolicyTest {
                 reactions = emptyList(),
                 tokenMovementCommitted = false,
             )
-
-        assertEquals(
-            OfflineFeedbackSound.NONE,
-            decision.sound,
-        )
-        assertTrue(
-            decision.reactions.isEmpty(),
-        )
+        assertEquals(OfflineFeedbackSound.NONE, decision.sound)
+        assertTrue(decision.reactions.isEmpty())
     }
 
     private fun reaction(
+        type: GameMomentType,
         cue: VoiceCue,
         animation: AnimationCue,
         priority: Int,
@@ -147,6 +160,7 @@ class OfflineLudoPawsFeedbackPolicyTest {
             priority = priority,
             matchId = "local-test",
             eventIndex = 7,
-            reactionKey = "local-test:$cue",
+            momentType = type,
+            reactionKey = "local-test:$type:$cue",
         )
 }
