@@ -143,6 +143,66 @@ class LudoPawsPawnLayoutTest {
     }
 
     @Test
+    fun `different logical color positions sharing one physical track cell are stacked together`() {
+        val snapshot =
+            MatchSnapshot(
+                matchId = "stack-test",
+                status = "ACTIVE",
+                hostPlayerId = "red-player",
+                players =
+                    listOf(
+                        PlayerSnapshot(
+                            playerId = "red-player",
+                            displayName = "Red",
+                            color = "RED",
+                            seat = 0,
+                            tokens = listOf(13, -1, -1, -1),
+                        ),
+                        PlayerSnapshot(
+                            playerId = "green-player",
+                            displayName = "Green",
+                            color = "GREEN",
+                            seat = 1,
+                            tokens = listOf(0, -1, -1, -1),
+                        ),
+                    ),
+                turnSeat = 0,
+                randomEventIndex = 0,
+                pendingRoll = null,
+                winnerPlayerId = null,
+                rulesetId = "layout-test",
+                history = emptyList(),
+            )
+
+        val placements =
+            LudoPawsPawnLayout.stackPlacements(
+                snapshot = snapshot,
+                cell = 20f,
+            )
+        val red =
+            placements[
+                LudoPawsPawnVisualKey(
+                    playerId = "red-player",
+                    tokenIndex = 0,
+                )
+            ]
+        val green =
+            placements[
+                LudoPawsPawnVisualKey(
+                    playerId = "green-player",
+                    tokenIndex = 0,
+                )
+            ]
+
+        assertEquals(2, red?.occupancy)
+        assertEquals(2, green?.occupancy)
+        assertTrue(
+            red?.offsetXFraction != green?.offsetXFraction ||
+                red?.offsetYFraction != green?.offsetYFraction,
+        )
+    }
+
+    @Test
     fun `capture return offsets remain deterministic across four legacy slots`() {
         val offsets =
             (0 until 4)
