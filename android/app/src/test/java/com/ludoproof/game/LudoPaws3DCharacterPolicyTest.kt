@@ -62,6 +62,56 @@ class LudoPaws3DCharacterPolicyTest {
     }
 
     @Test
+    fun `render thread color lookup follows installed seat assignments`() {
+        val snapshot =
+            MatchSnapshot(
+                matchId = "test-match",
+                status = "ACTIVE",
+                hostPlayerId = "p1",
+                players =
+                    listOf(
+                        PlayerSnapshot(
+                            playerId = "p1",
+                            displayName = "One",
+                            color = "RED",
+                            seat = 0,
+                            tokens = listOf(-1, -1, -1, -1),
+                        ),
+                        PlayerSnapshot(
+                            playerId = "p2",
+                            displayName = "Two",
+                            color = "GREEN",
+                            seat = 1,
+                            tokens = listOf(-1, -1, -1, -1),
+                        ),
+                    ),
+                turnSeat = 0,
+                randomEventIndex = 0,
+                pendingRoll = null,
+                winnerPlayerId = null,
+                rulesetId = "ludoproof-standard-v1",
+                history = emptyList(),
+            )
+
+        try {
+            LudoPaws3DCharacterPolicy.bindRenderAssignments(
+                snapshot = snapshot,
+                characterIdsBySeat = listOf("cat", "duck"),
+            )
+            assertEquals(
+                LudoPaws3DSpecies.CAT,
+                LudoPaws3DCharacterPolicy.speciesForColor("RED"),
+            )
+            assertEquals(
+                LudoPaws3DSpecies.DUCK,
+                LudoPaws3DCharacterPolicy.speciesForColor("GREEN"),
+            )
+        } finally {
+            LudoPaws3DCharacterPolicy.clearRenderAssignments()
+        }
+    }
+
+    @Test
     fun `missing seat identity falls back deterministically to authoritative ludo color`() {
         assertEquals(
             LudoPaws3DSpecies.DOG,
