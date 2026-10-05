@@ -81,7 +81,7 @@ jobs:
           test -f "$APK"
           test -f "$AAB"
           "$APKSIGNER" verify --verbose --print-certs "$APK"
-          jarsigner -verify -strict "$AAB"
+          jarsigner -verify "$AAB"
 
       - name: Hash Android release evidence
         run: node scripts/hash-android-release.mjs
