@@ -8,7 +8,6 @@ import com.ludoproof.game.feature.offline.presentation.feedback.OfflineLudoPawsF
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.ui.offline.gameplay.OfflineTurnTransitionFeedbackPolicy
-import com.ludoproof.game.ui.offline.gameplay.presentPassAndPlayHandoff
 import com.ludoproof.game.ui.offline.gameplay.renderGame
 
 internal fun OfflineGameActivity.rollOffline() {
@@ -164,10 +163,6 @@ internal fun OfflineGameActivity.scheduleComputerTurnIfNeeded(
                     action = OfflineFeedbackAction.MOVE,
                 )
                 renderGame(next)
-                presentPassAndPlayHandoff(
-                    previous = latest,
-                    current = next,
-                )
             }.onFailure { error ->
                 computerActionRevision = null
                 showStatus(error.message ?: "Computer move failed")
@@ -188,10 +183,6 @@ private fun OfflineGameActivity.renderRolledState(
             current = current,
         )
         ?.let(::showStatus)
-    presentPassAndPlayHandoff(
-        previous = previous,
-        current = current,
-    )
 }
 
 /** Compatibility seam kept for existing tests and diagnostics. */
