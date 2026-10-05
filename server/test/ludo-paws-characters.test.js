@@ -19,15 +19,24 @@ test("character identity wire contract stays backward compatible", () => {
   assert.equal(CHARACTER_ID_SCHEMA_VERSION, 1);
 });
 
-test("starter Ludo Paws character IDs are accepted and normalized", () => {
+test("canonical 3D Ludo Paws character IDs are accepted and normalized", () => {
   assert.deepEqual(
     LUDO_PAWS_CHARACTER_IDS,
-    ["duck", "squirrel", "hedgehog", "sheep"],
+    ["dog", "goat", "duck", "cat"],
   );
-  assert.equal(normalizeCharacterId(), "duck");
-  assert.equal(normalizeCharacterId(null), "duck");
-  assert.equal(normalizeCharacterId("   "), "duck");
-  assert.equal(normalizeCharacterId("  SHEEP  "), "sheep");
+  assert.equal(normalizeCharacterId(), "dog");
+  assert.equal(normalizeCharacterId(null), "dog");
+  assert.equal(normalizeCharacterId("   "), "dog");
+  assert.equal(normalizeCharacterId("  CAT  "), "cat");
+});
+
+test("legacy starter IDs migrate to the canonical 3D animals", () => {
+  assert.equal(normalizeCharacterId("squirrel"), "dog");
+  assert.equal(normalizeCharacterId("hedgehog"), "goat");
+  assert.equal(normalizeCharacterId("sheep"), "cat");
+  assert.equal(publicCharacterId("SQUIRREL"), "dog");
+  assert.equal(publicCharacterId("HEDGEHOG"), "goat");
+  assert.equal(publicCharacterId("SHEEP"), "cat");
 });
 
 test("unsupported remote character IDs are rejected at the request boundary", () => {
@@ -39,13 +48,12 @@ test("unsupported remote character IDs are rejected at the request boundary", ()
   );
 });
 
-test("legacy persisted character values fall back without making rooms unreadable", () => {
-  assert.equal(publicCharacterId(undefined), "duck");
-  assert.equal(publicCharacterId("legacy_pet"), "duck");
-  assert.equal(publicCharacterId("SQUIRREL"), "squirrel");
+test("unknown persisted character values fall back without making rooms unreadable", () => {
+  assert.equal(publicCharacterId(undefined), "dog");
+  assert.equal(publicCharacterId("legacy_pet"), "dog");
 });
 
-test("legacy create and join calls that omit character identity still resolve to duck", () => {
+test("legacy create and join calls that omit character identity resolve to dog", () => {
   const created = newMatch({
     matchId: "LPPAWS1234",
     hostPlayerId: "p1",
@@ -63,31 +71,31 @@ test("legacy create and join calls that omit character identity still resolve to
 
   assert.deepEqual(
     publicState(joined).players.map((player) => player.characterId),
-    ["duck", "duck"],
+    ["dog", "dog"],
   );
 });
 
 test("public player state exposes character identity but proof state ignores cosmetics", () => {
-  const duck = newMatch({
+  const dog = newMatch({
     matchId: "LPPAWS1234",
     hostPlayerId: "p1",
     hostDisplayName: "Player",
-    hostCharacterId: "duck",
+    hostCharacterId: "dog",
     now: 1,
     targetPlayerCount: 2,
     matchMode: "ONLINE",
   });
-  const sheep = structuredClone(duck);
-  sheep.players[0].characterId = "sheep";
+  const cat = structuredClone(dog);
+  cat.players[0].characterId = "cat";
 
-  assert.equal(publicState(duck).players[0].characterId, "duck");
-  assert.equal(publicState(sheep).players[0].characterId, "sheep");
+  assert.equal(publicState(dog).players[0].characterId, "dog");
+  assert.equal(publicState(cat).players[0].characterId, "cat");
   assert.deepEqual(
-    authoritativeStateForRandomness(duck),
-    authoritativeStateForRandomness(sheep),
+    authoritativeStateForRandomness(dog),
+    authoritativeStateForRandomness(cat),
   );
   assert.equal(
-    CHARACTER_ID_WIRE_FIELD in authoritativeStateForRandomness(duck).players[0],
+    CHARACTER_ID_WIRE_FIELD in authoritativeStateForRandomness(dog).players[0],
     false,
   );
 });
