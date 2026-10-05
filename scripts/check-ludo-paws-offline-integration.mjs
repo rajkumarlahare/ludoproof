@@ -113,6 +113,9 @@ requireText(
     "pending.legalTokenIndexes.size",
     "activeHomeCount",
     "You brought all 4 paws home.",
+    "latestForActive",
+    "presentedDiceEventKey",
+    "animate = shouldAnimate",
   ],
 );
 
@@ -126,6 +129,7 @@ requireText(
   [
     "activeCharacterMatchId",
     "activeCharacterIdsBySeat",
+    "presentedDiceEventKey",
   ],
 );
 

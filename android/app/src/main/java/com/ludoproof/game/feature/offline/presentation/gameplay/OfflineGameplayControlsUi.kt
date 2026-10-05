@@ -199,13 +199,33 @@ internal fun OfflineGameActivity.renderGame(
 
     val pending = state.pendingRoll
     val latest = state.history.lastOrNull()
+    val latestForActive =
+        latest?.takeIf {
+            it.playerId == activePlayerId
+        }
+    val presentedEventIndex =
+        pending?.eventIndex
+            ?: latestForActive?.eventIndex
     val outcome =
         pending?.outcome
-            ?: latest?.effectiveOutcome
-            ?: latest?.outcome
+            ?: latestForActive?.effectiveOutcome
+            ?: latestForActive?.outcome
 
-    if (outcome != null) {
-        diceView?.showOutcome(outcome)
+    if (
+        outcome != null &&
+        presentedEventIndex != null
+    ) {
+        val eventKey =
+            "${state.matchId}:$presentedEventIndex"
+        val shouldAnimate =
+            presentedDiceEventKey != eventKey
+        diceView?.showOutcome(
+            outcome = outcome,
+            animate = shouldAnimate,
+        )
+        presentedDiceEventKey = eventKey
+    } else {
+        presentedDiceEventKey = null
     }
 
     val computerTurn =
