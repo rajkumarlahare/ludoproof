@@ -22,6 +22,7 @@ internal data class LudoPaws3DPawnKey(
 
 internal data class LudoPaws3DSceneState(
     val snapshot: MatchSnapshot? = null,
+    val localPlayerId: String? = null,
     val perspectiveColor: String? = null,
     val forwardMotion: LudoPawsPawnMotion? = null,
     val forwardStartedAtMillis: Long = 0L,
@@ -39,7 +40,7 @@ internal data class LudoPaws3DSceneState(
  * touch hit-testing; this layer is visual only and never mutates game state.
  *
  * If ES 3.0/EGL initialization fails, [onOperationalChanged] reports false and
- * LudoPawsBoardView keeps its existing 2D animal art as the safe fallback.
+ * the existing 2D animal pawn layer remains the safe fallback.
  */
 internal class LudoPaws3DSceneView @JvmOverloads constructor(
     context: Context,
@@ -70,6 +71,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
 
     fun bind(
         state: MatchSnapshot?,
+        playerId: String?,
         perspectiveColor: String?,
     ) {
         val now =
@@ -168,6 +170,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         sceneState =
             LudoPaws3DSceneState(
                 snapshot = state,
+                localPlayerId = playerId,
                 perspectiveColor =
                     perspectiveColor
                         ?.takeIf {
