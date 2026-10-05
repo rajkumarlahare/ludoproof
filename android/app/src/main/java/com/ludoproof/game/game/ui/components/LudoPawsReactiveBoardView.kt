@@ -15,27 +15,20 @@ import kotlin.math.roundToInt
 /**
  * Production Ludo Paws board shell.
  *
- * Character visuals are exclusively rendered by the shared 3D runtime. The old
- * drawable pawn, drawable capture-return and large drawable reaction layers have
- * been retired. The proven board remains authoritative for geometry/touch/game
- * state, while board FX, legal halos and animal audio stay presentation-only.
+ * Character visuals are rendered by the shared 3D runtime. The proven board
+ * remains authoritative for geometry/touch/game state, while 3D body language,
+ * board FX, legal halos and animal audio are presentation-only.
  */
 class LudoPawsReactiveBoardView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : FrameLayout(context, attrs) {
-    private val board =
-        LudoPawsBoardView(context)
-    private val pawn3DScene =
-        LudoPaws3DSceneView(context)
-    private val pawn3DLegalHalo =
-        LudoPaws3DLegalHaloView(context)
-    private val gameFxOverlay =
-        LudoPawsGameFxOverlayView(context)
-    private val voicePlayer =
-        LudoPawsVoicePlayer(context)
-    private val settingsStore =
-        GameSettingsStore(context)
+    private val board = LudoPawsBoardView(context)
+    private val pawn3DScene = LudoPaws3DSceneView(context)
+    private val pawn3DLegalHalo = LudoPaws3DLegalHaloView(context)
+    private val gameFxOverlay = LudoPawsGameFxOverlayView(context)
+    private val voicePlayer = LudoPawsVoicePlayer(context)
+    private val settingsStore = GameSettingsStore(context)
 
     private var previousSnapshot: MatchSnapshot? = null
     private var currentSnapshot: MatchSnapshot? = null
@@ -88,10 +81,6 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             ),
         )
 
-        // Keep classic pawns only until the ES3 scene is confirmed operational.
-        // Once 3D is live, the board switches to a board-only surface plus 3D hit
-        // testing so the legacy circular pawn cannot remain underneath an animal.
-        // If the 3D surface later fails, the proven classic renderer returns.
         pawn3DLegalHalo.visibility = View.GONE
         board.setClassicPawnFallbackVisible(true)
         pawn3DScene.onOperationalChanged =
@@ -237,9 +226,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
     }
 
     private fun playIdleReactionIfEligible() {
-        val state =
-            currentSnapshot
-                ?: return
+        val state = currentSnapshot ?: return
         val nowMillis = monotonicMillis()
         val remaining =
             LudoPawsIdleReactionPolicy
@@ -261,9 +248,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             LudoPawsIdleReactionPolicy
                 .idleReactionKey(state)
                 ?: return
-        if (idleKey == lastIdleReactionKey) {
-            return
-        }
+        if (idleKey == lastIdleReactionKey) return
 
         val reactions =
             LudoPawsReactionEngine
@@ -273,9 +258,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
                     lastMeaningfulChangeAtMillis = lastMeaningfulChangeAtMillis,
                     thresholdMillis = LudoPawsIdleReactionPolicy.IDLE_THRESHOLD_MILLIS,
                 )
-        if (reactions.isEmpty()) {
-            return
-        }
+        if (reactions.isEmpty()) return
         lastIdleReactionKey = idleKey
 
         playReactions(
@@ -293,9 +276,11 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         characterIdsBySeat: List<String>,
         reducedMotion: Boolean,
     ) {
-        if (reactions.isEmpty()) {
-            return
-        }
+        if (reactions.isEmpty()) return
+
+        // Body language is separate from overlay FX. The scene itself decides
+        // how Dog/Goat/Duck/Cat anatomy should express each animation cue.
+        pawn3DScene.playReactions(reactions)
         gameFxOverlay.play(
             reactions = reactions,
             reducedMotion = reducedMotion,
