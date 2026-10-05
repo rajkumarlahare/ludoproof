@@ -1,0 +1,104 @@
+package com.ludoproof.game
+
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.sin
+
+/**
+ * Pure presentation policy for the dice. It never chooses or changes the
+ * authoritative outcome; it only turns elapsed time into a visual pose.
+ */
+object DiceRollAnimationPolicy {
+    const val SETTLE_DURATION_MILLIS = 300L
+
+    private val rollingFaces =
+        intArrayOf(2, 5, 3, 6, 4, 1, 5, 2, 6, 3, 1, 4)
+
+    data class Frame(
+        val face: Int,
+        val rotationDegrees: Float,
+        val scale: Float,
+        val translationYFraction: Float,
+        val borderPulse: Float,
+        val finished: Boolean = false,
+    )
+
+    fun rollingFrame(
+        elapsedMillis: Long,
+    ): Frame {
+        val elapsed = elapsedMillis.coerceAtLeast(0L)
+        val faceIndex =
+            ((elapsed / 52L) % rollingFaces.size)
+                .toInt()
+        val cycle =
+            ((elapsed % 420L).toFloat() / 420f)
+        val hop =
+            abs(
+                sin(
+                    cycle *
+                        PI.toFloat() *
+                        2f,
+                ),
+            )
+        val pressProgress =
+            (elapsed.toFloat() / 75f)
+                .coerceIn(0f, 1f)
+        val pressScale =
+            1f -
+                (1f - pressProgress) * .10f
+
+        return Frame(
+            face = rollingFaces[faceIndex],
+            rotationDegrees =
+                (elapsed.toFloat() * .82f) % 360f,
+            scale =
+                pressScale *
+                    (.97f + hop * .07f),
+            translationYFraction =
+                -hop * .075f,
+            borderPulse =
+                .45f + hop * .55f,
+        )
+    }
+
+    fun settleFrame(
+        elapsedMillis: Long,
+        outcome: Int,
+        startRotationDegrees: Float = 32f,
+    ): Frame {
+        require(outcome in 1..6) {
+            "dice outcome must be 1..6"
+        }
+        val progress =
+            (elapsedMillis.toFloat() /
+                SETTLE_DURATION_MILLIS.toFloat())
+                .coerceIn(0f, 1f)
+        val remaining = 1f - progress
+        val bounce =
+            sin(progress * PI.toFloat()) * remaining
+        val wobble =
+            sin(progress * PI.toFloat() * 3f) * remaining
+
+        return Frame(
+            face = outcome,
+            rotationDegrees =
+                startRotationDegrees * remaining +
+                    wobble * 9f,
+            scale =
+                1f + bounce * .10f,
+            translationYFraction =
+                -bounce * .07f,
+            borderPulse =
+                .35f + remaining * .65f,
+            finished = progress >= 1f,
+        )
+    }
+
+    fun reducedMotionRollingFace(
+        elapsedMillis: Long,
+    ): Int =
+        rollingFaces[
+            ((elapsedMillis.coerceAtLeast(0L) / 110L) % rollingFaces.size)
+                .toInt()
+        ]
+}
