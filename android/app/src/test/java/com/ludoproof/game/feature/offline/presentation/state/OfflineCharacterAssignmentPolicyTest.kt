@@ -14,27 +14,39 @@ class OfflineCharacterAssignmentPolicyTest {
                 mode = GameMode.PASS_AND_PLAY,
                 playerCount = 4,
                 preferredColor = "BLUE",
-                characterIds =
-                    listOf(
-                        "duck",
-                        "squirrel",
-                        "hedgehog",
-                        "sheep",
-                    ),
+                characterIds = listOf("dog", "goat", "duck", "cat"),
             )
 
         val resolved =
             OfflineCharacterAssignmentPolicy.resolve(
                 mode = GameMode.PASS_AND_PLAY,
                 playerCount = 4,
-                preferredCharacterId = "duck",
+                preferredCharacterId = "dog",
                 active = active,
             )
 
-        assertEquals(
-            active.characterIds,
-            resolved,
-        )
+        assertEquals(active.characterIds, resolved)
+    }
+
+    @Test
+    fun `legacy saved presentation state is migrated deterministically`() {
+        val legacy =
+            ActiveOfflineCharacterSetup(
+                mode = GameMode.PASS_AND_PLAY,
+                playerCount = 4,
+                preferredColor = "BLUE",
+                characterIds = listOf("squirrel", "hedgehog", "duck", "sheep"),
+            )
+
+        val resolved =
+            OfflineCharacterAssignmentPolicy.resolve(
+                mode = GameMode.PASS_AND_PLAY,
+                playerCount = 4,
+                preferredCharacterId = "squirrel",
+                active = legacy,
+            )
+
+        assertEquals(listOf("dog", "goat", "duck", "cat"), resolved)
     }
 
     @Test
@@ -44,33 +56,20 @@ class OfflineCharacterAssignmentPolicyTest {
                 mode = GameMode.COMPUTER,
                 playerCount = 2,
                 preferredColor = "BLUE",
-                characterIds =
-                    listOf(
-                        "duck",
-                        "squirrel",
-                    ),
+                characterIds = listOf("dog", "goat"),
             )
 
         val resolved =
             OfflineCharacterAssignmentPolicy.resolve(
                 mode = GameMode.PASS_AND_PLAY,
                 playerCount = 3,
-                preferredCharacterId = "hedgehog",
+                preferredCharacterId = "duck",
                 active = wrongMode,
             )
 
-        assertEquals(
-            3,
-            resolved.size,
-        )
-        assertEquals(
-            "hedgehog",
-            resolved.first(),
-        )
-        assertEquals(
-            resolved.size,
-            resolved.toSet().size,
-        )
+        assertEquals(3, resolved.size)
+        assertEquals("duck", resolved.first())
+        assertEquals(resolved.size, resolved.toSet().size)
     }
 
     @Test
@@ -79,24 +78,13 @@ class OfflineCharacterAssignmentPolicyTest {
             OfflineCharacterAssignmentPolicy.resolve(
                 mode = GameMode.COMPUTER,
                 playerCount = 4,
-                preferredCharacterId = "sheep",
+                preferredCharacterId = "cat",
                 active = null,
             )
 
-        assertEquals(
-            "sheep",
-            resolved.first(),
-        )
-        assertEquals(
-            4,
-            resolved.size,
-        )
-        assertEquals(
-            resolved.size,
-            resolved.toSet().size,
-        )
-        assertTrue(
-            "duck" in resolved,
-        )
+        assertEquals("cat", resolved.first())
+        assertEquals(4, resolved.size)
+        assertEquals(resolved.size, resolved.toSet().size)
+        assertTrue("dog" in resolved)
     }
 }
