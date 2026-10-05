@@ -7,6 +7,7 @@ import com.ludoproof.game.feature.offline.presentation.feedback.OfflineFeedbackA
 import com.ludoproof.game.feature.offline.presentation.feedback.OfflineLudoPawsFeedbackDispatcher
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
+import com.ludoproof.game.ui.offline.gameplay.OfflineTurnTransitionFeedbackPolicy
 import com.ludoproof.game.ui.offline.gameplay.renderGame
 
 internal fun OfflineGameActivity.rollOffline() {
@@ -40,7 +41,10 @@ internal fun OfflineGameActivity.rollOffline() {
                     current = state,
                     action = OfflineFeedbackAction.ROLL,
                 )
-                renderGame(state)
+                renderRolledState(
+                    previous = previous,
+                    current = state,
+                )
             }.onFailure { error ->
                 diceView?.stopRolling()
                 control.isEnabled = true
@@ -106,7 +110,10 @@ internal fun OfflineGameActivity.scheduleComputerTurnIfNeeded(
                         current = next,
                         action = OfflineFeedbackAction.ROLL,
                     )
-                    renderGame(next)
+                    renderRolledState(
+                        previous = latest,
+                        current = next,
+                    )
                 }.onFailure { error ->
                     diceView?.stopRolling()
                     computerActionRevision = null
@@ -163,6 +170,19 @@ internal fun OfflineGameActivity.scheduleComputerTurnIfNeeded(
         },
         (speed.cpuThinkMs / 2).coerceAtLeast(180L),
     )
+}
+
+private fun OfflineGameActivity.renderRolledState(
+    previous: MatchSnapshot?,
+    current: MatchSnapshot,
+) {
+    renderGame(current)
+    OfflineTurnTransitionFeedbackPolicy
+        .message(
+            previous = previous,
+            current = current,
+        )
+        ?.let(::showStatus)
 }
 
 /** Compatibility seam kept for existing tests and diagnostics. */
