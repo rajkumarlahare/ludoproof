@@ -87,7 +87,8 @@ internal object LudoPaws3DCharacterPolicy {
         color: String,
     ): LudoPaws3DSpecies? =
         renderSpeciesByColor
-            .get()[color]
+            .get()
+            ?.get(color)
             ?: fallbackSpeciesForColor(color)
 
     private fun fallbackSpeciesForColor(
