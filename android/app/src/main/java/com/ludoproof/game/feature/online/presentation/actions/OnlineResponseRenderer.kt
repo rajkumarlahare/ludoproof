@@ -72,6 +72,11 @@ internal fun MainActivity.applyResponse(
 
     val previousState = currentState
     currentState = state
+    uiStateHolder.update {
+        it.copy(
+            currentStateSource = source,
+        )
+    }
     matchId = state.matchId
 
     val serverRevision =
