@@ -8,77 +8,87 @@ import com.ludoproof.game.feature.characters.domain.model.AnimationSet
 import com.ludoproof.game.feature.characters.domain.model.CharacterSelection
 import com.ludoproof.game.feature.characters.domain.model.VoiceSet
 
+/** Canonical production catalog for the four code-generated 3D Ludo pawns. */
 object LudoPawsCharacterCatalog {
-    const val STARTER_PACK_ID =
-        "starter_paws"
-    const val DEFAULT_CHARACTER_ID =
-        "duck"
+    const val STARTER_PACK_ID = "starter_paws"
+    const val DEFAULT_CHARACTER_ID = "dog"
+
+    /**
+     * Compatibility only for installs/matches persisted before the 3D roster.
+     * Old ids never appear in the production catalog or UI after normalization.
+     */
+    private val legacyCharacterAliases =
+        mapOf(
+            "squirrel" to "dog",
+            "hedgehog" to "goat",
+            "sheep" to "cat",
+        )
 
     private val voiceSetList =
         listOf(
+            VoiceSet(
+                id = "dog_default",
+                species = AnimalSpecies.DOG,
+            ),
+            VoiceSet(
+                id = "goat_default",
+                species = AnimalSpecies.GOAT,
+            ),
             VoiceSet(
                 id = "duck_default",
                 species = AnimalSpecies.DUCK,
             ),
             VoiceSet(
-                id = "squirrel_default",
-                species = AnimalSpecies.SQUIRREL,
-            ),
-            VoiceSet(
-                id = "hedgehog_default",
-                species = AnimalSpecies.HEDGEHOG,
-            ),
-            VoiceSet(
-                id = "sheep_default",
-                species = AnimalSpecies.SHEEP,
+                id = "cat_default",
+                species = AnimalSpecies.CAT,
             ),
         )
 
     private val animationSetList =
         listOf(
+            AnimationSet("dog_default"),
+            AnimationSet("goat_default"),
             AnimationSet("duck_default"),
-            AnimationSet("squirrel_default"),
-            AnimationSet("hedgehog_default"),
-            AnimationSet("sheep_default"),
+            AnimationSet("cat_default"),
         )
 
     private val characterList =
         listOf(
             AnimalCharacter(
+                id = "dog",
+                displayName = "Dog",
+                species = AnimalSpecies.DOG,
+                personality = AnimalPersonality.PLAYFUL,
+                voiceSetId = "dog_default",
+                animationSetId = "dog_default",
+                fallbackDrawableName = "lp_3d_pawn_placeholder",
+            ),
+            AnimalCharacter(
+                id = "goat",
+                displayName = "Goat",
+                species = AnimalSpecies.GOAT,
+                personality = AnimalPersonality.CURIOUS,
+                voiceSetId = "goat_default",
+                animationSetId = "goat_default",
+                fallbackDrawableName = "lp_3d_pawn_placeholder",
+            ),
+            AnimalCharacter(
                 id = "duck",
-                displayName = "Ducky",
+                displayName = "Duck",
                 species = AnimalSpecies.DUCK,
                 personality = AnimalPersonality.CHEERFUL,
                 voiceSetId = "duck_default",
                 animationSetId = "duck_default",
-                fallbackDrawableName = "lp_starter_duck",
+                fallbackDrawableName = "lp_3d_pawn_placeholder",
             ),
             AnimalCharacter(
-                id = "squirrel",
-                displayName = "Nutty",
-                species = AnimalSpecies.SQUIRREL,
-                personality = AnimalPersonality.MISCHIEVOUS,
-                voiceSetId = "squirrel_default",
-                animationSetId = "squirrel_default",
-                fallbackDrawableName = "lp_starter_squirrel",
-            ),
-            AnimalCharacter(
-                id = "hedgehog",
-                displayName = "Spike",
-                species = AnimalSpecies.HEDGEHOG,
-                personality = AnimalPersonality.SHY,
-                voiceSetId = "hedgehog_default",
-                animationSetId = "hedgehog_default",
-                fallbackDrawableName = "lp_starter_hedgehog",
-            ),
-            AnimalCharacter(
-                id = "sheep",
-                displayName = "Woolly",
-                species = AnimalSpecies.SHEEP,
-                personality = AnimalPersonality.GENTLE,
-                voiceSetId = "sheep_default",
-                animationSetId = "sheep_default",
-                fallbackDrawableName = "lp_starter_sheep",
+                id = "cat",
+                displayName = "Cat",
+                species = AnimalSpecies.CAT,
+                personality = AnimalPersonality.SASSY,
+                voiceSetId = "cat_default",
+                animationSetId = "cat_default",
+                fallbackDrawableName = "lp_3d_pawn_placeholder",
             ),
         )
 
@@ -86,34 +96,22 @@ object LudoPawsCharacterCatalog {
         listOf(
             AnimalPack(
                 id = STARTER_PACK_ID,
-                displayName = "Starter Paws",
+                displayName = "3D Animal Paws",
                 starter = true,
                 characterIds =
                     listOf(
+                        "dog",
+                        "goat",
                         "duck",
-                        "squirrel",
-                        "hedgehog",
-                        "sheep",
+                        "cat",
                     ),
             ),
         )
 
-    private val charactersById =
-        characterList.associateBy(
-            AnimalCharacter::id,
-        )
-    private val packsById =
-        packList.associateBy(
-            AnimalPack::id,
-        )
-    private val voiceSetsById =
-        voiceSetList.associateBy(
-            VoiceSet::id,
-        )
-    private val animationSetsById =
-        animationSetList.associateBy(
-            AnimationSet::id,
-        )
+    private val charactersById = characterList.associateBy(AnimalCharacter::id)
+    private val packsById = packList.associateBy(AnimalPack::id)
+    private val voiceSetsById = voiceSetList.associateBy(VoiceSet::id)
+    private val animationSetsById = animationSetList.associateBy(AnimationSet::id)
 
     val defaultSelection: CharacterSelection =
         CharacterSelection(
@@ -137,67 +135,47 @@ object LudoPawsCharacterCatalog {
     val animationSets: List<AnimationSet>
         get() = animationSetList
 
-    fun character(
-        id: String,
-    ): AnimalCharacter? =
-        charactersById[id]
+    fun canonicalCharacterId(id: String?): String? {
+        val safe = id?.takeIf(String::isNotBlank) ?: return null
+        return legacyCharacterAliases[safe] ?: safe
+    }
 
-    fun pack(
-        id: String,
-    ): AnimalPack? =
-        packsById[id]
+    fun character(id: String): AnimalCharacter? =
+        canonicalCharacterId(id)
+            ?.let(charactersById::get)
 
-    fun voiceSet(
-        id: String,
-    ): VoiceSet? =
-        voiceSetsById[id]
+    fun pack(id: String): AnimalPack? = packsById[id]
 
-    fun animationSet(
-        id: String,
-    ): AnimationSet? =
-        animationSetsById[id]
+    fun voiceSet(id: String): VoiceSet? = voiceSetsById[id]
 
-    fun charactersForPack(
-        packId: String,
-    ): List<AnimalCharacter> =
+    fun animationSet(id: String): AnimationSet? = animationSetsById[id]
+
+    fun charactersForPack(packId: String): List<AnimalCharacter> =
         packsById[packId]
             ?.characterIds
             ?.mapNotNull(charactersById::get)
             .orEmpty()
 
-    fun isValidSelection(
-        selection: CharacterSelection,
-    ): Boolean {
-        val pack =
-            packsById[selection.packId]
-                ?: return false
-        return selection.characterId in pack.characterIds &&
-            charactersById.containsKey(
-                selection.characterId,
-            )
+    fun isValidSelection(selection: CharacterSelection): Boolean {
+        val pack = packsById[selection.packId] ?: return false
+        val characterId = canonicalCharacterId(selection.characterId) ?: return false
+        return characterId in pack.characterIds &&
+            charactersById.containsKey(characterId)
     }
 
     fun resolveSelection(
         packId: String?,
         characterId: String?,
     ): CharacterSelection {
-        if (
-            packId.isNullOrBlank() &&
-            characterId.isNullOrBlank()
-        ) {
+        if (packId.isNullOrBlank() && characterId.isNullOrBlank()) {
             return defaultSelection
         }
 
-        val pack =
-            packId
-                ?.let(packsById::get)
-                ?: return defaultSelection
+        val pack = packId?.let(packsById::get) ?: return defaultSelection
+        val canonicalId = canonicalCharacterId(characterId)
 
-        if (characterId.isNullOrBlank()) {
-            val firstCharacter =
-                pack.characterIds
-                    .firstOrNull()
-                    ?: return defaultSelection
+        if (canonicalId.isNullOrBlank()) {
+            val firstCharacter = pack.characterIds.firstOrNull() ?: return defaultSelection
             return CharacterSelection(
                 packId = pack.id,
                 characterId = firstCharacter,
@@ -207,85 +185,54 @@ object LudoPawsCharacterCatalog {
         val requested =
             CharacterSelection(
                 packId = pack.id,
-                characterId = characterId,
+                characterId = canonicalId,
             )
-        return if (
-            isValidSelection(requested)
-        ) {
-            requested
-        } else {
-            defaultSelection
-        }
+        return if (isValidSelection(requested)) requested else defaultSelection
     }
 
     private fun validateCatalog() {
-        require(
-            charactersById.size == characterList.size,
-        ) {
+        require(charactersById.size == characterList.size) {
             "Duplicate Ludo Paws character id"
         }
-        require(
-            packsById.size == packList.size,
-        ) {
+        require(packsById.size == packList.size) {
             "Duplicate Ludo Paws pack id"
         }
-        require(
-            voiceSetsById.size == voiceSetList.size,
-        ) {
+        require(voiceSetsById.size == voiceSetList.size) {
             "Duplicate Ludo Paws voice-set id"
         }
-        require(
-            animationSetsById.size == animationSetList.size,
-        ) {
+        require(animationSetsById.size == animationSetList.size) {
             "Duplicate Ludo Paws animation-set id"
         }
-        require(
-            packList.count(AnimalPack::starter) == 1,
-        ) {
+        require(packList.count(AnimalPack::starter) == 1) {
             "Exactly one starter character pack is required"
         }
-        require(
-            packsById[STARTER_PACK_ID]?.starter == true,
-        ) {
+        require(packsById[STARTER_PACK_ID]?.starter == true) {
             "Starter Paws must remain the starter pack"
         }
-        require(
-            charactersById.containsKey(DEFAULT_CHARACTER_ID),
-        ) {
+        require(charactersById.containsKey(DEFAULT_CHARACTER_ID)) {
             "Default Ludo Paws character is missing"
         }
 
         for (pack in packList) {
-            require(
-                pack.characterIds.all(charactersById::containsKey),
-            ) {
+            require(pack.characterIds.all(charactersById::containsKey)) {
                 "Pack ${pack.id} references an unknown character"
             }
         }
 
         for (character in characterList) {
-            val voiceSet =
-                voiceSetsById[character.voiceSetId]
+            val voiceSet = voiceSetsById[character.voiceSetId]
             require(voiceSet != null) {
                 "Character ${character.id} references an unknown voice set"
             }
-            require(
-                voiceSet.species == character.species,
-            ) {
+            require(voiceSet.species == character.species) {
                 "Voice set ${voiceSet.id} belongs to the wrong species"
             }
-            require(
-                animationSetsById.containsKey(
-                    character.animationSetId,
-                ),
-            ) {
+            require(animationSetsById.containsKey(character.animationSetId)) {
                 "Character ${character.id} references an unknown animation set"
             }
         }
 
-        require(
-            isValidSelection(defaultSelection),
-        ) {
+        require(isValidSelection(defaultSelection)) {
             "Default Ludo Paws selection must be valid"
         }
     }
