@@ -42,6 +42,15 @@ internal fun MainActivity.updateVerification(
                 append(shortDigest(presentation.proofDigest))
             }
         } else {
+            if (pending != null) {
+                // A new authoritative event exists but is not fully verified yet.
+                // Keep the dice visibly in-progress rather than leaving the last
+                // verified face static beside the new event status.
+                diceView.startRolling()
+            } else {
+                diceView.stopRolling()
+            }
+
             when (pending?.status) {
                 "CREATING" -> "COMMITTING • Preparing server commitment…"
                 "COMMITTED" ->
