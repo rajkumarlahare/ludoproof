@@ -47,6 +47,8 @@ class LocalMatchSession(
                 mode,
             playerCount =
                 playerCount,
+            rulesetId =
+                OfflineLudoV3Binding.RULESET_ID,
         )
         return engine.start(
             playerCount =
