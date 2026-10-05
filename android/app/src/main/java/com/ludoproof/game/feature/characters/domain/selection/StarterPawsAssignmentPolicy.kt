@@ -3,7 +3,7 @@ package com.ludoproof.game.feature.characters.domain.selection
 import com.ludoproof.game.feature.characters.domain.catalog.LudoPawsCharacterCatalog
 
 /**
- * Presentation-only assignment policy for the Phase 4 Starter Paws pack.
+ * Presentation-only assignment policy for the canonical four-character 3D pack.
  * It never participates in dice, legal-move, turn, capture, CPU, or winner logic.
  */
 object StarterPawsAssignmentPolicy {
@@ -31,12 +31,19 @@ object StarterPawsAssignmentPolicy {
             "Starter Paws must contain at least $playerCount characters"
         }
 
+        val canonicalPreferred =
+            LudoPawsCharacterCatalog
+                .canonicalCharacterId(preferredCharacterId)
         val safePreferred =
-            preferredCharacterId
-                .takeIf(available::contains)
+            canonicalPreferred
+                ?.takeIf(available::contains)
                 ?: LudoPawsCharacterCatalog.DEFAULT_CHARACTER_ID
                     .takeIf(available::contains)
                 ?: available.first()
+        val canonicalRequested =
+            requestedCharacterIds.mapNotNull(
+                LudoPawsCharacterCatalog::canonicalCharacterId,
+            )
 
         if (computerMode) {
             return buildList(playerCount) {
@@ -53,7 +60,7 @@ object StarterPawsAssignmentPolicy {
         val used = linkedSetOf<String>()
 
         for (slot in 0 until playerCount) {
-            val requested = requestedCharacterIds.getOrNull(slot)
+            val requested = canonicalRequested.getOrNull(slot)
             val candidate =
                 when {
                     requested != null &&
@@ -97,7 +104,10 @@ object StarterPawsAssignmentPolicy {
         }
 
         val available = starterCharacterIds
-        if (requestedCharacterId !in available) {
+        val canonicalRequested =
+            LudoPawsCharacterCatalog
+                .canonicalCharacterId(requestedCharacterId)
+        if (canonicalRequested == null || canonicalRequested !in available) {
             return normalize(
                 playerCount = playerCount,
                 requestedCharacterIds = currentCharacterIds,
@@ -111,7 +121,7 @@ object StarterPawsAssignmentPolicy {
             // Only the human slot is directly selectable in Computer mode.
             val humanCharacterId =
                 if (selectedSlot == 0) {
-                    requestedCharacterId
+                    canonicalRequested
                 } else {
                     currentCharacterIds.firstOrNull()
                         ?: LudoPawsCharacterCatalog.DEFAULT_CHARACTER_ID
@@ -135,12 +145,12 @@ object StarterPawsAssignmentPolicy {
                 .toMutableList()
 
         val previousCharacterId = current[selectedSlot]
-        if (previousCharacterId == requestedCharacterId) {
+        if (previousCharacterId == canonicalRequested) {
             return current
         }
 
-        val ownerSlot = current.indexOf(requestedCharacterId)
-        current[selectedSlot] = requestedCharacterId
+        val ownerSlot = current.indexOf(canonicalRequested)
+        current[selectedSlot] = canonicalRequested
 
         if (ownerSlot >= 0 && ownerSlot != selectedSlot) {
             // Swap instead of silently creating duplicates. This keeps every
@@ -151,9 +161,7 @@ object StarterPawsAssignmentPolicy {
         return current
     }
 
-    private fun requirePlayerCount(
-        playerCount: Int,
-    ) {
+    private fun requirePlayerCount(playerCount: Int) {
         require(playerCount in MIN_PLAYERS..MAX_PLAYERS) {
             "Ludo Paws local character assignment supports 2 to 4 players"
         }
