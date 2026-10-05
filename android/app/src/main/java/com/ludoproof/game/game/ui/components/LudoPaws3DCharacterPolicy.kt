@@ -10,7 +10,7 @@ import com.ludoproof.game.feature.characters.domain.catalog.LudoPawsCharacterCat
  * deterministic compatibility fallback when an older match/install has no
  * character identity yet.
  */
-internal enum class LudoPaws3DSpecies {
+enum class LudoPaws3DSpecies {
     DOG,
     GOAT,
     DUCK,
