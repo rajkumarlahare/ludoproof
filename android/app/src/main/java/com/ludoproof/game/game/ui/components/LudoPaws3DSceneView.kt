@@ -24,6 +24,7 @@ internal data class LudoPaws3DSceneState(
     val snapshot: MatchSnapshot? = null,
     val localPlayerId: String? = null,
     val perspectiveColor: String? = null,
+    val characterIdsBySeat: List<String> = emptyList(),
     val forwardMotion: LudoPawsPawnMotion? = null,
     val forwardStartedAtMillis: Long = 0L,
     val forwardDurationMillis: Long = 0L,
@@ -74,6 +75,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         state: MatchSnapshot?,
         playerId: String?,
         perspectiveColor: String?,
+        characterIdsBySeat: List<String> = emptyList(),
     ) {
         val now =
             SystemClock.uptimeMillis()
@@ -177,6 +179,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                         ?.takeIf {
                             it in OfflinePlayerLayout.COLORS
                         },
+                characterIdsBySeat = characterIdsBySeat.take(4),
                 forwardMotion = forward,
                 forwardStartedAtMillis = forwardStartedAtMillis,
                 forwardDurationMillis = forwardDurationMillis,
