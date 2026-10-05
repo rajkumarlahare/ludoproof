@@ -126,10 +126,135 @@ internal fun OfflineGameActivity.gameplayTools(): LinearLayout =
             )
         }
         addTool("NEW GAME", true) {
-            engine.clear()
+            session.clear()
             showSetup()
         }
     }
+
+private const val OFFLINE_RESULT_ACTIONS_TAG =
+    "ludo_paws_offline_result_actions"
+
+private fun OfflineGameActivity.ensureOfflineResultActions(
+    state: MatchSnapshot,
+) {
+    val parent =
+        resultPanel.parent as? LinearLayout
+            ?: return
+    val existing =
+        parent.findViewWithTag<View>(
+            OFFLINE_RESULT_ACTIONS_TAG,
+        )
+
+    if (state.status != "FINISHED") {
+        existing?.visibility = View.GONE
+        return
+    }
+
+    if (existing != null) {
+        existing.visibility = View.VISIBLE
+        return
+    }
+
+    val actions =
+        LinearLayout(this).apply {
+            tag = OFFLINE_RESULT_ACTIONS_TAG
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(4), 0, dp(4), 0)
+
+            addView(
+                Button(this@ensureOfflineResultActions).apply {
+                    text = "REMATCH"
+                    textSize = if (isCompactSetup()) 11f else 12f
+                    minHeight = 0
+                    LudoProofTheme.positive(this)
+                    setOnClickListener {
+                        GameSoundFeedback.click(
+                            this@ensureOfflineResultActions,
+                        )
+                        startOfflineRematch()
+                    }
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    dp(if (isCompactSetup()) 46 else 50),
+                    1f,
+                ).apply {
+                    setMargins(dp(3), 0, dp(3), 0)
+                },
+            )
+
+            addView(
+                Button(this@ensureOfflineResultActions).apply {
+                    text = "CHANGE SETUP"
+                    textSize = if (isCompactSetup()) 10f else 11f
+                    minHeight = 0
+                    LudoProofTheme.secondary(this)
+                    setOnClickListener {
+                        GameSoundFeedback.click(
+                            this@ensureOfflineResultActions,
+                        )
+                        session.clear()
+                        showSetup()
+                    }
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    dp(if (isCompactSetup()) 46 else 50),
+                    1f,
+                ).apply {
+                    setMargins(dp(3), 0, dp(3), 0)
+                },
+            )
+        }
+
+    parent.addView(
+        actions,
+        parent.indexOfChild(resultPanel) + 1,
+        gameplaySectionParams(
+            if (isCompactSetup()) 6 else 8,
+        ).apply {
+            leftMargin = dp(8)
+            rightMargin = dp(8)
+        },
+    )
+}
+
+private fun OfflineGameActivity.startOfflineRematch() {
+    val finished =
+        session.snapshot()
+            ?: return
+    val spec =
+        OfflineRematchPolicy
+            .fromFinishedState(finished)
+            ?: run {
+                showStatus("Rematch is available after the match ends.")
+                return
+            }
+    val characterIds =
+        resolveOfflineCharacterIds(finished)
+
+    selectedPlayers = spec.playerCount
+    selectedColor = spec.preferredColor
+    selectedCharacterSlot =
+        if (isComputerMode) {
+            0
+        } else {
+            selectedCharacterSlot.coerceIn(
+                0,
+                spec.playerCount - 1,
+            )
+        }
+    selectedCharacterIds = characterIds
+    persistActiveCharacterSetup()
+
+    showGame(
+        session.start(
+            playerCount = spec.playerCount,
+            preferredColor = spec.preferredColor,
+        ),
+    )
+}
 
 internal fun OfflineGameActivity.gameplaySectionParams(
     topMarginDp: Int,
@@ -175,6 +300,7 @@ internal fun OfflineGameActivity.renderGame(
     } else {
         resultPanel.visibility = View.GONE
     }
+    ensureOfflineResultActions(state)
 
     val activePlayerId = active?.playerId
     val interactionPlayerId =
@@ -286,7 +412,7 @@ internal fun OfflineGameActivity.renderGame(
 
     when {
         state.status == "FINISHED" ->
-            showStatus("Game complete • review history or start a new game.")
+            showStatus("Game complete • rematch or change setup.")
 
         computerTurn && pending != null ->
             showStatus(
