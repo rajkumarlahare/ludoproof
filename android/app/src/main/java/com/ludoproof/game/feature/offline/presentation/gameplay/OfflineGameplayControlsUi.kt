@@ -58,14 +58,7 @@ internal fun OfflineGameActivity.quickChatBar(): LinearLayout =
                     minHeight = 0
                     LudoProofTheme.secondary(this)
                     setOnClickListener {
-                        GameSoundFeedback.click(this@quickChatBar)
-                        val name =
-                            engine.snapshot()
-                                ?.players
-                                ?.firstOrNull()
-                                ?.displayName
-                                ?: "Player"
-                        showStatus("$name  $emoji")
+                        presentQuickReaction(emoji)
                     }
                 },
                 LinearLayout.LayoutParams(

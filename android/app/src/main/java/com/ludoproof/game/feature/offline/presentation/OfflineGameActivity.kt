@@ -112,6 +112,8 @@ class OfflineGameActivity : ComponentActivity() {
     internal var presentedDiceEventKey: String? = null
     internal var exitConfirmationDialog: Dialog? = null
     internal var turnHandoffDialog: Dialog? = null
+    internal var quickReactionView: View? = null
+    internal var quickReactionLastShownAtMs: Long? = null
     internal lateinit var resultPanel: FrameLayout
     internal lateinit var resultTitleText: TextView
     internal lateinit var resultSubtitleText: TextView
@@ -148,6 +150,15 @@ class OfflineGameActivity : ComponentActivity() {
         turnHandoffDialog
             ?.dismiss()
         turnHandoffDialog =
+            null
+        quickReactionView
+            ?.animate()
+            ?.cancel()
+        (quickReactionView?.parent as? android.view.ViewGroup)
+            ?.removeView(quickReactionView)
+        quickReactionView =
+            null
+        quickReactionLastShownAtMs =
             null
         computerActionRevision =
             null
