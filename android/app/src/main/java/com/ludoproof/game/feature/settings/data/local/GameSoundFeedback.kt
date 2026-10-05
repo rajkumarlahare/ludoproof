@@ -1,140 +1,198 @@
 package com.ludoproof.game.feature.settings.data.local
 
 import android.content.Context
-import com.ludoproof.game.R
-import com.ludoproof.game.core.audio.LudoPawsSoundPool
-import com.ludoproof.game.feature.characters.domain.model.VoiceCue
+import com.ludoproof.game.feature.characters.data.audio.LudoPawsAudioAssetPlayer
+import com.ludoproof.game.feature.characters.data.audio.LudoPawsProceduralAudio
+import com.ludoproof.game.feature.characters.domain.reaction.GameMomentType
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 
-/** Short game/UI sound facade. Long-form music and animal voices are separate. */
+/**
+ * Short game/UI sound facade.
+ *
+ * Every sound first resolves a stable res/raw name and then falls back to a
+ * generated effect. Existing legacy files remain aliases during migration.
+ */
 object GameSoundFeedback {
-    fun click(
-        context: Context,
-    ) {
+    fun click(context: Context) =
         play(
             context = context,
-            resourceId = R.raw.lp_sfx_click,
-            volume = .52f,
+            names = listOf("lp_sfx_ui_click", "lp_sfx_click"),
+            fallback = LudoPawsProceduralAudio.Sfx.CLICK,
+            volume = .46f,
         )
-    }
 
     fun move(
         context: Context,
+        characterId: String? = null,
     ) {
+        val movement =
+            when (characterId) {
+                "goat" ->
+                    Triple(
+                        listOf("lp_sfx_move_hoof", "lp_sfx_move"),
+                        LudoPawsProceduralAudio.Sfx.MOVE_HOOF,
+                        .40f,
+                    )
+                "duck" ->
+                    Triple(
+                        listOf("lp_sfx_move_web", "lp_sfx_move"),
+                        LudoPawsProceduralAudio.Sfx.MOVE_WEB,
+                        .38f,
+                    )
+                else ->
+                    Triple(
+                        listOf("lp_sfx_move_paw", "lp_sfx_move"),
+                        LudoPawsProceduralAudio.Sfx.MOVE_PAW,
+                        .38f,
+                    )
+            }
         play(
             context = context,
-            resourceId = R.raw.lp_sfx_move,
-            volume = .44f,
+            names = movement.first,
+            fallback = movement.second,
+            volume = movement.third,
         )
     }
 
-    fun roll(
-        context: Context,
-    ) {
+    fun roll(context: Context) =
         play(
             context = context,
-            resourceId = R.raw.lp_sfx_roll,
+            names = listOf("lp_sfx_dice_roll", "lp_sfx_roll"),
+            fallback = LudoPawsProceduralAudio.Sfx.DICE_ROLL,
             volume = .50f,
         )
-    }
 
-    fun six(
-        context: Context,
-    ) {
+    fun six(context: Context) =
         play(
             context = context,
-            resourceId = R.raw.lp_sfx_safe,
+            names = listOf("lp_sfx_six", "lp_sfx_safe"),
+            fallback = LudoPawsProceduralAudio.Sfx.SIX_SPARK,
             volume = .45f,
-            rate = 1.18f,
         )
-    }
 
-    fun capture(
-        context: Context,
-    ) {
+    fun yardExit(context: Context) =
         play(
             context = context,
-            resourceId = R.raw.lp_sfx_capture,
+            names = listOf("lp_sfx_yard_exit"),
+            fallback = LudoPawsProceduralAudio.Sfx.YARD_EXIT,
+            volume = .43f,
+        )
+
+    fun capture(context: Context) =
+        play(
+            context = context,
+            names = listOf("lp_sfx_capture_impact", "lp_sfx_capture"),
+            fallback = LudoPawsProceduralAudio.Sfx.CAPTURE_IMPACT,
             volume = .62f,
         )
-    }
 
-    fun safe(
-        context: Context,
-    ) {
+    fun safe(context: Context) =
         play(
             context = context,
-            resourceId = R.raw.lp_sfx_safe,
-            volume = .48f,
+            names = listOf("lp_sfx_safe_shimmer", "lp_sfx_safe"),
+            fallback = LudoPawsProceduralAudio.Sfx.SAFE_SHIMMER,
+            volume = .44f,
         )
-    }
 
-    fun home(
-        context: Context,
-    ) {
+    fun homeLane(context: Context) =
         play(
             context = context,
-            resourceId = R.raw.lp_sfx_home,
+            names = listOf("lp_sfx_home_lane"),
+            fallback = LudoPawsProceduralAudio.Sfx.HOME_LANE,
+            volume = .45f,
+        )
+
+    fun home(context: Context) =
+        play(
+            context = context,
+            names = listOf("lp_sfx_home_sparkle", "lp_sfx_home"),
+            fallback = LudoPawsProceduralAudio.Sfx.HOME_SPARKLE,
             volume = .56f,
         )
-    }
 
-    fun victory(
-        context: Context,
-    ) {
+    fun frustrated(context: Context) =
         play(
             context = context,
-            resourceId = R.raw.lp_sfx_victory,
-            volume = .62f,
+            names = listOf("lp_sfx_fail_soft"),
+            fallback = LudoPawsProceduralAudio.Sfx.FAIL_SOFT,
+            volume = .32f,
         )
-    }
 
-    fun defeat(
-        context: Context,
-    ) {
+    fun thirdSix(context: Context) =
         play(
             context = context,
-            resourceId = R.raw.lp_sfx_defeat,
-            volume = .46f,
+            names = listOf("lp_sfx_third_six"),
+            fallback = LudoPawsProceduralAudio.Sfx.THIRD_SIX,
+            volume = .48f,
         )
-    }
 
-    /** Plays at most one game SFX for a reaction batch; animal voice is separate. */
+    fun victory(context: Context) =
+        play(
+            context = context,
+            names = listOf("lp_sfx_victory_sting", "lp_sfx_victory"),
+            fallback = LudoPawsProceduralAudio.Sfx.VICTORY,
+            volume = .60f,
+        )
+
+    fun defeat(context: Context) =
+        play(
+            context = context,
+            names = listOf("lp_sfx_defeat_sting", "lp_sfx_defeat"),
+            fallback = LudoPawsProceduralAudio.Sfx.DEFEAT,
+            volume = .42f,
+        )
+
+    /** Plays at most one physical/game SFX for one reaction batch. */
     fun reaction(
         context: Context,
         reactions: List<LudoPawsReaction>,
+        characterIdsBySeat: List<String> = emptyList(),
     ) {
-        val cue =
-            reactions
-                .maxByOrNull(
-                    LudoPawsReaction::priority,
-                )
-                ?.voiceCue
+        val highest =
+            reactions.maxByOrNull(LudoPawsReaction::priority)
                 ?: return
-        when (cue) {
-            VoiceCue.CAPTURE,
-            VoiceCue.CAPTURED,
+        val characterId =
+            characterIdsBySeat.getOrNull(highest.seat)
+
+        when (highest.momentType) {
+            GameMomentType.SIX_ROLLED -> six(context)
+            GameMomentType.TOKEN_LEFT_YARD -> yardExit(context)
+            GameMomentType.ONLY_LEGAL_MOVE -> move(context, characterId)
+            GameMomentType.CAPTURE_MADE,
+            GameMomentType.TOKEN_CAPTURED,
             -> capture(context)
-
-            VoiceCue.SAFE -> safe(context)
-            VoiceCue.HOME -> home(context)
-            VoiceCue.VICTORY -> victory(context)
-            VoiceCue.DEFEAT -> defeat(context)
-            VoiceCue.SIX -> six(context)
-
-            VoiceCue.THIRD_SIX,
-            VoiceCue.FRUSTRATED,
-            VoiceCue.IDLE,
-            VoiceCue.NERVOUS,
+            GameMomentType.SAFE_REACHED -> safe(context)
+            GameMomentType.HOME_LANE_ENTERED -> homeLane(context)
+            GameMomentType.HOME_REACHED -> home(context)
+            GameMomentType.POOR_ROLL_STREAK,
+            GameMomentType.EXACT_HOME_MISS,
+            GameMomentType.NO_LEGAL_MOVE,
+            -> frustrated(context)
+            GameMomentType.THIRD_SIX_FORFEIT -> thirdSix(context)
+            GameMomentType.MATCH_WIN,
+            GameMomentType.TEAM_WIN,
+            -> victory(context)
+            GameMomentType.MATCH_LOSS,
+            GameMomentType.TEAM_LOSS,
+            -> defeat(context)
+            GameMomentType.TURN_STARTED,
+            GameMomentType.ROLL_STARTED,
+            GameMomentType.LOW_ROLL,
+            GameMomentType.TOKEN_MOVED,
+            GameMomentType.TOKEN_THREATENED,
+            GameMomentType.PLAYER_LEADING,
+            GameMomentType.IDLE_WAITING,
+            null,
             -> Unit
         }
     }
 
     private fun play(
         context: Context,
-        resourceId: Int,
+        names: List<String>,
+        fallback: LudoPawsProceduralAudio.Sfx,
         volume: Float,
-        rate: Float = 1f,
+        playbackRate: Float = 1f,
     ) {
         if (
             !GameSettingsStore(context)
@@ -143,11 +201,12 @@ object GameSoundFeedback {
         ) {
             return
         }
-        LudoPawsSoundPool.play(
+        LudoPawsAudioAssetPlayer.playSfx(
             context = context,
-            resourceId = resourceId,
+            rawResourceNames = names,
+            fallback = fallback,
             volume = volume,
-            rate = rate,
+            playbackRate = playbackRate,
         )
     }
 }
