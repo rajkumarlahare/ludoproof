@@ -243,13 +243,13 @@ internal fun OfflineGameActivity.renderGame(
             pending != null -> {
                 val legalCount =
                     pending.legalTokenIndexes.size
-                "Dice ${pending.outcome} • $legalCount legal " +
+                val moveLabel =
                     if (legalCount == 1) {
                         "move"
                     } else {
                         "moves"
-                    } +
-                    " • $activeHomeCount/4 home"
+                    }
+                "Dice ${pending.outcome} • $legalCount legal $moveLabel • $activeHomeCount/4 home"
             }
 
             computerTurn ->
