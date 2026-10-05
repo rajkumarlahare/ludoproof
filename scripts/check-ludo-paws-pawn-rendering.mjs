@@ -20,6 +20,8 @@ const scenePath =
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPaws3DSceneView.kt";
 const rendererPath =
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPaws3DSceneRenderer.kt";
+const policyPath =
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPaws3DCharacterPolicy.kt";
 const layoutPath =
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsPawnLayout.kt";
 const activityPath =
@@ -32,17 +34,21 @@ const characterStatePath =
   "android/app/src/main/java/com/ludoproof/game/feature/offline/presentation/state/OfflineCharacterPresentationState.kt";
 const testsPath =
   "android/app/src/test/java/com/ludoproof/game/LudoPawsPawnLayoutTest.kt";
+const policyTestsPath =
+  "android/app/src/test/java/com/ludoproof/game/LudoPaws3DCharacterPolicyTest.kt";
 
 const board = read(boardPath);
 const reactiveBoard = read(reactiveBoardPath);
 const scene = read(scenePath);
 const renderer = read(rendererPath);
+const policy = read(policyPath);
 const layout = read(layoutPath);
 const activity = read(activityPath);
 const screen = read(screenPath);
 const controls = read(controlsPath);
 const characterState = read(characterStatePath);
 const tests = read(testsPath);
+const policyTests = read(policyTestsPath);
 
 for (const [token, message] of [
   ["class LudoPawsBoardView", "Production board shell is missing."],
@@ -57,6 +63,7 @@ for (const token of [
   "LudoPaws3DLegalHaloView",
   "LudoPawsGameFxOverlayView",
   "pawn3DScene.bind(",
+  "characterIdsBySeat = characterIdsBySeat",
   "pawn3DLegalHalo.bind(",
   "onOperationalChanged",
 ]) {
@@ -74,6 +81,8 @@ for (const token of [
   ".plans(",
   "LudoPawsPawnMotionKind.CAPTURE_RETURN",
   "captureHiddenUntilMillis",
+  "characterIdsBySeat",
+  "bindRenderAssignments",
   "settings.gameSpeed.moveStepMs",
   "reducedMotion",
 ]) {
@@ -81,6 +90,20 @@ for (const token of [
     scene,
     token,
     `Shared 3D scene runtime is missing required marker: ${token}`,
+  );
+}
+
+for (const token of [
+  "speciesForCharacterId",
+  "speciesForSeat",
+  "LudoPawsCharacterCatalog",
+  "bindRenderAssignments",
+  "ThreadLocal",
+]) {
+  requireText(
+    policy,
+    token,
+    `3D character identity policy is missing selected-character binding marker: ${token}`,
   );
 }
 
@@ -135,6 +158,16 @@ requireText(
   "shared cell reduces animal radius without collapsing it",
   "Shared-cell sizing coverage is missing.",
 );
+requireText(
+  policyTests,
+  "seat assignment wins over ludo color for production rendering",
+  "Selected-character-over-color rendering coverage is missing.",
+);
+requireText(
+  policyTests,
+  "render thread color lookup follows installed seat assignments",
+  "Render-thread selected-character binding coverage is missing.",
+);
 
 for (const retired of [
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsCaptureReturnOverlayView.kt",
@@ -173,5 +206,5 @@ for (const retainedMotion of ["Dog", "Goat", "Duck", "Cat"]) {
 }
 
 console.log(
-  "Ludo Paws pawn rendering gate passed: one shared 3D animal runtime, locked authoritative board, legal halo, movement sync, shared-cell sizing and legacy renderer cleanup are intact.",
+  "Ludo Paws pawn rendering gate passed: selected seat animals drive one shared 3D runtime over the locked authoritative board, with legal halos, movement sync, shared-cell sizing and legacy renderer cleanup intact.",
 );
