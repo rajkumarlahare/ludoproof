@@ -38,19 +38,6 @@ internal fun MainActivity.applyResponse(
             return
         }
 
-    envelope.playerId?.let { resolvedPlayerId ->
-        playerId = resolvedPlayerId
-        val code = matchId
-        val token = playerToken
-        if (code != null && token != null) {
-            persistSessionSecurely(
-                code = code,
-                id = resolvedPlayerId,
-                token = token,
-            )
-        }
-    }
-
     val state = envelope.state
     if (state == null) {
         showStatus(response.toString(2))
@@ -68,6 +55,19 @@ internal fun MainActivity.applyResponse(
         cachedMatchStore.clear()
         updateRollButton()
         return
+    }
+
+    envelope.playerId?.let { resolvedPlayerId ->
+        playerId = resolvedPlayerId
+        val code = matchId
+        val token = playerToken
+        if (code != null && token != null) {
+            persistSessionSecurely(
+                code = code,
+                id = resolvedPlayerId,
+                token = token,
+            )
+        }
     }
 
     val previousState = currentState
