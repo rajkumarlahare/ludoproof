@@ -117,6 +117,39 @@ requireText(
 );
 
 requireText(
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/DiceRollAnimationPolicy.kt",
+  [
+    "SETTLE_DURATION_MILLIS",
+    "rollingFrame(",
+    "settleFrame(",
+    "reducedMotionRollingFace(",
+    "dice outcome must be 1..6",
+  ],
+);
+
+requireText(
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/DiceView.kt",
+  [
+    "DiceRollAnimationPolicy.rollingFrame",
+    "DiceRollAnimationPolicy.settleFrame",
+    "reducedMotionEnabled",
+    "fun showOutcome(",
+    "animate: Boolean = true",
+    "postOnAnimation(animationTicker)",
+  ],
+);
+
+requireText(
+  "android/app/src/test/java/com/ludoproof/game/DiceRollAnimationPolicyTest.kt",
+  [
+    "rollingFrameCyclesFacesWithoutClaimingOutcome",
+    "rollingFrameHasPhysicalTransform",
+    "settleKeepsVerifiedOutcomeAndEndsAtIdentity",
+    "reducedMotionStillCyclesReadableFaces",
+  ],
+);
+
+requireText(
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsGameFxOverlayView.kt",
   [
     "isCaptureReturn",
@@ -176,5 +209,5 @@ for (const retired of [
 }
 
 console.log(
-  "Ludo Paws production animation/FX gate passed: species-specific 3D body language, shared hop/home motion, capture timing, game FX and reduced-motion handling are locked.",
+  "Ludo Paws production animation/FX gate passed: species-specific 3D body language, shared hop/home motion, capture timing, physical dice settle, game FX and reduced-motion handling are locked.",
 );
