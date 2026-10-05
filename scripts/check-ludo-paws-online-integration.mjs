@@ -31,6 +31,15 @@ const policy = read(
 const renderer = read(
   "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/actions/OnlineResponseRenderer.kt",
 );
+const verificationRenderer = read(
+  "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/actions/OnlineVerificationRenderer.kt",
+);
+const verifiedDicePolicy = read(
+  "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/state/OnlineVerifiedDicePresentationPolicy.kt",
+);
+const verifiedDiceTests = read(
+  "android/app/src/test/java/com/ludoproof/game/OnlineVerifiedDicePresentationPolicyTest.kt",
+);
 const presentation = read(
   "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/OnlineLudoPawsPresentation.kt",
 );
@@ -76,6 +85,45 @@ requireText(models, "val characterId: String? = null", "Remote player snapshots 
 requireText(policy, "LudoPawsCharacterCatalog", "Remote character policy must validate IDs against the local catalog.");
 requireText(policy, "LudoPawsCharacterIdentityContract", "Remote character policy must use the centralized compatibility contract.");
 requireText(renderer, "OnlineLudoPawsPresentation.render", "Remote response rendering must drive Ludo Paws presentation.");
+
+for (const marker of [
+  "pending.status != \"RESOLVED\"",
+  "val latest = state.history.lastOrNull()",
+  "pending.proofDigest",
+  "latest.proofDigest",
+  "eventKey = \"${state.matchId}:$identity\"",
+]) {
+  requireText(
+    verifiedDicePolicy,
+    marker,
+    `Fail-closed online verified-dice policy is missing ${marker}.`,
+  );
+}
+for (const marker of [
+  "OnlineVerifiedDicePresentationPolicy.resolve(state)",
+  "presentedDiceEventKey",
+  "animate = shouldAnimate",
+  "Waiting for the complete proof",
+]) {
+  requireText(
+    verificationRenderer,
+    marker,
+    `Remote verified-dice renderer is missing ${marker}.`,
+  );
+}
+for (const marker of [
+  "committedPendingNeverBorrowsPreviousVerifiedHistory",
+  "resolvingPendingNeverBorrowsPreviousVerifiedHistory",
+  "resolvedPendingWithoutProofFailsClosedInsteadOfUsingHistory",
+  "eventKeyIsStableForRefreshAndChangesForNextEventEvenWithSameOutcome",
+]) {
+  requireText(
+    verifiedDiceTests,
+    marker,
+    `Remote verified-dice regression coverage is missing ${marker}.`,
+  );
+}
+
 for (const marker of [
   "LudoPawsReactiveBoardView",
   "LudoPawsPlayerCardView",
@@ -89,5 +137,5 @@ for (const marker of [
 }
 
 console.log(
-  "Ludo Paws online integration gate passed: canonical Dog/Goat/Duck/Cat identity, legacy alias compatibility, remote 3D presentation, exactly-once feedback and proof-state isolation are wired.",
+  "Ludo Paws online integration gate passed: canonical Dog/Goat/Duck/Cat identity, legacy alias compatibility, remote 3D presentation, exactly-once feedback, fail-closed verified-dice presentation and proof-state isolation are wired.",
 );
