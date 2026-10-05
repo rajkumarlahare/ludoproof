@@ -17,27 +17,15 @@ data class LudoPawsReaction(
     val reactionKey: String = "",
 )
 
-/**
- * Presentation reaction adapter for the shared game-moment detector.
- *
- * [derive] is pure and is used by unit tests/domain consumers. [detect] is the
- * playback entry point used by the UI: it sends derived reactions through the
- * Phase 8 director so reconnect/re-render duplicates, cooldown spam, priority,
- * queueing, and interruption policy are handled before animation/voice output.
- */
+/** Presentation adapter from authoritative snapshot moments to character intent. */
 object LudoPawsReactionEngine {
-    private val playbackDirector =
-        LudoPawsReactionDirector()
+    private val playbackDirector = LudoPawsReactionDirector()
 
     fun detect(
         previous: MatchSnapshot?,
         current: MatchSnapshot?,
     ): List<LudoPawsReaction> {
-        val raw =
-            derive(
-                previous = previous,
-                current = current,
-            )
+        val raw = derive(previous, current)
         return playbackDirector
             .submit(
                 reactions = raw,
@@ -59,30 +47,21 @@ object LudoPawsReactionEngine {
                 .mapNotNull(::toReaction)
 
         return alignCapturePair(mapped)
-            .distinctBy(
-                LudoPawsReaction::reactionKey,
-            )
-            .sortedByDescending(
-                LudoPawsReaction::priority,
-            )
+            .distinctBy(LudoPawsReaction::reactionKey)
+            .sortedByDescending(LudoPawsReaction::priority)
     }
 
-    /**
-     * Pure idle derivation for the board lifecycle scheduler. Idle playback is
-     * caller-timed so the domain detector stays deterministic in tests.
-     */
     fun deriveIdle(
         current: MatchSnapshot?,
         nowMillis: Long,
         lastMeaningfulChangeAtMillis: Long,
-        thresholdMillis: Long = 12_000L,
+        thresholdMillis: Long = 24_000L,
     ): List<LudoPawsReaction> =
         LudoPawsGameMomentDetector
             .idleMoment(
                 current = current,
                 nowMillis = nowMillis,
-                lastMeaningfulChangeAtMillis =
-                    lastMeaningfulChangeAtMillis,
+                lastMeaningfulChangeAtMillis = lastMeaningfulChangeAtMillis,
                 thresholdMillis = thresholdMillis,
             )
             ?.let(::toReaction)
@@ -98,20 +77,14 @@ object LudoPawsReactionEngine {
     ): List<LudoPawsReaction> {
         val captureMade =
             reactions.filter {
-                it.momentType ==
-                    GameMomentType.CAPTURE_MADE
+                it.momentType == GameMomentType.CAPTURE_MADE
             }
-        if (captureMade.size != 1) {
-            return reactions
-        }
+        if (captureMade.size != 1) return reactions
 
-        val attacker =
-            captureMade.single()
-        return reactions.map {
-                reaction ->
+        val attacker = captureMade.single()
+        return reactions.map { reaction ->
             if (
-                reaction.momentType ==
-                    GameMomentType.TOKEN_CAPTURED &&
+                reaction.momentType == GameMomentType.TOKEN_CAPTURED &&
                 reaction.matchId == attacker.matchId
             ) {
                 reaction.copy(
@@ -120,10 +93,7 @@ object LudoPawsReactionEngine {
                         stableReactionKey(
                             matchId = reaction.matchId,
                             eventIndex = attacker.eventIndex,
-                            type =
-                                requireNotNull(
-                                    reaction.momentType,
-                                ),
+                            type = requireNotNull(reaction.momentType),
                             playerId = reaction.playerId,
                             tokenIndex = reaction.tokenIndex,
                         ),
@@ -138,12 +108,36 @@ object LudoPawsReactionEngine {
         moment: LudoPawsGameMoment,
     ): LudoPawsReaction? =
         when (moment.type) {
+            GameMomentType.TURN_STARTED ->
+                reaction(
+                    moment = moment,
+                    voiceCue = VoiceCue.SILENT,
+                    animationCue = AnimationCue.IDLE,
+                    priority = 12,
+                )
+
             GameMomentType.SIX_ROLLED ->
                 reaction(
                     moment = moment,
                     voiceCue = VoiceCue.SIX,
                     animationCue = AnimationCue.EXCITED,
                     priority = 66,
+                )
+
+            GameMomentType.TOKEN_LEFT_YARD ->
+                reaction(
+                    moment = moment,
+                    voiceCue = VoiceCue.YARD_EXIT,
+                    animationCue = AnimationCue.HAPPY,
+                    priority = 44,
+                )
+
+            GameMomentType.ONLY_LEGAL_MOVE ->
+                reaction(
+                    moment = moment,
+                    voiceCue = VoiceCue.SILENT,
+                    animationCue = AnimationCue.HAPPY,
+                    priority = 14,
                 )
 
             GameMomentType.THIRD_SIX_FORFEIT ->
@@ -178,6 +172,14 @@ object LudoPawsReactionEngine {
                     priority = 58,
                 )
 
+            GameMomentType.HOME_LANE_ENTERED ->
+                reaction(
+                    moment = moment,
+                    voiceCue = VoiceCue.HOME_LANE,
+                    animationCue = AnimationCue.EXCITED,
+                    priority = 62,
+                )
+
             GameMomentType.HOME_REACHED ->
                 reaction(
                     moment = moment,
@@ -194,12 +196,36 @@ object LudoPawsReactionEngine {
                     priority = 52,
                 )
 
+            GameMomentType.EXACT_HOME_MISS ->
+                reaction(
+                    moment = moment,
+                    voiceCue = VoiceCue.FRUSTRATED,
+                    animationCue = AnimationCue.SAD,
+                    priority = 50,
+                )
+
             GameMomentType.NO_LEGAL_MOVE ->
                 reaction(
                     moment = moment,
                     voiceCue = VoiceCue.FRUSTRATED,
                     animationCue = AnimationCue.SAD,
-                    priority = 48,
+                    priority = 46,
+                )
+
+            GameMomentType.TOKEN_THREATENED ->
+                reaction(
+                    moment = moment,
+                    voiceCue = VoiceCue.NERVOUS,
+                    animationCue = AnimationCue.NERVOUS,
+                    priority = 40,
+                )
+
+            GameMomentType.PLAYER_LEADING ->
+                reaction(
+                    moment = moment,
+                    voiceCue = VoiceCue.PROUD,
+                    animationCue = AnimationCue.HAPPY,
+                    priority = 26,
                 )
 
             GameMomentType.MATCH_WIN,
@@ -230,18 +256,8 @@ object LudoPawsReactionEngine {
                     priority = 20,
                 )
 
-            GameMomentType.PLAYER_LEADING ->
-                reaction(
-                    moment = moment,
-                    voiceCue = VoiceCue.NERVOUS,
-                    animationCue = AnimationCue.NERVOUS,
-                    priority = 24,
-                )
-
-            GameMomentType.TURN_STARTED,
             GameMomentType.ROLL_STARTED,
             GameMomentType.LOW_ROLL,
-            GameMomentType.TOKEN_LEFT_YARD,
             GameMomentType.TOKEN_MOVED,
             -> null
         }
@@ -284,12 +300,9 @@ object LudoPawsReactionEngine {
             eventIndex.toString(),
             type.name,
             playerId,
-            tokenIndex
-                ?.toString()
-                .orEmpty(),
+            tokenIndex?.toString().orEmpty(),
         ).joinToString(":")
 
     private fun monotonicMillis(): Long =
-        System.nanoTime() /
-            1_000_000L
+        System.nanoTime() / 1_000_000L
 }
