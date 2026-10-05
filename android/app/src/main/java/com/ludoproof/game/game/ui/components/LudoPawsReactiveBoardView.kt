@@ -2,6 +2,7 @@ package com.ludoproof.game
 
 import android.content.Context
 import android.util.AttributeSet
+import android.view.View
 import android.widget.FrameLayout
 import com.ludoproof.game.feature.characters.data.audio.LudoPawsVoicePlayer
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsIdleReactionPolicy
@@ -17,6 +18,10 @@ import kotlin.math.roundToInt
  * 10 presentation layers add capture-return pawn motion, board particles/token
  * FX, timed idle personality, and larger character reactions without mutating
  * game state.
+ *
+ * The production 3D pawn runtime is composited above the authoritative board.
+ * It is presentation-only and automatically falls back to the previous 2D pawn
+ * overlay if ES3/EGL initialization is unavailable on a device.
  */
 class LudoPawsReactiveBoardView @JvmOverloads constructor(
     context: Context,
@@ -24,6 +29,10 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
 ) : FrameLayout(context, attrs) {
     private val board =
         LudoPawsBoardView(context)
+    private val pawn3DScene =
+        LudoPaws3DSceneView(context)
+    private val pawn3DLegalHalo =
+        LudoPaws3DLegalHaloView(context)
     private val captureReturnOverlay =
         LudoPawsCaptureReturnOverlayView(context)
     private val gameFxOverlay =
@@ -65,6 +74,20 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             ),
         )
         addView(
+            pawn3DScene,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT,
+            ),
+        )
+        addView(
+            pawn3DLegalHalo,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT,
+            ),
+        )
+        addView(
             captureReturnOverlay,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
@@ -85,6 +108,18 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
                 LayoutParams.MATCH_PARENT,
             ),
         )
+
+        pawn3DLegalHalo.visibility = View.GONE
+        pawn3DScene.onOperationalChanged =
+            { available ->
+                setLegacyPawnOverlayVisible(!available)
+                pawn3DLegalHalo.visibility =
+                    if (available) {
+                        View.VISIBLE
+                    } else {
+                        View.GONE
+                    }
+            }
     }
 
     fun bind(
@@ -119,6 +154,16 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             playerId = playerId,
             perspectiveColor = perspectiveColor,
             characterIdsBySeat = characterIdsBySeat,
+        )
+        pawn3DScene.bind(
+            state = state,
+            playerId = playerId,
+            perspectiveColor = perspectiveColor,
+        )
+        pawn3DLegalHalo.bind(
+            state = state,
+            playerId = playerId,
+            perspectiveColor = perspectiveColor,
         )
         captureReturnOverlay.bind(
             previous = previous,
@@ -166,6 +211,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         currentCharacterIdsBySeat = emptyList()
         meaningfulStateKey = null
         lastIdleReactionKey = null
+        setLegacyPawnOverlayVisible(true)
         super.onDetachedFromWindow()
     }
 
@@ -179,6 +225,29 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         val size = min(resolvedWidth, resolvedHeight)
         val exact = MeasureSpec.makeMeasureSpec(size, MeasureSpec.EXACTLY)
         super.onMeasure(exact, exact)
+    }
+
+    /**
+     * Compatibility bridge for the first production 3D rollout.
+     *
+     * LudoPawsBoardView intentionally keeps its authoritative board/touch layer
+     * untouched. Its second child is the legacy cosmetic pawn overlay. We hide
+     * only that child after the 3D EGL surface is confirmed operational; on any
+     * renderer failure it is restored immediately. Legal-move halos are then
+     * supplied by [pawn3DLegalHalo].
+     */
+    private fun setLegacyPawnOverlayVisible(
+        visible: Boolean,
+    ) {
+        if (board.childCount < 2) {
+            return
+        }
+        board.getChildAt(1).visibility =
+            if (visible) {
+                View.VISIBLE
+            } else {
+                View.INVISIBLE
+            }
     }
 
     private fun updateIdleClock(
