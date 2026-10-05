@@ -31,6 +31,9 @@ const runtime = read(
 const policy = read(
   "android/app/src/main/java/com/ludoproof/game/feature/online/domain/OnlineLudoPawsCharacterPolicy.kt",
 );
+const mainActivity = read(
+  "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/MainActivity.kt",
+);
 const renderer = read(
   "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/actions/OnlineResponseRenderer.kt",
 );
@@ -237,22 +240,25 @@ for (const marker of [
     `Online roll/move action flow is missing ${marker}.`,
   );
 }
-for (const marker of [
+requireText(
+  uiState,
   "val currentStateSource: OnlineStateSource? = null",
-]) {
-  requireText(
-    uiState,
-    marker,
-    `Online UI state must preserve presentation-vs-authority source: ${marker}.`,
-  );
-}
-for (const marker of [
+  "Online UI state must preserve presentation-vs-authority source.",
+);
+requireText(
+  sessionActions,
   "currentStateSource = null",
+  "Invalid-session cleanup must clear online action authority.",
+);
+for (const marker of [
+  "override fun onStop()",
+  "currentStateSource = null",
+  "realtimeConnected = false",
 ]) {
   requireText(
-    sessionActions,
+    mainActivity,
     marker,
-    `Invalid-session cleanup must clear online action authority: ${marker}.`,
+    `Background/resume safety must invalidate online action authority: ${marker}.`,
   );
 }
 
@@ -269,5 +275,5 @@ for (const marker of [
 }
 
 console.log(
-  "Ludo Paws online integration gate passed: canonical Dog/Goat/Duck/Cat identity, legacy alias compatibility, remote 3D presentation, exactly-once feedback, fail-closed verified-dice presentation, cache-safe pending-secret preservation, authoritative-only online mutations, reconnect-safe commit/reveal action recovery and proof-state isolation are wired.",
+  "Ludo Paws online integration gate passed: canonical Dog/Goat/Duck/Cat identity, legacy alias compatibility, remote 3D presentation, exactly-once feedback, fail-closed verified-dice presentation, cache-safe pending-secret preservation, authoritative-only online mutations across restart/background/reconnect, reconnect-safe commit/reveal action recovery and proof-state isolation are wired.",
 );
