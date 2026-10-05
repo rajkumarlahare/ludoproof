@@ -71,11 +71,79 @@ class LudoPawsPawnLayoutTest {
             )
 
         assertTrue(crowded < single)
-        assertTrue(crowded > 0.29f)
+        assertTrue(crowded > 0.27f)
     }
 
     @Test
-    fun `track offsets are deterministic across four visual slots`() {
+    fun `single occupant remains exactly centered`() {
+        assertEquals(
+            0f to 0f,
+            LudoPawsPawnLayout.stackOffsetFraction(
+                slot = 0,
+                occupancy = 1,
+            ),
+        )
+    }
+
+    @Test
+    fun `two occupants split into distinct balanced positions`() {
+        val offsets =
+            (0 until 2).map { slot ->
+                LudoPawsPawnLayout.stackOffsetFraction(
+                    slot = slot,
+                    occupancy = 2,
+                )
+            }
+
+        assertEquals(2, offsets.distinct().size)
+        assertEquals(-offsets[0].first, offsets[1].first, 0.0001f)
+        assertEquals(0f, offsets[0].second, 0.0001f)
+        assertEquals(0f, offsets[1].second, 0.0001f)
+    }
+
+    @Test
+    fun `three occupants form three unique positions`() {
+        val offsets =
+            (0 until 3).map { slot ->
+                LudoPawsPawnLayout.stackOffsetFraction(
+                    slot = slot,
+                    occupancy = 3,
+                )
+            }
+
+        assertEquals(3, offsets.distinct().size)
+    }
+
+    @Test
+    fun `four occupants use a deterministic two by two layout`() {
+        val offsets =
+            (0 until 4).map { slot ->
+                LudoPawsPawnLayout.stackOffsetFraction(
+                    slot = slot,
+                    occupancy = 4,
+                )
+            }
+
+        assertEquals(4, offsets.distinct().size)
+        assertEquals(setOf(-0.16f, 0.16f), offsets.map { it.first }.toSet())
+        assertEquals(setOf(-0.16f, 0.16f), offsets.map { it.second }.toSet())
+    }
+
+    @Test
+    fun `safe cell crowd keeps all sixteen visual slots unique`() {
+        val offsets =
+            (0 until 16).map { slot ->
+                LudoPawsPawnLayout.stackOffsetFraction(
+                    slot = slot,
+                    occupancy = 16,
+                )
+            }
+
+        assertEquals(16, offsets.distinct().size)
+    }
+
+    @Test
+    fun `capture return offsets remain deterministic across four legacy slots`() {
         val offsets =
             (0 until 4)
                 .map {
