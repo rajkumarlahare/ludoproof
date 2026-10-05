@@ -10,7 +10,10 @@ internal fun MainActivity.updateVerification(
     val pending = state.pendingRoll
     val latest = state.history.lastOrNull()
 
-    val outcome = pending?.outcome ?: latest?.outcome
+    val outcome =
+        pending?.outcome
+            ?: latest?.effectiveOutcome
+            ?: latest?.outcome
     val digest = pending?.proofDigest ?: latest?.proofDigest
     val eventIndex =
         if (pending?.eventIndex != null && pending.eventIndex >= 0) {
@@ -25,6 +28,11 @@ internal fun MainActivity.updateVerification(
             buildString {
                 append("✓ VERIFIED • Dice ")
                 append(outcome)
+                if (latest?.openingRollApplied == true && pending == null) {
+                    append(" • opening bonus")
+                } else if (pending?.openingRollApplied == true) {
+                    append(" • opening bonus")
+                }
                 if (eventIndex != null) {
                     append("\nEvent ")
                     append(eventIndex)
@@ -146,7 +154,10 @@ internal fun MainActivity.proofDetails(
             append("#")
             append(event.eventIndex)
             append("  dice=")
-            append(event.outcome ?: "?")
+            append(event.effectiveOutcome ?: event.outcome ?: "?")
+            if (event.openingRollApplied) {
+                append("(opening)")
+            }
             append("  proof=")
             append(shortDigest(event.proofDigest))
             append("  round=")
