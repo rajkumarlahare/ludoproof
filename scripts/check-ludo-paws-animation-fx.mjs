@@ -130,8 +130,9 @@ requireText(
 requireText(
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/DiceView.kt",
   [
-    "DiceRollAnimationPolicy.rollingFrame",
-    "DiceRollAnimationPolicy.settleFrame",
+    "DiceRollAnimationPolicy",
+    ".rollingFrame(",
+    ".settleFrame(",
     "reducedMotionEnabled",
     "fun showOutcome(",
     "animate: Boolean = true",
