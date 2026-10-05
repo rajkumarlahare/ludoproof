@@ -97,19 +97,12 @@ internal class LudoPaws3DSceneRenderer {
             GLES30.GL_COLOR_BUFFER_BIT or
                 GLES30.GL_DEPTH_BUFFER_BIT,
         )
-        val snapshot =
-            state.snapshot
-                ?: return
-        if (program == 0) {
-            return
-        }
+        val snapshot = state.snapshot ?: return
+        if (program == 0) return
         GLES30.glUseProgram(program)
 
-        val size =
-            min(width, height).toFloat()
-        val cell =
-            size /
-                LudoPawsFxBoardGeometry.BOARD_SIZE
+        val size = min(width, height).toFloat()
+        val cell = size / LudoPawsFxBoardGeometry.BOARD_SIZE
         val turns =
             state.perspectiveColor
                 ?.let(OfflinePlayerLayout::rotationQuarterTurns)
@@ -122,27 +115,19 @@ internal class LudoPaws3DSceneRenderer {
 
         val renderPawns =
             buildList {
-                snapshot.players.forEach {
-                        player ->
+                snapshot.players.forEach { player ->
                     val species =
                         LudoPaws3DCharacterPolicy
                             .speciesForColor(player.color)
                             ?: return@forEach
-                    player.tokens.forEachIndexed {
-                            tokenIndex,
-                            currentPosition,
-                        ->
+                    player.tokens.forEachIndexed { tokenIndex, currentPosition ->
                         val key =
                             LudoPaws3DPawnKey(
                                 playerId = player.playerId,
                                 tokenIndex = tokenIndex,
                             )
-                        val hiddenUntil =
-                            state.captureHiddenUntilMillis[key]
-                                ?: 0L
-                        if (nowMillis < hiddenUntil) {
-                            return@forEachIndexed
-                        }
+                        val hiddenUntil = state.captureHiddenUntilMillis[key] ?: 0L
+                        if (nowMillis < hiddenUntil) return@forEachIndexed
 
                         val rawCenter =
                             animatedCenter(
@@ -152,20 +137,14 @@ internal class LudoPaws3DSceneRenderer {
                                 cell = cell,
                                 state = state,
                                 nowMillis = nowMillis,
-                            )
-                                ?: return@forEachIndexed
+                            ) ?: return@forEachIndexed
                         val offset =
-                            LudoPawsPawnLayout
-                                .tokenOffsetFraction(
-                                    slot = tokenIndex + player.seat,
-                                    position = currentPosition,
-                                )
-                        val unrotatedX =
-                            rawCenter.first +
-                                offset.first * cell
-                        val unrotatedY =
-                            rawCenter.second +
-                                offset.second * cell
+                            LudoPawsPawnLayout.tokenOffsetFraction(
+                                slot = tokenIndex + player.seat,
+                                position = currentPosition,
+                            )
+                        val unrotatedX = rawCenter.first + offset.first * cell
+                        val unrotatedY = rawCenter.second + offset.second * cell
                         val rotated =
                             rotatePoint(
                                 x = unrotatedX,
@@ -175,24 +154,20 @@ internal class LudoPaws3DSceneRenderer {
                             )
                         val occupancyKey =
                             centerKey(
-                                LudoPawsFxBoardGeometry
-                                    .tokenCenter(
-                                        color = player.color,
-                                        tokenIndex = tokenIndex,
-                                        position = currentPosition,
-                                        cell = cell,
-                                    ),
+                                LudoPawsFxBoardGeometry.tokenCenter(
+                                    color = player.color,
+                                    tokenIndex = tokenIndex,
+                                    position = currentPosition,
+                                    cell = cell,
+                                ),
                             )
-                        val occupants =
-                            occupancy[occupancyKey]
-                                ?: 1
+                        val occupants = occupancy[occupancyKey] ?: 1
                         val radius =
                             cell *
-                                LudoPawsPawnLayout
-                                    .radiusScale(
-                                        position = currentPosition,
-                                        occupancy = occupants,
-                                    )
+                                LudoPawsPawnLayout.radiusScale(
+                                    position = currentPosition,
+                                    occupancy = occupants,
+                                )
 
                         add(
                             RenderPawn(
@@ -206,14 +181,11 @@ internal class LudoPaws3DSceneRenderer {
                         )
                     }
                 }
-            }
-                .sortedBy(RenderPawn::y)
+            }.sortedBy(RenderPawn::y)
 
-        renderPawns.forEach {
-                pawn ->
+        renderPawns.forEach { pawn ->
             // Preserve depth inside one animal but use painter ordering between
-            // animals. This avoids one pawn's nose/ear depth from cutting holes
-            // into another pawn on a stacked/shared cell.
+            // animals. This prevents one pawn's nose/ear depth cutting another.
             GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT)
             drawPawn(
                 pawn = pawn,
@@ -234,32 +206,32 @@ internal class LudoPaws3DSceneRenderer {
                 state = state,
                 nowMillis = nowMillis,
             )
+        val reaction =
+            reactionPose(
+                pawn = pawn,
+                state = state,
+                nowMillis = nowMillis,
+            )
         val modelScale =
-            pawn.radius * MODEL_SCALE_PER_RADIUS
-        val rootY =
-            pawn.y +
-                pawn.radius * ROOT_Y_OFFSET_PER_RADIUS
+            pawn.radius * MODEL_SCALE_PER_RADIUS * reaction.scale
+        val rootY = pawn.y + pawn.radius * ROOT_Y_OFFSET_PER_RADIUS
 
         when (pawn.species) {
             LudoPaws3DSpecies.DOG -> {
-                val pose =
+                val base =
                     when (frame.kind) {
-                        SceneMotion.IDLE ->
-                            Dog3DMotionTimeline.sample(
-                                Dog3DMotion.IDLE,
-                                frame.progress,
-                            )
-                        SceneMotion.HOP ->
-                            Dog3DMotionTimeline.sample(
-                                Dog3DMotion.HOP,
-                                frame.progress,
-                            )
-                        SceneMotion.HOME ->
-                            Dog3DMotionTimeline.sample(
-                                Dog3DMotion.HOME,
-                                frame.progress,
-                            )
+                        SceneMotion.IDLE -> Dog3DMotionTimeline.sample(Dog3DMotion.IDLE, frame.progress)
+                        SceneMotion.HOP -> Dog3DMotionTimeline.sample(Dog3DMotion.HOP, frame.progress)
+                        SceneMotion.HOME -> Dog3DMotionTimeline.sample(Dog3DMotion.HOME, frame.progress)
                     }
+                val pose =
+                    base.copy(
+                        liftY = base.liftY + reaction.liftY,
+                        bodyYawDegrees = base.bodyYawDegrees + reaction.bodyYawDegrees,
+                        headTiltDegrees = base.headTiltDegrees + reaction.headTiltDegrees,
+                        earBounceDegrees = base.earBounceDegrees + reaction.primaryAppendageDegrees,
+                        tailWagDegrees = base.tailWagDegrees + reaction.secondaryAppendageDegrees,
+                    )
                 prepareRoot(
                     x = pawn.x,
                     y = rootY,
@@ -271,24 +243,21 @@ internal class LudoPaws3DSceneRenderer {
             }
 
             LudoPaws3DSpecies.GOAT -> {
-                val pose =
+                val base =
                     when (frame.kind) {
-                        SceneMotion.IDLE ->
-                            Goat3DMotionTimeline.sample(
-                                Goat3DMotion.IDLE,
-                                frame.progress,
-                            )
-                        SceneMotion.HOP ->
-                            Goat3DMotionTimeline.sample(
-                                Goat3DMotion.HOP,
-                                frame.progress,
-                            )
-                        SceneMotion.HOME ->
-                            Goat3DMotionTimeline.sample(
-                                Goat3DMotion.HOME,
-                                frame.progress,
-                            )
+                        SceneMotion.IDLE -> Goat3DMotionTimeline.sample(Goat3DMotion.IDLE, frame.progress)
+                        SceneMotion.HOP -> Goat3DMotionTimeline.sample(Goat3DMotion.HOP, frame.progress)
+                        SceneMotion.HOME -> Goat3DMotionTimeline.sample(Goat3DMotion.HOME, frame.progress)
                     }
+                val pose =
+                    base.copy(
+                        liftY = base.liftY + reaction.liftY,
+                        bodyYawDegrees = base.bodyYawDegrees + reaction.bodyYawDegrees,
+                        headTiltDegrees = base.headTiltDegrees + reaction.headTiltDegrees,
+                        earFlickDegrees = base.earFlickDegrees + reaction.primaryAppendageDegrees,
+                        beardSwingDegrees = base.beardSwingDegrees + reaction.secondaryAppendageDegrees,
+                        tailFlickDegrees = base.tailFlickDegrees + reaction.tertiaryAppendageDegrees,
+                    )
                 prepareRoot(
                     x = pawn.x,
                     y = rootY,
@@ -300,24 +269,19 @@ internal class LudoPaws3DSceneRenderer {
             }
 
             LudoPaws3DSpecies.DUCK -> {
-                val pose =
+                val base =
                     when (frame.kind) {
-                        SceneMotion.IDLE ->
-                            Duck3DMotionTimeline.sample(
-                                Duck3DMotion.IDLE,
-                                frame.progress,
-                            )
-                        SceneMotion.HOP ->
-                            Duck3DMotionTimeline.sample(
-                                Duck3DMotion.HOP,
-                                frame.progress,
-                            )
-                        SceneMotion.HOME ->
-                            Duck3DMotionTimeline.sample(
-                                Duck3DMotion.HOME,
-                                frame.progress,
-                            )
+                        SceneMotion.IDLE -> Duck3DMotionTimeline.sample(Duck3DMotion.IDLE, frame.progress)
+                        SceneMotion.HOP -> Duck3DMotionTimeline.sample(Duck3DMotion.HOP, frame.progress)
+                        SceneMotion.HOME -> Duck3DMotionTimeline.sample(Duck3DMotion.HOME, frame.progress)
                     }
+                val pose =
+                    base.copy(
+                        liftY = base.liftY + reaction.liftY,
+                        bodyYawDegrees = base.bodyYawDegrees + reaction.bodyYawDegrees,
+                        wingFlapDegrees = base.wingFlapDegrees + reaction.primaryAppendageDegrees,
+                        headTiltDegrees = base.headTiltDegrees + reaction.headTiltDegrees,
+                    )
                 prepareRoot(
                     x = pawn.x,
                     y = rootY,
@@ -329,24 +293,20 @@ internal class LudoPaws3DSceneRenderer {
             }
 
             LudoPaws3DSpecies.CAT -> {
-                val pose =
+                val base =
                     when (frame.kind) {
-                        SceneMotion.IDLE ->
-                            Cat3DMotionTimeline.sample(
-                                Cat3DMotion.IDLE,
-                                frame.progress,
-                            )
-                        SceneMotion.HOP ->
-                            Cat3DMotionTimeline.sample(
-                                Cat3DMotion.HOP,
-                                frame.progress,
-                            )
-                        SceneMotion.HOME ->
-                            Cat3DMotionTimeline.sample(
-                                Cat3DMotion.HOME,
-                                frame.progress,
-                            )
+                        SceneMotion.IDLE -> Cat3DMotionTimeline.sample(Cat3DMotion.IDLE, frame.progress)
+                        SceneMotion.HOP -> Cat3DMotionTimeline.sample(Cat3DMotion.HOP, frame.progress)
+                        SceneMotion.HOME -> Cat3DMotionTimeline.sample(Cat3DMotion.HOME, frame.progress)
                     }
+                val pose =
+                    base.copy(
+                        liftY = base.liftY + reaction.liftY,
+                        bodyYawDegrees = base.bodyYawDegrees + reaction.bodyYawDegrees,
+                        headTiltDegrees = base.headTiltDegrees + reaction.headTiltDegrees,
+                        earTwitchDegrees = base.earTwitchDegrees + reaction.primaryAppendageDegrees,
+                        tailSwayDegrees = base.tailSwayDegrees + reaction.secondaryAppendageDegrees,
+                    )
                 prepareRoot(
                     x = pawn.x,
                     y = rootY,
@@ -357,6 +317,25 @@ internal class LudoPaws3DSceneRenderer {
                 drawCat(root, pose)
             }
         }
+    }
+
+    private fun reactionPose(
+        pawn: RenderPawn,
+        state: LudoPaws3DSceneState,
+        nowMillis: Long,
+    ): LudoPaws3DReactionPose {
+        if (state.reducedMotion) return LudoPaws3DReactionPose()
+        val active =
+            state.activeReactions[pawn.key]
+                ?: return LudoPaws3DReactionPose()
+        if (active.durationMillis <= 0L) return LudoPaws3DReactionPose()
+        val elapsed = (nowMillis - active.startedAtMillis).coerceAtLeast(0L)
+        if (elapsed >= active.durationMillis) return LudoPaws3DReactionPose()
+        return LudoPaws3DReactionMotion.sample(
+            species = pawn.species,
+            cue = active.cue,
+            progress = elapsed.toFloat() / active.durationMillis.toFloat(),
+        )
     }
 
     private fun motionFrame(
@@ -371,8 +350,7 @@ internal class LudoPaws3DSceneRenderer {
             )
         }
 
-        val forward =
-            state.forwardMotion
+        val forward = state.forwardMotion
         if (
             forward != null &&
             forward.playerId == pawn.key.playerId &&
@@ -389,28 +367,17 @@ internal class LudoPaws3DSceneRenderer {
                     elapsed.toFloat() /
                         state.forwardDurationMillis.toFloat() *
                         forward.visualSteps.toFloat()
-                val stepFraction =
-                    visualProgress -
-                        floor(visualProgress)
+                val stepFraction = visualProgress - floor(visualProgress)
                 return MotionFrame(
                     kind = SceneMotion.HOP,
                     progress = stepFraction.coerceIn(0f, 1f),
                 )
             }
 
-            if (
-                forward.toPosition == LudoPathEncoding.HOME_POSITION
-            ) {
-                val celebrationElapsed =
-                    elapsed -
-                        state.forwardDurationMillis
-                val homeDuration =
-                    homeDurationMillis(
-                        pawn.species,
-                    )
-                if (
-                    celebrationElapsed in 0 until homeDuration
-                ) {
+            if (forward.toPosition == LudoPathEncoding.HOME_POSITION) {
+                val celebrationElapsed = elapsed - state.forwardDurationMillis
+                val homeDuration = homeDurationMillis(pawn.species)
+                if (celebrationElapsed in 0 until homeDuration) {
                     return MotionFrame(
                         kind = SceneMotion.HOME,
                         progress =
@@ -421,13 +388,9 @@ internal class LudoPaws3DSceneRenderer {
             }
         }
 
-        val duration =
-            idleDurationMillis(
-                pawn.species,
-            )
+        val duration = idleDurationMillis(pawn.species)
         val phaseOffset =
-            ((pawn.seat * 4 + pawn.key.tokenIndex) * 173L) %
-                duration
+            ((pawn.seat * 4 + pawn.key.tokenIndex) * 173L) % duration
         return MotionFrame(
             kind = SceneMotion.IDLE,
             progress =
@@ -452,29 +415,25 @@ internal class LudoPaws3DSceneRenderer {
                         it.tokenIndex == tokenIndex &&
                         state.forwardDurationMillis > 0L
                 }
-                ?: return LudoPawsFxBoardGeometry
-                    .tokenCenter(
-                        color = player.color,
-                        tokenIndex = tokenIndex,
-                        position = currentPosition,
-                        cell = cell,
-                    )
-        val elapsed =
-            (nowMillis - state.forwardStartedAtMillis)
-                .coerceAtLeast(0L)
-        if (elapsed >= state.forwardDurationMillis) {
-            return LudoPawsFxBoardGeometry
-                .tokenCenter(
+                ?: return LudoPawsFxBoardGeometry.tokenCenter(
                     color = player.color,
                     tokenIndex = tokenIndex,
                     position = currentPosition,
                     cell = cell,
                 )
+        val elapsed =
+            (nowMillis - state.forwardStartedAtMillis)
+                .coerceAtLeast(0L)
+        if (elapsed >= state.forwardDurationMillis) {
+            return LudoPawsFxBoardGeometry.tokenCenter(
+                color = player.color,
+                tokenIndex = tokenIndex,
+                position = currentPosition,
+                cell = cell,
+            )
         }
 
-        val totalSteps =
-            motion.visualSteps
-                .coerceAtLeast(1)
+        val totalSteps = motion.visualSteps.coerceAtLeast(1)
         val visualProgress =
             elapsed.toFloat() /
                 state.forwardDurationMillis.toFloat() *
@@ -482,122 +441,78 @@ internal class LudoPaws3DSceneRenderer {
         val whole =
             floor(visualProgress)
                 .toInt()
-                .coerceIn(
-                    0,
-                    totalSteps - 1,
-                )
+                .coerceIn(0, totalSteps - 1)
         val fraction =
             (visualProgress - whole)
                 .coerceIn(0f, 1f)
         val fromPosition =
-            LudoPathEncoding
-                .positionAtVisualStep(
-                    fromPosition = motion.fromPosition,
-                    step = whole,
-                )
-                ?: return null
+            LudoPathEncoding.positionAtVisualStep(
+                fromPosition = motion.fromPosition,
+                step = whole,
+            ) ?: return null
         val toPosition =
-            LudoPathEncoding
-                .positionAtVisualStep(
-                    fromPosition = motion.fromPosition,
-                    step =
-                        (whole + 1)
-                            .coerceAtMost(totalSteps),
-                )
-                ?: return null
+            LudoPathEncoding.positionAtVisualStep(
+                fromPosition = motion.fromPosition,
+                step = (whole + 1).coerceAtMost(totalSteps),
+            ) ?: return null
         val from =
-            LudoPawsFxBoardGeometry
-                .tokenCenter(
-                    color = player.color,
-                    tokenIndex = tokenIndex,
-                    position = fromPosition,
-                    cell = cell,
-                )
-                ?: return null
+            LudoPawsFxBoardGeometry.tokenCenter(
+                color = player.color,
+                tokenIndex = tokenIndex,
+                position = fromPosition,
+                cell = cell,
+            ) ?: return null
         val to =
-            LudoPawsFxBoardGeometry
-                .tokenCenter(
-                    color = player.color,
-                    tokenIndex = tokenIndex,
-                    position = toPosition,
-                    cell = cell,
-                )
-                ?: return from
+            LudoPawsFxBoardGeometry.tokenCenter(
+                color = player.color,
+                tokenIndex = tokenIndex,
+                position = toPosition,
+                cell = cell,
+            ) ?: return from
 
-        val eased =
-            fraction *
-                fraction *
-                (3f - 2f * fraction)
-        val linearX =
-            from.first +
-                (to.first - from.first) * eased
-        val linearY =
-            from.second +
-                (to.second - from.second) * eased
-        if (state.reducedMotion) {
-            return linearX to linearY
-        }
+        val eased = fraction * fraction * (3f - 2f * fraction)
+        val linearX = from.first + (to.first - from.first) * eased
+        val linearY = from.second + (to.second - from.second) * eased
+        if (state.reducedMotion) return linearX to linearY
 
         val hop =
             sin(PI * fraction.toDouble())
                 .toFloat()
                 .coerceAtLeast(0f)
-        val boardCenter =
-            cell * 7.5f
-        val dx =
-            boardCenter - linearX
-        val dy =
-            boardCenter - linearY
-        val distance =
-            sqrt(dx * dx + dy * dy)
-        if (distance <= 0.001f) {
-            return linearX to linearY
-        }
-        val arc =
-            cell * 0.22f * hop
-        return (
-            linearX + dx / distance * arc
-            ) to
-            (
-                linearY + dy / distance * arc
-                )
+        val boardCenter = cell * 7.5f
+        val dx = boardCenter - linearX
+        val dy = boardCenter - linearY
+        val distance = sqrt(dx * dx + dy * dy)
+        if (distance <= 0.001f) return linearX to linearY
+        val arc = cell * 0.22f * hop
+        return (linearX + dx / distance * arc) to
+            (linearY + dy / distance * arc)
     }
 
     private fun occupancyByCenter(
         snapshot: MatchSnapshot,
         cell: Float,
     ): Map<String, Int> {
-        val counts =
-            mutableMapOf<String, Int>()
-        snapshot.players.forEach {
-                player ->
-            player.tokens.forEachIndexed {
-                    tokenIndex,
-                    position,
-                ->
+        val counts = mutableMapOf<String, Int>()
+        snapshot.players.forEach { player ->
+            player.tokens.forEachIndexed { tokenIndex, position ->
                 val key =
                     centerKey(
-                        LudoPawsFxBoardGeometry
-                            .tokenCenter(
-                                color = player.color,
-                                tokenIndex = tokenIndex,
-                                position = position,
-                                cell = cell,
-                            ),
+                        LudoPawsFxBoardGeometry.tokenCenter(
+                            color = player.color,
+                            tokenIndex = tokenIndex,
+                            position = position,
+                            cell = cell,
+                        ),
                     )
-                counts[key] =
-                    (counts[key] ?: 0) + 1
+                counts[key] = (counts[key] ?: 0) + 1
             }
         }
         return counts
     }
 
-    private fun centerKey(
-        center: Pair<Float, Float>?,
-    ): String {
-        if (center == null) {
-            return "missing"
-        }
+    private fun centerKey(center: Pair<Float, Float>?): String {
+        if (center == null) return "missing"
         return "${(center.first * 100f).roundToInt()}:${(center.second * 100f).roundToInt()}"
     }
 
@@ -622,40 +537,15 @@ internal class LudoPaws3DSceneRenderer {
         bodyYawDegrees: Float,
     ) {
         Matrix.setIdentityM(root, 0)
-        Matrix.translateM(
-            root,
-            0,
-            x,
-            y,
-            0f,
-        )
+        Matrix.translateM(root, 0, x, y, 0f)
         // Screen Y grows downward. Negative local-Y scale keeps the prototype's
         // positive-Y-up character geometry visually upright on the Android board.
-        Matrix.scaleM(
-            root,
-            0,
-            scale,
-            -scale,
-            scale,
-        )
+        Matrix.scaleM(root, 0, scale, -scale, scale)
         if (liftY != 0f) {
-            Matrix.translateM(
-                root,
-                0,
-                0f,
-                liftY,
-                0f,
-            )
+            Matrix.translateM(root, 0, 0f, liftY, 0f)
         }
         if (bodyYawDegrees != 0f) {
-            Matrix.rotateM(
-                root,
-                0,
-                bodyYawDegrees,
-                0f,
-                1f,
-                0f,
-            )
+            Matrix.rotateM(root, 0, bodyYawDegrees, 0f, 1f, 0f)
         }
     }
 
@@ -852,8 +742,7 @@ internal class LudoPaws3DSceneRenderer {
         parent: FloatArray,
         side: Float,
     ) {
-        val x =
-            0.34f * side
+        val x = 0.34f * side
         drawPart(parent, x, 0.79f, 0.57f, 0.018f, 0.34f, 0.018f, CAT_WHISKER, rotateZ = 78f * side)
         drawPart(parent, x, 0.70f, 0.56f, 0.018f, 0.31f, 0.018f, CAT_WHISKER, rotateZ = 66f * side)
     }
@@ -871,13 +760,7 @@ internal class LudoPaws3DSceneRenderer {
         rotateY: Float = 0f,
         rotateZ: Float = 0f,
     ) {
-        System.arraycopy(
-            parent,
-            0,
-            model,
-            0,
-            16,
-        )
+        System.arraycopy(parent, 0, model, 0, 16)
         Matrix.translateM(
             model,
             0,
@@ -885,15 +768,9 @@ internal class LudoPaws3DSceneRenderer {
             translateY,
             translateZ,
         )
-        if (rotateX != 0f) {
-            Matrix.rotateM(model, 0, rotateX, 1f, 0f, 0f)
-        }
-        if (rotateY != 0f) {
-            Matrix.rotateM(model, 0, rotateY, 0f, 1f, 0f)
-        }
-        if (rotateZ != 0f) {
-            Matrix.rotateM(model, 0, rotateZ, 0f, 0f, 1f)
-        }
+        if (rotateX != 0f) Matrix.rotateM(model, 0, rotateX, 1f, 0f, 0f)
+        if (rotateY != 0f) Matrix.rotateM(model, 0, rotateY, 0f, 1f, 0f)
+        if (rotateZ != 0f) Matrix.rotateM(model, 0, rotateZ, 0f, 0f, 1f)
         Matrix.scaleM(
             model,
             0,
@@ -951,19 +828,11 @@ internal class LudoPaws3DSceneRenderer {
                 GLES30.GL_FRAGMENT_SHADER,
                 fragmentSource,
             )
-        return GLES30.glCreateProgram().also {
-                created ->
-            GLES30.glAttachShader(
-                created,
-                vertex,
-            )
-            GLES30.glAttachShader(
-                created,
-                fragment,
-            )
+        return GLES30.glCreateProgram().also { created ->
+            GLES30.glAttachShader(created, vertex)
+            GLES30.glAttachShader(created, fragment)
             GLES30.glLinkProgram(created)
-            val status =
-                IntArray(1)
+            val status = IntArray(1)
             GLES30.glGetProgramiv(
                 created,
                 GLES30.GL_LINK_STATUS,
@@ -982,15 +851,10 @@ internal class LudoPaws3DSceneRenderer {
         type: Int,
         source: String,
     ): Int =
-        GLES30.glCreateShader(type).also {
-                shader ->
-            GLES30.glShaderSource(
-                shader,
-                source,
-            )
+        GLES30.glCreateShader(type).also { shader ->
+            GLES30.glShaderSource(shader, source)
             GLES30.glCompileShader(shader)
-            val status =
-                IntArray(1)
+            val status = IntArray(1)
             GLES30.glGetShaderiv(
                 shader,
                 GLES30.GL_COMPILE_STATUS,
@@ -1031,34 +895,20 @@ internal class LudoPaws3DSceneRenderer {
         private val indexCount: Int
 
         init {
-            val vertices =
-                mutableListOf<Float>()
-            val indices =
-                mutableListOf<Short>()
+            val vertices = mutableListOf<Float>()
+            val indices = mutableListOf<Short>()
 
             for (lat in 0..latitudeSegments) {
                 val theta =
-                    PI *
-                        lat.toDouble() /
-                        latitudeSegments.toDouble()
-                val sinTheta =
-                    sin(theta).toFloat()
-                val cosTheta =
-                    cos(theta).toFloat()
+                    PI * lat.toDouble() / latitudeSegments.toDouble()
+                val sinTheta = sin(theta).toFloat()
+                val cosTheta = cos(theta).toFloat()
                 for (lon in 0..longitudeSegments) {
                     val phi =
-                        2.0 *
-                            PI *
-                            lon.toDouble() /
-                            longitudeSegments.toDouble()
-                    val x =
-                        sinTheta *
-                            cos(phi).toFloat()
-                    val y =
-                        cosTheta
-                    val z =
-                        sinTheta *
-                            sin(phi).toFloat()
+                        2.0 * PI * lon.toDouble() / longitudeSegments.toDouble()
+                    val x = sinTheta * cos(phi).toFloat()
+                    val y = cosTheta
+                    val z = sinTheta * sin(phi).toFloat()
                     vertices += x
                     vertices += y
                     vertices += z
@@ -1068,14 +918,11 @@ internal class LudoPaws3DSceneRenderer {
                 }
             }
 
-            val row =
-                longitudeSegments + 1
+            val row = longitudeSegments + 1
             for (lat in 0 until latitudeSegments) {
                 for (lon in 0 until longitudeSegments) {
-                    val first =
-                        lat * row + lon
-                    val second =
-                        first + row
+                    val first = lat * row + lon
+                    val second = first + row
                     indices += first.toShort()
                     indices += second.toShort()
                     indices += (first + 1).toShort()
@@ -1087,10 +934,7 @@ internal class LudoPaws3DSceneRenderer {
 
             vertexBuffer =
                 ByteBuffer
-                    .allocateDirect(
-                        vertices.size *
-                            Float.SIZE_BYTES,
-                    )
+                    .allocateDirect(vertices.size * Float.SIZE_BYTES)
                     .order(ByteOrder.nativeOrder())
                     .asFloatBuffer()
                     .apply {
@@ -1099,18 +943,14 @@ internal class LudoPaws3DSceneRenderer {
                     }
             indexBuffer =
                 ByteBuffer
-                    .allocateDirect(
-                        indices.size *
-                            Short.SIZE_BYTES,
-                    )
+                    .allocateDirect(indices.size * Short.SIZE_BYTES)
                     .order(ByteOrder.nativeOrder())
                     .asShortBuffer()
                     .apply {
                         indices.forEach(::put)
                         position(0)
                     }
-            indexCount =
-                indices.size
+            indexCount = indices.size
         }
 
         fun draw(
