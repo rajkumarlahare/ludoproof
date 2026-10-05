@@ -9,6 +9,14 @@ const requireText = (path, needles) => {
     }
   }
 };
+const forbidText = (path, needles) => {
+  const text = read(path);
+  for (const needle of needles) {
+    if (text.includes(needle)) {
+      throw new Error(`${path} contains retired production animation/FX marker: ${needle}`);
+    }
+  }
+};
 const requireAbsent = (path) => {
   if (fs.existsSync(path)) {
     throw new Error(`Retired drawable animation layer must stay removed: ${path}`);
@@ -35,7 +43,10 @@ requireText(
     "LudoPawsPawnAnimationPolicy",
     ".plans(",
     "LudoPawsPawnMotionKind.CAPTURE_RETURN",
-    "captureHiddenUntilMillis",
+    "LudoPaws3DCaptureReturnState",
+    "captureReturns",
+    "retainedCaptureReturns",
+    "newCaptureReturns",
     "activeReactions",
     "fun playReactions(",
     "reaction.priority >= previous.priority",
@@ -43,6 +54,10 @@ requireText(
     "settings.gameSpeed.moveStepMs",
     "reducedMotion",
   ],
+);
+forbidText(
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPaws3DSceneView.kt",
+  ["captureHiddenUntilMillis"],
 );
 
 requireText(
@@ -74,6 +89,10 @@ requireText(
     "SceneMotion.HOME",
     "reactionPose(",
     "state.activeReactions[pawn.key]",
+    "state.captureReturns[pawn.key]",
+    "captureReturnVisual(",
+    "LudoPawsCaptureReturnPlacement.sample",
+    "presentationScale",
     "LudoPaws3DReactionMotion.sample",
     "earBounceDegrees = base.earBounceDegrees + reaction.primaryAppendageDegrees",
     "beardSwingDegrees = base.beardSwingDegrees + reaction.secondaryAppendageDegrees",
@@ -83,6 +102,32 @@ requireText(
     "Goat3DMotionTimeline",
     "Duck3DMotionTimeline",
     "Cat3DMotionTimeline",
+  ],
+);
+forbidText(
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPaws3DSceneRenderer.kt",
+  ["captureHiddenUntilMillis"],
+);
+
+requireText(
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsCaptureReturnPlacement.kt",
+  [
+    "object LudoPawsCaptureReturnPlacement",
+    "captureReturnFrame(progress)",
+    "CURVE_CELLS",
+    "frame.shakeXCells",
+    "frame.liftCells",
+    "scale = frame.scale",
+  ],
+);
+
+requireText(
+  "android/app/src/test/java/com/ludoproof/game/LudoPawsCaptureReturnPlacementTest.kt",
+  [
+    "capturedPawnStartsAtImpactCell",
+    "capturedPawnUsesCurvedVisibleReturn",
+    "capturedPawnEndsExactlyAtYard",
+    "impactAndPopStayNearCaptureCellBeforeTravel",
   ],
 );
 
@@ -210,5 +255,5 @@ for (const retired of [
 }
 
 console.log(
-  "Ludo Paws production animation/FX gate passed: species-specific 3D body language, shared hop/home motion, capture timing, physical dice settle, game FX and reduced-motion handling are locked.",
+  "Ludo Paws production animation/FX gate passed: species-specific 3D body language, shared hop/home motion, visible captured-animal return, physical dice settle, game FX and reduced-motion handling are locked.",
 );
