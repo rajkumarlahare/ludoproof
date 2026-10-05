@@ -179,6 +179,11 @@ class LudoPawsBoardView @JvmOverloads constructor(
             return
         }
         val cell = size / LudoPawsFxBoardGeometry.BOARD_SIZE
+        val stackPlacements =
+            LudoPawsPawnLayout.stackPlacements(
+                snapshot = state,
+                cell = cell,
+            )
         val turns =
             perspectiveColor
                 ?.let(OfflinePlayerLayout::rotationQuarterTurns)
@@ -207,18 +212,19 @@ class LudoPawsBoardView @JvmOverloads constructor(
                                 cell = cell,
                             )
                             ?: return@mapNotNull null
-                    val offset =
-                        LudoPawsPawnLayout
-                            .tokenOffsetFraction(
-                                slot = tokenIndex + player.seat,
-                                position = position,
+                    val placement =
+                        stackPlacements[
+                            LudoPawsPawnVisualKey(
+                                playerId = player.playerId,
+                                tokenIndex = tokenIndex,
                             )
+                        ]
                     val tokenX =
                         center.first +
-                            offset.first * cell
+                            (placement?.offsetXFraction ?: 0f) * cell
                     val tokenY =
                         center.second +
-                            offset.second * cell
+                            (placement?.offsetYFraction ?: 0f) * cell
                     val distance =
                         hypot(
                             (logicalTouch.first - tokenX).toDouble(),
