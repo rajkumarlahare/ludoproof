@@ -15,8 +15,9 @@ import {
 } from "./rulesets.js";
 
 // Keep the battle-tested v1 engine implementation intact. This compatibility
-// layer selects the immutable ruleset contract for each persisted match while
-// new matches opt into v2. Missing rulesetKey intentionally means legacy v1.
+// layer can bind an explicit v2 contract to a match without changing the
+// production default. Missing rulesetKey intentionally means immutable v1 so
+// an accidental backend deploy cannot strand older installed Android clients.
 export * from "./game-v1-core.js";
 
 export {
@@ -62,10 +63,17 @@ export function rulesetForState(state) {
 
 export function newMatch(options) {
   const state = legacy.newMatch(options);
-  return {
+  const explicitRulesetKey = options?.rulesetKey;
+  if (explicitRulesetKey == null) {
+    return state;
+  }
+
+  const versionedState = {
     ...state,
-    rulesetKey: isTeamUp(state) ? TEAM_RULESET_KEY : RULESET_KEY,
+    rulesetKey: explicitRulesetKey,
   };
+  rulesetForState(versionedState);
+  return versionedState;
 }
 
 export function authoritativeStateForRandomness(state) {
