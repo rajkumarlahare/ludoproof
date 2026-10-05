@@ -31,6 +31,9 @@ const requiredAudio = [
   'android/app/src/main/res/raw/lp_sfx_home.wav',
   'android/app/src/main/res/raw/lp_sfx_victory.wav',
   'android/app/src/main/res/raw/lp_sfx_defeat.wav',
+];
+
+const retiredStarterVoices = [
   'android/app/src/main/res/raw/lp_voice_duck.wav',
   'android/app/src/main/res/raw/lp_voice_squirrel.wav',
   'android/app/src/main/res/raw/lp_voice_hedgehog.wav',
@@ -45,7 +48,12 @@ for (const file of [
   ...requiredAudio,
 ]) {
   if (!fs.existsSync(file)) {
-    throw new Error(`Missing Phase 9 audio file: ${file}`);
+    throw new Error(`Missing production audio file: ${file}`);
+  }
+}
+for (const file of retiredStarterVoices) {
+  if (fs.existsSync(file)) {
+    throw new Error(`Retired generic starter voice must be removed: ${file}`);
   }
 }
 
@@ -66,7 +74,7 @@ for (const marker of ['SoundPool', 'USAGE_GAME', 'CONTENT_TYPE_SONIFICATION', 'p
 }
 
 if (sfx.includes('ToneGenerator')) {
-  throw new Error('Phase 9 must not use one-ToneGenerator-per-event feedback');
+  throw new Error('Production SFX must not use one-ToneGenerator-per-event feedback');
 }
 for (const marker of ['LudoPawsSoundPool', 'fun reaction(', 'soundEnabled']) {
   if (!sfx.includes(marker)) {
@@ -86,13 +94,7 @@ for (const marker of ['animalVoicesEnabled', 'hapticsEnabled', 'reducedMotionEna
   }
 }
 
-for (const marker of [
-  'Animal Voices',
-  'Game Sounds',
-  'Haptics',
-  'Reduced Motion',
-  'ScrollView',
-]) {
+for (const marker of ['Animal Voices', 'Game Sounds', 'Haptics', 'Reduced Motion', 'ScrollView']) {
   if (!settingsUi.includes(marker)) {
     throw new Error(`Settings UI is missing ${marker}`);
   }
@@ -100,16 +102,22 @@ for (const marker of [
 
 for (const marker of [
   'animalVoicesEnabled',
-  'LudoPawsSoundPool',
+  'TextToSpeech',
+  'duckForVoice',
+  'canonicalCharacterForSeat',
+]) {
+  if (!voice.includes(marker)) {
+    throw new Error(`Animal voice renderer is missing ${marker}`);
+  }
+}
+for (const retiredMarker of [
   'lp_voice_duck',
   'lp_voice_squirrel',
   'lp_voice_hedgehog',
   'lp_voice_sheep',
-  'TextToSpeech',
-  'duckForVoice',
 ]) {
-  if (!voice.includes(marker)) {
-    throw new Error(`Animal voice renderer is missing ${marker}`);
+  if (voice.includes(retiredMarker)) {
+    throw new Error(`Animal voice renderer still references retired asset: ${retiredMarker}`);
   }
 }
 
@@ -162,10 +170,10 @@ for (const file of reactionFeedbackOwners) {
 }
 
 if (!haptics.includes('hapticsEnabled') || !haptics.includes('VibrationEffect')) {
-  throw new Error('Phase 9 haptics must be preference-gated and use VibrationEffect');
+  throw new Error('Haptics must be preference-gated and use VibrationEffect');
 }
 if (!manifest.includes('android.permission.VIBRATE')) {
-  throw new Error('Phase 9 haptics require the VIBRATE manifest permission');
+  throw new Error('Haptics require the VIBRATE manifest permission');
 }
 
 for (const file of requiredAudio) {
@@ -190,4 +198,4 @@ for (const file of [requiredSources[0], requiredSources[1], requiredSources[4], 
   }
 }
 
-console.log('Ludo Paws Phase 9 audio engine gate passed.');
+console.log('Ludo Paws production audio engine gate passed.');
