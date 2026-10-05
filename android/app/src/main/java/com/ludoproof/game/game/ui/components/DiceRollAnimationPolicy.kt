@@ -40,6 +40,21 @@ object DiceRollAnimationPolicy {
                         2f,
                 ),
             )
+        val tumble =
+            sin(
+                elapsed.toFloat() /
+                    145f *
+                    PI.toFloat() *
+                    2f,
+            ) *
+                15f +
+                sin(
+                    elapsed.toFloat() /
+                        81f *
+                        PI.toFloat() *
+                        2f,
+                ) *
+                4f
         val pressProgress =
             (elapsed.toFloat() / 75f)
                 .coerceIn(0f, 1f)
@@ -49,13 +64,12 @@ object DiceRollAnimationPolicy {
 
         return Frame(
             face = rollingFaces[faceIndex],
-            rotationDegrees =
-                (elapsed.toFloat() * .82f) % 360f,
+            rotationDegrees = tumble,
             scale =
                 pressScale *
-                    (.97f + hop * .07f),
+                    (.95f + hop * .045f),
             translationYFraction =
-                -hop * .075f,
+                -hop * .065f,
             borderPulse =
                 .45f + hop * .55f,
         )
@@ -64,7 +78,7 @@ object DiceRollAnimationPolicy {
     fun settleFrame(
         elapsedMillis: Long,
         outcome: Int,
-        startRotationDegrees: Float = 32f,
+        startRotationDegrees: Float = 18f,
     ): Frame {
         require(outcome in 1..6) {
             "dice outcome must be 1..6"
@@ -83,11 +97,11 @@ object DiceRollAnimationPolicy {
             face = outcome,
             rotationDegrees =
                 startRotationDegrees * remaining +
-                    wobble * 9f,
+                    wobble * 7f,
             scale =
-                1f + bounce * .10f,
+                1f + bounce * .075f,
             translationYFraction =
-                -bounce * .07f,
+                -bounce * .055f,
             borderPulse =
                 .35f + remaining * .65f,
             finished = progress >= 1f,
