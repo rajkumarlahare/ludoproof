@@ -16,14 +16,7 @@ import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.feature.settings.data.local.LudoPawsHaptics
 import kotlin.math.roundToInt
 
-/**
- * Presentation-only bridge that upgrades the existing remote screen to the
- * shared Ludo Paws reactive board without changing network/game authority.
- *
- * Host state is attached to boardFrame instead of a static Activity map so the
- * view hierarchy owns the same lifecycle as MainActivity and cannot retain a
- * destroyed Activity through a process-global value.
- */
+/** Presentation bridge for the shared online Ludo Paws board. */
 internal object OnlineLudoPawsPresentation {
     private data class Host(
         val board: LudoPawsReactiveBoardView,
@@ -39,20 +32,16 @@ internal object OnlineLudoPawsPresentation {
     ) {
         val host =
             host(activity)
-                ?: createHost(activity)
-                    .also {
-                        activity.boardFrame.tag = it
-                    }
+                ?: createHost(activity).also {
+                    activity.boardFrame.tag = it
+                }
 
         val characterIdsBySeat =
-            OnlineLudoPawsCharacterPolicy
-                .characterIdsBySeat(current)
+            OnlineLudoPawsCharacterPolicy.characterIdsBySeat(current)
         val localColor =
-            current.players
-                .firstOrNull {
-                    it.playerId == activity.playerId
-                }
-                ?.color
+            current.players.firstOrNull {
+                it.playerId == activity.playerId
+            }?.color
 
         activity.boardView.visibility = View.GONE
         host.board.visibility = View.VISIBLE
@@ -73,15 +62,12 @@ internal object OnlineLudoPawsPresentation {
             host = host,
             previous = previous,
             current = current,
+            characterIdsBySeat = characterIdsBySeat,
         )
     }
 
-    fun clear(
-        activity: MainActivity,
-    ) {
-        val host =
-            host(activity)
-                ?: return
+    fun clear(activity: MainActivity) {
+        val host = host(activity) ?: return
         host.feedbackLedger.clear()
         host.board.bind(
             state = null,
@@ -98,18 +84,13 @@ internal object OnlineLudoPawsPresentation {
         activity.boardView.visibility = View.VISIBLE
     }
 
-    private fun host(
-        activity: MainActivity,
-    ): Host? =
+    private fun host(activity: MainActivity): Host? =
         activity.boardFrame.tag as? Host
 
-    private fun createHost(
-        activity: MainActivity,
-    ): Host {
+    private fun createHost(activity: MainActivity): Host {
         val reactiveBoard =
             LudoPawsReactiveBoardView(activity).apply {
-                onTokenSelected = {
-                        tokenIndex ->
+                onTokenSelected = { tokenIndex ->
                     activity.moveToken(tokenIndex)
                 }
             }
@@ -173,24 +154,18 @@ internal object OnlineLudoPawsPresentation {
         host.rail.removeAllViews()
         val activePlayerId =
             state.players
-                .getOrNull(
-                    state.actingSeat ?: state.turnSeat,
-                )
+                .getOrNull(state.actingSeat ?: state.turnSeat)
                 ?.playerId
 
         state.players
             .sortedBy { it.seat }
-            .forEach {
-                    player ->
-                val local =
-                    player.playerId == activity.playerId
+            .forEach { player ->
+                val local = player.playerId == activity.playerId
                 host.rail.addView(
                     LudoPawsPlayerCardView(activity).apply {
                         bind(
                             player = player,
-                            characterId =
-                                characterIdsBySeat
-                                    .getOrNull(player.seat),
+                            characterId = characterIdsBySeat.getOrNull(player.seat),
                             active =
                                 state.status == "ACTIVE" &&
                                     player.playerId == activePlayerId,
@@ -214,6 +189,7 @@ internal object OnlineLudoPawsPresentation {
         host: Host,
         previous: MatchSnapshot?,
         current: MatchSnapshot,
+        characterIdsBySeat: List<String>,
     ) {
         if (
             previous == null ||
@@ -239,34 +215,38 @@ internal object OnlineLudoPawsPresentation {
         }
 
         val reactions =
-            host.feedbackLedger
-                .filterReactions(
-                    LudoPawsReactionEngine
-                        .derive(
-                            previous = previous,
-                            current = current,
-                        ),
-                )
+            host.feedbackLedger.filterReactions(
+                LudoPawsReactionEngine.derive(
+                    previous = previous,
+                    current = current,
+                ),
+            )
 
-        if (reactions.isNotEmpty()) {
-            GameSoundFeedback.reaction(
-                context = activity,
-                reactions = reactions,
-            )
-            LudoPawsHaptics.reaction(
-                context = activity,
-                reactions = reactions,
-            )
-        } else if (
+        val dedicatedReactionSound =
+            if (reactions.isNotEmpty()) {
+                GameSoundFeedback.reaction(
+                    context = activity,
+                    reactions = reactions,
+                    characterIdsBySeat = characterIdsBySeat,
+                ).also {
+                    LudoPawsHaptics.reaction(
+                        context = activity,
+                        reactions = reactions,
+                    )
+                }
+            } else {
+                false
+            }
+
+        if (
+            !dedicatedReactionSound &&
             hasTokenMovement(
                 previous = previous,
                 current = current,
             )
         ) {
             val eventIndex =
-                current.history
-                    .lastOrNull()
-                    ?.eventIndex
+                current.history.lastOrNull()?.eventIndex
                     ?: current.randomEventIndex
             if (
                 host.feedbackLedger.once(
@@ -274,7 +254,11 @@ internal object OnlineLudoPawsPresentation {
                     key = "MOVE:$eventIndex",
                 )
             ) {
-                GameSoundFeedback.move(activity)
+                val seat = movementSeat(previous, current)
+                GameSoundFeedback.move(
+                    context = activity,
+                    characterId = seat?.let(characterIdsBySeat::getOrNull),
+                )
             }
         }
     }
@@ -283,24 +267,33 @@ internal object OnlineLudoPawsPresentation {
         previous: MatchSnapshot,
         current: MatchSnapshot,
     ): Boolean =
-        current.players.any {
-                player ->
+        current.players.any { player ->
             val before =
-                previous.players
-                    .firstOrNull {
-                        it.playerId == player.playerId
-                    }
-                    ?: return@any false
+                previous.players.firstOrNull {
+                    it.playerId == player.playerId
+                } ?: return@any false
             before.tokens != player.tokens
         }
+
+    private fun movementSeat(
+        previous: MatchSnapshot,
+        current: MatchSnapshot,
+    ): Int? =
+        current.players.firstOrNull { player ->
+            val before =
+                previous.players.firstOrNull {
+                    it.playerId == player.playerId
+                } ?: return@firstOrNull false
+            player.tokens.indices.any { index ->
+                val from = before.tokens.getOrNull(index) ?: -1
+                val to = player.tokens.getOrNull(index) ?: -1
+                to > from
+            }
+        }?.seat
 
     private fun dp(
         activity: MainActivity,
         value: Int,
     ): Int =
-        (
-            value *
-                activity.resources.displayMetrics.density
-            )
-            .roundToInt()
+        (value * activity.resources.displayMetrics.density).roundToInt()
 }
