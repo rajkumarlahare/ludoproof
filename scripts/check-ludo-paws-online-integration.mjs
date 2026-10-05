@@ -6,7 +6,10 @@ const requireText = (source, token, message) => {
 };
 
 const characters = read("server/src/ludo-paws-characters.js");
-const game = read("server/src/game.js");
+const gameCorePath = fs.existsSync("server/src/game-v1-core.js")
+  ? "server/src/game-v1-core.js"
+  : "server/src/game.js";
+const game = read(gameCorePath);
 const room = read("server/src/match-room.js");
 const publicQueue = read("server/src/matchmaker-queue.js");
 const teamQueue = read("server/src/team-matchmaker-queue.js");
