@@ -24,4 +24,4 @@ export {
 
 export {
   MatchRoom,
-} from "./match-room-social.js";
+} from "./match-room-lifecycle.js";
