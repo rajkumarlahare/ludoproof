@@ -74,8 +74,16 @@ class GameSchemaException(
 ) : IllegalArgumentException(message)
 
 object GameJson {
-    private const val CLASSIC_RULESET_ID = "ludoproof-standard-v1"
-    private const val TEAM_RULESET_ID = "ludoproof-team-v1"
+    private val classicRulesetIds =
+        setOf(
+            "ludoproof-standard-v1",
+            "ludoproof-standard-v2",
+        )
+    private val teamRulesetIds =
+        setOf(
+            "ludoproof-team-v1",
+            "ludoproof-team-v2",
+        )
     private val colors = listOf("RED", "GREEN", "YELLOW", "BLUE")
     private val teamAssignments = listOf("A", "B", "A", "B")
     private val statuses = setOf("WAITING", "ACTIVE", "FINISHED")
@@ -172,8 +180,13 @@ object GameJson {
         }
 
         val rulesetId = value.requireString("rulesetId")
-        val expectedRuleset = if (matchMode == "TEAM_UP") TEAM_RULESET_ID else CLASSIC_RULESET_ID
-        schema(rulesetId == expectedRuleset, "rulesetId does not match matchMode")
+        val supportedRulesets =
+            if (matchMode == "TEAM_UP") {
+                teamRulesetIds
+            } else {
+                classicRulesetIds
+            }
+        schema(rulesetId in supportedRulesets, "rulesetId does not match matchMode")
 
         schema(value.has("revision"), "missing revision")
         schema(value.requireLong("revision") >= 0L, "invalid revision")

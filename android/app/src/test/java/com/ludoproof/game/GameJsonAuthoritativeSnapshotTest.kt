@@ -85,6 +85,53 @@ class GameJsonAuthoritativeSnapshotTest {
         GameJson.envelope(JSONObject().put("state", state))
     }
 
+    @Test(expected = GameSchemaException::class)
+    fun teamSnapshotRejectsClassicRulesetV2Binding() {
+        val state = teamState()
+            .put("rulesetId", "ludoproof-standard-v2")
+
+        GameJson.envelope(JSONObject().put("state", state))
+    }
+
+    @Test
+    fun classicSnapshotAcceptsRulesetV2() {
+        val state =
+            classicState(
+                status = "ACTIVE",
+                playerCount = 2,
+            ).put(
+                "rulesetId",
+                "ludoproof-standard-v2",
+            )
+
+        val parsed =
+            GameJson.envelope(
+                JSONObject().put("state", state),
+            ).state
+
+        requireNotNull(parsed)
+        assertEquals("ludoproof-standard-v2", parsed.rulesetId)
+    }
+
+    @Test
+    fun teamSnapshotAcceptsRulesetV2() {
+        val state =
+            teamState()
+                .put(
+                    "rulesetId",
+                    "ludoproof-team-v2",
+                )
+
+        val parsed =
+            GameJson.envelope(
+                JSONObject().put("state", state),
+            ).state
+
+        requireNotNull(parsed)
+        assertEquals("TEAM_UP", parsed.matchMode)
+        assertEquals("ludoproof-team-v2", parsed.rulesetId)
+    }
+
     @Test
     fun validTeamSnapshotKeepsCanonicalAssignments() {
         val parsed =

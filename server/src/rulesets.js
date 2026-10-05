@@ -1,0 +1,96 @@
+export const ROLL_REVEAL_TIMEOUT_MS = 4 * 60 * 1000;
+
+export const LEGACY_RULESET_KEY = "CLASSIC_V1";
+export const LEGACY_TEAM_RULESET_KEY = "TEAM_UP_V1";
+export const RULESET_KEY = "CLASSIC_V2";
+export const TEAM_RULESET_KEY = "TEAM_UP_V2";
+
+export const TEAM_ASSIGNMENTS = Object.freeze(["A", "B", "A", "B"]);
+
+export const LEGACY_RULESET = Object.freeze({
+  id: "ludoproof-standard-v1",
+  boardTrackCells: 52,
+  homePosition: 57,
+  tokensPerPlayer: 4,
+  startOffsets: Object.freeze({
+    RED: 0,
+    GREEN: 13,
+    YELLOW: 26,
+    BLUE: 39,
+  }),
+  safeGlobalCells: Object.freeze([0, 8, 13, 21, 26, 34, 39, 47]),
+  leaveYardRequiresSix: true,
+  exactRollToHome: true,
+  extraTurnOnSix: true,
+  extraTurnOnCapture: true,
+  threeConsecutiveSixesForfeit: true,
+  captureOnSafeCell: false,
+});
+
+export const LEGACY_TEAM_RULESET = Object.freeze({
+  ...LEGACY_RULESET,
+  id: "ludoproof-team-v1",
+  mode: "TEAM_UP",
+  teams: Object.freeze(["A", "B"]),
+  teamAssignments: TEAM_ASSIGNMENTS,
+  friendlyCapture: false,
+  partnerTurnHandoff: true,
+  winCondition: "BOTH_PARTNERS_ALL_TOKENS_HOME",
+});
+
+/**
+ * Ruleset v2 deliberately preserves v1 gameplay while making previously
+ * implicit behavior explicit in the cryptographically hashed ruleset material.
+ * Changing any value below therefore changes rulesetHash for newly-created
+ * matches instead of silently changing gameplay under an existing proof ID.
+ */
+export const RULESET = Object.freeze({
+  ...LEGACY_RULESET,
+  id: "ludoproof-standard-v2",
+  extraTurnOnHome: true,
+  rollRevealTimeoutMs: ROLL_REVEAL_TIMEOUT_MS,
+  rollTimeoutPolicy: "FORFEIT_ROLL_AND_ADVANCE_TURN",
+  replacementRoundAfterTimeout: false,
+  resetConsecutiveSixesOnTimeout: true,
+  ownTokenStacking: "ALLOWED",
+  opponentStackCapture: "CAPTURE_ALL_ON_UNSAFE_CELL",
+  startingPlayerPolicy: "HOST_SEAT_ZERO",
+  turnOrderPolicy: "SEQUENTIAL_SEAT_ORDER",
+});
+
+export const TEAM_RULESET = Object.freeze({
+  ...RULESET,
+  id: "ludoproof-team-v2",
+  mode: "TEAM_UP",
+  teams: Object.freeze(["A", "B"]),
+  teamAssignments: TEAM_ASSIGNMENTS,
+  friendlyCapture: false,
+  partnerTurnHandoff: true,
+  winCondition: "BOTH_PARTNERS_ALL_TOKENS_HOME",
+});
+
+export function rulesetKeyForState(state, { teamUp = false } = {}) {
+  const key = state?.rulesetKey;
+  if (key == null) {
+    return teamUp ? LEGACY_TEAM_RULESET_KEY : LEGACY_RULESET_KEY;
+  }
+  return key;
+}
+
+export function rulesetForKey(key) {
+  switch (key) {
+    case LEGACY_RULESET_KEY:
+      return LEGACY_RULESET;
+    case LEGACY_TEAM_RULESET_KEY:
+      return LEGACY_TEAM_RULESET;
+    case RULESET_KEY:
+      return RULESET;
+    case TEAM_RULESET_KEY:
+      return TEAM_RULESET;
+    default: {
+      const error = new Error(`unsupported ruleset key: ${String(key)}`);
+      error.code = "UNSUPPORTED_RULESET";
+      throw error;
+    }
+  }
+}
