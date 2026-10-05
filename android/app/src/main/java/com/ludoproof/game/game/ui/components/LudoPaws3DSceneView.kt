@@ -333,8 +333,13 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                         renderedHeight = height
                     }
 
+                    val frameState = sceneState
+                    LudoPaws3DCharacterPolicy.bindRenderAssignments(
+                        snapshot = frameState.snapshot,
+                        characterIdsBySeat = frameState.characterIdsBySeat,
+                    )
                     renderer.drawFrame(
-                        state = sceneState,
+                        state = frameState,
                         nowMillis = SystemClock.uptimeMillis(),
                     )
                     if (!egl.swapBuffers()) {
@@ -351,6 +356,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                     error,
                 )
             } finally {
+                LudoPaws3DCharacterPolicy.clearRenderAssignments()
                 runCatching {
                     egl?.release()
                 }
