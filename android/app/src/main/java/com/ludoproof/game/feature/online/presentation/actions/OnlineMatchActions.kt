@@ -118,13 +118,6 @@ internal fun MainActivity.joinMatch() {
         return
     }
 
-    runCatching {
-        ProfileStore(
-            this,
-        ).updateDisplayName(
-            displayName,
-        )
-    }
     val operationKey =
         "join:" +
             code +
