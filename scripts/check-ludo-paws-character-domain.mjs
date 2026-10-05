@@ -30,47 +30,47 @@ const validPersonalities = new Set([
 
 const expectedStarter = new Map([
   [
+    "dog",
+    {
+      displayName: "Dog",
+      species: "DOG",
+      personality: "PLAYFUL",
+      voiceSetId: "dog_default",
+      animationSetId: "dog_default",
+      fallbackDrawable: "lp_3d_pawn_placeholder",
+    },
+  ],
+  [
+    "goat",
+    {
+      displayName: "Goat",
+      species: "GOAT",
+      personality: "CURIOUS",
+      voiceSetId: "goat_default",
+      animationSetId: "goat_default",
+      fallbackDrawable: "lp_3d_pawn_placeholder",
+    },
+  ],
+  [
     "duck",
     {
-      displayName: "Ducky",
+      displayName: "Duck",
       species: "DUCK",
       personality: "CHEERFUL",
       voiceSetId: "duck_default",
       animationSetId: "duck_default",
-      fallbackDrawable: "lp_starter_duck",
+      fallbackDrawable: "lp_3d_pawn_placeholder",
     },
   ],
   [
-    "squirrel",
+    "cat",
     {
-      displayName: "Nutty",
-      species: "SQUIRREL",
-      personality: "MISCHIEVOUS",
-      voiceSetId: "squirrel_default",
-      animationSetId: "squirrel_default",
-      fallbackDrawable: "lp_starter_squirrel",
-    },
-  ],
-  [
-    "hedgehog",
-    {
-      displayName: "Spike",
-      species: "HEDGEHOG",
-      personality: "SHY",
-      voiceSetId: "hedgehog_default",
-      animationSetId: "hedgehog_default",
-      fallbackDrawable: "lp_starter_hedgehog",
-    },
-  ],
-  [
-    "sheep",
-    {
-      displayName: "Woolly",
-      species: "SHEEP",
-      personality: "GENTLE",
-      voiceSetId: "sheep_default",
-      animationSetId: "sheep_default",
-      fallbackDrawable: "lp_starter_sheep",
+      displayName: "Cat",
+      species: "CAT",
+      personality: "SASSY",
+      voiceSetId: "cat_default",
+      animationSetId: "cat_default",
+      fallbackDrawable: "lp_3d_pawn_placeholder",
     },
   ],
 ]);
@@ -186,5 +186,5 @@ if (!selectionStore.includes("LudoPawsCharacterCatalog") || !selectionStore.incl
 }
 
 console.log(
-  "Ludo Paws character-domain gate passed: starter metadata, pack references, voice/animation links and selection persistence are valid.",
+  "Ludo Paws character-domain gate passed: canonical 3D animal metadata, pack references, voice/animation links and selection persistence are valid.",
 );
