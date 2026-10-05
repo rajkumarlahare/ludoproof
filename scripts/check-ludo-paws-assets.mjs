@@ -25,7 +25,7 @@ if (!fs.existsSync(catalogPath)) {
 
 const catalog = JSON.parse(fs.readFileSync(catalogPath, "utf8"));
 const idPattern = /^[a-z][a-z0-9_]{1,31}$/;
-const expectedStarterIds = ["duck", "squirrel", "hedgehog", "sheep"];
+const expectedStarterIds = ["dog", "goat", "duck", "cat"];
 const expectedExpressions = [
   "happy",
   "sad",
@@ -50,9 +50,9 @@ const expectedVoiceCues = [
 ];
 
 if (catalog.schemaVersion !== 1) fail("schemaVersion must be 1");
-if (catalog.packId !== "starter_paws") fail("Phase 2 packId must be starter_paws");
+if (catalog.packId !== "starter_paws") fail("packId must be starter_paws");
 if (!Array.isArray(catalog.characters) || catalog.characters.length !== 4) {
-  fail("starter_paws must contain exactly four starter characters");
+  fail("starter_paws must contain exactly four production characters");
 }
 
 const sameSet = (left, right) =>
@@ -127,12 +127,12 @@ for (const character of catalog.characters) {
   seenIds.add(id);
 
   const fallback = character?.fallbackDrawable;
-  if (!/^lp_starter_[a-z0-9_]+$/.test(fallback ?? "")) {
-    fail(`invalid fallback drawable for ${id}`);
+  if (fallback !== "lp_3d_pawn_placeholder") {
+    fail(`3D character ${id} must use the nonvisual placeholder drawable`);
   }
   const fallbackPath = path.join(drawableRoot, `${fallback}.xml`);
   if (!fs.existsSync(fallbackPath)) {
-    fail(`missing fallback drawable for ${id}: ${fallback}.xml`);
+    fail(`missing 3D placeholder drawable: ${fallback}.xml`);
   }
 
   const expected = expectedPathsFor(id);
@@ -196,5 +196,5 @@ if (!sameSet([...seenIds], expectedStarterIds)) {
 }
 
 console.log(
-  "Ludo Paws asset gate passed: catalog, starter fallbacks, paths and budgets are valid.",
+  "Ludo Paws asset gate passed: canonical 3D roster, placeholder and budgets are valid.",
 );
