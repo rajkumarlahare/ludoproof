@@ -88,12 +88,15 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             ),
         )
 
-        // The authoritative board remains a safe classic-pawn fallback if a
-        // device cannot create the ES3 surface. No legacy animal drawable layer
-        // is re-enabled.
+        // Keep classic pawns only until the ES3 scene is confirmed operational.
+        // Once 3D is live, the board switches to a board-only surface plus 3D hit
+        // testing so the legacy circular pawn cannot remain underneath an animal.
+        // If the 3D surface later fails, the proven classic renderer returns.
         pawn3DLegalHalo.visibility = View.GONE
+        board.setClassicPawnFallbackVisible(true)
         pawn3DScene.onOperationalChanged =
             { available ->
+                board.setClassicPawnFallbackVisible(!available)
                 pawn3DLegalHalo.visibility =
                     if (available) View.VISIBLE else View.GONE
             }
