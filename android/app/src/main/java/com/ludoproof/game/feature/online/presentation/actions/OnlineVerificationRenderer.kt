@@ -63,6 +63,32 @@ internal fun MainActivity.updateVerification(
         }
 }
 
+internal fun MainActivity.onlineRollActionDecision(
+    state: MatchSnapshot,
+): OnlineRollActionDecision {
+    val mySeat =
+        state.players.indexOfFirst {
+            it.playerId == playerId
+        }
+    val actionableSeat = state.actingSeat ?: state.turnSeat
+    val myTurn =
+        state.status == "ACTIVE" &&
+            mySeat >= 0 &&
+            actionableSeat == mySeat
+    val secret = pendingSecret
+
+    return OnlineRollActionPolicy.resolve(
+        isOnline = isOnline,
+        matchStatus = state.status,
+        myTurn = myTurn,
+        pendingStatus = state.pendingRoll?.status,
+        remoteClientCommitment = state.pendingRoll?.clientCommitment,
+        currentMatchId = state.matchId,
+        localSecretMatchId = secret?.matchId,
+        localClientCommitment = secret?.clientCommitment,
+    )
+}
+
 internal fun MainActivity.updateControls(
     state: MatchSnapshot,
 ) {
@@ -134,11 +160,10 @@ internal fun MainActivity.updateControls(
     proofButton.visibility =
         if (active || finished) View.VISIBLE else View.GONE
 
+    val rollAction = onlineRollActionDecision(state)
     rollButton.visibility = if (active) View.VISIBLE else View.GONE
-    rollButton.isEnabled =
-        isOnline &&
-            myTurn &&
-            state.pendingRoll?.status != "RESOLVED"
+    rollButton.isEnabled = rollAction.enabled
+    rollButton.text = rollAction.label
 
     scheduleSingleLegalOnlineMove(
         state = state,
@@ -195,12 +220,12 @@ private fun MainActivity.scheduleSingleLegalOnlineMove(
 }
 
 internal fun MainActivity.updateRollButton() {
-    val secret = pendingSecret
+    val state = currentState
     rollButton.text =
-        if (secret != null && secret.matchId == matchId) {
-            "RESUME VERIFIED ROLL"
-        } else {
+        if (state == null) {
             "ROLL VERIFIED DICE"
+        } else {
+            onlineRollActionDecision(state).label
         }
 }
 
