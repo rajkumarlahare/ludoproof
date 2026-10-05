@@ -1,9 +1,8 @@
 package com.ludoproof.game.feature.offline
 
-import com.ludoproof.game.LudoPathEncoding
 import com.ludoproof.game.MatchSnapshot
 import com.ludoproof.game.OfflineGameActivity
-import com.ludoproof.game.PlayerSnapshot
+import com.ludoproof.game.feature.offline.domain.ai.LudoPawsComputerMovePolicy
 import com.ludoproof.game.feature.offline.presentation.feedback.OfflineFeedbackAction
 import com.ludoproof.game.feature.offline.presentation.feedback.OfflineLudoPawsFeedbackDispatcher
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
@@ -122,10 +121,10 @@ internal fun OfflineGameActivity.scheduleComputerTurnIfNeeded(
     val pending = state.pendingRoll ?: return
     val outcome = pending.outcome ?: return
     val token =
-        chooseComputerToken(
+        LudoPawsComputerMovePolicy.chooseToken(
             state = state,
             player = active,
-            legal = pending.legalTokenIndexes,
+            legalTokenIndexes = pending.legalTokenIndexes,
             outcome = outcome,
         ) ?: run {
             computerActionRevision = null
@@ -166,94 +165,15 @@ internal fun OfflineGameActivity.scheduleComputerTurnIfNeeded(
     )
 }
 
-private fun chooseComputerToken(
-    state: MatchSnapshot,
-    player: PlayerSnapshot,
-    legal: Set<Int>,
-    outcome: Int,
-): Int? =
-    legal.maxByOrNull { index ->
-        computerMoveScore(
-            state = state,
-            player = player,
-            tokenIndex = index,
-            outcome = outcome,
-        )
-    }
-
+/** Compatibility seam kept for existing tests and diagnostics. */
 internal fun computerMoveDestination(
     position: Int,
     outcome: Int,
 ): Int? =
-    LudoPathEncoding.destinationForRoll(
+    LudoPawsComputerMovePolicy.destinationForRoll(
         position = position,
-        roll = outcome,
+        outcome = outcome,
     )
-
-private fun computerMoveScore(
-    state: MatchSnapshot,
-    player: PlayerSnapshot,
-    tokenIndex: Int,
-    outcome: Int,
-): Int {
-    val position = player.tokens.getOrNull(tokenIndex) ?: -1
-    val destination =
-        computerMoveDestination(
-            position = position,
-            outcome = outcome,
-        ) ?: return Int.MIN_VALUE
-
-    if (destination == LudoPathEncoding.HOME_POSITION) {
-        return 100_000
-    }
-
-    var score = destination * 20
-    if (position == -1) {
-        score += 4_000
-    }
-
-    if (LudoPathEncoding.isTrackPosition(destination)) {
-        val offsets =
-            mapOf(
-                "RED" to 0,
-                "GREEN" to 13,
-                "YELLOW" to 26,
-                "BLUE" to 39,
-            )
-        val safe = setOf(0, 8, 13, 21, 26, 34, 39, 47)
-        val offset = offsets[player.color] ?: 0
-        val global = (offset + destination) % 52
-
-        if (global !in safe) {
-            val captures =
-                state.players
-                    .asSequence()
-                    .filter { it.playerId != player.playerId }
-                    .flatMap { opponent ->
-                        opponent.tokens
-                            .asSequence()
-                            .mapNotNull { opponentPosition ->
-                                val normalized =
-                                    LudoPathEncoding.normalizeLegacyEntry(
-                                        opponentPosition,
-                                    )
-                                if (!LudoPathEncoding.isTrackPosition(normalized)) {
-                                    null
-                                } else {
-                                    val opponentOffset = offsets[opponent.color] ?: 0
-                                    (opponentOffset + normalized) % 52
-                                }
-                            }
-                    }
-                    .count { it == global }
-
-            score += captures * 10_000
-        }
-    }
-
-    score += 3 - tokenIndex
-    return score
-}
 
 internal fun OfflineGameActivity.offlineHistory(
     state: MatchSnapshot?,
