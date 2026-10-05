@@ -163,7 +163,15 @@ internal fun OfflineGameActivity.renderGame(
         val winnerName = winner?.displayName ?: "Player"
         resultPanel.visibility = View.VISIBLE
         resultTitleText.text = "WINNER • $winnerName"
-        resultSubtitleText.text = "Game complete"
+        resultSubtitleText.text =
+            if (
+                isComputerMode &&
+                winner?.playerId == engine.humanPlayerId()
+            ) {
+                "You brought all 4 paws home."
+            } else {
+                "All 4 paws reached home."
+            }
     } else {
         resultPanel.visibility = View.GONE
     }
@@ -207,6 +215,49 @@ internal fun OfflineGameActivity.renderGame(
         state.status == "ACTIVE" &&
             pending == null &&
             !computerTurn
+    val activeHomeCount =
+        active?.tokens
+            ?.count {
+                it == LudoPathEncoding.HOME_POSITION
+            }
+            ?: 0
+
+    turnText?.text =
+        when {
+            state.status == "FINISHED" ->
+                "MATCH COMPLETE"
+
+            computerTurn ->
+                (active?.displayName ?: "CPU") + " • CPU TURN"
+
+            else ->
+                (active?.displayName ?: "Player") + " • TURN"
+        }
+
+    infoText?.text =
+        when {
+            state.status == "FINISHED" ->
+                (winner?.displayName ?: "Player") +
+                    " wins • 4/4 home"
+
+            pending != null -> {
+                val legalCount =
+                    pending.legalTokenIndexes.size
+                val moveLabel =
+                    if (legalCount == 1) {
+                        "move"
+                    } else {
+                        "moves"
+                    }
+                "Dice ${pending.outcome} • $legalCount legal $moveLabel • $activeHomeCount/4 home"
+            }
+
+            computerTurn ->
+                "Choosing the best move • $activeHomeCount/4 home"
+
+            else ->
+                "Roll the dice • $activeHomeCount/4 home"
+        }
 
     diceHost?.isEnabled = canRoll
     // Disabled means non-interactive only. Never fade the dice itself: after a

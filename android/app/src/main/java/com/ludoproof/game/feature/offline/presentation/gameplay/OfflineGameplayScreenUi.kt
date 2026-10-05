@@ -137,6 +137,18 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         },
     )
 
+    content.addView(
+        gameplayHud(),
+        gameplaySectionParams(
+            if (isCompactSetup()) 8 else 10,
+        ).apply {
+            leftMargin =
+                sectionSideMargin
+            rightMargin =
+                sectionSideMargin
+        },
+    )
+
     boardView =
         LudoPawsReactiveBoardView(this).apply {
             onTokenSelected = {
@@ -195,6 +207,18 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         ),
     )
 
+    content.addView(
+        gameplayActionPanel(),
+        gameplaySectionParams(
+            if (isCompactSetup()) 8 else 10,
+        ).apply {
+            leftMargin =
+                sectionSideMargin
+            rightMargin =
+                sectionSideMargin
+        },
+    )
+
     setContentView(root)
     renderGame(state)
 }
@@ -226,7 +250,11 @@ internal fun OfflineGameActivity.gameplayHud():
                 this@gameplayHud,
             ).apply {
                 text =
-                    "LOCAL MATCH"
+                    if (isComputerMode) {
+                        "VS COMPUTER"
+                    } else {
+                        "LOCAL MATCH"
+                    }
                 LudoProofTheme.body(
                     this,
                     10f,

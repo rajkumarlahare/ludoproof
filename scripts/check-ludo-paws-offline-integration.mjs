@@ -77,6 +77,9 @@ requireText(
     "session.snapshot()",
     "OfflineLudoPawsFeedbackDispatcher.committed",
     "OfflineFeedbackAction.MOVE",
+    "gameplayHud()",
+    "gameplayActionPanel()",
+    "VS COMPUTER",
   ],
 );
 
@@ -105,6 +108,11 @@ requireText(
   [
     "resolveOfflineCharacterIds",
     "characterIdsBySeat =",
+    "turnText?.text",
+    "infoText?.text",
+    "pending.legalTokenIndexes.size",
+    "activeHomeCount",
+    "You brought all 4 paws home.",
   ],
 );
 
