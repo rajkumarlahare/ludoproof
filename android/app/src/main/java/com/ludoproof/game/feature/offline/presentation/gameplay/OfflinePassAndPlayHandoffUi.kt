@@ -9,6 +9,7 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.ludoproof.game.LudoProofTheme
 import com.ludoproof.game.MatchSnapshot
 import com.ludoproof.game.OfflineGameActivity
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
