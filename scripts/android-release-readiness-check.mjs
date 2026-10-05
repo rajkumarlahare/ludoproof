@@ -58,6 +58,18 @@ requireText(
 requireText(
   "android/app/build.gradle.kts",
   appBuild,
+  "releaseSigningPartiallyConfigured",
+  "partial release signing configuration must be detected.",
+);
+requireText(
+  "android/app/build.gradle.kts",
+  appBuild,
+  "org.gradle.api.GradleException",
+  "partial release signing configuration must fail closed.",
+);
+requireText(
+  "android/app/build.gradle.kts",
+  appBuild,
   'signingConfig = signingConfigs.getByName("release")',
   "release build must use the secure release signing config when configured.",
 );
@@ -105,5 +117,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Android RC2 release-readiness gate passed: version monotonicity, secure signing hook, V1/V2 dual-read coverage, and explicit Ruleset V2 contract are intact.",
+  "Android RC2 release-readiness gate passed: version monotonicity, fail-closed secure signing, V1/V2 dual-read coverage, and explicit Ruleset V2 contract are intact.",
 );
