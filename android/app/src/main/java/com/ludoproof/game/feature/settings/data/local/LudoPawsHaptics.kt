@@ -25,9 +25,7 @@ object LudoPawsHaptics {
 
         val cue =
             reactions
-                .maxByOrNull(
-                    LudoPawsReaction::priority,
-                )
+                .maxByOrNull(LudoPawsReaction::priority)
                 ?.voiceCue
                 ?: return
         val effect =
@@ -43,23 +41,15 @@ object LudoPawsHaptics {
                 VoiceCue.HOME,
                 VoiceCue.VICTORY,
                 -> VibrationEffect.createWaveform(
-                    longArrayOf(
-                        0L,
-                        38L,
-                        44L,
-                        64L,
-                    ),
-                    intArrayOf(
-                        0,
-                        90,
-                        0,
-                        150,
-                    ),
+                    longArrayOf(0L, 38L, 44L, 64L),
+                    intArrayOf(0, 90, 0, 150),
                     -1,
                 )
 
                 VoiceCue.SIX,
+                VoiceCue.YARD_EXIT,
                 VoiceCue.SAFE,
+                VoiceCue.HOME_LANE,
                 -> VibrationEffect.createOneShot(
                     34L,
                     85,
@@ -72,35 +62,26 @@ object LudoPawsHaptics {
                     70,
                 )
 
+                VoiceCue.SILENT,
                 VoiceCue.IDLE,
                 VoiceCue.NERVOUS,
+                VoiceCue.PROUD,
                 -> return
             }
 
         runCatching {
             vibrator(context)
-                ?.takeIf(
-                    Vibrator::hasVibrator,
-                )
+                ?.takeIf(Vibrator::hasVibrator)
                 ?.vibrate(effect)
         }
     }
 
     @Suppress("DEPRECATION")
-    private fun vibrator(
-        context: Context,
-    ): Vibrator? =
-        if (
-            Build.VERSION.SDK_INT >=
-            Build.VERSION_CODES.S
-        ) {
-            context.getSystemService(
-                VibratorManager::class.java,
-            )
+    private fun vibrator(context: Context): Vibrator? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            context.getSystemService(VibratorManager::class.java)
                 ?.defaultVibrator
         } else {
-            context.getSystemService(
-                Context.VIBRATOR_SERVICE,
-            ) as? Vibrator
+            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         }
 }
