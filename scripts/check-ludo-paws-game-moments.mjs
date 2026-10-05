@@ -13,9 +13,7 @@ const required = [
 ];
 
 for (const path of required) {
-  if (!fs.existsSync(path)) {
-    throw new Error(`Missing Phase 7 file: ${path}`);
-  }
+  if (!fs.existsSync(path)) throw new Error(`Missing game-moment file: ${path}`);
 }
 
 const detector = fs.readFileSync(required[0], 'utf8');
@@ -29,54 +27,40 @@ const poorRollTests = fs.readFileSync(required[7], 'utf8');
 const idleTests = fs.readFileSync(required[8], 'utf8');
 
 for (const marker of [
-  'TURN_STARTED',
-  'ROLL_STARTED',
-  'SIX_ROLLED',
-  'LOW_ROLL',
-  'POOR_ROLL_STREAK',
-  'TOKEN_LEFT_YARD',
-  'TOKEN_MOVED',
-  'CAPTURE_MADE',
-  'TOKEN_CAPTURED',
-  'SAFE_REACHED',
-  'HOME_REACHED',
-  'NO_LEGAL_MOVE',
-  'THIRD_SIX_FORFEIT',
-  'PLAYER_LEADING',
-  'IDLE_WAITING',
-  'MATCH_WIN',
-  'MATCH_LOSS',
-  'TEAM_WIN',
-  'TEAM_LOSS',
+  'TURN_STARTED', 'ROLL_STARTED', 'SIX_ROLLED', 'LOW_ROLL', 'POOR_ROLL_STREAK',
+  'TOKEN_LEFT_YARD', 'TOKEN_MOVED', 'ONLY_LEGAL_MOVE', 'CAPTURE_MADE',
+  'TOKEN_CAPTURED', 'SAFE_REACHED', 'HOME_LANE_ENTERED', 'HOME_REACHED',
+  'EXACT_HOME_MISS', 'TOKEN_THREATENED', 'NO_LEGAL_MOVE', 'THIRD_SIX_FORFEIT',
+  'PLAYER_LEADING', 'IDLE_WAITING', 'MATCH_WIN', 'MATCH_LOSS', 'TEAM_WIN', 'TEAM_LOSS',
 ]) {
-  if (!detector.includes(marker)) {
-    throw new Error(`Phase 7 detector is missing ${marker}`);
-  }
+  if (!detector.includes(marker)) throw new Error(`Situation detector is missing ${marker}`);
 }
-
-for (const marker of ['isPoorRollStreak', 'POOR_ROLL_STREAK_LENGTH']) {
-  if (!detector.includes(marker)) {
-    throw new Error(`Poor-roll streak detector is missing ${marker}.`);
-  }
-}
-
-for (const marker of ['LudoPawsGameMomentDetector', 'deriveIdle', 'VoiceCue.FRUSTRATED']) {
-  if (!reaction.includes(marker)) {
-    throw new Error(`Reaction engine is missing ${marker}.`);
-  }
+for (const marker of [
+  'isPoorRollStreak',
+  'POOR_ROLL_STREAK_LENGTH',
+  'wasOnlyLegalMove',
+  'isExactHomeMiss',
+  'threateningPlayer',
+  'sameTeam',
+  'safeGlobalCells',
+]) {
+  if (!detector.includes(marker)) throw new Error(`Situation detector policy is missing ${marker}`);
 }
 
 for (const marker of [
-  'IDLE_THRESHOLD_MILLIS',
-  'meaningfulStateKey',
-  'idleReactionKey',
-  'delayUntilEligibleMillis',
+  'LudoPawsGameMomentDetector',
+  'deriveIdle',
+  'VoiceCue.FRUSTRATED',
+  'VoiceCue.NERVOUS',
+  'VoiceCue.PROUD',
+  'VoiceCue.HOME_LANE',
+  'VoiceCue.YARD_EXIT',
 ]) {
-  if (!idlePolicy.includes(marker)) {
-    throw new Error(`Idle reaction policy is missing ${marker}.`);
-  }
+  if (!reaction.includes(marker)) throw new Error(`Reaction engine is missing ${marker}`);
 }
-
+for (const marker of ['IDLE_THRESHOLD_MILLIS = 24_000L', 'meaningfulStateKey', 'idleReactionKey', 'delayUntilEligibleMillis']) {
+  if (!idlePolicy.includes(marker)) throw new Error(`Idle reaction policy is missing ${marker}`);
+}
 for (const marker of [
   'idleReactionRunnable',
   'scheduleIdleReaction',
@@ -85,44 +69,45 @@ for (const marker of [
   'deriveIdle',
   'removeCallbacks(idleReactionRunnable)',
 ]) {
-  if (!reactiveBoard.includes(marker)) {
-    throw new Error(`Reactive board idle integration is missing ${marker}.`);
-  }
+  if (!reactiveBoard.includes(marker)) throw new Error(`Reactive board idle integration is missing ${marker}`);
 }
 
 if (!card.includes('fallbackDrawableName') || !card.includes('HOME') || !card.includes('RACING')) {
   throw new Error('Character player card must render selected animal identity and token progress.');
 }
-
-const railConsumesCharacters =
-  rail.includes('characterIds') ||
-  rail.includes('activeCharacterIdsBySeat');
+const railConsumesCharacters = rail.includes('characterIds') || rail.includes('activeCharacterIdsBySeat');
 if (!rail.includes('LudoPawsPlayerCardView') || !railConsumesCharacters) {
   throw new Error('Offline player rails must use selected Ludo Paws character cards.');
 }
 
-if (!tests.includes('thirdSixIsNotMisclassifiedAsNoLegalMove') || !tests.includes('emitsTeamWinAndLossMoments')) {
-  throw new Error('Phase 7 detector regression coverage is incomplete.');
+for (const marker of [
+  'thirdSixIsNotMisclassifiedAsNoLegalMove',
+  'detectsOnlyLegalMoveFromResolvedAuthoritativePendingRoll',
+  'detectsHomeLaneEntrySeparatelyFromHomeArrival',
+  'exactHomeOvershootIsNotGenericNoMove',
+  'unsafePawnCanBecomeThreatenedButSafePawnAndTeamPartnerDoNotTrigger',
+  'emitsTeamWinAndLossMoments',
+]) {
+  if (!tests.includes(marker)) throw new Error(`Situation detector regression coverage is missing ${marker}`);
 }
-
 if (
   !poorRollTests.includes('threePoorRollsForSamePlayerAcrossOtherTurnsCreateOneStreakMoment') ||
   !poorRollTests.includes('poorRollStreakMapsToControlledFrustrationReaction')
 ) {
   throw new Error('Poor-roll frustration regression coverage is incomplete.');
 }
-
 if (
   !idleTests.includes('identicalRefreshKeepsMeaningfulKeyStable') ||
-  !idleTests.includes('teamUpIdleKeyUsesActingSeatNotTeamTurnOwner')
+  !idleTests.includes('teamUpIdleKeyUsesActingSeatNotTeamTurnOwner') ||
+  !idleTests.includes('24_000L')
 ) {
-  throw new Error('Idle scheduling regression coverage is incomplete.');
+  throw new Error('Quiet idle scheduling regression coverage is incomplete.');
 }
 
 for (const forbidden of ['OfflineGameEngine(', 'session.move(', 'session.roll(', 'EntroNexV4Local']) {
   if (detector.includes(forbidden) || idlePolicy.includes(forbidden)) {
-    throw new Error(`Game moment presentation policy must stay authority-free: ${forbidden}`);
+    throw new Error(`Game-moment presentation policy must stay authority-free: ${forbidden}`);
   }
 }
 
-console.log('Ludo Paws Phase 7 game-moment gate passed.');
+console.log('Ludo Paws rich game-moment gate passed.');
