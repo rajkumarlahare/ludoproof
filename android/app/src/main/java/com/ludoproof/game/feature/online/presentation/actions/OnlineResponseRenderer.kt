@@ -11,6 +11,18 @@ internal fun MainActivity.applyResponse(
     response: JSONObject,
     announce: Boolean = true,
 ) {
+    val source =
+        if (
+            response.optBoolean(
+                CachedMatchStore.CACHE_SOURCE_MARKER,
+                false,
+            )
+        ) {
+            OnlineStateSource.CACHE
+        } else {
+            OnlineStateSource.AUTHORITATIVE
+        }
+
     val envelope =
         try {
             GameJson.envelope(response)
@@ -48,6 +60,18 @@ internal fun MainActivity.applyResponse(
         return
     }
 
+    if (
+        source == OnlineStateSource.CACHE &&
+        !OnlineCachedStateRestorePolicy.shouldApply(
+            sessionMatchId = matchId,
+            cachedMatchId = state.matchId,
+        )
+    ) {
+        cachedMatchStore.clear()
+        updateRollButton()
+        return
+    }
+
     val previousState = currentState
     currentState = state
     matchId = state.matchId
@@ -66,9 +90,13 @@ internal fun MainActivity.applyResponse(
         updateConnectionLabel()
     }
 
-    // Team Up v1 is intentionally unranked until a dedicated team ledger can
-    // represent two co-winners without corrupting individual profile stats.
-    if (state.status == "FINISHED" && gameMode.ranked) {
+    // Cached state is read-only presentation recovery. Only a fresh server
+    // response may record a completed remote match or replace the safe cache.
+    if (
+        source == OnlineStateSource.AUTHORITATIVE &&
+        state.status == "FINISHED" &&
+        gameMode.ranked
+    ) {
         runCatching {
             ProfileStore(this).recordCompletedMatch(
                 matchId = state.matchId,
@@ -79,14 +107,19 @@ internal fun MainActivity.applyResponse(
         }
     }
 
-    response.optJSONObject("state")?.let { safeState ->
-        cachedMatchStore.save(
-            envelope.playerId ?: playerId,
-            safeState,
-        )
+    if (source == OnlineStateSource.AUTHORITATIVE) {
+        response.optJSONObject("state")?.let { safeState ->
+            cachedMatchStore.save(
+                envelope.playerId ?: playerId,
+                safeState,
+            )
+        }
     }
 
-    reconcilePendingSecret(state)
+    reconcilePendingSecret(
+        state = state,
+        source = source,
+    )
 
     // Keep the proven legacy board synchronized as a safe fallback while the
     // presentation-only Ludo Paws shell owns visible remote rendering.
@@ -151,16 +184,16 @@ internal fun MainActivity.applyResponse(
 
 internal fun MainActivity.reconcilePendingSecret(
     state: MatchSnapshot,
+    source: OnlineStateSource,
 ) {
     val secret = pendingSecret ?: return
-    if (secret.matchId != state.matchId) {
-        pendingRollStore.clear()
-        pendingSecret = null
-        return
-    }
-
-    val remoteCommitment = state.pendingRoll?.clientCommitment
-    if (remoteCommitment == null || remoteCommitment != secret.clientCommitment) {
+    if (
+        OnlinePendingRollRecoveryPolicy.action(
+            source = source,
+            secret = secret,
+            state = state,
+        ) == PendingRollSecretAction.CLEAR
+    ) {
         pendingRollStore.clear()
         pendingSecret = null
     }
