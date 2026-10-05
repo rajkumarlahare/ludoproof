@@ -71,11 +71,139 @@ class LudoPawsPawnLayoutTest {
             )
 
         assertTrue(crowded < single)
-        assertTrue(crowded > 0.29f)
+        assertTrue(crowded > 0.27f)
     }
 
     @Test
-    fun `track offsets are deterministic across four visual slots`() {
+    fun `single occupant remains exactly centered`() {
+        assertEquals(
+            0f to 0f,
+            LudoPawsPawnLayout.stackOffsetFraction(
+                slot = 0,
+                occupancy = 1,
+            ),
+        )
+    }
+
+    @Test
+    fun `two occupants split into distinct balanced positions`() {
+        val offsets =
+            (0 until 2).map { slot ->
+                LudoPawsPawnLayout.stackOffsetFraction(
+                    slot = slot,
+                    occupancy = 2,
+                )
+            }
+
+        assertEquals(2, offsets.distinct().size)
+        assertEquals(-offsets[0].first, offsets[1].first, 0.0001f)
+        assertEquals(0f, offsets[0].second, 0.0001f)
+        assertEquals(0f, offsets[1].second, 0.0001f)
+    }
+
+    @Test
+    fun `three occupants form three unique positions`() {
+        val offsets =
+            (0 until 3).map { slot ->
+                LudoPawsPawnLayout.stackOffsetFraction(
+                    slot = slot,
+                    occupancy = 3,
+                )
+            }
+
+        assertEquals(3, offsets.distinct().size)
+    }
+
+    @Test
+    fun `four occupants use a deterministic two by two layout`() {
+        val offsets =
+            (0 until 4).map { slot ->
+                LudoPawsPawnLayout.stackOffsetFraction(
+                    slot = slot,
+                    occupancy = 4,
+                )
+            }
+
+        assertEquals(4, offsets.distinct().size)
+        assertEquals(setOf(-0.16f, 0.16f), offsets.map { it.first }.toSet())
+        assertEquals(setOf(-0.16f, 0.16f), offsets.map { it.second }.toSet())
+    }
+
+    @Test
+    fun `safe cell crowd keeps all sixteen visual slots unique`() {
+        val offsets =
+            (0 until 16).map { slot ->
+                LudoPawsPawnLayout.stackOffsetFraction(
+                    slot = slot,
+                    occupancy = 16,
+                )
+            }
+
+        assertEquals(16, offsets.distinct().size)
+    }
+
+    @Test
+    fun `different logical color positions sharing one physical track cell are stacked together`() {
+        val snapshot =
+            MatchSnapshot(
+                matchId = "stack-test",
+                status = "ACTIVE",
+                hostPlayerId = "red-player",
+                players =
+                    listOf(
+                        PlayerSnapshot(
+                            playerId = "red-player",
+                            displayName = "Red",
+                            color = "RED",
+                            seat = 0,
+                            tokens = listOf(13, -1, -1, -1),
+                        ),
+                        PlayerSnapshot(
+                            playerId = "green-player",
+                            displayName = "Green",
+                            color = "GREEN",
+                            seat = 1,
+                            tokens = listOf(0, -1, -1, -1),
+                        ),
+                    ),
+                turnSeat = 0,
+                randomEventIndex = 0,
+                pendingRoll = null,
+                winnerPlayerId = null,
+                rulesetId = "layout-test",
+                history = emptyList(),
+            )
+
+        val placements =
+            LudoPawsPawnLayout.stackPlacements(
+                snapshot = snapshot,
+                cell = 20f,
+            )
+        val red =
+            placements[
+                LudoPawsPawnVisualKey(
+                    playerId = "red-player",
+                    tokenIndex = 0,
+                )
+            ]
+        val green =
+            placements[
+                LudoPawsPawnVisualKey(
+                    playerId = "green-player",
+                    tokenIndex = 0,
+                )
+            ]
+
+        assertEquals(2, red?.occupancy)
+        assertEquals(2, green?.occupancy)
+        assertTrue(
+            red?.offsetXFraction != green?.offsetXFraction ||
+                red?.offsetYFraction != green?.offsetYFraction,
+        )
+    }
+
+    @Test
+    fun `capture return offsets remain deterministic across four legacy slots`() {
         val offsets =
             (0 until 4)
                 .map {

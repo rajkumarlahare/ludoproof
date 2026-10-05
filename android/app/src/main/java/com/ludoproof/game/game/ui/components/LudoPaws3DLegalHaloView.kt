@@ -75,6 +75,11 @@ internal class LudoPaws3DLegalHaloView(
         val cell =
             size /
                 LudoPawsFxBoardGeometry.BOARD_SIZE
+        val stackPlacements =
+            LudoPawsPawnLayout.stackPlacements(
+                snapshot = state,
+                cell = cell,
+            )
         val turns =
             perspectiveColor
                 ?.let(OfflinePlayerLayout::rotationQuarterTurns)
@@ -103,22 +108,25 @@ internal class LudoPaws3DLegalHaloView(
                         cell = cell,
                     )
                     ?: return@forEach
-            val offset =
-                LudoPawsPawnLayout
-                    .tokenOffsetFraction(
-                        slot = tokenIndex + player.seat,
-                        position = position,
+            val placement =
+                stackPlacements[
+                    LudoPawsPawnVisualKey(
+                        playerId = player.playerId,
+                        tokenIndex = tokenIndex,
                     )
+                ]
             val x =
-                center.first + offset.first * cell
+                center.first +
+                    (placement?.offsetXFraction ?: 0f) * cell
             val y =
-                center.second + offset.second * cell
+                center.second +
+                    (placement?.offsetYFraction ?: 0f) * cell
             val radius =
                 cell *
                     LudoPawsPawnLayout
                         .radiusScale(
                             position = position,
-                            occupancy = 1,
+                            occupancy = placement?.occupancy ?: 1,
                         )
             canvas.drawCircle(
                 x,
