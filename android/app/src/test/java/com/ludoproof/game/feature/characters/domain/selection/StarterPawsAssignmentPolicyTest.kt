@@ -13,39 +13,29 @@ class StarterPawsAssignmentPolicyTest {
             StarterPawsAssignmentPolicy.normalize(
                 playerCount = 4,
                 requestedCharacterIds = emptyList(),
-                preferredCharacterId = "sheep",
+                preferredCharacterId = "cat",
                 computerMode = true,
             )
 
         assertEquals(
-            listOf(
-                "sheep",
-                "duck",
-                "squirrel",
-                "hedgehog",
-            ),
+            listOf("cat", "dog", "goat", "duck"),
             assigned,
         )
         assertEquals(4, assigned.distinct().size)
     }
 
     @Test
-    fun `pass and play defaults to unique starter characters`() {
+    fun `pass and play defaults to unique production animals`() {
         val assigned =
             StarterPawsAssignmentPolicy.normalize(
                 playerCount = 4,
                 requestedCharacterIds = emptyList(),
-                preferredCharacterId = "duck",
+                preferredCharacterId = "dog",
                 computerMode = false,
             )
 
         assertEquals(
-            listOf(
-                "duck",
-                "squirrel",
-                "hedgehog",
-                "sheep",
-            ),
+            listOf("dog", "goat", "duck", "cat"),
             assigned,
         )
         assertEquals(4, assigned.distinct().size)
@@ -56,58 +46,46 @@ class StarterPawsAssignmentPolicyTest {
         val result =
             StarterPawsAssignmentPolicy.select(
                 playerCount = 4,
-                currentCharacterIds =
-                    listOf(
-                        "duck",
-                        "squirrel",
-                        "hedgehog",
-                        "sheep",
-                    ),
+                currentCharacterIds = listOf("dog", "goat", "duck", "cat"),
                 selectedSlot = 2,
-                requestedCharacterId = "duck",
+                requestedCharacterId = "dog",
                 computerMode = false,
             )
 
         assertEquals(
-            listOf(
-                "hedgehog",
-                "squirrel",
-                "duck",
-                "sheep",
-            ),
+            listOf("duck", "goat", "dog", "cat"),
             result,
         )
         assertEquals(4, result.distinct().size)
     }
 
     @Test
-    fun `invalid character request repairs to safe starter assignment`() {
+    fun `legacy ids are normalized before assignment`() {
+        val result =
+            StarterPawsAssignmentPolicy.normalize(
+                playerCount = 4,
+                requestedCharacterIds = listOf("squirrel", "hedgehog", "duck", "sheep"),
+                preferredCharacterId = "squirrel",
+                computerMode = false,
+            )
+
+        assertEquals(listOf("dog", "goat", "duck", "cat"), result)
+    }
+
+    @Test
+    fun `invalid character request repairs to safe production assignment`() {
         val result =
             StarterPawsAssignmentPolicy.select(
                 playerCount = 3,
-                currentCharacterIds =
-                    listOf(
-                        "duck",
-                        "squirrel",
-                        "hedgehog",
-                    ),
+                currentCharacterIds = listOf("dog", "goat", "duck"),
                 selectedSlot = 1,
                 requestedCharacterId = "not_a_character",
                 computerMode = false,
             )
 
-        assertEquals(
-            listOf(
-                "duck",
-                "squirrel",
-                "hedgehog",
-            ),
-            result,
-        )
+        assertEquals(listOf("dog", "goat", "duck"), result)
         assertTrue(
-            result.all(
-                StarterPawsAssignmentPolicy.starterCharacterIds::contains,
-            ),
+            result.all(StarterPawsAssignmentPolicy.starterCharacterIds::contains),
         )
     }
 
@@ -116,48 +94,33 @@ class StarterPawsAssignmentPolicyTest {
         val twoPlayers =
             StarterPawsAssignmentPolicy.normalize(
                 playerCount = 2,
-                requestedCharacterIds =
-                    listOf(
-                        "sheep",
-                        "duck",
-                        "squirrel",
-                        "hedgehog",
-                    ),
-                preferredCharacterId = "sheep",
+                requestedCharacterIds = listOf("cat", "dog", "goat", "duck"),
+                preferredCharacterId = "cat",
                 computerMode = false,
             )
         val fourPlayers =
             StarterPawsAssignmentPolicy.normalize(
                 playerCount = 4,
                 requestedCharacterIds = twoPlayers,
-                preferredCharacterId = "sheep",
+                preferredCharacterId = "cat",
                 computerMode = false,
             )
 
-        assertEquals(
-            listOf("sheep", "duck"),
-            twoPlayers,
-        )
+        assertEquals(listOf("cat", "dog"), twoPlayers)
         assertEquals(4, fourPlayers.size)
         assertEquals(4, fourPlayers.distinct().size)
-        assertEquals("sheep", fourPlayers.first())
+        assertEquals("cat", fourPlayers.first())
     }
 
     @Test
     fun `computer selection can only change the human slot`() {
-        val current =
-            listOf(
-                "duck",
-                "squirrel",
-                "hedgehog",
-                "sheep",
-            )
+        val current = listOf("dog", "goat", "duck", "cat")
         val ignoredCpuChange =
             StarterPawsAssignmentPolicy.select(
                 playerCount = 4,
                 currentCharacterIds = current,
                 selectedSlot = 2,
-                requestedCharacterId = "sheep",
+                requestedCharacterId = "cat",
                 computerMode = true,
             )
         val humanChange =
@@ -165,12 +128,12 @@ class StarterPawsAssignmentPolicyTest {
                 playerCount = 4,
                 currentCharacterIds = current,
                 selectedSlot = 0,
-                requestedCharacterId = "sheep",
+                requestedCharacterId = "cat",
                 computerMode = true,
             )
 
         assertEquals(current, ignoredCpuChange)
-        assertEquals("sheep", humanChange.first())
+        assertEquals("cat", humanChange.first())
         assertEquals(4, humanChange.distinct().size)
     }
 
@@ -180,7 +143,7 @@ class StarterPawsAssignmentPolicyTest {
             StarterPawsAssignmentPolicy.normalize(
                 playerCount = 1,
                 requestedCharacterIds = emptyList(),
-                preferredCharacterId = "duck",
+                preferredCharacterId = "dog",
                 computerMode = false,
             )
         }
@@ -188,12 +151,10 @@ class StarterPawsAssignmentPolicyTest {
             StarterPawsAssignmentPolicy.normalize(
                 playerCount = 5,
                 requestedCharacterIds = emptyList(),
-                preferredCharacterId = "duck",
+                preferredCharacterId = "dog",
                 computerMode = false,
             )
         }
-        assertFalse(
-            StarterPawsAssignmentPolicy.starterCharacterIds.isEmpty(),
-        )
+        assertFalse(StarterPawsAssignmentPolicy.starterCharacterIds.isEmpty())
     }
 }
