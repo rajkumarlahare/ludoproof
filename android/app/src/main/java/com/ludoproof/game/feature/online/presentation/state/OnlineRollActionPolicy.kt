@@ -20,12 +20,13 @@ data class OnlineRollActionDecision(
  *
  * A server-side pending roll belongs to the exact client commitment that opened
  * it. Android may resume that roll only when the locally protected seed matches
- * the authoritative commitment. Otherwise it waits for server recovery/timeout
- * instead of attempting a second commitment for the same turn.
+ * the authoritative commitment. Cached/offline snapshots are presentation-only
+ * and may never authorize a new or resumed mutation.
  */
 object OnlineRollActionPolicy {
     fun resolve(
         isOnline: Boolean,
+        hasAuthoritativeState: Boolean,
         matchStatus: String,
         myTurn: Boolean,
         pendingStatus: String?,
@@ -42,6 +43,13 @@ object OnlineRollActionPolicy {
                 kind = OnlineRollActionKind.DISABLED,
                 enabled = false,
                 label = "OFFLINE • WAITING",
+            )
+        }
+        if (!hasAuthoritativeState) {
+            return OnlineRollActionDecision(
+                kind = OnlineRollActionKind.DISABLED,
+                enabled = false,
+                label = "SYNCING MATCH",
             )
         }
 
