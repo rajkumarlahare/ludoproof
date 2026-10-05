@@ -1,0 +1,3 @@
+source_commit=6a829b60bdd2653875c9aeb21f3d882f8d3bceb7
+change=p0-authoritative-stall-forfeit
+purpose=auditable production deployment trigger
