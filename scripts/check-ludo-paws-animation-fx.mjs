@@ -5,34 +5,53 @@ const requireText = (path, needles) => {
   const text = read(path);
   for (const needle of needles) {
     if (!text.includes(needle)) {
-      throw new Error(`${path} is missing required Phase 10 marker: ${needle}`);
+      throw new Error(`${path} is missing required production animation/FX marker: ${needle}`);
     }
+  }
+};
+const requireAbsent = (path) => {
+  if (fs.existsSync(path)) {
+    throw new Error(`Retired drawable animation layer must stay removed: ${path}`);
   }
 };
 
 requireText(
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsReactiveBoardView.kt",
   [
-    "LudoPawsCaptureReturnOverlayView",
-    "captureReturnOverlay.bind",
-    "captureReturnOverlay.stop",
+    "LudoPaws3DSceneView",
+    "LudoPaws3DLegalHaloView",
     "LudoPawsGameFxOverlayView",
-    "LudoPawsCharacterReactionOverlayView",
+    "pawn3DScene.bind",
+    "pawn3DLegalHalo.bind",
     "reducedMotionEnabled",
     "previous = previous",
   ],
 );
 
 requireText(
-  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsCaptureReturnOverlayView.kt",
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPaws3DSceneView.kt",
   [
     "LudoPawsPawnAnimationPolicy",
     ".plans(",
     "LudoPawsPawnMotionKind.CAPTURE_RETURN",
-    "captureReturnFrame",
-    "DESTINATION_REVEAL_PROGRESS",
-    "LudoPawsCharacterCatalog",
+    "captureHiddenUntilMillis",
+    "settings.gameSpeed.moveStepMs",
     "reducedMotion",
+  ],
+);
+
+requireText(
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPaws3DSceneRenderer.kt",
+  [
+    "LudoPawsFxBoardGeometry",
+    "LudoPathEncoding",
+    ".positionAtVisualStep(",
+    "SceneMotion.HOP",
+    "SceneMotion.HOME",
+    "Dog3DMotionTimeline",
+    "Goat3DMotionTimeline",
+    "Duck3DMotionTimeline",
+    "Cat3DMotionTimeline",
   ],
 );
 
@@ -90,17 +109,6 @@ requireText(
 );
 
 requireText(
-  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsCharacterReactionOverlayView.kt",
-  [
-    "drawCharacterReaction",
-    "drawEmotionBadge",
-    "AnimationCue.NERVOUS",
-    "AnimationCue.IDLE",
-    "LudoPawsCharacterCatalog",
-  ],
-);
-
-requireText(
   "android/app/src/main/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsFxPolicy.kt",
   [
     "reducedMotion",
@@ -119,4 +127,13 @@ requireText(
   ],
 );
 
-console.log("Ludo Paws Phase 10 animation/FX gate passed.");
+for (const retired of [
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsCaptureReturnOverlayView.kt",
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsCharacterReactionOverlayView.kt",
+]) {
+  requireAbsent(retired);
+}
+
+console.log(
+  "Ludo Paws production animation/FX gate passed: shared 3D hop/home motion, capture timing, game FX, reduced-motion handling and retired drawable layers are locked.",
+);
