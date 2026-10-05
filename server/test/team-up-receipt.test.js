@@ -37,7 +37,7 @@ test("Team Up receipt snapshot seals explicit team rules metadata", () => {
   const snapshot = buildMatchReceiptSnapshot(state);
 
   assert.equal(snapshot.matchMode, "TEAM_UP");
-  assert.equal(snapshot.rulesetId, "ludoproof-team-v1");
+  assert.equal(snapshot.rulesetId, "ludoproof-team-v2");
   assert.deepEqual(snapshot.teamAssignments, TEAM_ASSIGNMENTS);
   assert.equal(snapshot.winnerTeamId, "A");
   assert.deepEqual(
@@ -59,7 +59,7 @@ test("classic Online receipt shape does not gain Team Up fields", () => {
   state.turnSeat = 0;
 
   const snapshot = buildMatchReceiptSnapshot(state);
-  assert.equal(snapshot.rulesetId, "ludoproof-standard-v1");
+  assert.equal(snapshot.rulesetId, "ludoproof-standard-v2");
   assert.equal("teamAssignments" in snapshot, false);
   assert.equal("winnerTeamId" in snapshot, false);
   assert.equal("teamId" in snapshot.players[0], false);
