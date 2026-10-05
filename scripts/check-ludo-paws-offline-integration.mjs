@@ -71,6 +71,44 @@ requireText(
 );
 
 requireText(
+  "android/app/src/main/java/com/ludoproof/game/feature/offline/domain/engine/OfflineMatchInvariantPolicy.kt",
+  [
+    "OfflineMatchInvariantPolicy",
+    "pending.legalTokenIndexes == expectedLegal",
+    "historyEvent.proofDigest == pending.proofDigest",
+    "winner.tokens.all",
+    "LudoPathEncoding.HOME_POSITION",
+  ],
+);
+
+requireText(
+  "android/app/src/main/java/com/ludoproof/game/feature/offline/domain/session/LocalMatchSession.kt",
+  [
+    "OfflineMatchInvariantPolicy::requireValid",
+    "OfflineMatchInvariantPolicy.requireValid",
+  ],
+);
+
+requireText(
+  "android/app/src/test/java/com/ludoproof/game/OfflineMatchInvariantPolicyTest.kt",
+  [
+    "pending legal set must exactly match canonical path legality",
+    "pending proof must match the same history event",
+    "finished match requires all winner tokens at exact home",
+  ],
+);
+
+requireText(
+  "android/app/src/androidTest/java/com/ludoproof/game/OfflineFullMatchInstrumentedTest.kt",
+  [
+    "twoAndFourPlayerMatchesFinishThroughProductionEngineAndCpuPolicy",
+    "LudoPawsComputerMovePolicy.chooseToken",
+    "OfflineMatchInvariantPolicy.requireValid",
+    "MAX_TRANSITIONS",
+  ],
+);
+
+requireText(
   "android/app/src/main/java/com/ludoproof/game/feature/offline/presentation/gameplay/OfflineGameplayScreenUi.kt",
   [
     "val previous =",
