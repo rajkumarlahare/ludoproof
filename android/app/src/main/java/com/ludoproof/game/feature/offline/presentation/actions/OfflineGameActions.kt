@@ -1,5 +1,6 @@
 package com.ludoproof.game.feature.offline
 
+import com.ludoproof.game.LudoPathEncoding
 import com.ludoproof.game.MatchSnapshot
 import com.ludoproof.game.OfflineGameActivity
 import com.ludoproof.game.PlayerSnapshot
@@ -327,6 +328,16 @@ private fun chooseComputerToken(
         )
     }
 
+internal fun computerMoveDestination(
+    position: Int,
+    outcome: Int,
+): Int? =
+    LudoPathEncoding
+        .destinationForRoll(
+            position = position,
+            roll = outcome,
+        )
+
 private fun computerMoveScore(
     state: MatchSnapshot,
     player: PlayerSnapshot,
@@ -340,19 +351,15 @@ private fun computerMoveScore(
             )
             ?: -1
     val destination =
-        if (
-            position ==
-            -1
-        ) {
-            0
-        } else {
-            position +
-                outcome
-        }
+        computerMoveDestination(
+            position = position,
+            outcome = outcome,
+        )
+            ?: return Int.MIN_VALUE
 
     if (
         destination ==
-        57
+        LudoPathEncoding.HOME_POSITION
     ) {
         return 100_000
     }
@@ -370,8 +377,10 @@ private fun computerMoveScore(
     }
 
     if (
-        destination in
-        0..51
+        LudoPathEncoding
+            .isTrackPosition(
+                destination,
+            )
     ) {
         val offsets =
             mapOf(
@@ -420,9 +429,16 @@ private fun computerMoveScore(
                             .asSequence()
                             .mapNotNull {
                                     opponentPosition ->
+                                val normalizedOpponentPosition =
+                                    LudoPathEncoding
+                                        .normalizeLegacyEntry(
+                                            opponentPosition,
+                                        )
                                 if (
-                                    opponentPosition !in
-                                    0..51
+                                    !LudoPathEncoding
+                                        .isTrackPosition(
+                                            normalizedOpponentPosition,
+                                        )
                                 ) {
                                     null
                                 } else {
@@ -433,7 +449,7 @@ private fun computerMoveScore(
                                             ?: 0
                                     (
                                         opponentOffset +
-                                            opponentPosition
+                                            normalizedOpponentPosition
                                         ) %
                                         52
                                 }
