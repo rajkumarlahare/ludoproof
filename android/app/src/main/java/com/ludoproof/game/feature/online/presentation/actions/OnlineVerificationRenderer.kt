@@ -127,6 +127,59 @@ internal fun MainActivity.updateControls(
         isOnline &&
             myTurn &&
             state.pendingRoll?.status != "RESOLVED"
+
+    scheduleSingleLegalOnlineMove(
+        state = state,
+        myTurn = myTurn,
+    )
+}
+
+private fun MainActivity.scheduleSingleLegalOnlineMove(
+    state: MatchSnapshot,
+    myTurn: Boolean,
+) {
+    val pending =
+        state.pendingRoll
+            ?.takeIf { it.status == "RESOLVED" }
+            ?: return
+    if (!myTurn || !isOnline) return
+
+    val tokenIndex =
+        LudoTurnAutomationPolicy.singleLegalTokenIndex(
+            pending.legalTokenIndexes,
+        ) ?: return
+
+    val eventKey =
+        "single-legal:${state.matchId}:${pending.eventIndex}:$tokenIndex"
+    if (rollButton.tag == eventKey) return
+    rollButton.tag = eventKey
+
+    showStatus("Only one move is possible • moving automatically…")
+    rollButton.postDelayed(
+        {
+            val latest = currentState
+            val latestPending = latest?.pendingRoll
+            val stillSameMove =
+                latest != null &&
+                    latest.status == "ACTIVE" &&
+                    latestPending?.status == "RESOLVED" &&
+                    latestPending.eventIndex == pending.eventIndex &&
+                    LudoTurnAutomationPolicy.singleLegalTokenIndex(
+                        latestPending.legalTokenIndexes,
+                    ) == tokenIndex &&
+                    (latest.actingSeat ?: latest.turnSeat) ==
+                        latest.players.indexOfFirst { player ->
+                            player.playerId == playerId
+                        }
+
+            if (stillSameMove) {
+                moveToken(tokenIndex)
+            } else if (rollButton.tag == eventKey) {
+                rollButton.tag = null
+            }
+        },
+        320L,
+    )
 }
 
 internal fun MainActivity.updateRollButton() {
