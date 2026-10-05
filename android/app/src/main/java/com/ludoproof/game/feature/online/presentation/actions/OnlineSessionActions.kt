@@ -129,6 +129,11 @@ internal fun MainActivity.resetInvalidSessionIfNeeded(
     playerToken = null
     playerId = null
     currentState = null
+    uiStateHolder.update {
+        it.copy(
+            currentStateSource = null,
+        )
+    }
     lastRealtimeRevision = -1
     cachedMatchStore.clear()
     realtimeClient.disconnect()
