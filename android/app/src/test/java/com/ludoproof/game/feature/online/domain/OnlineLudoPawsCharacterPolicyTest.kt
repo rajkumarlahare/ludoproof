@@ -8,87 +8,71 @@ import org.junit.Test
 class OnlineLudoPawsCharacterPolicyTest {
     @Test
     fun `freezes character identity wire contract`() {
-        assertEquals(
-            "characterId",
-            LudoPawsCharacterIdentityContract.WIRE_FIELD,
-        )
-        assertEquals(
-            1,
-            LudoPawsCharacterIdentityContract.SCHEMA_VERSION,
-        )
+        assertEquals("characterId", LudoPawsCharacterIdentityContract.WIRE_FIELD)
+        assertEquals(1, LudoPawsCharacterIdentityContract.SCHEMA_VERSION)
     }
 
     @Test
-    fun `maps validated remote characters by seat`() {
+    fun `maps validated remote production characters by seat`() {
         val state =
             match(
                 listOf(
-                    player(
-                        id = "p2",
-                        seat = 2,
-                        characterId = "hedgehog",
-                    ),
-                    player(
-                        id = "p0",
-                        seat = 0,
-                        characterId = "sheep",
-                    ),
+                    player(id = "p2", seat = 2, characterId = "duck"),
+                    player(id = "p0", seat = 0, characterId = "cat"),
                 ),
             )
 
         assertEquals(
-            listOf(
-                "sheep",
-                "duck",
-                "hedgehog",
-            ),
-            OnlineLudoPawsCharacterPolicy
-                .characterIdsBySeat(state),
+            listOf("cat", "dog", "duck"),
+            OnlineLudoPawsCharacterPolicy.characterIdsBySeat(state),
         )
     }
 
     @Test
-    fun `missing unknown blank and mixed case values resolve safely`() {
+    fun `missing unknown blank mixed case and legacy values resolve safely`() {
         assertEquals(
-            "duck",
+            "dog",
             LudoPawsCharacterIdentityContract.resolveRemote(null),
         )
         assertEquals(
-            "duck",
+            "dog",
             LudoPawsCharacterIdentityContract.resolveRemote("  "),
         )
         assertEquals(
-            "duck",
+            "dog",
             LudoPawsCharacterIdentityContract.resolveRemote("dragon"),
         )
         assertEquals(
-            "squirrel",
+            "cat",
+            LudoPawsCharacterIdentityContract.resolveRemote("  CAT  "),
+        )
+        assertEquals(
+            "dog",
             LudoPawsCharacterIdentityContract.resolveRemote("  SQUIRREL  "),
+        )
+        assertEquals(
+            "goat",
+            LudoPawsCharacterIdentityContract.resolveRemote("HEDGEHOG"),
+        )
+        assertEquals(
+            "cat",
+            LudoPawsCharacterIdentityContract.resolveRemote("SHEEP"),
         )
     }
 
     @Test
-    fun `missing or unknown character falls back to starter default`() {
+    fun `missing or unknown character falls back to production default`() {
         val state =
             match(
                 listOf(
-                    player(
-                        id = "p0",
-                        seat = 0,
-                        characterId = null,
-                    ),
-                    player(
-                        id = "p1",
-                        seat = 1,
-                        characterId = "dragon",
-                    ),
+                    player(id = "p0", seat = 0, characterId = null),
+                    player(id = "p1", seat = 1, characterId = "dragon"),
                 ),
             )
 
         assertEquals(
-            listOf("duck", "duck"),
-            OnlineLudoPawsCharacterPolicy
-                .characterIdsBySeat(state),
+            listOf("dog", "dog"),
+            OnlineLudoPawsCharacterPolicy.characterIdsBySeat(state),
         )
     }
 
@@ -96,23 +80,15 @@ class OnlineLudoPawsCharacterPolicyTest {
     fun `empty snapshot produces no cosmetic seats`() {
         assertEquals(
             emptyList<String>(),
-            OnlineLudoPawsCharacterPolicy
-                .characterIdsBySeat(
-                    match(emptyList()),
-                ),
+            OnlineLudoPawsCharacterPolicy.characterIdsBySeat(match(emptyList())),
         )
     }
 
-    private fun match(
-        players: List<PlayerSnapshot>,
-    ): MatchSnapshot =
+    private fun match(players: List<PlayerSnapshot>): MatchSnapshot =
         MatchSnapshot(
             matchId = "LPPAWS1234",
             status = "ACTIVE",
-            hostPlayerId =
-                players.firstOrNull()
-                    ?.playerId
-                    .orEmpty(),
+            hostPlayerId = players.firstOrNull()?.playerId.orEmpty(),
             players = players,
             turnSeat = 0,
             randomEventIndex = 0,
@@ -130,13 +106,7 @@ class OnlineLudoPawsCharacterPolicyTest {
         PlayerSnapshot(
             playerId = id,
             displayName = id,
-            color =
-                listOf(
-                    "RED",
-                    "GREEN",
-                    "YELLOW",
-                    "BLUE",
-                )[seat.coerceIn(0, 3)],
+            color = listOf("RED", "GREEN", "YELLOW", "BLUE")[seat.coerceIn(0, 3)],
             seat = seat,
             tokens = listOf(-1, -1, -1, -1),
             characterId = characterId,
