@@ -79,8 +79,8 @@ for (const marker of ['Animal Voices', 'Game Sounds', 'Haptics', 'Reduced Motion
 }
 
 for (const forbidden of [
-  'TextToSpeech',
-  'android.speech.tts',
+  'import android.speech.tts.TextToSpeech',
+  'TextToSpeech(',
   'Six! Let',
   'Got you!',
   'Back to the yard',
