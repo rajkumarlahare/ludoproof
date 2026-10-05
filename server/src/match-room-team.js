@@ -12,6 +12,7 @@ import {
 } from "./crypto.js";
 import {
   fairnessSummary,
+  sealFairnessEvent,
 } from "./fairness.js";
 
 const STATE_KEY = "match-state";
@@ -31,11 +32,23 @@ export class MatchRoom extends SafeMatchRoom {
     const url = new URL(request.url);
 
     if (request.method === "POST" && url.pathname === "/start") {
-      const teamForfeit = await this.#teamForfeit(request);
+      // Team forfeiture mutates the same authoritative room state as roll/move
+      // requests, so it must participate in the shared mutation queue. Running
+      // it outside mutationTail can overwrite a concurrent roll or move with a
+      // stale snapshot.
+      const teamForfeit = await this.#enqueue(
+        () => this.#teamForfeit(request),
+      );
       if (teamForfeit != null) return teamForfeit;
     }
 
     return super.fetch(request);
+  }
+
+  #enqueue(work) {
+    const run = this.mutationTail.then(work, work);
+    this.mutationTail = run.catch(() => {});
+    return run;
   }
 
   async #teamForfeit(request) {
@@ -91,15 +104,11 @@ export class MatchRoom extends SafeMatchRoom {
     if (Array.isArray(next.consecutiveSixes)) {
       next.consecutiveSixes[seat] = 0;
     }
-    if (next.pendingRoll?.seat === seat) {
-      if (
-        next.pendingRoll.status === "CREATING" &&
-        next.randomEventIndex === next.pendingRoll.eventIndex
-      ) {
-        next.randomEventIndex += 1;
-      }
-      next.pendingRoll = null;
-    }
+
+    // A terminal match must never expose a pending roll. If the team forfeit
+    // interrupts an unresolved cryptographic round, close that event in the
+    // fairness chain so the receipt event count stays complete and auditable.
+    closePendingRollForTeamForfeit(next, now);
 
     const losingTeam = teamIdForSeat(next, seat);
     const winnerTeamId = losingTeam === "A" ? "B" : "A";
@@ -127,6 +136,52 @@ export class MatchRoom extends SafeMatchRoom {
       state: decoratedState(next),
     });
   }
+}
+
+function closePendingRollForTeamForfeit(state, now) {
+  const pending = state.pendingRoll;
+  if (!pending) return;
+
+  const history = Array.isArray(state.history)
+    ? [...state.history]
+    : [];
+  const alreadyArchived = history.some(
+    (event) => event?.eventIndex === pending.eventIndex,
+  );
+
+  if (!alreadyArchived) {
+    state.randomEventIndex = Math.max(
+      Number(state.randomEventIndex ?? 0),
+      Number(pending.eventIndex ?? 0) + 1,
+    );
+    const fairnessEvent = sealFairnessEvent(
+      history,
+      {
+        eventIndex: pending.eventIndex,
+        eventId: pending.eventId ?? null,
+        playerId: pending.playerId,
+        color: state.players?.[pending.seat]?.color ?? null,
+        roundId: pending.roundId ?? null,
+        serverCommitment: pending.serverCommitment ?? null,
+        clientCommitment: pending.clientCommitment ?? null,
+        actorHash: pending.actorHash ?? null,
+        previousStateHash: pending.previousStateHash ?? null,
+        rulesetHash: pending.rulesetHash ?? null,
+        proofDigest: pending.proofDigest ?? null,
+        outcome: pending.outcome ?? null,
+        moveTokenIndex: null,
+        captures: 0,
+        status: "FORFEITED",
+        timeoutReason: null,
+        replacementRoundAllowed: false,
+        resolvedAt: pending.resolvedAt ?? null,
+        timedOutAt: null,
+      },
+    );
+    state.history = [...history, fairnessEvent].slice(-200);
+  }
+
+  state.pendingRoll = null;
 }
 
 function decoratedState(state) {
