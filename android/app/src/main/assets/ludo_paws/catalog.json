@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packId": "starter_paws",
-  "displayName": "Starter Paws",
+  "displayName": "3D Animal Paws",
   "memoryBudget": {
     "singleBitmapDecodedBytes": 3145728,
     "activeCharacterArtBytes": 12582912
@@ -39,57 +39,77 @@
   "packs": [
     {
       "id": "starter_paws",
-      "displayName": "Starter Paws",
+      "displayName": "3D Animal Paws",
       "starter": true,
       "characterIds": [
+        "dog",
+        "goat",
         "duck",
-        "squirrel",
-        "hedgehog",
-        "sheep"
+        "cat"
       ]
     }
   ],
   "voiceSets": [
-    {
-      "id": "duck_default",
-      "species": "DUCK"
-    },
-    {
-      "id": "squirrel_default",
-      "species": "SQUIRREL"
-    },
-    {
-      "id": "hedgehog_default",
-      "species": "HEDGEHOG"
-    },
-    {
-      "id": "sheep_default",
-      "species": "SHEEP"
-    }
+    { "id": "dog_default", "species": "DOG" },
+    { "id": "goat_default", "species": "GOAT" },
+    { "id": "duck_default", "species": "DUCK" },
+    { "id": "cat_default", "species": "CAT" }
   ],
   "animationSets": [
-    {
-      "id": "duck_default"
-    },
-    {
-      "id": "squirrel_default"
-    },
-    {
-      "id": "hedgehog_default"
-    },
-    {
-      "id": "sheep_default"
-    }
+    { "id": "dog_default" },
+    { "id": "goat_default" },
+    { "id": "duck_default" },
+    { "id": "cat_default" }
   ],
   "characters": [
     {
+      "id": "dog",
+      "displayName": "Dog",
+      "species": "DOG",
+      "personality": "PLAYFUL",
+      "voiceSetId": "dog_default",
+      "animationSetId": "dog_default",
+      "fallbackDrawable": "lp_3d_pawn_placeholder",
+      "visuals": {
+        "productionReady": false,
+        "pawn": "ludo_paws/characters/dog/pawn.webp",
+        "portrait": "ludo_paws/characters/dog/portrait.webp",
+        "fullBody": "ludo_paws/characters/dog/full_body.webp",
+        "expressions": {}
+      },
+      "audio": {
+        "productionReady": false,
+        "root": "ludo_paws/audio/dog"
+      }
+    },
+    {
+      "id": "goat",
+      "displayName": "Goat",
+      "species": "GOAT",
+      "personality": "CURIOUS",
+      "voiceSetId": "goat_default",
+      "animationSetId": "goat_default",
+      "fallbackDrawable": "lp_3d_pawn_placeholder",
+      "visuals": {
+        "productionReady": false,
+        "pawn": "ludo_paws/characters/goat/pawn.webp",
+        "portrait": "ludo_paws/characters/goat/portrait.webp",
+        "fullBody": "ludo_paws/characters/goat/full_body.webp",
+        "expressions": {}
+      },
+      "audio": {
+        "productionReady": false,
+        "root": "ludo_paws/audio/goat"
+      }
+    },
+    {
       "id": "duck",
-      "displayName": "Ducky",
+      "displayName": "Duck",
       "species": "DUCK",
       "personality": "CHEERFUL",
       "voiceSetId": "duck_default",
       "animationSetId": "duck_default",
-      "fallbackDrawable": "lp_starter_duck",
+      "fallbackDrawable": "lp_3d_pawn_placeholder",
       "visuals": {
         "productionReady": false,
         "pawn": "ludo_paws/characters/duck/pawn.webp",
@@ -103,63 +123,23 @@
       }
     },
     {
-      "id": "squirrel",
-      "displayName": "Nutty",
-      "species": "SQUIRREL",
-      "personality": "MISCHIEVOUS",
-      "voiceSetId": "squirrel_default",
-      "animationSetId": "squirrel_default",
-      "fallbackDrawable": "lp_starter_squirrel",
+      "id": "cat",
+      "displayName": "Cat",
+      "species": "CAT",
+      "personality": "SASSY",
+      "voiceSetId": "cat_default",
+      "animationSetId": "cat_default",
+      "fallbackDrawable": "lp_3d_pawn_placeholder",
       "visuals": {
         "productionReady": false,
-        "pawn": "ludo_paws/characters/squirrel/pawn.webp",
-        "portrait": "ludo_paws/characters/squirrel/portrait.webp",
-        "fullBody": "ludo_paws/characters/squirrel/full_body.webp",
+        "pawn": "ludo_paws/characters/cat/pawn.webp",
+        "portrait": "ludo_paws/characters/cat/portrait.webp",
+        "fullBody": "ludo_paws/characters/cat/full_body.webp",
         "expressions": {}
       },
       "audio": {
         "productionReady": false,
-        "root": "ludo_paws/audio/squirrel"
-      }
-    },
-    {
-      "id": "hedgehog",
-      "displayName": "Spike",
-      "species": "HEDGEHOG",
-      "personality": "SHY",
-      "voiceSetId": "hedgehog_default",
-      "animationSetId": "hedgehog_default",
-      "fallbackDrawable": "lp_starter_hedgehog",
-      "visuals": {
-        "productionReady": false,
-        "pawn": "ludo_paws/characters/hedgehog/pawn.webp",
-        "portrait": "ludo_paws/characters/hedgehog/portrait.webp",
-        "fullBody": "ludo_paws/characters/hedgehog/full_body.webp",
-        "expressions": {}
-      },
-      "audio": {
-        "productionReady": false,
-        "root": "ludo_paws/audio/hedgehog"
-      }
-    },
-    {
-      "id": "sheep",
-      "displayName": "Woolly",
-      "species": "SHEEP",
-      "personality": "GENTLE",
-      "voiceSetId": "sheep_default",
-      "animationSetId": "sheep_default",
-      "fallbackDrawable": "lp_starter_sheep",
-      "visuals": {
-        "productionReady": false,
-        "pawn": "ludo_paws/characters/sheep/pawn.webp",
-        "portrait": "ludo_paws/characters/sheep/portrait.webp",
-        "fullBody": "ludo_paws/characters/sheep/full_body.webp",
-        "expressions": {}
-      },
-      "audio": {
-        "productionReady": false,
-        "root": "ludo_paws/audio/sheep"
+        "root": "ludo_paws/audio/cat"
       }
     }
   ]
