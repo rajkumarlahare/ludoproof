@@ -130,7 +130,15 @@ internal fun MainActivity.applyResponse(
     updateControls(state)
     updateRollButton()
 
-    if (announce) {
+    val transitionMessage =
+        OnlineTurnTransitionFeedbackPolicy.message(
+            previous = previousState,
+            current = state,
+        )
+
+    if (transitionMessage != null) {
+        showStatus(transitionMessage)
+    } else if (announce) {
         showStatus(
             if (state.status == "WAITING") {
                 "Room synced • waiting for all required players."
