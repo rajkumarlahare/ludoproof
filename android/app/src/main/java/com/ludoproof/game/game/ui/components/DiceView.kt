@@ -2,13 +2,14 @@ package com.ludoproof.game
 
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
+import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.View
+import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
 import com.ludoproof.game.feature.store.domain.model.CosmeticCategory
 
@@ -16,6 +17,8 @@ class DiceView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : View(context, attrs) {
+    private val settingsStore = GameSettingsStore(context)
+
     init {
         importantForAccessibility =
             IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -63,42 +66,124 @@ class DiceView @JvmOverloads constructor(
         "dice_classic"
     private var face = 1
     private var rolling = false
+    private var settling = false
+    private var reducedMotion = false
+    private var rollStartedAtMillis = 0L
+    private var settleStartedAtMillis = 0L
+    private var settleStartRotationDegrees = 18f
+    private var targetOutcome = 1
+    private var rotationDegrees = 0f
+    private var scale = 1f
+    private var translationYFraction = 0f
+    private var borderPulse = 0f
 
-    private val ticker =
+    private val animationTicker =
         object : Runnable {
             override fun run() {
-                if (!rolling) return
-                face = face % 6 + 1
+                val now = SystemClock.uptimeMillis()
+                when {
+                    rolling -> {
+                        val elapsed =
+                            now - rollStartedAtMillis
+                        if (reducedMotion) {
+                            face =
+                                DiceRollAnimationPolicy
+                                    .reducedMotionRollingFace(elapsed)
+                            resetTransform()
+                            borderPulse = .55f
+                        } else {
+                            applyFrame(
+                                DiceRollAnimationPolicy
+                                    .rollingFrame(elapsed),
+                            )
+                        }
+                    }
+
+                    settling -> {
+                        val frame =
+                            DiceRollAnimationPolicy
+                                .settleFrame(
+                                    elapsedMillis =
+                                        now - settleStartedAtMillis,
+                                    outcome = targetOutcome,
+                                    startRotationDegrees =
+                                        settleStartRotationDegrees,
+                                )
+                        applyFrame(frame)
+                        if (frame.finished) {
+                            settling = false
+                            resetTransform()
+                        }
+                    }
+
+                    else -> return
+                }
+
                 invalidate()
-                postDelayed(
-                    this,
-                    85L,
-                )
+                if (rolling || settling) {
+                    postOnAnimation(this)
+                }
             }
         }
 
     fun startRolling() {
         if (rolling) return
+        removeCallbacks(animationTicker)
+        reducedMotion =
+            settingsStore
+                .snapshot()
+                .reducedMotionEnabled
         rolling = true
+        settling = false
+        rollStartedAtMillis =
+            SystemClock.uptimeMillis()
         contentDescription =
             "Dice verification in progress."
-        removeCallbacks(ticker)
-        post(ticker)
+        postOnAnimation(animationTicker)
     }
 
-    fun showOutcome(outcome: Int) {
+    fun showOutcome(
+        outcome: Int,
+        animate: Boolean = true,
+    ) {
         if (outcome !in 1..6) return
+
+        val wasRolling = rolling
         rolling = false
-        removeCallbacks(ticker)
+        removeCallbacks(animationTicker)
+        targetOutcome = outcome
         face = outcome
+        reducedMotion =
+            settingsStore
+                .snapshot()
+                .reducedMotionEnabled
         contentDescription =
             "Dice outcome $outcome."
-        invalidate()
+
+        if (!animate || reducedMotion) {
+            settling = false
+            resetTransform()
+            invalidate()
+            return
+        }
+
+        settleStartRotationDegrees =
+            if (wasRolling && kotlin.math.abs(rotationDegrees) > 1f) {
+                rotationDegrees.coerceIn(-20f, 20f)
+            } else {
+                18f
+            }
+        settling = true
+        settleStartedAtMillis =
+            SystemClock.uptimeMillis()
+        postOnAnimation(animationTicker)
     }
 
     fun stopRolling() {
         rolling = false
-        removeCallbacks(ticker)
+        settling = false
+        removeCallbacks(animationTicker)
+        resetTransform()
         contentDescription =
             "Dice verification stopped."
         invalidate()
@@ -121,11 +206,10 @@ class DiceView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
-        rolling =
-            false
-        removeCallbacks(
-            ticker,
-        )
+        rolling = false
+        settling = false
+        removeCallbacks(animationTicker)
+        resetTransform()
         super.onDetachedFromWindow()
     }
 
@@ -165,6 +249,24 @@ class DiceView @JvmOverloads constructor(
             ).toFloat()
         if (size <= 0f) return
 
+        val center = size * .5f
+        val saveCount = canvas.save()
+        canvas.translate(
+            0f,
+            size * translationYFraction,
+        )
+        canvas.scale(
+            scale,
+            scale,
+            center,
+            center,
+        )
+        canvas.rotate(
+            rotationDegrees,
+            center,
+            center,
+        )
+
         val shadow =
             RectF(
                 size * .09f,
@@ -201,10 +303,6 @@ class DiceView @JvmOverloads constructor(
         val palette =
             dicePalette()
 
-        // IMPORTANT: drawing the shadow above sets facePaint to 0x33 alpha.
-        // A Shader does not reset Paint alpha, so the previous code rendered the
-        // supposedly white dice at only about 20% opacity and let the dark-blue
-        // gameplay background show through. Reset alpha before every face draw.
         facePaint.alpha = 255
         facePaint.shader =
             LinearGradient(
@@ -241,11 +339,14 @@ class DiceView @JvmOverloads constructor(
             palette.borderColor
         pipPaint.color =
             palette.pipColor
+        rollingPaint.alpha =
+            (145f + borderPulse.coerceIn(0f, 1f) * 110f)
+                .toInt()
         canvas.drawRoundRect(
             rect,
             size * .17f,
             size * .17f,
-            if (rolling) {
+            if (rolling || settling) {
                 rollingPaint
             } else {
                 borderPaint
@@ -253,7 +354,7 @@ class DiceView @JvmOverloads constructor(
         )
 
         val left = size * .31f
-        val center = size * .50f
+        val pipCenter = size * .50f
         val right = size * .69f
         val top = size * .31f
         val middle = size * .50f
@@ -274,14 +375,14 @@ class DiceView @JvmOverloads constructor(
         }
 
         when (face) {
-            1 -> pip(center, middle)
+            1 -> pip(pipCenter, middle)
             2 -> {
                 pip(left, top)
                 pip(right, bottom)
             }
             3 -> {
                 pip(left, top)
-                pip(center, middle)
+                pip(pipCenter, middle)
                 pip(right, bottom)
             }
             4 -> {
@@ -293,7 +394,7 @@ class DiceView @JvmOverloads constructor(
             5 -> {
                 pip(left, top)
                 pip(right, top)
-                pip(center, middle)
+                pip(pipCenter, middle)
                 pip(left, bottom)
                 pip(right, bottom)
             }
@@ -306,6 +407,25 @@ class DiceView @JvmOverloads constructor(
                 pip(right, bottom)
             }
         }
+
+        canvas.restoreToCount(saveCount)
+    }
+
+    private fun applyFrame(
+        frame: DiceRollAnimationPolicy.Frame,
+    ) {
+        face = frame.face
+        rotationDegrees = frame.rotationDegrees
+        scale = frame.scale
+        translationYFraction = frame.translationYFraction
+        borderPulse = frame.borderPulse
+    }
+
+    private fun resetTransform() {
+        rotationDegrees = 0f
+        scale = 1f
+        translationYFraction = 0f
+        borderPulse = 0f
     }
 
     /**
@@ -317,13 +437,10 @@ class DiceView @JvmOverloads constructor(
      */
     private fun dicePalette():
         DicePalette {
-        // Read the id so the existing cosmetic selection lifecycle remains wired.
         @Suppress("UNUSED_VARIABLE")
         val selectedStyle =
             diceStyleId
 
-        // All three stops intentionally use the same fully opaque neutral color.
-        // This prevents the gameplay HUD or selected cosmetic from tinting the face.
         return DicePalette(
             intArrayOf(
                 0xFFF4F4F4.toInt(),
