@@ -80,7 +80,8 @@ for (const token of [
   "LudoPawsPawnAnimationPolicy",
   ".plans(",
   "LudoPawsPawnMotionKind.CAPTURE_RETURN",
-  "captureHiddenUntilMillis",
+  "LudoPaws3DCaptureReturnState",
+  "captureReturns",
   "characterIdsBySeat",
   "bindRenderAssignments",
   "settings.gameSpeed.moveStepMs",
@@ -114,6 +115,8 @@ for (const token of [
   "LudoPawsPawnLayout",
   ".tokenOffsetFraction(",
   ".radiusScale(",
+  "LudoPawsCaptureReturnPlacement",
+  "captureReturnVisual(",
   "Dog3DMotionTimeline",
   "Goat3DMotionTimeline",
   "Duck3DMotionTimeline",
@@ -206,5 +209,5 @@ for (const retainedMotion of ["Dog", "Goat", "Duck", "Cat"]) {
 }
 
 console.log(
-  "Ludo Paws pawn rendering gate passed: selected seat animals drive one shared 3D runtime over the locked authoritative board, with legal halos, movement sync, shared-cell sizing and legacy renderer cleanup intact.",
+  "Ludo Paws pawn rendering gate passed: selected seat animals drive one shared 3D runtime over the locked authoritative board, with legal halos, movement sync, 3D capture return, shared-cell sizing and legacy renderer cleanup intact.",
 );
