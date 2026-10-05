@@ -4,6 +4,8 @@ export const LEGACY_RULESET_KEY = "CLASSIC_V1";
 export const LEGACY_TEAM_RULESET_KEY = "TEAM_UP_V1";
 export const RULESET_KEY = "CLASSIC_V2";
 export const TEAM_RULESET_KEY = "TEAM_UP_V2";
+export const RULESET_V3_KEY = "CLASSIC_V3";
+export const TEAM_RULESET_V3_KEY = "TEAM_UP_V3";
 
 export const TEAM_ASSIGNMENTS = Object.freeze(["A", "B", "A", "B"]);
 
@@ -69,6 +71,33 @@ export const TEAM_RULESET = Object.freeze({
   winCondition: "BOTH_PARTNERS_ALL_TOKENS_HOME",
 });
 
+/**
+ * Ruleset v3 adds explicit player-assistance behavior without changing v1/v2.
+ * The opening bonus is a deterministic gameplay transform over a verified roll:
+ * the player's first roll is treated as six only while all four tokens are still
+ * in the starting yard. It is consumed once and is excluded from the three-six
+ * penalty. A single legal move may be auto-submitted by compatible clients.
+ */
+export const RULESET_V3 = Object.freeze({
+  ...RULESET,
+  id: "ludoproof-standard-v3",
+  openingRollPolicy: "GUARANTEED_SIX_ONCE_PER_PLAYER",
+  openingRollRequiresAllTokensInYard: true,
+  openingRollCountsTowardConsecutiveSixes: false,
+  singleLegalMovePolicy: "AUTO_MOVE",
+});
+
+export const TEAM_RULESET_V3 = Object.freeze({
+  ...RULESET_V3,
+  id: "ludoproof-team-v3",
+  mode: "TEAM_UP",
+  teams: Object.freeze(["A", "B"]),
+  teamAssignments: TEAM_ASSIGNMENTS,
+  friendlyCapture: false,
+  partnerTurnHandoff: true,
+  winCondition: "BOTH_PARTNERS_ALL_TOKENS_HOME",
+});
+
 export function rulesetKeyForState(state, { teamUp = false } = {}) {
   const key = state?.rulesetKey;
   if (key == null) {
@@ -87,6 +116,10 @@ export function rulesetForKey(key) {
       return RULESET;
     case TEAM_RULESET_KEY:
       return TEAM_RULESET;
+    case RULESET_V3_KEY:
+      return RULESET_V3;
+    case TEAM_RULESET_V3_KEY:
+      return TEAM_RULESET_V3;
     default: {
       const error = new Error(`unsupported ruleset key: ${String(key)}`);
       error.code = "UNSUPPORTED_RULESET";
