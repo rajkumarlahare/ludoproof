@@ -29,6 +29,9 @@ class LocalMatchSession(
     override fun snapshot():
         MatchSnapshot? =
         engine.snapshot()
+            ?.let(
+                OfflineMatchInvariantPolicy::requireValid,
+            )
 
     override fun localPlayerId():
         String? =
@@ -50,23 +53,29 @@ class LocalMatchSession(
             rulesetId =
                 OfflineLudoV3Binding.RULESET_ID,
         )
-        return engine.start(
-            playerCount =
-                playerCount,
-            preferredColor =
-                preferredColor,
+        return OfflineMatchInvariantPolicy.requireValid(
+            engine.start(
+                playerCount =
+                    playerCount,
+                preferredColor =
+                    preferredColor,
+            ),
         )
     }
 
     fun roll():
         MatchSnapshot =
-        engine.roll()
+        OfflineMatchInvariantPolicy.requireValid(
+            engine.roll(),
+        )
 
     fun move(
         tokenIndex: Int,
     ): MatchSnapshot =
-        engine.move(
-            tokenIndex,
+        OfflineMatchInvariantPolicy.requireValid(
+            engine.move(
+                tokenIndex,
+            ),
         )
 
     fun clear() {
