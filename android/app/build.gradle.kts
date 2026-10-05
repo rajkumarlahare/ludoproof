@@ -18,6 +18,18 @@ val ludoProofBillingEnabled =
         .toBooleanStrictOrNull()
         ?: false
 
+val releaseStoreFile = providers.environmentVariable("LUDOPROOF_RELEASE_STORE_FILE").orNull
+val releaseStorePassword = providers.environmentVariable("LUDOPROOF_RELEASE_STORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("LUDOPROOF_RELEASE_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("LUDOPROOF_RELEASE_KEY_PASSWORD").orNull
+val releaseSigningConfigured =
+    listOf(
+        releaseStoreFile,
+        releaseStorePassword,
+        releaseKeyAlias,
+        releaseKeyPassword,
+    ).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.ludoproof.game"
     compileSdk = 36
@@ -26,8 +38,8 @@ android {
         applicationId = "com.ludoproof.game"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0-rc1"
+        versionCode = 2
+        versionName = "1.0.0-rc2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField(
@@ -42,6 +54,17 @@ android {
         )
     }
 
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = file(requireNotNull(releaseStoreFile))
+                storePassword = requireNotNull(releaseStorePassword)
+                keyAlias = requireNotNull(releaseKeyAlias)
+                keyPassword = requireNotNull(releaseKeyPassword)
+            }
+        }
+    }
+
     buildTypes {
         getByName("debug") {
             isMinifyEnabled = false
@@ -49,6 +72,9 @@ android {
         getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile(
                     "proguard-android-optimize.txt",
