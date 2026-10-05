@@ -3,18 +3,22 @@ package com.ludoproof.game
 import android.content.Context
 import android.graphics.Outline
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.widget.FrameLayout
+import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
  * Production Ludo Paws board shell.
  *
- * The authoritative [LudoBoardView] remains solely responsible for board geometry,
- * touch hit-testing and gameplay-facing token selection. Animal pawn rendering is
- * now owned by the production 3D scene in [LudoPawsReactiveBoardView].
+ * The approved [LudoBoardView] still owns the canonical board geometry. While the
+ * 3D scene is operational, this shell renders a board-only copy and handles token
+ * taps against the same shared presentation geometry so the classic 2D pawns do
+ * not remain visible underneath the animals. If 3D becomes unavailable, the
+ * original bound board is restored as the safe classic-pawn fallback.
  *
  * BOARD GEOMETRY LOCK: do not move, resize or reinterpret the approved board here.
  */
@@ -22,8 +26,18 @@ class LudoPawsBoardView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : FrameLayout(context, attrs) {
+    /** Board-only visual surface used while the 3D pawn scene is operational. */
+    private val boardSurface =
+        LudoBoardView(context)
+
+    /** Full classic board retained for hit-tested fallback when 3D is unavailable. */
     private val baseBoard =
         LudoBoardView(context)
+
+    private var snapshot: MatchSnapshot? = null
+    private var localPlayerId: String? = null
+    private var perspectiveColor: String? = null
+    private var classicPawnFallbackVisible = true
 
     var onTokenSelected: ((Int) -> Unit)?
         get() = baseBoard.onTokenSelected
@@ -52,6 +66,13 @@ class LudoPawsBoardView @JvmOverloads constructor(
         clipToOutline = true
 
         addView(
+            boardSurface,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT,
+            ),
+        )
+        addView(
             baseBoard,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
@@ -71,14 +92,175 @@ class LudoPawsBoardView @JvmOverloads constructor(
         @Suppress("UNUSED_VARIABLE")
         val retainedCharacterContract = characterIdsBySeat
 
+        snapshot = state
+        localPlayerId = playerId
+        this.perspectiveColor =
+            perspectiveColor
+                ?.takeIf {
+                    it in OfflinePlayerLayout.COLORS
+                }
+
+        // A null snapshot keeps the exact approved board geometry/theme but prevents
+        // LudoBoardView from drawing any classic token on the 3D presentation layer.
+        boardSurface.bind(
+            state = null,
+            playerId = null,
+            perspectiveColor = this.perspectiveColor,
+        )
         baseBoard.bind(
             state = state,
             playerId = playerId,
-            perspectiveColor = perspectiveColor,
+            perspectiveColor = this.perspectiveColor,
         )
     }
 
+    /**
+     * Keeps the proven classic pawn renderer only as an actual 3D failure fallback.
+     * The board-only surface remains visible in both modes, while [baseBoard] is
+     * hidden completely during normal 3D play so no circular legacy pawn can leak
+     * through or move out of sync with an animal.
+     */
+    fun setClassicPawnFallbackVisible(visible: Boolean) {
+        if (classicPawnFallbackVisible == visible) {
+            return
+        }
+        classicPawnFallbackVisible = visible
+        baseBoard.visibility =
+            if (visible) View.VISIBLE else View.INVISIBLE
+    }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (classicPawnFallbackVisible) {
+            return super.dispatchTouchEvent(event)
+        }
+
+        // In 3D mode the full classic board is intentionally invisible. Consume the
+        // gesture here and resolve ACTION_UP against the same token geometry used by
+        // the 3D renderer instead of relying on invisible legacy pawn hit regions.
+        if (event.action == MotionEvent.ACTION_UP) {
+            selectLegal3DTokenAt(
+                x = event.x,
+                y = event.y,
+            )
+            performClick()
+        }
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
+
+    private fun selectLegal3DTokenAt(
+        x: Float,
+        y: Float,
+    ) {
+        val state = snapshot ?: return
+        val localId = localPlayerId ?: return
+        val pending = state.pendingRoll ?: return
+        if (pending.status != "RESOLVED") {
+            return
+        }
+
+        val player =
+            state.players
+                .firstOrNull {
+                    it.playerId == localId
+                }
+                ?: return
+        val legal = pending.legalTokenIndexes
+        if (legal.isEmpty()) {
+            return
+        }
+
+        val size = min(width, height).toFloat()
+        if (size <= 0f) {
+            return
+        }
+        val cell = size / LudoPawsFxBoardGeometry.BOARD_SIZE
+        val turns =
+            perspectiveColor
+                ?.let(OfflinePlayerLayout::rotationQuarterTurns)
+                ?: 0
+        val logicalTouch =
+            unrotateTouch(
+                x = x,
+                y = y,
+                size = size,
+                quarterTurns = turns,
+            )
+
+        val hit =
+            legal
+                .mapNotNull { tokenIndex ->
+                    val position =
+                        player.tokens
+                            .getOrNull(tokenIndex)
+                            ?: return@mapNotNull null
+                    val center =
+                        LudoPawsFxBoardGeometry
+                            .tokenCenter(
+                                color = player.color,
+                                tokenIndex = tokenIndex,
+                                position = position,
+                                cell = cell,
+                            )
+                            ?: return@mapNotNull null
+                    val offset =
+                        LudoPawsPawnLayout
+                            .tokenOffsetFraction(
+                                slot = tokenIndex + player.seat,
+                                position = position,
+                            )
+                    val tokenX =
+                        center.first +
+                            offset.first * cell
+                    val tokenY =
+                        center.second +
+                            offset.second * cell
+                    val distance =
+                        hypot(
+                            (logicalTouch.first - tokenX).toDouble(),
+                            (logicalTouch.second - tokenY).toDouble(),
+                        )
+                    TokenTouchCandidate(
+                        tokenIndex = tokenIndex,
+                        distance = distance,
+                    )
+                }
+                .minByOrNull(TokenTouchCandidate::distance)
+                ?: return
+
+        // The 3D animals are intentionally larger than the retired classic pawns.
+        // Keep a generous but cell-bounded target so tapping the visible animal is
+        // reliable without selecting a token from a neighboring road cell.
+        if (hit.distance <= cell * 0.58f) {
+            onTokenSelected?.invoke(hit.tokenIndex)
+        }
+    }
+
+    private fun unrotateTouch(
+        x: Float,
+        y: Float,
+        size: Float,
+        quarterTurns: Int,
+    ): Pair<Float, Float> =
+        when (
+            (quarterTurns % 4 + 4) % 4
+        ) {
+            1 ->
+                y to (size - x)
+            2 ->
+                (size - x) to (size - y)
+            3 ->
+                (size - y) to x
+            else ->
+                x to y
+        }
+
     fun reloadStyle() {
+        boardSurface.reloadStyle()
         baseBoard.reloadStyle()
     }
 
@@ -97,4 +279,9 @@ class LudoPawsBoardView @JvmOverloads constructor(
 
     private fun density(value: Float): Float =
         value * resources.displayMetrics.density
+
+    private data class TokenTouchCandidate(
+        val tokenIndex: Int,
+        val distance: Double,
+    )
 }
