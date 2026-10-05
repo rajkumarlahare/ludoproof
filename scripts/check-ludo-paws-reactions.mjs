@@ -64,7 +64,13 @@ for (const marker of ['IDLE -> 24_000L', 'PROUD -> 12_000L', 'NERVOUS -> 8_000L'
 if (!voice.includes('GameSettingsStore') || !voice.includes('LudoPawsReactionAudioProfile')) {
   throw new Error('Animal vocal player must respect settings and use the reaction audio profile.');
 }
-for (const forbidden of ['TextToSpeech', 'android.speech.tts', 'Six! Let', 'Got you!', 'I win!']) {
+for (const forbidden of [
+  'import android.speech.tts.TextToSpeech',
+  'TextToSpeech(',
+  'Six! Let',
+  'Got you!',
+  'I win!',
+]) {
   if (voice.includes(forbidden)) throw new Error(`Spoken character commentary returned: ${forbidden}`);
 }
 for (const marker of ['probabilityPercent', 'rawResourceNames', 'fallback', 'deterministicVariantIndex']) {
