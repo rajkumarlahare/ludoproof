@@ -24,7 +24,7 @@ class LocalMatchSession(
 
     override val rulesetId:
         String =
-        ClassicRuleset.ID
+        OfflineLudoV3Binding.RULESET_ID
 
     override fun snapshot():
         MatchSnapshot? =
@@ -47,6 +47,8 @@ class LocalMatchSession(
                 mode,
             playerCount =
                 playerCount,
+            rulesetId =
+                OfflineLudoV3Binding.RULESET_ID,
         )
         return engine.start(
             playerCount =

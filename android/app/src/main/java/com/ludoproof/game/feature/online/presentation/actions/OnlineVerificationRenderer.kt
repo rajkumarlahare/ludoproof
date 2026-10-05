@@ -10,7 +10,10 @@ internal fun MainActivity.updateVerification(
     val pending = state.pendingRoll
     val latest = state.history.lastOrNull()
 
-    val outcome = pending?.outcome ?: latest?.outcome
+    val outcome =
+        pending?.outcome
+            ?: latest?.effectiveOutcome
+            ?: latest?.outcome
     val digest = pending?.proofDigest ?: latest?.proofDigest
     val eventIndex =
         if (pending?.eventIndex != null && pending.eventIndex >= 0) {
@@ -25,6 +28,11 @@ internal fun MainActivity.updateVerification(
             buildString {
                 append("✓ VERIFIED • Dice ")
                 append(outcome)
+                if (latest?.openingRollApplied == true && pending == null) {
+                    append(" • opening bonus")
+                } else if (pending?.openingRollApplied == true) {
+                    append(" • opening bonus")
+                }
                 if (eventIndex != null) {
                     append("\nEvent ")
                     append(eventIndex)
@@ -119,6 +127,59 @@ internal fun MainActivity.updateControls(
         isOnline &&
             myTurn &&
             state.pendingRoll?.status != "RESOLVED"
+
+    scheduleSingleLegalOnlineMove(
+        state = state,
+        myTurn = myTurn,
+    )
+}
+
+private fun MainActivity.scheduleSingleLegalOnlineMove(
+    state: MatchSnapshot,
+    myTurn: Boolean,
+) {
+    val pending =
+        state.pendingRoll
+            ?.takeIf { it.status == "RESOLVED" }
+            ?: return
+    if (!myTurn || !isOnline) return
+
+    val tokenIndex =
+        LudoTurnAutomationPolicy.singleLegalTokenIndex(
+            pending.legalTokenIndexes,
+        ) ?: return
+
+    val eventKey =
+        "single-legal:${state.matchId}:${pending.eventIndex}:$tokenIndex"
+    if (rollButton.tag == eventKey) return
+    rollButton.tag = eventKey
+
+    showStatus("Only one move is possible • moving automatically…")
+    rollButton.postDelayed(
+        {
+            val latest = currentState
+            val latestPending = latest?.pendingRoll
+            val stillSameMove =
+                latest != null &&
+                    latest.status == "ACTIVE" &&
+                    latestPending?.status == "RESOLVED" &&
+                    latestPending.eventIndex == pending.eventIndex &&
+                    LudoTurnAutomationPolicy.singleLegalTokenIndex(
+                        latestPending.legalTokenIndexes,
+                    ) == tokenIndex &&
+                    (latest.actingSeat ?: latest.turnSeat) ==
+                        latest.players.indexOfFirst { player ->
+                            player.playerId == playerId
+                        }
+
+            if (stillSameMove) {
+                moveToken(tokenIndex)
+            } else if (rollButton.tag == eventKey) {
+                rollButton.tag = null
+            }
+        },
+        320L,
+    )
 }
 
 internal fun MainActivity.updateRollButton() {
@@ -146,7 +207,10 @@ internal fun MainActivity.proofDetails(
             append("#")
             append(event.eventIndex)
             append("  dice=")
-            append(event.outcome ?: "?")
+            append(event.effectiveOutcome ?: event.outcome ?: "?")
+            if (event.openingRollApplied) {
+                append("(opening)")
+            }
             append("  proof=")
             append(shortDigest(event.proofDigest))
             append("  round=")

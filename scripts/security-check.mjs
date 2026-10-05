@@ -275,6 +275,7 @@ for (const [name, expected] of [
 const offlineV4Files = {
   core: "android/app/src/main/java/com/ludoproof/game/feature/proof/domain/core/EntroNexV4Local.kt",
   binding: "android/app/src/main/java/com/ludoproof/game/feature/proof/domain/offline/OfflineLudoV4Binding.kt",
+  gameplayBinding: "android/app/src/main/java/com/ludoproof/game/feature/proof/domain/offline/OfflineLudoV3Binding.kt",
   engine: "android/app/src/main/java/com/ludoproof/game/feature/offline/domain/engine/OfflineGameEngine.kt",
   fairness: "android/app/src/main/java/com/ludoproof/game/feature/proof/domain/offline/OfflineFairnessChain.kt",
   conformance:
@@ -353,6 +354,30 @@ if (
     }
   }
 
+  const gameplayBinding =
+    fs.readFileSync(
+      offlineV4Files.gameplayBinding,
+      "utf8",
+    );
+  for (const invariant of [
+    "OfflineLudoV3Binding",
+    '"ludoproof-standard-v3"',
+    "EntroNexV4Local.resolve",
+    "entronex:v4:game-state:",
+    "entronex:v4:game-ruleset:",
+    "openingRollConsumed",
+    '"GUARANTEED_SIX_ONCE_PER_PLAYER"',
+    '"AUTO_MOVE"',
+  ]) {
+    if (!gameplayBinding.includes(invariant)) {
+      findings.push(
+        offlineV4Files.gameplayBinding +
+          ": missing v3 gameplay proof-binding invariant " +
+          invariant,
+      );
+    }
+  }
+
   const engine =
     fs.readFileSync(
       offlineV4Files.engine,
@@ -360,15 +385,18 @@ if (
     );
   if (
     !engine.includes(
-      "OfflineLudoV4Binding",
+      "OfflineLudoV3Binding",
     ) ||
     !engine.includes(
       "EntroNexV4Local.verify",
+    ) ||
+    !engine.includes(
+      "LudoTurnAutomationPolicy.effectiveOutcome",
     )
   ) {
     findings.push(
       offlineV4Files.engine +
-        ": offline rolls do not fail closed through the v4 derivation/verifier",
+        ": offline rolls do not fail closed through the versioned v4 proof binding/verifier",
     );
   }
   for (const forbidden of [

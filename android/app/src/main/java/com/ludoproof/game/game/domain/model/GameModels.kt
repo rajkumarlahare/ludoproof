@@ -26,6 +26,8 @@ data class PendingRollSnapshot(
     val outcome: Int?,
     val legalTokenIndexes: Set<Int>,
     val scheduledSeat: Int? = null,
+    val randomOutcome: Int? = null,
+    val openingRollApplied: Boolean = false,
 )
 
 data class HistoryEventSnapshot(
@@ -44,6 +46,9 @@ data class HistoryEventSnapshot(
     val previousFairnessDigest: String? = null,
     val fairnessDigest: String? = null,
     val status: String? = null,
+    val randomOutcome: Int? = null,
+    val effectiveOutcome: Int? = null,
+    val openingRollApplied: Boolean = false,
 )
 
 data class MatchSnapshot(
@@ -78,11 +83,13 @@ object GameJson {
         setOf(
             "ludoproof-standard-v1",
             "ludoproof-standard-v2",
+            "ludoproof-standard-v3",
         )
     private val teamRulesetIds =
         setOf(
             "ludoproof-team-v1",
             "ludoproof-team-v2",
+            "ludoproof-team-v3",
         )
     private val colors = listOf("RED", "GREEN", "YELLOW", "BLUE")
     private val teamAssignments = listOf("A", "B", "A", "B")
@@ -310,6 +317,12 @@ object GameJson {
             if (event.has("outcome") && !event.isNull("outcome")) {
                 schema(event.requireInt("outcome") in 1..6, "history outcome is outside 1..6")
             }
+            if (event.has("randomOutcome") && !event.isNull("randomOutcome")) {
+                schema(event.requireInt("randomOutcome") in 1..6, "history randomOutcome is outside 1..6")
+            }
+            if (event.has("effectiveOutcome") && !event.isNull("effectiveOutcome")) {
+                schema(event.requireInt("effectiveOutcome") in 1..6, "history effectiveOutcome is outside 1..6")
+            }
             if (event.has("moveTokenIndex") && !event.isNull("moveTokenIndex")) {
                 schema(event.requireInt("moveTokenIndex") in 0..3, "history moveTokenIndex is outside 0..3")
             }
@@ -368,6 +381,9 @@ object GameJson {
         } else {
             schema(status != "RESOLVED", "resolved pending roll requires outcome")
         }
+        if (pending.has("randomOutcome") && !pending.isNull("randomOutcome")) {
+            schema(pending.requireInt("randomOutcome") in 1..6, "pending roll randomOutcome is outside 1..6")
+        }
 
         schema(pending.has("revealDeadlineAt"), "pending roll is missing revealDeadlineAt")
         schema(pending.requireLong("revealDeadlineAt") > 0L, "invalid revealDeadlineAt")
@@ -402,6 +418,13 @@ object GameJson {
                 } else {
                     null
                 },
+            randomOutcome =
+                if (value.has("randomOutcome") && !value.isNull("randomOutcome")) {
+                    value.optInt("randomOutcome")
+                } else {
+                    null
+                },
+            openingRollApplied = value.optBoolean("openingRollApplied", false),
         )
 
     private fun JSONArray?.toPlayerList(): List<PlayerSnapshot> {
@@ -460,6 +483,19 @@ object GameJson {
                         previousFairnessDigest = event.optString("previousFairnessDigest").takeIf { it.isNotBlank() && it != "null" },
                         fairnessDigest = event.optString("fairnessDigest").takeIf { it.isNotBlank() && it != "null" },
                         status = event.optString("status").takeIf { it.isNotBlank() && it != "null" },
+                        randomOutcome =
+                            if (event.has("randomOutcome") && !event.isNull("randomOutcome")) {
+                                event.getInt("randomOutcome")
+                            } else {
+                                null
+                            },
+                        effectiveOutcome =
+                            if (event.has("effectiveOutcome") && !event.isNull("effectiveOutcome")) {
+                                event.getInt("effectiveOutcome")
+                            } else {
+                                null
+                            },
+                        openingRollApplied = event.optBoolean("openingRollApplied", false),
                     ),
                 )
             }
