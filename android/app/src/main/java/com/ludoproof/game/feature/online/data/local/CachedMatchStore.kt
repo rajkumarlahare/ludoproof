@@ -37,6 +37,10 @@ class CachedMatchStore(
             ?.let {
                 runCatching {
                     JSONObject(it)
+                        .put(
+                            CACHE_SOURCE_MARKER,
+                            true,
+                        )
                 }.getOrNull()
             }
 
@@ -44,10 +48,13 @@ class CachedMatchStore(
         prefs.edit().clear().apply()
     }
 
-    private companion object {
-        const val PREFS_NAME =
+    companion object {
+        internal const val CACHE_SOURCE_MARKER =
+            "__ludopaws_cached_match_v1"
+
+        private const val PREFS_NAME =
             "ludoproof_cached_match"
-        const val KEY_JSON =
+        private const val KEY_JSON =
             "safe_match_envelope"
     }
 }
