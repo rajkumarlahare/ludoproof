@@ -112,6 +112,11 @@ internal class LudoPaws3DSceneRenderer {
                 snapshot = snapshot,
                 cell = cell,
             )
+        val stackPlacements =
+            LudoPawsPawnLayout.stackPlacements(
+                snapshot = snapshot,
+                cell = cell,
+            )
 
         val renderPawns =
             buildList {
@@ -149,12 +154,21 @@ internal class LudoPaws3DSceneRenderer {
                                     nowMillis = nowMillis,
                                 )
                                 ?: return@forEachIndexed
+                        val stackPlacement =
+                            if (captureVisual == null) {
+                                stackPlacements[
+                                    LudoPawsPawnVisualKey(
+                                        playerId = player.playerId,
+                                        tokenIndex = tokenIndex,
+                                    )
+                                ]
+                            } else {
+                                null
+                            }
                         val offset =
                             if (captureVisual == null) {
-                                LudoPawsPawnLayout.tokenOffsetFraction(
-                                    slot = tokenIndex + player.seat,
-                                    position = currentPosition,
-                                )
+                                (stackPlacement?.offsetXFraction ?: 0f) to
+                                    (stackPlacement?.offsetYFraction ?: 0f)
                             } else {
                                 0f to 0f
                             }
