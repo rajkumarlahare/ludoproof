@@ -42,6 +42,31 @@ requireText(
     "OfflineFeedbackAction.ROLL",
     "OfflineFeedbackAction.MOVE",
     "previous = latest",
+    "LudoPawsComputerMovePolicy.chooseToken",
+  ],
+);
+
+requireText(
+  "android/app/src/main/java/com/ludoproof/game/feature/offline/domain/ai/LudoPawsComputerMovePolicy.kt",
+  [
+    "destinationForRoll",
+    "SCORE_CAPTURE_EACH",
+    "SCORE_HOME_LANE",
+    "SCORE_RESCUE",
+    "SCORE_SAFE_LANDING",
+    "PENALTY_THREAT_ROUTE",
+    "threatRoutes",
+  ],
+);
+
+requireText(
+  "android/app/src/test/java/com/ludoproof/game/feature/offline/domain/ai/LudoPawsComputerMovePolicyTest.kt",
+  [
+    "canonical destination handles yard exit and exact home",
+    "capture outranks plain forward progress",
+    "safe landing outranks nearby exposed progress",
+    "rescuing threatened token can beat raw progress",
+    "risk penalty avoids reachable capture square when alternative is clear",
   ],
 );
 
