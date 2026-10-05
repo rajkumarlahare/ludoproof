@@ -142,39 +142,38 @@ object GameSoundFeedback {
             volume = .42f,
         )
 
-    /** Plays at most one physical/game SFX for one reaction batch. */
+    /** Returns true when this batch emitted a dedicated physical/game SFX. */
     fun reaction(
         context: Context,
         reactions: List<LudoPawsReaction>,
         characterIdsBySeat: List<String> = emptyList(),
-    ) {
+    ): Boolean {
         val highest =
             reactions.maxByOrNull(LudoPawsReaction::priority)
-                ?: return
-        val characterId =
-            characterIdsBySeat.getOrNull(highest.seat)
+                ?: return false
+        val characterId = characterIdsBySeat.getOrNull(highest.seat)
 
-        when (highest.momentType) {
-            GameMomentType.SIX_ROLLED -> six(context)
-            GameMomentType.TOKEN_LEFT_YARD -> yardExit(context)
-            GameMomentType.ONLY_LEGAL_MOVE -> move(context, characterId)
+        return when (highest.momentType) {
+            GameMomentType.SIX_ROLLED -> played { six(context) }
+            GameMomentType.TOKEN_LEFT_YARD -> played { yardExit(context) }
+            GameMomentType.ONLY_LEGAL_MOVE -> played { move(context, characterId) }
             GameMomentType.CAPTURE_MADE,
             GameMomentType.TOKEN_CAPTURED,
-            -> capture(context)
-            GameMomentType.SAFE_REACHED -> safe(context)
-            GameMomentType.HOME_LANE_ENTERED -> homeLane(context)
-            GameMomentType.HOME_REACHED -> home(context)
+            -> played { capture(context) }
+            GameMomentType.SAFE_REACHED -> played { safe(context) }
+            GameMomentType.HOME_LANE_ENTERED -> played { homeLane(context) }
+            GameMomentType.HOME_REACHED -> played { home(context) }
             GameMomentType.POOR_ROLL_STREAK,
             GameMomentType.EXACT_HOME_MISS,
             GameMomentType.NO_LEGAL_MOVE,
-            -> frustrated(context)
-            GameMomentType.THIRD_SIX_FORFEIT -> thirdSix(context)
+            -> played { frustrated(context) }
+            GameMomentType.THIRD_SIX_FORFEIT -> played { thirdSix(context) }
             GameMomentType.MATCH_WIN,
             GameMomentType.TEAM_WIN,
-            -> victory(context)
+            -> played { victory(context) }
             GameMomentType.MATCH_LOSS,
             GameMomentType.TEAM_LOSS,
-            -> defeat(context)
+            -> played { defeat(context) }
             GameMomentType.TURN_STARTED,
             GameMomentType.ROLL_STARTED,
             GameMomentType.LOW_ROLL,
@@ -183,8 +182,13 @@ object GameSoundFeedback {
             GameMomentType.PLAYER_LEADING,
             GameMomentType.IDLE_WAITING,
             null,
-            -> Unit
+            -> false
         }
+    }
+
+    private inline fun played(block: () -> Unit): Boolean {
+        block()
+        return true
     }
 
     private fun play(
