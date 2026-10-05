@@ -22,6 +22,12 @@ internal data class LudoPaws3DPawnKey(
     val tokenIndex: Int,
 )
 
+internal data class LudoPaws3DCaptureReturnState(
+    val motion: LudoPawsPawnMotion,
+    val startedAtMillis: Long,
+    val durationMillis: Long,
+)
+
 internal data class LudoPaws3DSceneState(
     val snapshot: MatchSnapshot? = null,
     val localPlayerId: String? = null,
@@ -30,7 +36,7 @@ internal data class LudoPaws3DSceneState(
     val forwardMotion: LudoPawsPawnMotion? = null,
     val forwardStartedAtMillis: Long = 0L,
     val forwardDurationMillis: Long = 0L,
-    val captureHiddenUntilMillis: Map<LudoPaws3DPawnKey, Long> = emptyMap(),
+    val captureReturns: Map<LudoPaws3DPawnKey, LudoPaws3DCaptureReturnState> = emptyMap(),
     val activeReactions: Map<LudoPaws3DPawnKey, LudoPaws3DActiveReaction> = emptyMap(),
     val reducedMotion: Boolean = false,
 )
@@ -126,30 +132,41 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                 0L
             }
 
-        val retainedCaptureHides =
-            if (sameMatch) {
-                previousState.captureHiddenUntilMillis.filterValues { it > now }
+        val retainedCaptureReturns =
+            if (sameMatch && !settings.reducedMotionEnabled) {
+                previousState.captureReturns.filterValues { capture ->
+                    now < capture.startedAtMillis + capture.durationMillis
+                }
             } else {
                 emptyMap()
             }
-        val newCaptureHides =
-            motions
-                .asSequence()
-                .filter {
-                    it.kind == LudoPawsPawnMotionKind.CAPTURE_RETURN
-                }
-                .associate { motion ->
-                    val duration =
-                        (motion.visualSteps.toLong() * settings.gameSpeed.moveStepMs)
-                            .coerceIn(
-                                MIN_CAPTURE_DURATION_MILLIS,
-                                MAX_CAPTURE_DURATION_MILLIS,
+        val newCaptureReturns =
+            if (settings.reducedMotionEnabled) {
+                emptyMap()
+            } else {
+                motions
+                    .asSequence()
+                    .filter {
+                        it.kind == LudoPawsPawnMotionKind.CAPTURE_RETURN
+                    }
+                    .associate { motion ->
+                        val duration =
+                            (motion.visualSteps.toLong() * settings.gameSpeed.moveStepMs)
+                                .coerceIn(
+                                    MIN_CAPTURE_DURATION_MILLIS,
+                                    MAX_CAPTURE_DURATION_MILLIS,
+                                )
+                        LudoPaws3DPawnKey(
+                            playerId = motion.playerId,
+                            tokenIndex = motion.tokenIndex,
+                        ) to
+                            LudoPaws3DCaptureReturnState(
+                                motion = motion,
+                                startedAtMillis = now,
+                                durationMillis = duration,
                             )
-                    LudoPaws3DPawnKey(
-                        playerId = motion.playerId,
-                        tokenIndex = motion.tokenIndex,
-                    ) to (now + duration)
-                }
+                    }
+            }
         val retainedReactions =
             if (sameMatch && !settings.reducedMotionEnabled) {
                 previousState.activeReactions.filterValues { reaction ->
@@ -171,7 +188,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                 forwardMotion = forward,
                 forwardStartedAtMillis = forwardStartedAtMillis,
                 forwardDurationMillis = forwardDurationMillis,
-                captureHiddenUntilMillis = retainedCaptureHides + newCaptureHides,
+                captureReturns = retainedCaptureReturns + newCaptureReturns,
                 activeReactions = retainedReactions,
                 reducedMotion = settings.reducedMotionEnabled,
             )

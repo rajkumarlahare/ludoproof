@@ -126,23 +126,38 @@ internal class LudoPaws3DSceneRenderer {
                                 playerId = player.playerId,
                                 tokenIndex = tokenIndex,
                             )
-                        val hiddenUntil = state.captureHiddenUntilMillis[key] ?: 0L
-                        if (nowMillis < hiddenUntil) return@forEachIndexed
+                        val captureVisual =
+                            state.captureReturns[key]
+                                ?.let { capture ->
+                                    captureReturnVisual(
+                                        player = player,
+                                        tokenIndex = tokenIndex,
+                                        capture = capture,
+                                        cell = cell,
+                                        nowMillis = nowMillis,
+                                    )
+                                }
 
                         val rawCenter =
-                            animatedCenter(
-                                player = player,
-                                tokenIndex = tokenIndex,
-                                currentPosition = currentPosition,
-                                cell = cell,
-                                state = state,
-                                nowMillis = nowMillis,
-                            ) ?: return@forEachIndexed
+                            captureVisual?.center
+                                ?: animatedCenter(
+                                    player = player,
+                                    tokenIndex = tokenIndex,
+                                    currentPosition = currentPosition,
+                                    cell = cell,
+                                    state = state,
+                                    nowMillis = nowMillis,
+                                )
+                                ?: return@forEachIndexed
                         val offset =
-                            LudoPawsPawnLayout.tokenOffsetFraction(
-                                slot = tokenIndex + player.seat,
-                                position = currentPosition,
-                            )
+                            if (captureVisual == null) {
+                                LudoPawsPawnLayout.tokenOffsetFraction(
+                                    slot = tokenIndex + player.seat,
+                                    position = currentPosition,
+                                )
+                            } else {
+                                0f to 0f
+                            }
                         val unrotatedX = rawCenter.first + offset.first * cell
                         val unrotatedY = rawCenter.second + offset.second * cell
                         val rotated =
@@ -152,20 +167,28 @@ internal class LudoPaws3DSceneRenderer {
                                 size = size,
                                 turns = turns,
                             )
-                        val occupancyKey =
-                            centerKey(
-                                LudoPawsFxBoardGeometry.tokenCenter(
-                                    color = player.color,
-                                    tokenIndex = tokenIndex,
-                                    position = currentPosition,
-                                    cell = cell,
-                                ),
-                            )
-                        val occupants = occupancy[occupancyKey] ?: 1
+                        val renderPosition =
+                            captureVisual?.fromPosition
+                                ?: currentPosition
+                        val occupants =
+                            if (captureVisual != null) {
+                                1
+                            } else {
+                                val occupancyKey =
+                                    centerKey(
+                                        LudoPawsFxBoardGeometry.tokenCenter(
+                                            color = player.color,
+                                            tokenIndex = tokenIndex,
+                                            position = currentPosition,
+                                            cell = cell,
+                                        ),
+                                    )
+                                occupancy[occupancyKey] ?: 1
+                            }
                         val radius =
                             cell *
                                 LudoPawsPawnLayout.radiusScale(
-                                    position = currentPosition,
+                                    position = renderPosition,
                                     occupancy = occupants,
                                 )
 
@@ -177,6 +200,8 @@ internal class LudoPaws3DSceneRenderer {
                                 x = rotated.first,
                                 y = rotated.second,
                                 radius = radius,
+                                presentationScale =
+                                    captureVisual?.scale ?: 1f,
                             ),
                         )
                     }
@@ -213,7 +238,10 @@ internal class LudoPaws3DSceneRenderer {
                 nowMillis = nowMillis,
             )
         val modelScale =
-            pawn.radius * MODEL_SCALE_PER_RADIUS * reaction.scale
+            pawn.radius *
+                MODEL_SCALE_PER_RADIUS *
+                pawn.presentationScale *
+                reaction.scale
         val rootY = pawn.y + pawn.radius * ROOT_Y_OFFSET_PER_RADIUS
 
         when (pawn.species) {
@@ -350,6 +378,20 @@ internal class LudoPaws3DSceneRenderer {
             )
         }
 
+        val capture = state.captureReturns[pawn.key]
+        if (
+            capture != null &&
+            capture.durationMillis > 0L &&
+            nowMillis < capture.startedAtMillis + capture.durationMillis
+        ) {
+            // The capture route owns board translation/scale. Keep the base body
+            // stable so the CAPTURED reaction can add species-specific emotion.
+            return MotionFrame(
+                kind = SceneMotion.IDLE,
+                progress = 0f,
+            )
+        }
+
         val forward = state.forwardMotion
         if (
             forward != null &&
@@ -397,6 +439,66 @@ internal class LudoPaws3DSceneRenderer {
                 ((nowMillis + phaseOffset) % duration)
                     .toFloat() /
                     duration.toFloat(),
+        )
+    }
+
+    private fun captureReturnVisual(
+        player: PlayerSnapshot,
+        tokenIndex: Int,
+        capture: LudoPaws3DCaptureReturnState,
+        cell: Float,
+        nowMillis: Long,
+    ): CaptureVisual? {
+        if (capture.durationMillis <= 0L) return null
+        val elapsed =
+            (nowMillis - capture.startedAtMillis)
+                .coerceAtLeast(0L)
+        if (elapsed >= capture.durationMillis) return null
+
+        val slot = tokenIndex + player.seat
+        val fromBase =
+            LudoPawsFxBoardGeometry.tokenCenter(
+                color = player.color,
+                tokenIndex = tokenIndex,
+                position = capture.motion.fromPosition,
+                cell = cell,
+            ) ?: return null
+        val toBase =
+            LudoPawsFxBoardGeometry.tokenCenter(
+                color = player.color,
+                tokenIndex = tokenIndex,
+                position = -1,
+                cell = cell,
+            ) ?: return null
+        val fromOffset =
+            LudoPawsPawnLayout.tokenOffsetFraction(
+                slot = slot,
+                position = capture.motion.fromPosition,
+            )
+        val toOffset =
+            LudoPawsPawnLayout.tokenOffsetFraction(
+                slot = slot,
+                position = -1,
+            )
+        val from =
+            (fromBase.first + fromOffset.first * cell) to
+                (fromBase.second + fromOffset.second * cell)
+        val to =
+            (toBase.first + toOffset.first * cell) to
+                (toBase.second + toOffset.second * cell)
+        val placement =
+            LudoPawsCaptureReturnPlacement.sample(
+                from = from,
+                to = to,
+                cell = cell,
+                progress =
+                    elapsed.toFloat() /
+                        capture.durationMillis.toFloat(),
+            )
+        return CaptureVisual(
+            center = placement.x to placement.y,
+            scale = placement.scale,
+            fromPosition = capture.motion.fromPosition,
         )
     }
 
@@ -873,6 +975,13 @@ internal class LudoPaws3DSceneRenderer {
         val x: Float,
         val y: Float,
         val radius: Float,
+        val presentationScale: Float = 1f,
+    )
+
+    private data class CaptureVisual(
+        val center: Pair<Float, Float>,
+        val scale: Float,
+        val fromPosition: Int,
     )
 
     private enum class SceneMotion {
