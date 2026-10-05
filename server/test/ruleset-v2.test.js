@@ -21,18 +21,23 @@ import {
 } from "../src/game.js";
 import { rulesetHashForState } from "../src/match-room.js";
 
-function waitingClassic() {
+function waitingClassic(
+  rulesetKey = RULESET_KEY,
+) {
   return newMatch({
     matchId: "LPV2TEST01",
     hostPlayerId: "host",
     hostDisplayName: "Host",
     now: 1_000,
     targetPlayerCount: 2,
+    rulesetKey,
   });
 }
 
-function activeClassic() {
-  const waiting = addPlayer(waitingClassic(), {
+function activeClassic(
+  rulesetKey = RULESET_KEY,
+) {
+  const waiting = addPlayer(waitingClassic(rulesetKey), {
     playerId: "guest",
     displayName: "Guest",
     tokenAuthHash: "guest-auth",
@@ -60,14 +65,15 @@ function resolvedMoveState({
   return state;
 }
 
-test("new matches opt into v2 while keyless persisted matches stay pinned to v1", async () => {
-  const current = waitingClassic();
-  assert.equal(current.rulesetKey, RULESET_KEY);
-  assert.equal(rulesetForState(current), RULESET);
-  assert.equal(publicState(current).rulesetId, "ludoproof-standard-v2");
-
-  const legacy = structuredClone(current);
-  delete legacy.rulesetKey;
+test("production default stays v1 while explicit classic v2 is fully bindable", async () => {
+  const legacy = newMatch({
+    matchId: "LPLEGACY01",
+    hostPlayerId: "host",
+    hostDisplayName: "Host",
+    now: 900,
+    targetPlayerCount: 2,
+  });
+  assert.equal("rulesetKey" in legacy, false);
   assert.equal(rulesetForState(legacy), LEGACY_RULESET);
   assert.equal(publicState(legacy).rulesetId, "ludoproof-standard-v1");
 
@@ -76,10 +82,35 @@ test("new matches opt into v2 while keyless persisted matches stay pinned to v1"
     legacyHash,
     "4bd777ac5ec430c0a70956dd83a6451f4f8f0e91848b09000791e912fe3886cc",
   );
+
+  const current = waitingClassic();
+  assert.equal(current.rulesetKey, RULESET_KEY);
+  assert.equal(rulesetForState(current), RULESET);
+  assert.equal(publicState(current).rulesetId, "ludoproof-standard-v2");
+  assert.equal(
+    await rulesetHashForState(current),
+    "7ad14daf100d7e14eea9b0a6da3a68cbd85d35f647052add4433df2efd9eb862",
+  );
   assert.notEqual(await rulesetHashForState(current), legacyHash);
 });
 
-test("team matches use the matching v2 contract and preserve keyless v1 fallback", () => {
+test("production Team Up stays v1 while explicit team v2 is fully bindable", async () => {
+  const legacy = newMatch({
+    matchId: "LPTEAMV101",
+    hostPlayerId: "host",
+    hostDisplayName: "Host",
+    now: 1_900,
+    targetPlayerCount: 4,
+    matchMode: "TEAM_UP",
+  });
+  assert.equal("rulesetKey" in legacy, false);
+  assert.equal(rulesetForState(legacy), LEGACY_TEAM_RULESET);
+  assert.equal(publicState(legacy).rulesetId, "ludoproof-team-v1");
+  assert.equal(
+    await rulesetHashForState(legacy),
+    "75610e6d5908344586e1c0d22d5846bae5312c6e0274a4e613a8c5f8cd8bc426",
+  );
+
   const current = newMatch({
     matchId: "LPV2TEAM1",
     hostPlayerId: "host",
@@ -87,15 +118,15 @@ test("team matches use the matching v2 contract and preserve keyless v1 fallback
     now: 2_000,
     targetPlayerCount: 4,
     matchMode: "TEAM_UP",
+    rulesetKey: TEAM_RULESET_KEY,
   });
   assert.equal(current.rulesetKey, TEAM_RULESET_KEY);
   assert.equal(rulesetForState(current), TEAM_RULESET);
   assert.equal(publicState(current).rulesetId, "ludoproof-team-v2");
-
-  const legacy = structuredClone(current);
-  delete legacy.rulesetKey;
-  assert.equal(rulesetForState(legacy), LEGACY_TEAM_RULESET);
-  assert.equal(publicState(legacy).rulesetId, "ludoproof-team-v1");
+  assert.equal(
+    await rulesetHashForState(current),
+    "a10326d8a631381eba6bd775fe90decf1c3e5788f5862d19e4f23cf08fec57ce",
+  );
 });
 
 test("v2 cryptographically declares the previously implicit gameplay policies", () => {
