@@ -118,6 +118,13 @@ internal fun MainActivity.joinMatch() {
         return
     }
 
+    runCatching {
+        ProfileStore(
+            this,
+        ).updateDisplayName(
+            displayName,
+        )
+    }
     val operationKey =
         "join:" +
             code +
@@ -205,10 +212,13 @@ internal fun MainActivity.rollVerifiedDice() {
                 OnlineRollActionKind.MOVE_REQUIRED ->
                     "Move a highlighted token before rolling again."
                 else ->
-                    if (isOnline) "Verified roll is not available right now."
+                    if (isOnline) "Syncing the latest authoritative match state before rolling."
                     else "Offline — verified rolls resume when internet returns."
             },
         )
+        if (isOnline && !hasAuthoritativeActionState()) {
+            refreshState(silent = true)
+        }
         updateControls(state)
         return
     }
@@ -289,6 +299,14 @@ internal fun MainActivity.rollVerifiedDice() {
 internal fun MainActivity.moveToken(
     index: Int,
 ) {
+    if (!hasAuthoritativeActionState()) {
+        showStatus("Syncing the latest authoritative match state before moving.")
+        if (isOnline) {
+            refreshState(silent = true)
+        }
+        return
+    }
+
     val eventIndex =
         currentState
             ?.pendingRoll
@@ -380,6 +398,11 @@ internal fun MainActivity.captureSession(
     ) {
         lastRealtimeRevision =
             -1
+        uiStateHolder.update {
+            it.copy(
+                currentStateSource = null,
+            )
+        }
     }
 
     if (
