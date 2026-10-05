@@ -190,58 +190,95 @@ internal fun MainActivity.refreshState(
 }
 
 internal fun MainActivity.rollVerifiedDice() {
+    val state =
+        currentState
+            ?: run {
+                showStatus("Sync the active match before rolling.")
+                return
+            }
+    val decision = onlineRollActionDecision(state)
+    if (!decision.enabled) {
+        showStatus(
+            when (decision.kind) {
+                OnlineRollActionKind.WAIT_FOR_RECOVERY ->
+                    "This committed roll is locked to its original secret • waiting for recovery or server timeout."
+                OnlineRollActionKind.MOVE_REQUIRED ->
+                    "Move a highlighted token before rolling again."
+                else ->
+                    if (isOnline) "Verified roll is not available right now."
+                    else "Offline — verified rolls resume when internet returns."
+            },
+        )
+        updateControls(state)
+        return
+    }
+
     withSession {
             code,
             token,
         ->
+        var secret =
+            pendingSecret
+                ?.takeIf {
+                    it.matchId == code
+                }
+
+        if (decision.kind == OnlineRollActionKind.NEW_ROLL) {
+            if (secret != null) {
+                pendingRollStore.clear()
+                pendingSecret = null
+            }
+            val prepared = SeedCommitment.prepare()
+            secret =
+                PendingRollSecret(
+                    matchId = code,
+                    clientSeed = prepared.clientSeed,
+                    clientCommitment = prepared.clientCommitment,
+                )
+            pendingRollStore.save(requireNotNull(secret))
+            pendingSecret = secret
+        }
+
+        val resumableSecret =
+            secret
+                ?: run {
+                    showStatus("Roll recovery secret is unavailable • waiting for server recovery.")
+                    currentState?.let(::updateControls)
+                    return@withSession
+                }
+
         diceView.startRolling()
         verificationText.text =
-            "Verifying committed EntroNex roll…"
-        runNetwork(
-            action = {
-                var secret =
-                    pendingSecret
-                    ?.takeIf {
-                        it.matchId == code
-                    }
-
-            if (secret == null) {
-                pendingSecret
-                    ?.let {
-                        pendingRollStore
-                            .clear()
-                    }
-
-                val prepared =
-                    SeedCommitment.prepare()
-                secret =
-                    PendingRollSecret(
-                        matchId = code,
-                        clientSeed =
-                            prepared.clientSeed,
-                        clientCommitment =
-                            prepared.clientCommitment,
-                    )
-                pendingRollStore.save(
-                    secret,
-                )
-                pendingSecret = secret
+            if (decision.kind == OnlineRollActionKind.NEW_ROLL) {
+                "Verifying committed EntroNex roll…"
+            } else {
+                "Resuming committed EntroNex roll…"
             }
 
-            api.commitRoll(
-                code,
-                token,
-                secret.clientCommitment,
-            )
+        runNetwork(
+            action = {
+                when (decision.kind) {
+                    OnlineRollActionKind.NEW_ROLL,
+                    OnlineRollActionKind.RESUME_COMMIT_THEN_REVEAL,
+                    ->
+                        api.commitRoll(
+                            code,
+                            token,
+                            resumableSecret.clientCommitment,
+                        )
 
-            val revealed =
-                api.revealRoll(
-                    code,
-                    token,
-                    secret.clientSeed,
-                )
+                    OnlineRollActionKind.RESUME_REVEAL_ONLY -> Unit
+                    else -> error("Online roll action changed before submission")
+                }
 
-            pendingRollStore.clear()
+                val revealed =
+                    api.revealRoll(
+                        code,
+                        token,
+                        resumableSecret.clientSeed,
+                    )
+
+                pendingRollStore.clear()
                 pendingSecret = null
                 revealed
             },
