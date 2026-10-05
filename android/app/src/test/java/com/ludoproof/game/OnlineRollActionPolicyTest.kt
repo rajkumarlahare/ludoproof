@@ -17,6 +17,14 @@ class OnlineRollActionPolicyTest {
     }
 
     @Test
+    fun cachedOrStaleStateCannotAuthorizeRoll() {
+        val decision = decision(hasAuthoritativeState = false)
+        assertEquals(OnlineRollActionKind.DISABLED, decision.kind)
+        assertFalse(decision.enabled)
+        assertEquals("SYNCING MATCH", decision.label)
+    }
+
+    @Test
     fun creatingRoundWithMatchingSecretResumesCommitThenReveal() {
         val decision =
             decision(
@@ -100,6 +108,7 @@ class OnlineRollActionPolicyTest {
 
     private fun decision(
         isOnline: Boolean = true,
+        hasAuthoritativeState: Boolean = true,
         myTurn: Boolean = true,
         pendingStatus: String? = null,
         remoteCommitment: String? = null,
@@ -107,6 +116,7 @@ class OnlineRollActionPolicyTest {
     ) =
         OnlineRollActionPolicy.resolve(
             isOnline = isOnline,
+            hasAuthoritativeState = hasAuthoritativeState,
             matchStatus = "ACTIVE",
             myTurn = myTurn,
             pendingStatus = pendingStatus,
