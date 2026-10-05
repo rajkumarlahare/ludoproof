@@ -45,18 +45,23 @@ enum class AnimalPersonality {
     SASSY,
 }
 
+/** Semantic non-verbal vocal intent. SILENT keeps visual reactions voice-free. */
 enum class VoiceCue(
     val wireName: String,
 ) {
+    SILENT("silent"),
     SIX("six"),
+    YARD_EXIT("yard_exit"),
     CAPTURE("capture"),
     CAPTURED("captured"),
     SAFE("safe"),
+    HOME_LANE("home_lane"),
     HOME("home"),
     FRUSTRATED("frustrated"),
     THIRD_SIX("third_six"),
     IDLE("idle"),
     NERVOUS("nervous"),
+    PROUD("proud"),
     VICTORY("victory"),
     DEFEAT("defeat"),
 }
