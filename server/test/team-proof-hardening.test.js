@@ -10,14 +10,10 @@ import {
   MatchRoom as TeamMatchRoom,
 } from "../src/match-room-team.js";
 
-const LEGACY_CLASSIC_RULESET_HASH =
+const CLASSIC_RULESET_HASH =
   "4bd777ac5ec430c0a70956dd83a6451f4f8f0e91848b09000791e912fe3886cc";
-const LEGACY_TEAM_RULESET_HASH =
+const TEAM_RULESET_HASH =
   "75610e6d5908344586e1c0d22d5846bae5312c6e0274a4e613a8c5f8cd8bc426";
-const CLASSIC_V2_RULESET_HASH =
-  "7ad14daf100d7e14eea9b0a6da3a68cbd85d35f647052add4433df2efd9eb862";
-const TEAM_V2_RULESET_HASH =
-  "a10326d8a631381eba6bd775fe90decf1c3e5788f5862d19e4f23cf08fec57ce";
 
 class TestStorage {
   constructor() {
@@ -78,8 +74,8 @@ function createRequest({
   });
 }
 
-test("legacy classic and team ruleset digests remain frozen", async () => {
-  const classic = newMatch({
+test("classic ruleset digest remains frozen", async () => {
+  const state = newMatch({
     matchId: "LPQWERTY23",
     hostPlayerId: "p_host",
     hostDisplayName: "Host",
@@ -87,38 +83,15 @@ test("legacy classic and team ruleset digests remain frozen", async () => {
     targetPlayerCount: 2,
     matchMode: "ONLINE",
   });
-  delete classic.rulesetKey;
-
-  const team = newMatch({
-    matchId: "LPABCDEFGH",
-    hostPlayerId: "p_host",
-    hostDisplayName: "Host",
-    now: 1,
-    targetPlayerCount: 4,
-    matchMode: "TEAM_UP",
-  });
-  delete team.rulesetKey;
 
   assert.equal(
-    await rulesetHashForState(classic),
-    LEGACY_CLASSIC_RULESET_HASH,
-  );
-  assert.equal(
-    await rulesetHashForState(team),
-    LEGACY_TEAM_RULESET_HASH,
+    await rulesetHashForState(state),
+    CLASSIC_RULESET_HASH,
   );
 });
 
-test("new matches bind the frozen v2 classic and team ruleset digests", async () => {
-  const classic = newMatch({
-    matchId: "LPQWERTY23",
-    hostPlayerId: "p_host",
-    hostDisplayName: "Host",
-    now: 1,
-    targetPlayerCount: 2,
-    matchMode: "ONLINE",
-  });
-  const team = newMatch({
+test("Team Up proof binds the frozen team ruleset digest", async () => {
+  const state = newMatch({
     matchId: "LPABCDEFGH",
     hostPlayerId: "p_host",
     hostDisplayName: "Host",
@@ -128,14 +101,10 @@ test("new matches bind the frozen v2 classic and team ruleset digests", async ()
   });
 
   assert.equal(
-    await rulesetHashForState(classic),
-    CLASSIC_V2_RULESET_HASH,
+    await rulesetHashForState(state),
+    TEAM_RULESET_HASH,
   );
-  assert.equal(
-    await rulesetHashForState(team),
-    TEAM_V2_RULESET_HASH,
-  );
-  assert.notEqual(TEAM_V2_RULESET_HASH, CLASSIC_V2_RULESET_HASH);
+  assert.notEqual(TEAM_RULESET_HASH, CLASSIC_RULESET_HASH);
 });
 
 test("Team Up create persists the final team state exactly once", async () => {
@@ -147,11 +116,10 @@ test("Team Up create persists the final team state exactly once", async () => {
   assert.equal(response.status, 201);
   assert.equal(storage.putCount, 1);
   assert.equal(stored.matchMode, "TEAM_UP");
-  assert.equal(stored.rulesetKey, "TEAM_UP_V2");
   assert.deepEqual(stored.teamAssignments, ["A", "B", "A", "B"]);
   assert.equal(stored.players[0].teamId, "A");
   assert.equal(payload.state.matchMode, "TEAM_UP");
-  assert.equal(payload.state.rulesetId, "ludoproof-team-v2");
+  assert.equal(payload.state.rulesetId, "ludoproof-team-v1");
 });
 
 test("Team Up create rejects any player count other than four before persistence", async () => {
