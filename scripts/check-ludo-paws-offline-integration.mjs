@@ -27,6 +27,8 @@ requireText(
     "OfflineFeedbackSound",
     "LudoPawsReactionEngine.derive",
     "GameSoundFeedback.six",
+    "GameSoundFeedback.homeLane",
+    "GameSoundFeedback.thirdSix",
     "LudoPawsHaptics.reaction",
     "tokenMovementCommitted",
   ],
@@ -100,7 +102,8 @@ requireText(
     "normal committed move uses move sound",
     "capture replaces generic move sound",
     "victory wins over home feedback",
-    "third six keeps haptic reaction without duplicate result sound",
+    "third six uses dedicated soft penalty sound and keeps haptic reaction",
+    "home lane and exact home miss have distinct sounds",
     "silent sync does not invent feedback",
   ],
 );

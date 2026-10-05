@@ -12,6 +12,8 @@ import android.os.SystemClock
 import android.util.AttributeSet
 import android.util.Log
 import android.view.TextureView
+import com.ludoproof.game.feature.characters.domain.model.AnimationCue
+import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import kotlin.math.max
 
@@ -29,31 +31,25 @@ internal data class LudoPaws3DSceneState(
     val forwardStartedAtMillis: Long = 0L,
     val forwardDurationMillis: Long = 0L,
     val captureHiddenUntilMillis: Map<LudoPaws3DPawnKey, Long> = emptyMap(),
+    val activeReactions: Map<LudoPaws3DPawnKey, LudoPaws3DActiveReaction> = emptyMap(),
     val reducedMotion: Boolean = false,
 )
 
 /**
  * One production OpenGL surface for every visible Ludo pawn.
  *
- * TextureView is deliberate here: unlike one GLSurfaceView per pawn, it keeps a
- * single GL context and still participates in normal Android view compositing.
- * The authoritative LudoBoardView remains underneath for board geometry and
- * touch hit-testing; this layer is visual only and never mutates game state.
- *
- * If ES 3.0/EGL initialization fails, [onOperationalChanged] reports false and
- * the authoritative classic board remains the safe pawn fallback. No retired
- * 2D animal drawable renderer is restored.
+ * TextureView keeps a single GL context and participates in Android compositing.
+ * The authoritative board remains underneath for geometry/touch/game state.
+ * This layer is presentation-only and never mutates gameplay or proof state.
  */
 internal class LudoPaws3DSceneView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : TextureView(context, attrs), TextureView.SurfaceTextureListener {
-    private val settingsStore =
-        GameSettingsStore(context)
+    private val settingsStore = GameSettingsStore(context)
 
     @Volatile
-    private var sceneState =
-        LudoPaws3DSceneState()
+    private var sceneState = LudoPaws3DSceneState()
 
     @Volatile
     private var renderLoop: RenderLoop? = null
@@ -77,24 +73,19 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         perspectiveColor: String?,
         characterIdsBySeat: List<String> = emptyList(),
     ) {
-        val now =
-            SystemClock.uptimeMillis()
-        val previousState =
-            sceneState
-        val previousSnapshot =
-            previousState.snapshot
+        val now = SystemClock.uptimeMillis()
+        val previousState = sceneState
+        val previousSnapshot = previousState.snapshot
         val sameMatch =
             previousSnapshot != null &&
                 state != null &&
                 previousSnapshot.matchId == state.matchId
-        val settings =
-            settingsStore.snapshot()
+        val settings = settingsStore.snapshot()
         val motions =
-            LudoPawsPawnAnimationPolicy
-                .plans(
-                    previous = previousSnapshot,
-                    current = state,
-                )
+            LudoPawsPawnAnimationPolicy.plans(
+                previous = previousSnapshot,
+                current = state,
+            )
         val newForward =
             motions.firstOrNull {
                 it.kind == LudoPawsPawnMotionKind.FORWARD
@@ -114,8 +105,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             } else {
                 null
             }
-        val forward =
-            newForward ?: retainedForward
+        val forward = newForward ?: retainedForward
         val forwardStartedAtMillis =
             if (newForward != null) {
                 now
@@ -128,8 +118,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             if (newForward != null) {
                 max(
                     settings.gameSpeed.moveStepMs,
-                    newForward.visualSteps.toLong() *
-                        settings.gameSpeed.moveStepMs,
+                    newForward.visualSteps.toLong() * settings.gameSpeed.moveStepMs,
                 )
             } else if (forward != null) {
                 previousState.forwardDurationMillis
@@ -139,10 +128,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
 
         val retainedCaptureHides =
             if (sameMatch) {
-                previousState.captureHiddenUntilMillis
-                    .filterValues { hideUntil ->
-                        hideUntil > now
-                    }
+                previousState.captureHiddenUntilMillis.filterValues { it > now }
             } else {
                 emptyMap()
             }
@@ -152,13 +138,9 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                 .filter {
                     it.kind == LudoPawsPawnMotionKind.CAPTURE_RETURN
                 }
-                .associate {
-                    motion ->
+                .associate { motion ->
                     val duration =
-                        (
-                            motion.visualSteps.toLong() *
-                                settings.gameSpeed.moveStepMs
-                            )
+                        (motion.visualSteps.toLong() * settings.gameSpeed.moveStepMs)
                             .coerceIn(
                                 MIN_CAPTURE_DURATION_MILLIS,
                                 MAX_CAPTURE_DURATION_MILLIS,
@@ -166,27 +148,130 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                     LudoPaws3DPawnKey(
                         playerId = motion.playerId,
                         tokenIndex = motion.tokenIndex,
-                    ) to
-                        (now + duration)
+                    ) to (now + duration)
                 }
+        val retainedReactions =
+            if (sameMatch && !settings.reducedMotionEnabled) {
+                previousState.activeReactions.filterValues { reaction ->
+                    now < reaction.startedAtMillis + reaction.durationMillis
+                }
+            } else {
+                emptyMap()
+            }
 
         sceneState =
             LudoPaws3DSceneState(
                 snapshot = state,
                 localPlayerId = playerId,
                 perspectiveColor =
-                    perspectiveColor
-                        ?.takeIf {
-                            it in OfflinePlayerLayout.COLORS
-                        },
+                    perspectiveColor?.takeIf {
+                        it in OfflinePlayerLayout.COLORS
+                    },
                 characterIdsBySeat = characterIdsBySeat.take(4),
                 forwardMotion = forward,
                 forwardStartedAtMillis = forwardStartedAtMillis,
                 forwardDurationMillis = forwardDurationMillis,
-                captureHiddenUntilMillis =
-                    retainedCaptureHides + newCaptureHides,
+                captureHiddenUntilMillis = retainedCaptureHides + newCaptureHides,
+                activeReactions = retainedReactions,
                 reducedMotion = settings.reducedMotionEnabled,
             )
+    }
+
+    /**
+     * Adds short, pawn-local body language after the snapshot has been bound.
+     * Higher-priority reactions replace lower-priority animation on the same
+     * pawn; gameplay movement remains independent and still has precedence for
+     * board position.
+     */
+    fun playReactions(
+        reactions: List<LudoPawsReaction>,
+    ) {
+        if (reactions.isEmpty()) return
+        val now = SystemClock.uptimeMillis()
+        val current = sceneState
+        val snapshot = current.snapshot ?: return
+        if (current.reducedMotion) return
+
+        val next =
+            current.activeReactions
+                .filterValues {
+                    now < it.startedAtMillis + it.durationMillis
+                }
+                .toMutableMap()
+
+        reactions
+            .asSequence()
+            .sortedByDescending(LudoPawsReaction::priority)
+            .forEach { reaction ->
+                val player =
+                    snapshot.players.firstOrNull {
+                        it.playerId == reaction.playerId
+                    } ?: return@forEach
+                val species =
+                    LudoPaws3DCharacterPolicy.speciesForSeat(
+                        characterIdsBySeat = current.characterIdsBySeat,
+                        seat = player.seat,
+                        fallbackColor = player.color,
+                    ) ?: return@forEach
+                val targets =
+                    targetTokens(
+                        player = player,
+                        reaction = reaction,
+                    )
+                val duration =
+                    LudoPaws3DReactionMotion.durationMillis(
+                        species = species,
+                        cue = reaction.animationCue,
+                    )
+                targets.forEach { tokenIndex ->
+                    val key =
+                        LudoPaws3DPawnKey(
+                            playerId = player.playerId,
+                            tokenIndex = tokenIndex,
+                        )
+                    val previous = next[key]
+                    if (
+                        previous == null ||
+                        reaction.priority >= previous.priority
+                    ) {
+                        next[key] =
+                            LudoPaws3DActiveReaction(
+                                cue = reaction.animationCue,
+                                startedAtMillis = now,
+                                durationMillis = duration,
+                                priority = reaction.priority,
+                            )
+                    }
+                }
+            }
+
+        sceneState = current.copy(activeReactions = next)
+    }
+
+    private fun targetTokens(
+        player: PlayerSnapshot,
+        reaction: LudoPawsReaction,
+    ): List<Int> {
+        reaction.tokenIndex
+            ?.takeIf { it in player.tokens.indices }
+            ?.let { return listOf(it) }
+
+        if (
+            reaction.animationCue == AnimationCue.VICTORY ||
+            reaction.animationCue == AnimationCue.DEFEAT
+        ) {
+            return player.tokens.indices.toList()
+        }
+
+        val active =
+            player.tokens.indices.firstOrNull { index ->
+                player.tokens[index] in 0..56
+            }
+        val yard =
+            player.tokens.indices.firstOrNull { index ->
+                player.tokens[index] == -1
+            }
+        return listOf(active ?: yard ?: 0)
     }
 
     override fun onSurfaceTextureAvailable(
@@ -194,11 +279,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         width: Int,
         height: Int,
     ) {
-        startRenderLoop(
-            surface = surface,
-            width = width,
-            height = height,
-        )
+        startRenderLoop(surface, width, height)
     }
 
     override fun onSurfaceTextureSizeChanged(
@@ -206,11 +287,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         width: Int,
         height: Int,
     ) {
-        renderLoop
-            ?.resize(
-                width = width,
-                height = height,
-            )
+        renderLoop?.resize(width, height)
     }
 
     override fun onSurfaceTextureDestroyed(
@@ -226,8 +303,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         stopRenderLoop()
-        sceneState =
-            LudoPaws3DSceneState()
+        sceneState = LudoPaws3DSceneState()
         super.onDetachedFromWindow()
     }
 
@@ -241,11 +317,10 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             surfaceTexture = surface,
             initialWidth = width,
             initialHeight = height,
-        )
-            .also {
-                renderLoop = it
-                it.start()
-            }
+        ).also {
+            renderLoop = it
+            it.start()
+        }
     }
 
     private fun stopRenderLoop() {
@@ -263,12 +338,8 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         setOperational(false)
     }
 
-    private fun setOperational(
-        value: Boolean,
-    ) {
-        if (operational == value) {
-            return
-        }
+    private fun setOperational(value: Boolean) {
+        if (operational == value) return
         operational = value
         post {
             onOperationalChanged?.invoke(value)
@@ -305,30 +376,21 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         override fun run() {
             var egl: EglWindow? = null
             try {
-                egl =
-                    EglWindow(
-                        surfaceTexture,
-                    )
-                val renderer =
-                    LudoPaws3DSceneRenderer()
+                egl = EglWindow(surfaceTexture)
+                val renderer = LudoPaws3DSceneRenderer()
                 renderer.onSurfaceCreated()
                 var renderedWidth = -1
                 var renderedHeight = -1
                 setOperational(true)
 
                 while (running) {
-                    val width =
-                        targetWidth.coerceAtLeast(1)
-                    val height =
-                        targetHeight.coerceAtLeast(1)
+                    val width = targetWidth.coerceAtLeast(1)
+                    val height = targetHeight.coerceAtLeast(1)
                     if (
                         width != renderedWidth ||
                         height != renderedHeight
                     ) {
-                        renderer.onSurfaceChanged(
-                            width = width,
-                            height = height,
-                        )
+                        renderer.onSurfaceChanged(width, height)
                         renderedWidth = width
                         renderedHeight = height
                     }
@@ -342,9 +404,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                         state = frameState,
                         nowMillis = SystemClock.uptimeMillis(),
                     )
-                    if (!egl.swapBuffers()) {
-                        error("EGL swapBuffers failed")
-                    }
+                    if (!egl.swapBuffers()) error("EGL swapBuffers failed")
                     SystemClock.sleep(FRAME_DELAY_MILLIS)
                 }
             } catch (interrupted: InterruptedException) {
@@ -357,9 +417,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                 )
             } finally {
                 LudoPaws3DCharacterPolicy.clearRenderAssignments()
-                runCatching {
-                    egl?.release()
-                }
+                runCatching { egl?.release() }
                 setOperational(false)
             }
         }
@@ -373,15 +431,9 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         private val surface: EGLSurface
 
         init {
-            display =
-                EGL14.eglGetDisplay(
-                    EGL14.EGL_DEFAULT_DISPLAY,
-                )
-            check(display != EGL14.EGL_NO_DISPLAY) {
-                "No EGL display"
-            }
-            val versions =
-                IntArray(2)
+            display = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
+            check(display != EGL14.EGL_NO_DISPLAY) { "No EGL display" }
+            val versions = IntArray(2)
             check(
                 EGL14.eglInitialize(
                     display,
@@ -390,9 +442,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                     versions,
                     1,
                 ),
-            ) {
-                "EGL initialize failed"
-            }
+            ) { "EGL initialize failed" }
 
             val configAttributes =
                 intArrayOf(
@@ -412,10 +462,8 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                     16,
                     EGL14.EGL_NONE,
                 )
-            val configs =
-                arrayOfNulls<EGLConfig>(1)
-            val configCount =
-                IntArray(1)
+            val configs = arrayOfNulls<EGLConfig>(1)
+            val configCount = IntArray(1)
             check(
                 EGL14.eglChooseConfig(
                     display,
@@ -426,13 +474,9 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                     configs.size,
                     configCount,
                     0,
-                ) &&
-                    configCount[0] > 0,
-            ) {
-                "No ES3 RGBA EGL config"
-            }
-            val config =
-                checkNotNull(configs[0])
+                ) && configCount[0] > 0,
+            ) { "No ES3 RGBA EGL config" }
+            val config = checkNotNull(configs[0])
 
             context =
                 EGL14.eglCreateContext(
@@ -468,16 +512,11 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                     surface,
                     context,
                 ),
-            ) {
-                "EGL makeCurrent failed"
-            }
+            ) { "EGL makeCurrent failed" }
         }
 
         fun swapBuffers(): Boolean =
-            EGL14.eglSwapBuffers(
-                display,
-                surface,
-            )
+            EGL14.eglSwapBuffers(display, surface)
 
         fun release() {
             EGL14.eglMakeCurrent(
@@ -486,14 +525,8 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                 EGL14.EGL_NO_SURFACE,
                 EGL14.EGL_NO_CONTEXT,
             )
-            EGL14.eglDestroySurface(
-                display,
-                surface,
-            )
-            EGL14.eglDestroyContext(
-                display,
-                context,
-            )
+            EGL14.eglDestroySurface(display, surface)
+            EGL14.eglDestroyContext(display, context)
             EGL14.eglTerminate(display)
         }
     }

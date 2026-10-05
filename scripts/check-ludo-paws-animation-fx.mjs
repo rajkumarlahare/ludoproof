@@ -22,6 +22,7 @@ requireText(
     "LudoPaws3DLegalHaloView",
     "LudoPawsGameFxOverlayView",
     "pawn3DScene.bind",
+    "pawn3DScene.playReactions(reactions)",
     "pawn3DLegalHalo.bind",
     "reducedMotionEnabled",
     "previous = previous",
@@ -35,8 +36,31 @@ requireText(
     ".plans(",
     "LudoPawsPawnMotionKind.CAPTURE_RETURN",
     "captureHiddenUntilMillis",
+    "activeReactions",
+    "fun playReactions(",
+    "reaction.priority >= previous.priority",
+    "LudoPaws3DReactionMotion.durationMillis",
     "settings.gameSpeed.moveStepMs",
     "reducedMotion",
+  ],
+);
+
+requireText(
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPaws3DReactionMotion.kt",
+  [
+    "data class LudoPaws3DReactionPose",
+    "data class LudoPaws3DActiveReaction",
+    "fun durationMillis(",
+    "fun sample(",
+    "LudoPaws3DSpecies.DOG",
+    "LudoPaws3DSpecies.GOAT",
+    "LudoPaws3DSpecies.DUCK",
+    "LudoPaws3DSpecies.CAT",
+    "AnimationCue.CAPTURE",
+    "AnimationCue.CAPTURED",
+    "AnimationCue.NERVOUS",
+    "AnimationCue.VICTORY",
+    "HOME never adds another full spin",
   ],
 );
 
@@ -48,10 +72,27 @@ requireText(
     ".positionAtVisualStep(",
     "SceneMotion.HOP",
     "SceneMotion.HOME",
+    "reactionPose(",
+    "state.activeReactions[pawn.key]",
+    "LudoPaws3DReactionMotion.sample",
+    "earBounceDegrees = base.earBounceDegrees + reaction.primaryAppendageDegrees",
+    "beardSwingDegrees = base.beardSwingDegrees + reaction.secondaryAppendageDegrees",
+    "wingFlapDegrees = base.wingFlapDegrees + reaction.primaryAppendageDegrees",
+    "tailSwayDegrees = base.tailSwayDegrees + reaction.secondaryAppendageDegrees",
     "Dog3DMotionTimeline",
     "Goat3DMotionTimeline",
     "Duck3DMotionTimeline",
     "Cat3DMotionTimeline",
+  ],
+);
+
+requireText(
+  "android/app/src/test/java/com/ludoproof/game/LudoPaws3DReactionMotionTest.kt",
+  [
+    "everySpeciesAndCueHasSafeFiniteMotion",
+    "homeAddsBodyLanguageButNeverAddsSecondFullSpin",
+    "victoryKeepsIndependentCelebrationRotation",
+    "speciesIdentityIsVisibleInReactionAnatomy",
   ],
 );
 
@@ -135,5 +176,5 @@ for (const retired of [
 }
 
 console.log(
-  "Ludo Paws production animation/FX gate passed: shared 3D hop/home motion, capture timing, game FX, reduced-motion handling and retired drawable layers are locked.",
+  "Ludo Paws production animation/FX gate passed: species-specific 3D body language, shared hop/home motion, capture timing, game FX and reduced-motion handling are locked.",
 );

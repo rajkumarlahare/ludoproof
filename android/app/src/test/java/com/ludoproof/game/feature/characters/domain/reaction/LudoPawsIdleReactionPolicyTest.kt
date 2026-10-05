@@ -13,11 +13,11 @@ import org.junit.Test
 
 class LudoPawsIdleReactionPolicyTest {
     @Test
-    fun activeMatchBecomesIdleOnlyAfterThreshold() {
+    fun activeMatchBecomesIdleOnlyAfterQuietThreshold() {
         val state = snapshot()
 
         assertEquals(
-            12_000L,
+            24_000L,
             LudoPawsIdleReactionPolicy.delayUntilEligibleMillis(
                 state = state,
                 lastMeaningfulChangeAtMillis = 1_000L,
@@ -29,7 +29,7 @@ class LudoPawsIdleReactionPolicyTest {
             LudoPawsIdleReactionPolicy.delayUntilEligibleMillis(
                 state = state,
                 lastMeaningfulChangeAtMillis = 1_000L,
-                nowMillis = 12_999L,
+                nowMillis = 24_999L,
             ),
         )
         assertEquals(
@@ -37,7 +37,7 @@ class LudoPawsIdleReactionPolicyTest {
             LudoPawsIdleReactionPolicy.delayUntilEligibleMillis(
                 state = state,
                 lastMeaningfulChangeAtMillis = 1_000L,
-                nowMillis = 13_000L,
+                nowMillis = 25_000L,
             ),
         )
     }
@@ -101,8 +101,7 @@ class LudoPawsIdleReactionPolicyTest {
                     ),
             )
 
-        val baseKey =
-            LudoPawsIdleReactionPolicy.meaningfulStateKey(base)
+        val baseKey = LudoPawsIdleReactionPolicy.meaningfulStateKey(base)
         assertNotEquals(
             baseKey,
             LudoPawsIdleReactionPolicy.meaningfulStateKey(rolled),
@@ -134,7 +133,7 @@ class LudoPawsIdleReactionPolicyTest {
     }
 
     @Test
-    fun eligibleIdleStateDerivesIdleVoiceAndAnimationForActingSeat() {
+    fun eligibleIdleStateDerivesIdleVocalAndAnimationForActingSeat() {
         val state =
             snapshot(
                 actingSeat = 2,
@@ -150,7 +149,7 @@ class LudoPawsIdleReactionPolicyTest {
         val reactions =
             LudoPawsReactionEngine.deriveIdle(
                 current = state,
-                nowMillis = 12_001L,
+                nowMillis = 24_001L,
                 lastMeaningfulChangeAtMillis = 0L,
             )
 
@@ -196,13 +195,7 @@ class LudoPawsIdleReactionPolicyTest {
         PlayerSnapshot(
             playerId = id,
             displayName = id,
-            color =
-                listOf(
-                    "RED",
-                    "GREEN",
-                    "YELLOW",
-                    "BLUE",
-                )[seat],
+            color = listOf("RED", "GREEN", "YELLOW", "BLUE")[seat],
             seat = seat,
             tokens = tokens,
         )

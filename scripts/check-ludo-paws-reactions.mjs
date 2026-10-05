@@ -2,40 +2,79 @@ import fs from 'node:fs';
 
 const requiredFiles = [
   'android/app/src/main/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsReactionEngine.kt',
-  'android/app/src/main/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsVoiceLines.kt',
+  'android/app/src/main/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsGameMomentDetector.kt',
+  'android/app/src/main/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsReactionDirector.kt',
   'android/app/src/main/java/com/ludoproof/game/feature/characters/data/audio/LudoPawsVoicePlayer.kt',
+  'android/app/src/main/java/com/ludoproof/game/feature/characters/domain/audio/LudoPawsReactionAudioProfile.kt',
   'android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsReactiveBoardView.kt',
   'android/app/src/test/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsReactionEngineTest.kt',
+  'android/app/src/test/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsGameMomentDetectorTest.kt',
 ];
 
 for (const file of requiredFiles) {
-  if (!fs.existsSync(file)) {
-    throw new Error(`Missing Phase 6 reaction file: ${file}`);
-  }
+  if (!fs.existsSync(file)) throw new Error(`Missing reaction file: ${file}`);
+}
+
+const spokenLines =
+  'android/app/src/main/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsVoiceLines.kt';
+if (fs.existsSync(spokenLines)) {
+  throw new Error('Spoken character commentary must stay removed.');
 }
 
 const engine = fs.readFileSync(requiredFiles[0], 'utf8');
-const voice = fs.readFileSync(requiredFiles[2], 'utf8');
-const board = fs.readFileSync(requiredFiles[3], 'utf8');
+const moments = fs.readFileSync(requiredFiles[1], 'utf8');
+const director = fs.readFileSync(requiredFiles[2], 'utf8');
+const voice = fs.readFileSync(requiredFiles[3], 'utf8');
+const profile = fs.readFileSync(requiredFiles[4], 'utf8');
+const board = fs.readFileSync(requiredFiles[5], 'utf8');
 
 for (const marker of [
+  'VoiceCue.SILENT',
   'VoiceCue.SIX',
+  'VoiceCue.YARD_EXIT',
   'VoiceCue.THIRD_SIX',
   'VoiceCue.CAPTURE',
   'VoiceCue.CAPTURED',
   'VoiceCue.SAFE',
+  'VoiceCue.HOME_LANE',
   'VoiceCue.HOME',
   'VoiceCue.FRUSTRATED',
+  'VoiceCue.NERVOUS',
+  'VoiceCue.PROUD',
   'VoiceCue.VICTORY',
   'VoiceCue.DEFEAT',
 ]) {
-  if (!engine.includes(marker)) {
-    throw new Error(`Reaction engine is missing ${marker}`);
-  }
+  if (!engine.includes(marker)) throw new Error(`Reaction engine is missing ${marker}`);
+}
+for (const marker of [
+  'ONLY_LEGAL_MOVE',
+  'HOME_LANE_ENTERED',
+  'EXACT_HOME_MISS',
+  'TOKEN_THREATENED',
+  'isExactHomeMiss',
+  'threateningPlayer',
+  'sameTeam',
+]) {
+  if (!moments.includes(marker)) throw new Error(`Situation detector is missing ${marker}`);
+}
+for (const marker of ['IDLE -> 24_000L', 'PROUD -> 12_000L', 'NERVOUS -> 8_000L']) {
+  if (!director.includes(marker)) throw new Error(`Reaction scheduler is missing ${marker}`);
 }
 
-if (!voice.includes('GameSettingsStore') || !voice.includes('TextToSpeech')) {
-  throw new Error('Phase 6 voice player must respect sound settings and use on-device TTS');
+if (!voice.includes('GameSettingsStore') || !voice.includes('LudoPawsReactionAudioProfile')) {
+  throw new Error('Animal vocal player must respect settings and use the reaction audio profile.');
+}
+for (const forbidden of [
+  'import android.speech.tts.TextToSpeech',
+  'TextToSpeech(',
+  'Six! Let',
+  'Got you!',
+  'I win!',
+]) {
+  if (voice.includes(forbidden)) throw new Error(`Spoken character commentary returned: ${forbidden}`);
+}
+for (const marker of ['probabilityPercent', 'rawResourceNames', 'fallback', 'deterministicVariantIndex']) {
+  if (!profile.includes(marker)) throw new Error(`Vocal profile is missing ${marker}`);
 }
 
 if (
@@ -43,11 +82,15 @@ if (
   !board.includes('.detect(') ||
   !board.includes('LudoPawsVoicePlayer')
 ) {
-  throw new Error('Reactive board is not wired to reactions and voice playback');
+  throw new Error('Reactive board is not wired to reaction derivation and animal vocals.');
 }
 
-if (engine.includes('OfflineGameEngine(') || engine.includes('session.move(') || engine.includes('session.roll(')) {
-  throw new Error('Reaction engine must remain presentation-only and must not mutate gameplay');
+for (const source of [engine, moments, director]) {
+  for (const marker of ['OfflineGameEngine(', 'session.move(', 'session.roll(', 'EntroNexV4Local']) {
+    if (source.includes(marker)) {
+      throw new Error(`Reaction presentation layer must not mutate gameplay/proof state: ${marker}`);
+    }
+  }
 }
 
-console.log('Ludo Paws Phase 6 reaction gate passed.');
+console.log('Ludo Paws situational non-verbal reaction gate passed.');

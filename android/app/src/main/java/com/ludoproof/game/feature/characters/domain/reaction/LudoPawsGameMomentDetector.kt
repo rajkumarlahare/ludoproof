@@ -12,10 +12,14 @@ enum class GameMomentType {
     POOR_ROLL_STREAK,
     TOKEN_LEFT_YARD,
     TOKEN_MOVED,
+    ONLY_LEGAL_MOVE,
     CAPTURE_MADE,
     TOKEN_CAPTURED,
     SAFE_REACHED,
+    HOME_LANE_ENTERED,
     HOME_REACHED,
+    EXACT_HOME_MISS,
+    TOKEN_THREATENED,
     NO_LEGAL_MOVE,
     THIRD_SIX_FORFEIT,
     PLAYER_LEADING,
@@ -38,12 +42,9 @@ data class LudoPawsGameMoment(
 )
 
 /**
- * Phase 7 presentation-only state-diff engine.
- *
- * The detector consumes immutable public MatchSnapshot values. It never rolls
- * dice, selects a move, changes turn order, mutates proof material, or writes
- * match state. Both offline and online screens can therefore feed the same
- * authoritative snapshot shape into this class.
+ * Presentation-only state-diff engine. Every moment is derived from immutable
+ * snapshots; this class never rolls dice, chooses a move or mutates game/proof
+ * state. Offline and online modes therefore share exactly the same reactions.
  */
 object LudoPawsGameMomentDetector {
     private const val POOR_ROLL_STREAK_LENGTH = 3
@@ -80,34 +81,12 @@ object LudoPawsGameMomentDetector {
             return emptyList()
         }
 
-        val moments =
-            mutableListOf<LudoPawsGameMoment>()
-
-        detectTurnChange(
-            previous = previous,
-            current = current,
-            sink = moments,
-        )
-        detectRollLifecycle(
-            previous = previous,
-            current = current,
-            sink = moments,
-        )
-        detectTokenChanges(
-            previous = previous,
-            current = current,
-            sink = moments,
-        )
-        detectLeadChange(
-            previous = previous,
-            current = current,
-            sink = moments,
-        )
-        detectFinish(
-            previous = previous,
-            current = current,
-            sink = moments,
-        )
+        val moments = mutableListOf<LudoPawsGameMoment>()
+        detectTurnChange(previous, current, moments)
+        detectRollLifecycle(previous, current, moments)
+        detectTokenChanges(previous, current, moments)
+        detectLeadChange(previous, current, moments)
+        detectFinish(previous, current, moments)
 
         return moments.distinctBy {
             listOf(
@@ -125,7 +104,7 @@ object LudoPawsGameMomentDetector {
         current: MatchSnapshot?,
         nowMillis: Long,
         lastMeaningfulChangeAtMillis: Long,
-        thresholdMillis: Long = 12_000L,
+        thresholdMillis: Long = 24_000L,
     ): LudoPawsGameMoment? {
         if (
             current == null ||
@@ -135,15 +114,8 @@ object LudoPawsGameMomentDetector {
         ) {
             return null
         }
-
-        val activeSeat =
-            current.actingSeat
-                ?: current.turnSeat
-        val active =
-            current.players
-                .getOrNull(activeSeat)
-                ?: return null
-
+        val activeSeat = current.actingSeat ?: current.turnSeat
+        val active = current.players.getOrNull(activeSeat) ?: return null
         return moment(
             current = current,
             type = GameMomentType.IDLE_WAITING,
@@ -163,14 +135,8 @@ object LudoPawsGameMomentDetector {
         ) {
             return
         }
-
-        val activeSeat =
-            current.actingSeat
-                ?: current.turnSeat
-        val active =
-            current.players
-                .getOrNull(activeSeat)
-                ?: return
+        val activeSeat = current.actingSeat ?: current.turnSeat
+        val active = current.players.getOrNull(activeSeat) ?: return
         sink +=
             moment(
                 current = current,
@@ -185,10 +151,8 @@ object LudoPawsGameMomentDetector {
         current: MatchSnapshot,
         sink: MutableList<LudoPawsGameMoment>,
     ) {
-        val pending =
-            current.pendingRoll
-        val previousPending =
-            previous.pendingRoll
+        val pending = current.pendingRoll
+        val previousPending = previous.pendingRoll
 
         if (
             pending != null &&
@@ -198,10 +162,7 @@ object LudoPawsGameMomentDetector {
                     previousPending.status != pending.status
                 )
         ) {
-            val player =
-                current.players
-                    .getOrNull(pending.seat)
-            if (player != null) {
+            current.players.getOrNull(pending.seat)?.let { player ->
                 sink +=
                     moment(
                         current = current,
@@ -213,26 +174,16 @@ object LudoPawsGameMomentDetector {
             }
         }
 
-        val previousIndexes =
-            previous.history
-                .mapTo(mutableSetOf()) {
-                    it.eventIndex
-                }
-
+        val previousIndexes = previous.history.mapTo(mutableSetOf()) { it.eventIndex }
         current.history
             .asSequence()
             .filter {
                 it.eventIndex !in previousIndexes &&
                     it.outcome != null
             }
-            .forEach {
-                    event ->
-                val player =
-                    current.playerFor(event)
-                        ?: return@forEach
-                val outcome =
-                    event.outcome
-                        ?: return@forEach
+            .forEach { event ->
+                val player = current.playerFor(event) ?: return@forEach
+                val outcome = event.outcome ?: return@forEach
                 val thirdSix =
                     outcome == 6 &&
                         isThirdConsecutiveSix(
@@ -250,7 +201,6 @@ object LudoPawsGameMomentDetector {
                                 eventIndex = event.eventIndex,
                                 value = outcome,
                             )
-
                     outcome == 6 ->
                         sink +=
                             moment(
@@ -260,7 +210,6 @@ object LudoPawsGameMomentDetector {
                                 eventIndex = event.eventIndex,
                                 value = outcome,
                             )
-
                     outcome <= 2 -> {
                         sink +=
                             moment(
@@ -270,12 +219,7 @@ object LudoPawsGameMomentDetector {
                                 eventIndex = event.eventIndex,
                                 value = outcome,
                             )
-                        if (
-                            isPoorRollStreak(
-                                current = current,
-                                event = event,
-                            )
-                        ) {
+                        if (isPoorRollStreak(current, event)) {
                             sink +=
                                 moment(
                                     current = current,
@@ -289,19 +233,24 @@ object LudoPawsGameMomentDetector {
                 }
 
                 val pendingForEvent =
-                    current.pendingRoll
-                        ?.takeIf {
-                            it.eventIndex == event.eventIndex
-                        }
+                    current.pendingRoll?.takeIf {
+                        it.eventIndex == event.eventIndex
+                    }
                 if (
                     !thirdSix &&
                     event.moveTokenIndex == null &&
                     pendingForEvent == null
                 ) {
+                    val type =
+                        if (isExactHomeMiss(player, outcome)) {
+                            GameMomentType.EXACT_HOME_MISS
+                        } else {
+                            GameMomentType.NO_LEGAL_MOVE
+                        }
                     sink +=
                         moment(
                             current = current,
-                            type = GameMomentType.NO_LEGAL_MOVE,
+                            type = type,
                             player = player,
                             eventIndex = event.eventIndex,
                             value = outcome,
@@ -315,90 +264,86 @@ object LudoPawsGameMomentDetector {
         current: MatchSnapshot,
         sink: MutableList<LudoPawsGameMoment>,
     ) {
-        current.players.forEach {
-                currentPlayer ->
+        current.players.forEach { currentPlayer ->
             val previousPlayer =
-                previous.players
-                    .firstOrNull {
-                        it.playerId == currentPlayer.playerId
-                    }
-                    ?: return@forEach
+                previous.players.firstOrNull {
+                    it.playerId == currentPlayer.playerId
+                } ?: return@forEach
 
-            currentPlayer.tokens
-                .indices
-                .forEach {
-                        tokenIndex ->
-                    val from =
-                        previousPlayer.tokens
-                            .getOrNull(tokenIndex)
-                            ?: return@forEach
-                    val to =
-                        currentPlayer.tokens
-                            .getOrNull(tokenIndex)
-                            ?: return@forEach
-                    if (from == to) {
-                        return@forEach
-                    }
+            currentPlayer.tokens.indices.forEach { tokenIndex ->
+                val from = previousPlayer.tokens.getOrNull(tokenIndex) ?: return@forEach
+                val to = currentPlayer.tokens.getOrNull(tokenIndex) ?: return@forEach
+                if (from == to) return@forEach
 
-                    val moveEvent =
-                        current.latestMoveEvent(
-                            playerId = currentPlayer.playerId,
-                            tokenIndex = tokenIndex,
-                        )
-                    val eventIndex =
-                        moveEvent?.eventIndex
-                            ?: current.randomEventIndex
+                val moveEvent =
+                    current.latestMoveEvent(
+                        playerId = currentPlayer.playerId,
+                        tokenIndex = tokenIndex,
+                    )
+                val eventIndex = moveEvent?.eventIndex ?: current.randomEventIndex
 
-                    if (
-                        from >= 0 &&
-                        to == -1
-                    ) {
-                        sink +=
-                            moment(
-                                current = current,
-                                type = GameMomentType.TOKEN_CAPTURED,
-                                player = currentPlayer,
-                                eventIndex = eventIndex,
-                                tokenIndex = tokenIndex,
-                            )
-                        return@forEach
-                    }
-
-                    if (to <= from) {
-                        return@forEach
-                    }
-
+                if (from >= 0 && to == -1) {
                     sink +=
                         moment(
                             current = current,
-                            type =
-                                if (from == -1 && to == 0) {
-                                    GameMomentType.TOKEN_LEFT_YARD
-                                } else {
-                                    GameMomentType.TOKEN_MOVED
-                                },
+                            type = GameMomentType.TOKEN_CAPTURED,
+                            player = currentPlayer,
+                            eventIndex = eventIndex,
+                            tokenIndex = tokenIndex,
+                        )
+                    return@forEach
+                }
+                if (to <= from) return@forEach
+
+                val movementType =
+                    if (from == -1 && to == 0) {
+                        GameMomentType.TOKEN_LEFT_YARD
+                    } else {
+                        GameMomentType.TOKEN_MOVED
+                    }
+                sink +=
+                    moment(
+                        current = current,
+                        type = movementType,
+                        player = currentPlayer,
+                        eventIndex = eventIndex,
+                        tokenIndex = tokenIndex,
+                        value = to,
+                    )
+
+                if (
+                    moveEvent != null &&
+                    wasOnlyLegalMove(
+                        previous = previous,
+                        event = moveEvent,
+                        tokenIndex = tokenIndex,
+                    )
+                ) {
+                    sink +=
+                        moment(
+                            current = current,
+                            type = GameMomentType.ONLY_LEGAL_MOVE,
                             player = currentPlayer,
                             eventIndex = eventIndex,
                             tokenIndex = tokenIndex,
                             value = to,
                         )
+                }
 
-                    if (
-                        moveEvent?.captures
-                            ?.let { it > 0 } == true
-                    ) {
-                        sink +=
-                            moment(
-                                current = current,
-                                type = GameMomentType.CAPTURE_MADE,
-                                player = currentPlayer,
-                                eventIndex = moveEvent.eventIndex,
-                                tokenIndex = tokenIndex,
-                                value = moveEvent.captures,
-                            )
-                    }
+                if (moveEvent?.captures?.let { it > 0 } == true) {
+                    sink +=
+                        moment(
+                            current = current,
+                            type = GameMomentType.CAPTURE_MADE,
+                            player = currentPlayer,
+                            eventIndex = moveEvent.eventIndex,
+                            tokenIndex = tokenIndex,
+                            value = moveEvent.captures,
+                        )
+                }
 
-                    if (to == 57) {
+                when {
+                    to == 57 ->
                         sink +=
                             moment(
                                 current = current,
@@ -407,12 +352,20 @@ object LudoPawsGameMomentDetector {
                                 eventIndex = eventIndex,
                                 tokenIndex = tokenIndex,
                             )
-                    } else if (
-                        isSafePosition(
-                            color = currentPlayer.color,
-                            position = to,
-                        )
-                    ) {
+                    from in 0..51 && to in 52..56 ->
+                        sink +=
+                            moment(
+                                current = current,
+                                type = GameMomentType.HOME_LANE_ENTERED,
+                                player = currentPlayer,
+                                eventIndex = eventIndex,
+                                tokenIndex = tokenIndex,
+                                value = to,
+                            )
+                    isSafePosition(
+                        color = currentPlayer.color,
+                        position = to,
+                    ) ->
                         sink +=
                             moment(
                                 current = current,
@@ -421,8 +374,27 @@ object LudoPawsGameMomentDetector {
                                 eventIndex = eventIndex,
                                 tokenIndex = tokenIndex,
                             )
-                    }
                 }
+
+                val threat =
+                    threateningPlayer(
+                        current = current,
+                        player = currentPlayer,
+                        position = to,
+                    )
+                if (threat != null) {
+                    sink +=
+                        moment(
+                            current = current,
+                            type = GameMomentType.TOKEN_THREATENED,
+                            player = currentPlayer,
+                            eventIndex = eventIndex,
+                            tokenIndex = tokenIndex,
+                            relatedPlayerId = threat.playerId,
+                            value = to,
+                        )
+                }
+            }
         }
     }
 
@@ -431,19 +403,14 @@ object LudoPawsGameMomentDetector {
         current: MatchSnapshot,
         sink: MutableList<LudoPawsGameMoment>,
     ) {
-        val previousLeader =
-            uniqueLeader(previous)
-        val currentLeader =
-            uniqueLeader(current)
-                ?: return
-
+        val previousLeader = uniqueLeader(previous)
+        val currentLeader = uniqueLeader(current) ?: return
         if (
             previousLeader?.playerId == currentLeader.playerId ||
             leadMargin(current, currentLeader) < 8
         ) {
             return
         }
-
         sink +=
             moment(
                 current = current,
@@ -465,16 +432,10 @@ object LudoPawsGameMomentDetector {
         ) {
             return
         }
-
-        val eventIndex =
-            current.history
-                .lastOrNull()
-                ?.eventIndex
-                ?: current.randomEventIndex
+        val eventIndex = current.history.lastOrNull()?.eventIndex ?: current.randomEventIndex
 
         if (!current.winnerTeamId.isNullOrBlank()) {
-            current.players.forEach {
-                    player ->
+            current.players.forEach { player ->
                 sink +=
                     moment(
                         current = current,
@@ -491,11 +452,8 @@ object LudoPawsGameMomentDetector {
             return
         }
 
-        val winnerId =
-            current.winnerPlayerId
-                ?: return
-        current.players.forEach {
-                player ->
+        val winnerId = current.winnerPlayerId ?: return
+        current.players.forEach { player ->
             sink +=
                 moment(
                     current = current,
@@ -511,17 +469,87 @@ object LudoPawsGameMomentDetector {
         }
     }
 
+    private fun wasOnlyLegalMove(
+        previous: MatchSnapshot,
+        event: HistoryEventSnapshot,
+        tokenIndex: Int,
+    ): Boolean {
+        val pending =
+            previous.pendingRoll?.takeIf {
+                it.eventIndex == event.eventIndex &&
+                    it.status == "RESOLVED"
+            } ?: return false
+        return pending.legalTokenIndexes.size == 1 &&
+            tokenIndex in pending.legalTokenIndexes
+    }
+
+    private fun isExactHomeMiss(
+        player: PlayerSnapshot,
+        outcome: Int,
+    ): Boolean =
+        player.tokens.any { position ->
+            position in 52..56 &&
+                position + outcome > 57
+        }
+
+    private fun threateningPlayer(
+        current: MatchSnapshot,
+        player: PlayerSnapshot,
+        position: Int,
+    ): PlayerSnapshot? {
+        if (
+            position !in 0..51 ||
+            isSafePosition(player.color, position)
+        ) {
+            return null
+        }
+        val targetGlobal = globalTrackCell(player.color, position) ?: return null
+
+        return current.players.firstOrNull { opponent ->
+            opponent.playerId != player.playerId &&
+                !sameTeam(player, opponent) &&
+                opponent.tokens.any { opponentPosition ->
+                    if (opponentPosition !in 0..51) {
+                        false
+                    } else {
+                        val opponentGlobal =
+                            globalTrackCell(
+                                color = opponent.color,
+                                position = opponentPosition,
+                            ) ?: return@any false
+                        val distance =
+                            (targetGlobal - opponentGlobal + 52) % 52
+                        distance in 1..6 &&
+                            opponentPosition + distance <= 51
+                    }
+                }
+        }
+    }
+
+    private fun sameTeam(
+        first: PlayerSnapshot,
+        second: PlayerSnapshot,
+    ): Boolean =
+        !first.teamId.isNullOrBlank() &&
+            first.teamId == second.teamId
+
+    private fun globalTrackCell(
+        color: String,
+        position: Int,
+    ): Int? {
+        if (position !in 0..51) return null
+        val start = startOffsets[color] ?: return null
+        return (start + position) % 52
+    }
+
     private fun isThirdConsecutiveSix(
         current: MatchSnapshot,
         event: HistoryEventSnapshot,
     ): Boolean {
         val recent =
             current.history
-                .filter {
-                    it.eventIndex <= event.eventIndex
-                }
+                .filter { it.eventIndex <= event.eventIndex }
                 .takeLast(3)
-
         return recent.size == 3 &&
             recent.all {
                 it.playerId == event.playerId &&
@@ -543,9 +571,7 @@ object LudoPawsGameMomentDetector {
                 }
                 .takeLast(POOR_ROLL_STREAK_LENGTH)
                 .toList()
-
-        return recentForPlayer.size ==
-            POOR_ROLL_STREAK_LENGTH &&
+        return recentForPlayer.size == POOR_ROLL_STREAK_LENGTH &&
             recentForPlayer.all {
                 requireNotNull(it.outcome) <= 2
             }
@@ -555,15 +581,8 @@ object LudoPawsGameMomentDetector {
         color: String,
         position: Int,
     ): Boolean {
-        if (position !in 0..51) {
-            return false
-        }
-        val start =
-            startOffsets[color]
-                ?: return false
-        return (
-            (start + position) % 52
-            ) in safeGlobalCells
+        val global = globalTrackCell(color, position) ?: return false
+        return global in safeGlobalCells
     }
 
     private fun uniqueLeader(
@@ -571,23 +590,11 @@ object LudoPawsGameMomentDetector {
     ): PlayerSnapshot? {
         val ranked =
             state.players
-                .map {
-                    it to progressScore(it)
-                }
-                .sortedByDescending {
-                    it.second
-                }
-        val first =
-            ranked.firstOrNull()
-                ?: return null
-        val second =
-            ranked.getOrNull(1)
-        if (
-            second != null &&
-            first.second == second.second
-        ) {
-            return null
-        }
+                .map { it to progressScore(it) }
+                .sortedByDescending { it.second }
+        val first = ranked.firstOrNull() ?: return null
+        val second = ranked.getOrNull(1)
+        if (second != null && first.second == second.second) return null
         return first.first
     }
 
@@ -595,14 +602,11 @@ object LudoPawsGameMomentDetector {
         state: MatchSnapshot,
         leader: PlayerSnapshot,
     ): Int {
-        val leaderScore =
-            progressScore(leader)
+        val leaderScore = progressScore(leader)
         val next =
             state.players
                 .asSequence()
-                .filter {
-                    it.playerId != leader.playerId
-                }
+                .filter { it.playerId != leader.playerId }
                 .map(::progressScore)
                 .maxOrNull()
                 ?: 0
@@ -612,8 +616,7 @@ object LudoPawsGameMomentDetector {
     private fun progressScore(
         player: PlayerSnapshot,
     ): Int =
-        player.tokens.sumOf {
-                position ->
+        player.tokens.sumOf { position ->
             when (position) {
                 -1 -> 0
                 in 0..51 -> position + 1

@@ -7,6 +7,9 @@ const requiredSources = [
   'android/app/src/main/java/com/ludoproof/game/feature/settings/data/local/GameSettingsStore.kt',
   'android/app/src/main/java/com/ludoproof/game/feature/settings/data/local/LudoPawsHaptics.kt',
   'android/app/src/main/java/com/ludoproof/game/feature/characters/data/audio/LudoPawsVoicePlayer.kt',
+  'android/app/src/main/java/com/ludoproof/game/feature/characters/data/audio/LudoPawsAudioAssetPlayer.kt',
+  'android/app/src/main/java/com/ludoproof/game/feature/characters/data/audio/LudoPawsProceduralAudio.kt',
+  'android/app/src/main/java/com/ludoproof/game/feature/characters/domain/audio/LudoPawsReactionAudioProfile.kt',
   'android/app/src/main/java/com/ludoproof/game/feature/settings/presentation/SettingsDialogUi.kt',
   'android/app/src/main/AndroidManifest.xml',
 ];
@@ -15,46 +18,20 @@ const reactionFeedbackOwners = [
   'android/app/src/main/java/com/ludoproof/game/feature/online/presentation/OnlineLudoPawsPresentation.kt',
   'android/app/src/main/java/com/ludoproof/game/feature/offline/presentation/feedback/OfflineLudoPawsFeedback.kt',
 ];
-
 const feedbackLedger =
   'android/app/src/main/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsFeedbackLedger.kt';
-
 const reactiveBoard =
   'android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsReactiveBoardView.kt';
+const deletedSpokenLines =
+  'android/app/src/main/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsVoiceLines.kt';
 
-const requiredAudio = [
-  'android/app/src/main/res/raw/lp_sfx_click.wav',
-  'android/app/src/main/res/raw/lp_sfx_move.wav',
-  'android/app/src/main/res/raw/lp_sfx_roll.wav',
-  'android/app/src/main/res/raw/lp_sfx_capture.wav',
-  'android/app/src/main/res/raw/lp_sfx_safe.wav',
-  'android/app/src/main/res/raw/lp_sfx_home.wav',
-  'android/app/src/main/res/raw/lp_sfx_victory.wav',
-  'android/app/src/main/res/raw/lp_sfx_defeat.wav',
-];
-
-const retiredStarterVoices = [
-  'android/app/src/main/res/raw/lp_voice_duck.wav',
-  'android/app/src/main/res/raw/lp_voice_squirrel.wav',
-  'android/app/src/main/res/raw/lp_voice_hedgehog.wav',
-  'android/app/src/main/res/raw/lp_voice_sheep.wav',
-];
-
-for (const file of [
-  ...requiredSources,
-  ...reactionFeedbackOwners,
-  feedbackLedger,
-  reactiveBoard,
-  ...requiredAudio,
-]) {
+for (const file of [...requiredSources, ...reactionFeedbackOwners, feedbackLedger, reactiveBoard]) {
   if (!fs.existsSync(file)) {
-    throw new Error(`Missing production audio file: ${file}`);
+    throw new Error(`Missing production audio source: ${file}`);
   }
 }
-for (const file of retiredStarterVoices) {
-  if (fs.existsSync(file)) {
-    throw new Error(`Retired generic starter voice must be removed: ${file}`);
-  }
+if (fs.existsSync(deletedSpokenLines)) {
+  throw new Error('Spoken character commentary file must stay removed.');
 }
 
 const soundPool = fs.readFileSync(requiredSources[0], 'utf8');
@@ -63,133 +40,118 @@ const music = fs.readFileSync(requiredSources[2], 'utf8');
 const settings = fs.readFileSync(requiredSources[3], 'utf8');
 const haptics = fs.readFileSync(requiredSources[4], 'utf8');
 const voice = fs.readFileSync(requiredSources[5], 'utf8');
-const settingsUi = fs.readFileSync(requiredSources[6], 'utf8');
-const manifest = fs.readFileSync(requiredSources[7], 'utf8');
+const resolver = fs.readFileSync(requiredSources[6], 'utf8');
+const procedural = fs.readFileSync(requiredSources[7], 'utf8');
+const profile = fs.readFileSync(requiredSources[8], 'utf8');
+const settingsUi = fs.readFileSync(requiredSources[9], 'utf8');
+const manifest = fs.readFileSync(requiredSources[10], 'utf8');
 const ledgerSource = fs.readFileSync(feedbackLedger, 'utf8');
 
 for (const marker of ['SoundPool', 'USAGE_GAME', 'CONTENT_TYPE_SONIFICATION', 'pendingByResource']) {
-  if (!soundPool.includes(marker)) {
-    throw new Error(`SoundPool engine is missing ${marker}`);
-  }
+  if (!soundPool.includes(marker)) throw new Error(`SoundPool engine is missing ${marker}`);
 }
-
+for (const marker of [
+  'lp_sfx_dice_roll',
+  'lp_sfx_move_paw',
+  'lp_sfx_move_hoof',
+  'lp_sfx_move_web',
+  'lp_sfx_capture_impact',
+  'lp_sfx_safe_shimmer',
+  'lp_sfx_home_lane',
+  'lp_sfx_home_sparkle',
+  'lp_sfx_third_six',
+  'fun reaction(',
+]) {
+  if (!sfx.includes(marker)) throw new Error(`Replaceable game SFX facade is missing ${marker}`);
+}
 if (sfx.includes('ToneGenerator')) {
-  throw new Error('Production SFX must not use one-ToneGenerator-per-event feedback');
-}
-for (const marker of ['LudoPawsSoundPool', 'fun reaction(', 'soundEnabled']) {
-  if (!sfx.includes(marker)) {
-    throw new Error(`Game SFX facade is missing ${marker}`);
-  }
+  throw new Error('Production SFX must not use one-ToneGenerator-per-event feedback.');
 }
 
 for (const marker of ['duckForVoice', 'AudioFocusRequest', 'AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK']) {
-  if (!music.includes(marker)) {
-    throw new Error(`Music/audio-focus controller is missing ${marker}`);
-  }
+  if (!music.includes(marker)) throw new Error(`Music/audio-focus controller is missing ${marker}`);
 }
-
 for (const marker of ['animalVoicesEnabled', 'hapticsEnabled', 'reducedMotionEnabled']) {
-  if (!settings.includes(marker)) {
-    throw new Error(`Settings store is missing ${marker}`);
-  }
+  if (!settings.includes(marker)) throw new Error(`Settings store is missing ${marker}`);
 }
-
 for (const marker of ['Animal Voices', 'Game Sounds', 'Haptics', 'Reduced Motion', 'ScrollView']) {
-  if (!settingsUi.includes(marker)) {
-    throw new Error(`Settings UI is missing ${marker}`);
-  }
+  if (!settingsUi.includes(marker)) throw new Error(`Settings UI is missing ${marker}`);
 }
 
+for (const forbidden of [
+  'import android.speech.tts.TextToSpeech',
+  'TextToSpeech(',
+  'Six! Let',
+  'Got you!',
+  'Back to the yard',
+  'Home sweet home',
+  'I win!',
+  'Good game.',
+]) {
+  if (voice.includes(forbidden)) {
+    throw new Error(`Animal reactions must remain non-verbal; found ${forbidden}`);
+  }
+}
 for (const marker of [
+  'LudoPawsReactionAudioProfile',
+  'LudoPawsAudioAssetPlayer',
   'animalVoicesEnabled',
-  'TextToSpeech',
-  'duckForVoice',
   'canonicalCharacterForSeat',
+  'MAX_CAPTURE_VOCALS',
 ]) {
-  if (!voice.includes(marker)) {
-    throw new Error(`Animal voice renderer is missing ${marker}`);
-  }
-}
-for (const retiredMarker of [
-  'lp_voice_duck',
-  'lp_voice_squirrel',
-  'lp_voice_hedgehog',
-  'lp_voice_sheep',
-]) {
-  if (voice.includes(retiredMarker)) {
-    throw new Error(`Animal voice renderer still references retired asset: ${retiredMarker}`);
-  }
+  if (!voice.includes(marker)) throw new Error(`Animal vocal renderer is missing ${marker}`);
 }
 
+for (const marker of ['getIdentifier', 'LudoPawsSoundPool', 'playVocal', 'playSfx']) {
+  if (!resolver.includes(marker)) throw new Error(`Audio resource resolver is missing ${marker}`);
+}
+for (const marker of ['AudioTrack', 'ENCODING_PCM_16BIT', 'DOG_YIP', 'GOAT_BLEAT', 'DUCK_QUACK', 'CAT_CHIRP']) {
+  if (!procedural.includes(marker)) throw new Error(`Procedural fallback is missing ${marker}`);
+}
 for (const marker of [
-  'class LudoPawsFeedbackLedger',
-  'LinkedHashSet',
-  'fun once(',
-  'fun filterReactions(',
+  'lp_vocal_${characterId}_${cue.wireName}',
+  'probabilityPercent',
+  'deterministicVariantIndex',
+  'DOG_WHINE',
+  'GOAT_SOFT_BLEAT',
+  'DUCK_SOFT_QUACK',
+  'CAT_PURR',
 ]) {
-  if (!ledgerSource.includes(marker)) {
-    throw new Error(`Exactly-once feedback ledger is missing ${marker}`);
-  }
+  if (!profile.includes(marker)) throw new Error(`Reaction audio profile is missing ${marker}`);
 }
 
-const forbiddenSecondaryFeedbackCalls = [
-  'GameSoundFeedback.reaction',
-  'LudoPawsHaptics.reaction',
-];
+for (const marker of ['class LudoPawsFeedbackLedger', 'LinkedHashSet', 'fun once(', 'fun filterReactions(']) {
+  if (!ledgerSource.includes(marker)) throw new Error(`Exactly-once feedback ledger is missing ${marker}`);
+}
+
+const forbiddenSecondaryFeedbackCalls = ['GameSoundFeedback.reaction', 'LudoPawsHaptics.reaction'];
 for (const marker of forbiddenSecondaryFeedbackCalls) {
   if (voice.includes(marker)) {
-    throw new Error(
-      `Animal voice renderer must remain voice-only; ${marker} belongs to the mode feedback dispatcher`,
-    );
+    throw new Error(`Animal vocal renderer must remain vocal-only; ${marker} belongs to mode dispatchers.`);
   }
 }
-
 const boardSource = fs.readFileSync(reactiveBoard, 'utf8');
 for (const marker of forbiddenSecondaryFeedbackCalls) {
   if (boardSource.includes(marker)) {
-    throw new Error(
-      `Reactive board must not become a second reaction feedback owner: ${marker}`,
-    );
+    throw new Error(`Reactive board must not become a second feedback owner: ${marker}`);
   }
 }
-
 for (const file of reactionFeedbackOwners) {
   const source = fs.readFileSync(file, 'utf8');
-  if (!source.includes('GameSoundFeedback.')) {
-    throw new Error(`Mode reaction feedback owner is missing GameSoundFeedback: ${file}`);
-  }
-  if (!source.includes('LudoPawsHaptics.reaction')) {
-    throw new Error(`Mode reaction feedback owner is missing LudoPawsHaptics.reaction: ${file}`);
-  }
-  if (!source.includes('LudoPawsFeedbackLedger')) {
-    throw new Error(`Mode reaction feedback owner is missing exactly-once ledger: ${file}`);
-  }
-  if (!source.includes('.once(')) {
-    throw new Error(`Mode reaction feedback owner is not gating side effects exactly once: ${file}`);
+  for (const marker of ['GameSoundFeedback.', 'LudoPawsHaptics.reaction', 'LudoPawsFeedbackLedger', '.once(']) {
+    if (!source.includes(marker)) throw new Error(`Mode feedback owner ${file} is missing ${marker}`);
   }
 }
 
 if (!haptics.includes('hapticsEnabled') || !haptics.includes('VibrationEffect')) {
-  throw new Error('Haptics must be preference-gated and use VibrationEffect');
+  throw new Error('Haptics must be preference-gated and use VibrationEffect.');
 }
 if (!manifest.includes('android.permission.VIBRATE')) {
-  throw new Error('Haptics require the VIBRATE manifest permission');
+  throw new Error('Haptics require the VIBRATE manifest permission.');
 }
 
-for (const file of requiredAudio) {
-  const data = fs.readFileSync(file);
-  if (data.length < 44 || data.subarray(0, 4).toString('ascii') !== 'RIFF') {
-    throw new Error(`Audio asset is not a valid RIFF/WAV candidate: ${file}`);
-  }
-}
-
-const forbiddenGameplayMarkers = [
-  'OfflineGameEngine(',
-  'session.roll(',
-  'session.move(',
-  'EntroNexV4Local',
-];
-for (const file of [requiredSources[0], requiredSources[1], requiredSources[4], requiredSources[5]]) {
+const forbiddenGameplayMarkers = ['OfflineGameEngine(', 'session.roll(', 'session.move(', 'EntroNexV4Local'];
+for (const file of [requiredSources[0], requiredSources[1], requiredSources[4], requiredSources[5], requiredSources[6], requiredSources[7], requiredSources[8]]) {
   const source = fs.readFileSync(file, 'utf8');
   for (const marker of forbiddenGameplayMarkers) {
     if (source.includes(marker)) {
@@ -198,4 +160,4 @@ for (const file of [requiredSources[0], requiredSources[1], requiredSources[4], 
   }
 }
 
-console.log('Ludo Paws production audio engine gate passed.');
+console.log('Ludo Paws non-verbal replaceable audio gate passed.');
