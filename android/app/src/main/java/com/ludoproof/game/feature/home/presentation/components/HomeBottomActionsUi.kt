@@ -2,31 +2,26 @@ package com.ludoproof.game.ui.home
 
 import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.StateListDrawable
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.TextView
 import com.ludoproof.game.HomeActivity
 import com.ludoproof.game.R
 import com.ludoproof.game.ui.dialogs.showSettingsDialog
 
-internal fun HomeActivity.homeBottomActions():
-    LinearLayout =
+internal fun HomeActivity.homeBottomActions(): LinearLayout =
     LinearLayout(this).apply {
-        orientation =
-            LinearLayout.HORIZONTAL
-        gravity =
-            Gravity.CENTER_VERTICAL
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
 
         addView(
             bottomActionButton(
-                symbol = "",
+                label = "Rate on Google",
                 description =
                     getString(R.string.rate_accessibility_label),
-                iconKind =
-                    HomeIconKind.RATING,
+                iconKind = HomeIconKind.RATING,
+                secondaryText = "★★★★★",
             ) {
                 showHomeRatingDialog()
             },
@@ -35,11 +30,9 @@ internal fun HomeActivity.homeBottomActions():
 
         addView(
             bottomActionButton(
-                symbol = "",
-                description =
-                    "Share",
-                iconKind =
-                    HomeIconKind.SHARE,
+                label = "Share",
+                description = "Share",
+                iconKind = HomeIconKind.SHARE,
             ) {
                 shareLudoPaws()
             },
@@ -48,9 +41,9 @@ internal fun HomeActivity.homeBottomActions():
 
         addView(
             bottomActionButton(
-                symbol = "⚙",
-                description =
-                    "Settings",
+                label = "Settings",
+                description = "Settings",
+                iconKind = HomeIconKind.SETTINGS,
             ) {
                 showSettingsDialog(
                     this@homeBottomActions,
@@ -60,136 +53,125 @@ internal fun HomeActivity.homeBottomActions():
         )
     }
 
-private fun HomeActivity.bottomActionParams():
-    LinearLayout.LayoutParams =
+private fun HomeActivity.bottomActionParams(): LinearLayout.LayoutParams =
     LinearLayout.LayoutParams(
         0,
         dp(if (isCompact()) 50 else 56),
         1f,
     ).apply {
-        leftMargin =
-            dp(if (isCompact()) 18 else 28)
-        rightMargin =
-            dp(if (isCompact()) 18 else 28)
+        leftMargin = dp(if (isCompact()) 2 else 3)
+        rightMargin = dp(if (isCompact()) 2 else 3)
     }
 
 private fun HomeActivity.bottomActionButton(
-    symbol: String,
+    label: String,
     description: String,
-    iconKind: HomeIconKind? = null,
+    iconKind: HomeIconKind,
+    secondaryText: String? = null,
     action: () -> Unit,
-): View =
-    if (
-        iconKind !=
-        null
-    ) {
-        HomeIconView(
-            this,
-        ).apply {
-            kind =
-                iconKind
-            iconColor =
-                if (
-                    iconKind ==
-                    HomeIconKind.RATING
-                ) {
-                    0xFFFFE04B.toInt()
-                } else {
-                    Color.WHITE
-                }
-            isClickable =
-                true
-            isFocusable =
-                true
-            contentDescription =
-                description
-            background =
-                bottomActionDrawable()
-            elevation =
-                dp(6).toFloat()
-            setOnClickListener {
-                action()
-            }
+): LinearLayout =
+    LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER
+        isClickable = true
+        isFocusable = true
+        contentDescription = description
+        background =
+            homeGlassBackground(
+                context = this@bottomActionButton,
+                shape = HomeGlassShape.PILL,
+            )
+        elevation = dp(7).toFloat()
+        setPadding(
+            dp(if (isCompact()) 6 else 8),
+            dp(4),
+            dp(if (isCompact()) 6 else 8),
+            dp(4),
+        )
+        setOnClickListener {
+            action()
         }
-    } else {
-        Button(this).apply {
-            text =
-                symbol
-            textSize =
-                if (isCompact()) {
-                    23f
-                } else {
-                    26f
-                }
-            setTypeface(
-                Typeface.DEFAULT_BOLD,
-            )
-            setTextColor(
-                Color.WHITE,
-            )
-            gravity =
-                Gravity.CENTER
-            minWidth =
-                0
-            minHeight =
-                0
-            setPadding(
-                0,
-                0,
-                0,
-                0,
-            )
-            contentDescription =
-                description
-            background =
-                bottomActionDrawable()
-            elevation =
-                dp(6).toFloat()
-            setOnClickListener {
-                action()
-            }
-        }
-    }
 
-private fun HomeActivity.bottomActionDrawable():
-    StateListDrawable =
-    StateListDrawable().apply {
-        addState(
-            intArrayOf(
-                android.R.attr.state_pressed,
-            ),
-            GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(
-                    0xFFFFB71B.toInt(),
-                    0xFFF58400.toInt(),
-                    0xFFD96100.toInt(),
-                ),
+        addView(
+            HomeIconView(this@bottomActionButton).apply {
+                kind = iconKind
+                iconColor =
+                    if (iconKind == HomeIconKind.RATING) {
+                        0xFFFFD13B.toInt()
+                    } else {
+                        Color.WHITE
+                    }
+                importantForAccessibility =
+                    View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            },
+            LinearLayout.LayoutParams(
+                dp(if (isCompact()) 31 else 36),
+                dp(if (isCompact()) 31 else 36),
             ).apply {
-                shape =
-                    GradientDrawable.OVAL
-                setStroke(
-                    dp(2),
-                    0xFFFFD765.toInt(),
-                )
+                marginEnd = dp(if (isCompact()) 3 else 5)
             },
         )
-        addState(
-            intArrayOf(),
-            GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(
-                    0xFFFFD23A.toInt(),
-                    0xFFFF9800.toInt(),
-                    0xFFE76B00.toInt(),
-                ),
-            ).apply {
-                shape =
-                    GradientDrawable.OVAL
-                setStroke(
-                    dp(2),
-                    0xFFFFE88A.toInt(),
+
+        addView(
+            LinearLayout(this@bottomActionButton).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+
+                addView(
+                    TextView(this@bottomActionButton).apply {
+                        text = label
+                        textSize =
+                            when {
+                                isCompact() && label.length > 8 -> 8.5f
+                                label.length > 8 -> 9.5f
+                                isCompact() -> 11f
+                                else -> 12.5f
+                            }
+                        setTypeface(Typeface.DEFAULT_BOLD)
+                        setTextColor(Color.WHITE)
+                        gravity = Gravity.CENTER
+                        maxLines = 1
+                        setShadowLayer(
+                            2f,
+                            0f,
+                            dp(1).toFloat(),
+                            0xC0000000.toInt(),
+                        )
+                    },
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ),
                 )
+
+                if (secondaryText != null) {
+                    addView(
+                        TextView(this@bottomActionButton).apply {
+                            text = secondaryText
+                            textSize = if (isCompact()) 8.5f else 9.5f
+                            setTypeface(Typeface.DEFAULT_BOLD)
+                            setTextColor(0xFFFFCF32.toInt())
+                            letterSpacing = 0.01f
+                            gravity = Gravity.CENTER
+                            maxLines = 1
+                            setShadowLayer(
+                                1.5f,
+                                0f,
+                                dp(1).toFloat(),
+                                0xB0000000.toInt(),
+                            )
+                        },
+                        LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                        ),
+                    )
+                }
             },
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f,
+            ),
         )
     }
