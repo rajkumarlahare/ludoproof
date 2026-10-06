@@ -27,14 +27,17 @@ requireText(
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsReactiveBoardView.kt",
   [
     "LudoPaws3DSceneView",
-    "LudoPaws3DLegalHaloView",
     "LudoPawsGameFxOverlayView",
     "pawn3DScene.bind",
     "pawn3DScene.playReactions(reactions)",
-    "pawn3DLegalHalo.bind",
+    "board.setClassicPawnFallbackVisible(false)",
     "reducedMotionEnabled",
     "previous = previous",
   ],
+);
+forbidText(
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsReactiveBoardView.kt",
+  ["LudoPaws3DLegalHaloView", "pawn3DLegalHalo"],
 );
 
 requireText(
@@ -255,5 +258,5 @@ for (const retired of [
 }
 
 console.log(
-  "Ludo Paws production animation/FX gate passed: species-specific 3D body language, shared hop/home motion, visible captured-animal return, physical dice settle, game FX and reduced-motion handling are locked.",
+  "Ludo Paws production animation/FX gate passed: species-specific 3D body language, shared hop/home motion, visible captured-animal return, physical dice settle, circle-free pawn presentation, game FX and reduced-motion handling are locked.",
 );
