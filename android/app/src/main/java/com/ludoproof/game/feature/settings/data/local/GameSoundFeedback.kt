@@ -9,14 +9,16 @@ import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 /**
  * Short game/UI sound facade.
  *
- * Every sound first resolves a stable res/raw name and then falls back to a
- * generated effect. Existing legacy files remain aliases during migration.
+ * Every sound resolves one stable preferred res/raw name and otherwise uses the
+ * distinct built-in generated default. Legacy placeholder WAV aliases are not
+ * consulted because several historical files contained identical audio and
+ * would mask the situation-specific defaults.
  */
 object GameSoundFeedback {
     fun click(context: Context) =
         play(
             context = context,
-            names = listOf("lp_sfx_ui_click", "lp_sfx_click"),
+            names = listOf("lp_sfx_ui_click"),
             fallback = LudoPawsProceduralAudio.Sfx.CLICK,
             volume = .46f,
         )
@@ -29,19 +31,19 @@ object GameSoundFeedback {
             when (characterId) {
                 "goat" ->
                     Triple(
-                        listOf("lp_sfx_move_hoof", "lp_sfx_move"),
+                        listOf("lp_sfx_move_hoof"),
                         LudoPawsProceduralAudio.Sfx.MOVE_HOOF,
                         .40f,
                     )
                 "duck" ->
                     Triple(
-                        listOf("lp_sfx_move_web", "lp_sfx_move"),
+                        listOf("lp_sfx_move_web"),
                         LudoPawsProceduralAudio.Sfx.MOVE_WEB,
                         .38f,
                     )
                 else ->
                     Triple(
-                        listOf("lp_sfx_move_paw", "lp_sfx_move"),
+                        listOf("lp_sfx_move_paw"),
                         LudoPawsProceduralAudio.Sfx.MOVE_PAW,
                         .38f,
                     )
@@ -57,7 +59,7 @@ object GameSoundFeedback {
     fun roll(context: Context) =
         play(
             context = context,
-            names = listOf("lp_sfx_dice_roll", "lp_sfx_roll"),
+            names = listOf("lp_sfx_dice_roll"),
             fallback = LudoPawsProceduralAudio.Sfx.DICE_ROLL,
             volume = .50f,
         )
@@ -65,7 +67,7 @@ object GameSoundFeedback {
     fun six(context: Context) =
         play(
             context = context,
-            names = listOf("lp_sfx_six", "lp_sfx_safe"),
+            names = listOf("lp_sfx_six"),
             fallback = LudoPawsProceduralAudio.Sfx.SIX_SPARK,
             volume = .45f,
         )
@@ -81,7 +83,7 @@ object GameSoundFeedback {
     fun capture(context: Context) =
         play(
             context = context,
-            names = listOf("lp_sfx_capture_impact", "lp_sfx_capture"),
+            names = listOf("lp_sfx_capture_impact"),
             fallback = LudoPawsProceduralAudio.Sfx.CAPTURE_IMPACT,
             volume = .62f,
         )
@@ -89,7 +91,7 @@ object GameSoundFeedback {
     fun safe(context: Context) =
         play(
             context = context,
-            names = listOf("lp_sfx_safe_shimmer", "lp_sfx_safe"),
+            names = listOf("lp_sfx_safe_shimmer"),
             fallback = LudoPawsProceduralAudio.Sfx.SAFE_SHIMMER,
             volume = .44f,
         )
@@ -105,7 +107,7 @@ object GameSoundFeedback {
     fun home(context: Context) =
         play(
             context = context,
-            names = listOf("lp_sfx_home_sparkle", "lp_sfx_home"),
+            names = listOf("lp_sfx_home_sparkle"),
             fallback = LudoPawsProceduralAudio.Sfx.HOME_SPARKLE,
             volume = .56f,
         )
@@ -129,7 +131,7 @@ object GameSoundFeedback {
     fun victory(context: Context) =
         play(
             context = context,
-            names = listOf("lp_sfx_victory_sting", "lp_sfx_victory"),
+            names = listOf("lp_sfx_victory_sting"),
             fallback = LudoPawsProceduralAudio.Sfx.VICTORY,
             volume = .60f,
         )
@@ -137,7 +139,7 @@ object GameSoundFeedback {
     fun defeat(context: Context) =
         play(
             context = context,
-            names = listOf("lp_sfx_defeat_sting", "lp_sfx_defeat"),
+            names = listOf("lp_sfx_defeat_sting"),
             fallback = LudoPawsProceduralAudio.Sfx.DEFEAT,
             volume = .42f,
         )
