@@ -16,90 +16,66 @@ import com.ludoproof.game.feature.offline.data.local.OfflineCharacterSetupSnapsh
 import com.ludoproof.game.ui.offline.common.*
 
 internal fun OfflineGameActivity.initializeCharacterSetup() {
-    val preferred =
-        characterSelectionStore
-            .load()
+    val preferred = characterSelectionStore.load()
     val saved =
-        offlineCharacterSetupStore
-            .loadSetup(
-                mode = gameMode,
-                playerCount = selectedPlayers,
-                preferredCharacterId = preferred.characterId,
-            )
-    selectedCharacterSlot =
-        saved.selectedSlot
-    selectedCharacterIds =
-        saved.characterIds
+        offlineCharacterSetupStore.loadSetup(
+            mode = gameMode,
+            playerCount = selectedPlayers,
+            preferredCharacterId = preferred.characterId,
+        )
+    selectedCharacterSlot = saved.selectedSlot
+    selectedCharacterIds = saved.characterIds
 }
 
-internal fun OfflineGameActivity.updateSelectedPlayerCount(
-    playerCount: Int,
-) {
+internal fun OfflineGameActivity.updateSelectedPlayerCount(playerCount: Int) {
     require(gameMode.supportsPlayerCount(playerCount)) {
         "Unsupported local player count: $playerCount"
     }
-    selectedPlayers =
-        playerCount
+    selectedPlayers = playerCount
     selectedCharacterSlot =
         if (isComputerMode) {
             0
         } else {
-            selectedCharacterSlot.coerceIn(
-                0,
-                playerCount - 1,
-            )
+            selectedCharacterSlot.coerceIn(0, playerCount - 1)
         }
     selectedCharacterIds =
-        StarterPawsAssignmentPolicy
-            .normalize(
-                playerCount = playerCount,
-                requestedCharacterIds = selectedCharacterIds,
-                preferredCharacterId =
-                    characterSelectionStore
-                        .load()
-                        .characterId,
-                computerMode = isComputerMode,
-            )
+        StarterPawsAssignmentPolicy.normalize(
+            playerCount = playerCount,
+            requestedCharacterIds = selectedCharacterIds,
+            preferredCharacterId = characterSelectionStore.load().characterId,
+            computerMode = isComputerMode,
+        )
     persistCharacterSetup()
     rebuildCharacterSlotButtons()
     refreshSetupSelections()
 }
 
-internal fun OfflineGameActivity.selectCharacterSlot(
-    slot: Int,
-) {
+internal fun OfflineGameActivity.selectCharacterSlot(slot: Int) {
     if (isComputerMode) {
-        selectedCharacterSlot =
-            0
+        selectedCharacterSlot = 0
     } else if (slot in 0 until selectedPlayers) {
-        selectedCharacterSlot =
-            slot
+        selectedCharacterSlot = slot
     }
     persistCharacterSetup()
     refreshCharacterSelectionUi()
 }
 
-internal fun OfflineGameActivity.selectCharacterForActiveSlot(
-    characterId: String,
-) {
+internal fun OfflineGameActivity.selectCharacterForActiveSlot(characterId: String) {
     selectedCharacterIds =
-        StarterPawsAssignmentPolicy
-            .select(
-                playerCount = selectedPlayers,
-                currentCharacterIds = selectedCharacterIds,
-                selectedSlot = selectedCharacterSlot,
-                requestedCharacterId = characterId,
-                computerMode = isComputerMode,
-            )
+        StarterPawsAssignmentPolicy.select(
+            playerCount = selectedPlayers,
+            currentCharacterIds = selectedCharacterIds,
+            selectedSlot = selectedCharacterSlot,
+            requestedCharacterId = characterId,
+            computerMode = isComputerMode,
+        )
 
     selectedCharacterIds
         .firstOrNull()
         ?.let { playerOneCharacterId ->
             characterSelectionStore.select(
-                packId =
-                    LudoPawsCharacterCatalog.STARTER_PACK_ID,
-                characterId =
-                    playerOneCharacterId,
+                packId = LudoPawsCharacterCatalog.STARTER_PACK_ID,
+                characterId = playerOneCharacterId,
             )
         }
 
@@ -109,31 +85,27 @@ internal fun OfflineGameActivity.selectCharacterForActiveSlot(
 
 internal fun OfflineGameActivity.persistCharacterSetup() {
     val repaired =
-        offlineCharacterSetupStore
-            .saveSetup(
-                mode = gameMode,
-                snapshot =
-                    OfflineCharacterSetupSnapshot(
-                        playerCount = selectedPlayers,
-                        selectedSlot = selectedCharacterSlot,
-                        characterIds = selectedCharacterIds,
-                    ),
-            )
-    selectedCharacterSlot =
-        repaired.selectedSlot
-    selectedCharacterIds =
-        repaired.characterIds
+        offlineCharacterSetupStore.saveSetup(
+            mode = gameMode,
+            snapshot =
+                OfflineCharacterSetupSnapshot(
+                    playerCount = selectedPlayers,
+                    selectedSlot = selectedCharacterSlot,
+                    characterIds = selectedCharacterIds,
+                ),
+        )
+    selectedCharacterSlot = repaired.selectedSlot
+    selectedCharacterIds = repaired.characterIds
 }
 
 internal fun OfflineGameActivity.persistActiveCharacterSetup() {
     persistCharacterSetup()
-    offlineCharacterSetupStore
-        .saveActive(
-            mode = gameMode,
-            playerCount = selectedPlayers,
-            preferredColor = selectedColor,
-            characterIds = selectedCharacterIds,
-        )
+    offlineCharacterSetupStore.saveActive(
+        mode = gameMode,
+        playerCount = selectedPlayers,
+        preferredColor = selectedColor,
+        characterIds = selectedCharacterIds,
+    )
 }
 
 internal fun OfflineGameActivity.characterPanel(): LinearLayout =
@@ -146,105 +118,64 @@ internal fun OfflineGameActivity.characterPanel(): LinearLayout =
         },
     ).apply {
         characterSlotsRow =
-            LinearLayout(
-                this@characterPanel,
-            ).apply {
-                orientation =
-                    LinearLayout.HORIZONTAL
-                gravity =
-                    Gravity.CENTER
-            }
-                .also(::addView)
+            LinearLayout(this@characterPanel).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+            }.also(::addView)
         rebuildCharacterSlotButtons()
 
         val scroll =
-            HorizontalScrollView(
-                this@characterPanel,
-            ).apply {
-                isHorizontalScrollBarEnabled =
-                    false
-                isFillViewport =
-                    false
-                overScrollMode =
-                    HorizontalScrollView.OVER_SCROLL_NEVER
+            HorizontalScrollView(this@characterPanel).apply {
+                isHorizontalScrollBarEnabled = false
+                isFillViewport = false
+                overScrollMode = HorizontalScrollView.OVER_SCROLL_NEVER
             }
         val cardsRow =
-            LinearLayout(
-                this@characterPanel,
-            ).apply {
-                orientation =
-                    LinearLayout.HORIZONTAL
-                gravity =
-                    Gravity.CENTER
-                setPadding(
-                    dp(4),
-                    dp(10),
-                    dp(4),
-                    dp(4),
-                )
+            LinearLayout(this@characterPanel).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                setPadding(dp(4), dp(10), dp(4), dp(4))
             }
-        val cardMap =
-            linkedMapOf<String, LinearLayout>()
+        val cardMap = linkedMapOf<String, LinearLayout>()
 
         LudoPawsCharacterCatalog
-            .charactersForPack(
-                LudoPawsCharacterCatalog.STARTER_PACK_ID,
-            )
+            .charactersForPack(LudoPawsCharacterCatalog.STARTER_PACK_ID)
             .forEach { character ->
-                val card =
-                    characterChoiceCard(character)
-                cardMap[character.id] =
-                    card
+                val card = characterChoiceCard(character)
+                cardMap[character.id] = card
                 cardsRow.addView(
                     card,
                     LinearLayout.LayoutParams(
                         dp(if (isCompactSetup()) 100 else 112),
                         dp(if (isCompactSetup()) 132 else 144),
                     ).apply {
-                        setMargins(
-                            dp(4),
-                            0,
-                            dp(4),
-                            0,
-                        )
+                        setMargins(dp(4), 0, dp(4), 0)
                     },
                 )
             }
-        characterCards =
-            cardMap
+        characterCards = cardMap
         scroll.addView(cardsRow)
         addView(scroll)
 
         characterSummaryText =
-            TextView(
-                this@characterPanel,
-            ).apply {
+            TextView(this@characterPanel).apply {
                 LudoProofTheme.body(
                     this,
                     if (isCompactSetup()) 10.5f else 11.5f,
                     centered = true,
                     bright = true,
                 )
-                setPadding(
-                    dp(6),
-                    dp(8),
-                    dp(6),
-                    0,
-                )
-            }
-                .also(::addView)
+                setPadding(dp(6), dp(8), dp(6), 0)
+            }.also(::addView)
 
         refreshCharacterSelectionUi()
     }
 
 private fun OfflineGameActivity.rebuildCharacterSlotButtons() {
-    val slotsRow =
-        characterSlotsRow
-            ?: return
+    val slotsRow = characterSlotsRow ?: return
     slotsRow.removeAllViews()
 
-    val slotMap =
-        linkedMapOf<Int, Button>()
+    val slotMap = linkedMapOf<Int, Button>()
     val visibleSlots =
         if (isComputerMode) {
             listOf(0)
@@ -263,8 +194,7 @@ private fun OfflineGameActivity.rebuildCharacterSlotButtons() {
             ) {
                 selectCharacterSlot(slot)
             }
-        slotMap[slot] =
-            button
+        slotMap[slot] = button
         slotsRow.addView(
             button,
             setupTileParams(
@@ -273,84 +203,63 @@ private fun OfflineGameActivity.rebuildCharacterSlotButtons() {
             ),
         )
     }
-    characterSlotButtons =
-        slotMap
+    characterSlotButtons = slotMap
 }
 
 private fun OfflineGameActivity.characterChoiceCard(
     character: AnimalCharacter,
 ): LinearLayout =
     LinearLayout(this).apply {
-        orientation =
-            LinearLayout.VERTICAL
-        gravity =
-            Gravity.CENTER
-        setPadding(
-            dp(6),
-            dp(7),
-            dp(6),
-            dp(7),
-        )
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER
+        setPadding(dp(6), dp(7), dp(6), dp(7))
+
+        // fallbackDrawableName remains the catalog contract for future authored
+        // portrait assets; this vector avatar guarantees a non-blank current UI.
+        LudoPawsCharacterAvatarView(this@characterChoiceCard).also { avatar ->
+            avatar.tag = CHARACTER_AVATAR_TAG
+            avatar.bind(
+                characterId = character.id,
+                ringColor = 0xFF5BE0FF.toInt(),
+            )
+            addView(
+                avatar,
+                LinearLayout.LayoutParams(
+                    dp(if (isCompactSetup()) 66 else 74),
+                    dp(if (isCompactSetup()) 66 else 74),
+                ),
+            )
+        }
 
         addView(
-            LudoPawsCharacterAvatarView(
-                this@characterChoiceCard,
-            ).apply {
-                tag = CHARACTER_AVATAR_TAG
-                bind(
-                    characterId = character.id,
-                    ringColor = 0xFF5BE0FF.toInt(),
-                )
-            },
-            LinearLayout.LayoutParams(
-                dp(if (isCompactSetup()) 66 else 74),
-                dp(if (isCompactSetup()) 66 else 74),
-            ),
-        )
-
-        addView(
-            TextView(
-                this@characterChoiceCard,
-            ).apply {
-                text =
-                    character.displayName
+            TextView(this@characterChoiceCard).apply {
+                text = character.displayName
                 LudoProofTheme.body(
                     this,
                     if (isCompactSetup()) 12f else 13f,
                     centered = true,
                     bright = true,
                 )
-                tag =
-                    CHARACTER_NAME_TAG
+                tag = CHARACTER_NAME_TAG
             },
         )
 
         addView(
-            TextView(
-                this@characterChoiceCard,
-            ).apply {
+            TextView(this@characterChoiceCard).apply {
                 text =
                     character.personality.name
                         .lowercase()
                         .replaceFirstChar(Char::uppercase)
-                textSize =
-                    if (isCompactSetup()) 9.5f else 10f
-                setTextColor(
-                    0xFFBCD5FF.toInt(),
-                )
-                gravity =
-                    Gravity.CENTER
-                tag =
-                    CHARACTER_PERSONALITY_TAG
+                textSize = if (isCompactSetup()) 9.5f else 10f
+                setTextColor(0xFFBCD5FF.toInt())
+                gravity = Gravity.CENTER
+                tag = CHARACTER_PERSONALITY_TAG
             },
         )
 
-        contentDescription =
-            "Choose ${character.displayName}"
+        contentDescription = "Choose ${character.displayName}"
         setOnClickListener {
-            selectCharacterForActiveSlot(
-                character.id,
-            )
+            selectCharacterForActiveSlot(character.id)
         }
     }
 
@@ -360,10 +269,7 @@ internal fun OfflineGameActivity.refreshCharacterSelectionUi() {
             StarterPawsAssignmentPolicy.normalize(
                 playerCount = selectedPlayers,
                 requestedCharacterIds = selectedCharacterIds,
-                preferredCharacterId =
-                    characterSelectionStore
-                        .load()
-                        .characterId,
+                preferredCharacterId = characterSelectionStore.load().characterId,
                 computerMode = isComputerMode,
             )
     }
@@ -407,12 +313,9 @@ internal fun OfflineGameActivity.refreshCharacterSelectionUi() {
         )
     }
 
-    val activeCharacterId =
-        selectedCharacterIds
-            .getOrNull(selectedCharacterSlot)
+    val activeCharacterId = selectedCharacterIds.getOrNull(selectedCharacterSlot)
     characterCards.forEach { (characterId, card) ->
-        val selected =
-            characterId == activeCharacterId
+        val selected = characterId == activeCharacterId
         if (selected) {
             LudoProofTheme.selectedTile(card)
         } else {
