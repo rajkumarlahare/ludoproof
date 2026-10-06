@@ -1,5 +1,6 @@
 package com.ludoproof.game
 
+import java.lang.ref.WeakReference
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
@@ -23,6 +24,22 @@ internal data class LudoPawsPawnStackPlacement(
  * already-authoritative token positions into deterministic visual geometry.
  */
 object LudoPawsPawnLayout {
+    private data class StackPlacementCache(
+        val snapshotRef: WeakReference<MatchSnapshot>,
+        val cellBits: Int,
+        val placements: Map<LudoPawsPawnVisualKey, LudoPawsPawnStackPlacement>,
+    )
+
+    /**
+     * Renderer and UI geometry can ask for the same immutable snapshot many
+     * times while an animation is running. Keep one tiny cache per calling
+     * thread so repeated frame ticks reuse the deterministic stack map without
+     * cross-thread synchronization. A weak snapshot key avoids retaining a
+     * finished match from a long-lived UI thread.
+     */
+    private val stackPlacementCache =
+        ThreadLocal<StackPlacementCache?>()
+
     fun characterIdForSeat(
         characterIdsBySeat: List<String>,
         seat: Int,
@@ -64,6 +81,16 @@ object LudoPawsPawnLayout {
         snapshot: MatchSnapshot,
         cell: Float,
     ): Map<LudoPawsPawnVisualKey, LudoPawsPawnStackPlacement> {
+        val cellBits = java.lang.Float.floatToIntBits(cell)
+        val cached = stackPlacementCache.get()
+        if (
+            cached != null &&
+            cached.snapshotRef.get() === snapshot &&
+            cached.cellBits == cellBits
+        ) {
+            return cached.placements
+        }
+
         val groups = linkedMapOf<String, MutableList<LudoPawsPawnVisualKey>>()
 
         snapshot.players
@@ -91,27 +118,36 @@ object LudoPawsPawnLayout {
                 }
             }
 
-        return buildMap {
-            groups.values.forEach { occupants ->
-                val occupancy = occupants.size
-                occupants.forEachIndexed { slot, key ->
-                    val offset =
-                        stackOffsetFraction(
-                            slot = slot,
-                            occupancy = occupancy,
+        val placements =
+            buildMap {
+                groups.values.forEach { occupants ->
+                    val occupancy = occupants.size
+                    occupants.forEachIndexed { slot, key ->
+                        val offset =
+                            stackOffsetFraction(
+                                slot = slot,
+                                occupancy = occupancy,
+                            )
+                        put(
+                            key,
+                            LudoPawsPawnStackPlacement(
+                                slot = slot,
+                                occupancy = occupancy,
+                                offsetXFraction = offset.first,
+                                offsetYFraction = offset.second,
+                            ),
                         )
-                    put(
-                        key,
-                        LudoPawsPawnStackPlacement(
-                            slot = slot,
-                            occupancy = occupancy,
-                            offsetXFraction = offset.first,
-                            offsetYFraction = offset.second,
-                        ),
-                    )
+                    }
                 }
             }
-        }
+        stackPlacementCache.set(
+            StackPlacementCache(
+                snapshotRef = WeakReference(snapshot),
+                cellBits = cellBits,
+                placements = placements,
+            ),
+        )
+        return placements
     }
 
     internal fun stackOffsetFraction(

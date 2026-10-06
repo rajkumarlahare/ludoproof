@@ -1,7 +1,9 @@
 package com.ludoproof.game
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -144,35 +146,7 @@ class LudoPawsPawnLayoutTest {
 
     @Test
     fun `different logical color positions sharing one physical track cell are stacked together`() {
-        val snapshot =
-            MatchSnapshot(
-                matchId = "stack-test",
-                status = "ACTIVE",
-                hostPlayerId = "red-player",
-                players =
-                    listOf(
-                        PlayerSnapshot(
-                            playerId = "red-player",
-                            displayName = "Red",
-                            color = "RED",
-                            seat = 0,
-                            tokens = listOf(13, -1, -1, -1),
-                        ),
-                        PlayerSnapshot(
-                            playerId = "green-player",
-                            displayName = "Green",
-                            color = "GREEN",
-                            seat = 1,
-                            tokens = listOf(0, -1, -1, -1),
-                        ),
-                    ),
-                turnSeat = 0,
-                randomEventIndex = 0,
-                pendingRoll = null,
-                winnerPlayerId = null,
-                rulesetId = "layout-test",
-                history = emptyList(),
-            )
+        val snapshot = sharedCellSnapshot()
 
         val placements =
             LudoPawsPawnLayout.stackPlacements(
@@ -200,6 +174,50 @@ class LudoPawsPawnLayoutTest {
             red?.offsetXFraction != green?.offsetXFraction ||
                 red?.offsetYFraction != green?.offsetYFraction,
         )
+    }
+
+    @Test
+    fun `stable snapshot and cell reuse the same stack placement map`() {
+        val snapshot = sharedCellSnapshot()
+
+        val first =
+            LudoPawsPawnLayout.stackPlacements(
+                snapshot = snapshot,
+                cell = 20f,
+            )
+        val second =
+            LudoPawsPawnLayout.stackPlacements(
+                snapshot = snapshot,
+                cell = 20f,
+            )
+
+        assertSame(first, second)
+    }
+
+    @Test
+    fun `stack placement cache invalidates for new snapshot or board cell size`() {
+        val firstSnapshot = sharedCellSnapshot(matchId = "stack-a")
+        val secondSnapshot = sharedCellSnapshot(matchId = "stack-b")
+
+        val first =
+            LudoPawsPawnLayout.stackPlacements(
+                snapshot = firstSnapshot,
+                cell = 20f,
+            )
+        val newSnapshot =
+            LudoPawsPawnLayout.stackPlacements(
+                snapshot = secondSnapshot,
+                cell = 20f,
+            )
+        val newCell =
+            LudoPawsPawnLayout.stackPlacements(
+                snapshot = secondSnapshot,
+                cell = 21f,
+            )
+
+        assertNotSame(first, newSnapshot)
+        assertNotSame(newSnapshot, newCell)
+        assertEquals(first, newSnapshot)
     }
 
     @Test
@@ -233,4 +251,36 @@ class LudoPawsPawnLayoutTest {
             ),
         )
     }
+
+    private fun sharedCellSnapshot(
+        matchId: String = "stack-test",
+    ): MatchSnapshot =
+        MatchSnapshot(
+            matchId = matchId,
+            status = "ACTIVE",
+            hostPlayerId = "red-player",
+            players =
+                listOf(
+                    PlayerSnapshot(
+                        playerId = "red-player",
+                        displayName = "Red",
+                        color = "RED",
+                        seat = 0,
+                        tokens = listOf(13, -1, -1, -1),
+                    ),
+                    PlayerSnapshot(
+                        playerId = "green-player",
+                        displayName = "Green",
+                        color = "GREEN",
+                        seat = 1,
+                        tokens = listOf(0, -1, -1, -1),
+                    ),
+                ),
+            turnSeat = 0,
+            randomEventIndex = 0,
+            pendingRoll = null,
+            winnerPlayerId = null,
+            rulesetId = "layout-test",
+            history = emptyList(),
+        )
 }

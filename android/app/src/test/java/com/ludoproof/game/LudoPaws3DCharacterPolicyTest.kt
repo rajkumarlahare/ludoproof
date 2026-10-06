@@ -63,35 +63,7 @@ class LudoPaws3DCharacterPolicyTest {
 
     @Test
     fun `render thread color lookup follows installed seat assignments`() {
-        val snapshot =
-            MatchSnapshot(
-                matchId = "test-match",
-                status = "ACTIVE",
-                hostPlayerId = "p1",
-                players =
-                    listOf(
-                        PlayerSnapshot(
-                            playerId = "p1",
-                            displayName = "One",
-                            color = "RED",
-                            seat = 0,
-                            tokens = listOf(-1, -1, -1, -1),
-                        ),
-                        PlayerSnapshot(
-                            playerId = "p2",
-                            displayName = "Two",
-                            color = "GREEN",
-                            seat = 1,
-                            tokens = listOf(-1, -1, -1, -1),
-                        ),
-                    ),
-                turnSeat = 0,
-                randomEventIndex = 0,
-                pendingRoll = null,
-                winnerPlayerId = null,
-                rulesetId = "ludoproof-standard-v1",
-                history = emptyList(),
-            )
+        val snapshot = snapshot()
 
         try {
             LudoPaws3DCharacterPolicy.bindRenderAssignments(
@@ -105,6 +77,76 @@ class LudoPaws3DCharacterPolicyTest {
             assertEquals(
                 LudoPaws3DSpecies.DUCK,
                 LudoPaws3DCharacterPolicy.speciesForColor("GREEN"),
+            )
+        } finally {
+            LudoPaws3DCharacterPolicy.clearRenderAssignments()
+        }
+    }
+
+    @Test
+    fun `render binding refreshes when selected seat list changes`() {
+        val snapshot = snapshot()
+        val firstAssignments = listOf("cat", "duck")
+        val secondAssignments = listOf("dog", "goat")
+
+        try {
+            LudoPaws3DCharacterPolicy.bindRenderAssignments(
+                snapshot = snapshot,
+                characterIdsBySeat = firstAssignments,
+            )
+            assertEquals(
+                LudoPaws3DSpecies.CAT,
+                LudoPaws3DCharacterPolicy.speciesForColor("RED"),
+            )
+
+            LudoPaws3DCharacterPolicy.bindRenderAssignments(
+                snapshot = snapshot,
+                characterIdsBySeat = secondAssignments,
+            )
+            assertEquals(
+                LudoPaws3DSpecies.DOG,
+                LudoPaws3DCharacterPolicy.speciesForColor("RED"),
+            )
+            assertEquals(
+                LudoPaws3DSpecies.GOAT,
+                LudoPaws3DCharacterPolicy.speciesForColor("GREEN"),
+            )
+        } finally {
+            LudoPaws3DCharacterPolicy.clearRenderAssignments()
+        }
+    }
+
+    @Test
+    fun `render binding refreshes for a new authoritative snapshot`() {
+        val assignments = listOf("cat", "duck")
+        val firstSnapshot = snapshot(firstColor = "RED", secondColor = "GREEN")
+        val secondSnapshot = snapshot(firstColor = "BLUE", secondColor = "YELLOW")
+
+        try {
+            LudoPaws3DCharacterPolicy.bindRenderAssignments(
+                snapshot = firstSnapshot,
+                characterIdsBySeat = assignments,
+            )
+            assertEquals(
+                LudoPaws3DSpecies.CAT,
+                LudoPaws3DCharacterPolicy.speciesForColor("RED"),
+            )
+
+            LudoPaws3DCharacterPolicy.bindRenderAssignments(
+                snapshot = secondSnapshot,
+                characterIdsBySeat = assignments,
+            )
+            assertEquals(
+                LudoPaws3DSpecies.CAT,
+                LudoPaws3DCharacterPolicy.speciesForColor("BLUE"),
+            )
+            assertEquals(
+                LudoPaws3DSpecies.DUCK,
+                LudoPaws3DCharacterPolicy.speciesForColor("YELLOW"),
+            )
+            assertEquals(
+                LudoPaws3DSpecies.DOG,
+                LudoPaws3DCharacterPolicy.speciesForColor("RED"),
             )
         } finally {
             LudoPaws3DCharacterPolicy.clearRenderAssignments()
@@ -144,4 +186,37 @@ class LudoPaws3DCharacterPolicyTest {
             LudoPaws3DCharacterPolicy.speciesForCharacterId(""),
         )
     }
+
+    private fun snapshot(
+        firstColor: String = "RED",
+        secondColor: String = "GREEN",
+    ): MatchSnapshot =
+        MatchSnapshot(
+            matchId = "test-match",
+            status = "ACTIVE",
+            hostPlayerId = "p1",
+            players =
+                listOf(
+                    PlayerSnapshot(
+                        playerId = "p1",
+                        displayName = "One",
+                        color = firstColor,
+                        seat = 0,
+                        tokens = listOf(-1, -1, -1, -1),
+                    ),
+                    PlayerSnapshot(
+                        playerId = "p2",
+                        displayName = "Two",
+                        color = secondColor,
+                        seat = 1,
+                        tokens = listOf(-1, -1, -1, -1),
+                    ),
+                ),
+            turnSeat = 0,
+            randomEventIndex = 0,
+            pendingRoll = null,
+            winnerPlayerId = null,
+            rulesetId = "ludoproof-standard-v1",
+            history = emptyList(),
+        )
 }
