@@ -72,8 +72,21 @@ for (const marker of [
   if (!reactiveBoard.includes(marker)) throw new Error(`Reactive board idle integration is missing ${marker}`);
 }
 
-if (!card.includes('fallbackDrawableName') || !card.includes('HOME') || !card.includes('RACING')) {
-  throw new Error('Character player card must render selected animal identity and token progress.');
+// The gameplay card now renders the selected animal through the dedicated mascot
+// avatar instead of the retired transparent fallback drawable. Keep this gate tied
+// to semantic character identity and authoritative token progress rather than old
+// implementation strings such as fallbackDrawableName/RACING.
+for (const marker of [
+  'LudoPawsCharacterAvatarView',
+  'LudoPawsCharacterCatalog::character',
+  'portrait.bind(',
+  'progressText.text',
+  'LudoPathEncoding.HOME_POSITION',
+  'ALL PAWS HOME',
+]) {
+  if (!card.includes(marker)) {
+    throw new Error(`Character player card is missing production presentation marker: ${marker}`);
+  }
 }
 const railConsumesCharacters = rail.includes('characterIds') || rail.includes('activeCharacterIdsBySeat');
 if (!rail.includes('LudoPawsPlayerCardView') || !railConsumesCharacters) {
