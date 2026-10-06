@@ -4,9 +4,9 @@ import android.graphics.Color
 import android.view.Gravity
 import android.widget.Button
 import android.widget.HorizontalScrollView
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.ludoproof.game.LudoPawsCharacterAvatarView
 import com.ludoproof.game.LudoProofTheme
 import com.ludoproof.game.OfflineGameActivity
 import com.ludoproof.game.feature.characters.domain.catalog.LudoPawsCharacterCatalog
@@ -140,9 +140,9 @@ internal fun OfflineGameActivity.characterPanel(): LinearLayout =
     selectionPanel(
         "CHOOSE YOUR PAW",
         if (isComputerMode) {
-            "Choose your animal. Computer players are assigned automatically."
+            "Pick your animal. Your computer rivals get the remaining paws."
         } else {
-            "Choose a different animal for each player."
+            "Give every player a different animal."
         },
     ).apply {
         characterSlotsRow =
@@ -198,8 +198,8 @@ internal fun OfflineGameActivity.characterPanel(): LinearLayout =
                 cardsRow.addView(
                     card,
                     LinearLayout.LayoutParams(
-                        dp(if (isCompactSetup()) 96 else 108),
-                        dp(if (isCompactSetup()) 126 else 136),
+                        dp(if (isCompactSetup()) 100 else 112),
+                        dp(if (isCompactSetup()) 132 else 144),
                     ).apply {
                         setMargins(
                             dp(4),
@@ -292,27 +292,19 @@ private fun OfflineGameActivity.characterChoiceCard(
             dp(7),
         )
 
-        val drawableId =
-            resources.getIdentifier(
-                character.fallbackDrawableName,
-                "drawable",
-                packageName,
-            )
         addView(
-            ImageView(
+            LudoPawsCharacterAvatarView(
                 this@characterChoiceCard,
             ).apply {
-                if (drawableId != 0) {
-                    setImageResource(drawableId)
-                }
-                contentDescription =
-                    "${character.displayName} ${character.species.name.lowercase()}"
-                scaleType =
-                    ImageView.ScaleType.FIT_CENTER
+                tag = CHARACTER_AVATAR_TAG
+                bind(
+                    characterId = character.id,
+                    ringColor = 0xFF5BE0FF.toInt(),
+                )
             },
             LinearLayout.LayoutParams(
-                dp(if (isCompactSetup()) 54 else 62),
-                dp(if (isCompactSetup()) 54 else 62),
+                dp(if (isCompactSetup()) 66 else 74),
+                dp(if (isCompactSetup()) 66 else 74),
             ),
         )
 
@@ -353,6 +345,8 @@ private fun OfflineGameActivity.characterChoiceCard(
             },
         )
 
+        contentDescription =
+            "Choose ${character.displayName}"
         setOnClickListener {
             selectCharacterForActiveSlot(
                 character.id,
@@ -424,6 +418,17 @@ internal fun OfflineGameActivity.refreshCharacterSelectionUi() {
         } else {
             LudoProofTheme.normalTile(card)
         }
+        card.findViewWithTag<LudoPawsCharacterAvatarView>(CHARACTER_AVATAR_TAG)
+            ?.bind(
+                characterId = characterId,
+                ringColor =
+                    if (selected) {
+                        0xFFFFC72C.toInt()
+                    } else {
+                        0xFF5BE0FF.toInt()
+                    },
+                highlighted = selected,
+            )
         card.findViewWithTag<TextView>(CHARACTER_NAME_TAG)
             ?.setTextColor(
                 if (selected) {
@@ -465,6 +470,8 @@ internal fun OfflineGameActivity.refreshCharacterSelectionUi() {
             .joinToString("  •  ")
 }
 
+private const val CHARACTER_AVATAR_TAG =
+    "ludo_paws_character_avatar"
 private const val CHARACTER_NAME_TAG =
     "ludo_paws_character_name"
 private const val CHARACTER_PERSONALITY_TAG =
