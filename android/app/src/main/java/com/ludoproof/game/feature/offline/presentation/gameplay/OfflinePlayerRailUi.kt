@@ -8,21 +8,18 @@ import com.ludoproof.game.feature.offline.*
 import com.ludoproof.game.ui.offline.common.*
 import com.ludoproof.game.ui.offline.setup.*
 
-internal fun OfflineGameActivity.playerRail():
-    LinearLayout =
+internal fun OfflineGameActivity.playerRail(): LinearLayout =
     LinearLayout(this).apply {
-        orientation =
-            LinearLayout.HORIZONTAL
-        gravity =
-            Gravity.CENTER_VERTICAL
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
         clipChildren = false
         clipToPadding = false
         minimumHeight =
             dp(
                 if (isCompactSetup()) {
-                    82
+                    70
                 } else {
-                    94
+                    78
                 },
             )
     }
@@ -30,28 +27,19 @@ internal fun OfflineGameActivity.playerRail():
 internal fun OfflineGameActivity.renderPlayerRails(
     state: MatchSnapshot,
 ) {
-    val top =
-        topPlayerRail
-            ?: return
-    val bottom =
-        bottomPlayerRail
-            ?: return
+    val top = topPlayerRail ?: return
+    val bottom = bottomPlayerRail ?: return
 
-    diceView
-        ?.stopRolling()
-    diceView =
-        null
-    diceHost =
-        null
+    diceView?.stopRolling()
+    diceView = null
+    diceHost = null
 
     top.removeAllViews()
     bottom.removeAllViews()
 
     val activePlayer =
         state.players
-            .getOrNull(
-                state.turnSeat,
-            )
+            .getOrNull(state.turnSeat)
 
     addPlayerSlot(
         top,
@@ -106,8 +94,7 @@ private fun OfflineGameActivity.addPlayerSlot(
 
     val host =
         LinearLayout(this).apply {
-            orientation =
-                LinearLayout.HORIZONTAL
+            orientation = LinearLayout.HORIZONTAL
             gravity =
                 (
                     if (alignEnd) {
@@ -115,8 +102,7 @@ private fun OfflineGameActivity.addPlayerSlot(
                     } else {
                         Gravity.START
                     }
-                    ) or
-                    Gravity.CENTER_VERTICAL
+                    ) or Gravity.CENTER_VERTICAL
             clipChildren = false
             clipToPadding = false
         }
@@ -127,14 +113,9 @@ private fun OfflineGameActivity.addPlayerSlot(
                 state.status == "ACTIVE"
         val characterId =
             activeCharacterIdsBySeat
-                .getOrNull(
-                    player.seat,
-                )
+                .getOrNull(player.seat)
 
-        if (
-            alignEnd &&
-            active
-        ) {
+        if (alignEnd && active) {
             host.addView(
                 activeDiceControl(player),
             )
@@ -146,10 +127,7 @@ private fun OfflineGameActivity.addPlayerSlot(
                     player = player,
                     characterId = characterId,
                     active = active,
-                    computer =
-                        engine.isComputerPlayer(
-                            player.playerId,
-                        ),
+                    computer = engine.isComputerPlayer(player.playerId),
                     compact = isCompactSetup(),
                     portraitOnEnd = alignEnd,
                 )
@@ -157,19 +135,16 @@ private fun OfflineGameActivity.addPlayerSlot(
             LinearLayout.LayoutParams(
                 dp(
                     if (isCompactSetup()) {
-                        108
+                        104
                     } else {
-                        124
+                        116
                     },
                 ),
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ),
         )
 
-        if (
-            !alignEnd &&
-            active
-        ) {
+        if (!alignEnd && active) {
             host.addView(
                 activeDiceControl(player),
             )
@@ -191,12 +166,10 @@ private fun OfflineGameActivity.activeDiceControl(
 ): FrameLayout {
     val control =
         FrameLayout(this).apply {
-            isClickable =
-                true
-            isFocusable =
-                true
+            isClickable = true
+            isFocusable = true
             // The dice itself is the visual control. Keep this host transparent so
-            // no extra "safe" frame surrounds or clips the face/shadow.
+            // no extra frame surrounds or clips the face/shadow.
             background = null
             elevation = 0f
             clipChildren = false
@@ -209,8 +182,7 @@ private fun OfflineGameActivity.activeDiceControl(
                 DiceView(
                     this@activeDiceControl,
                 )
-            diceView =
-                newDice
+            diceView = newDice
             addView(
                 newDice,
                 FrameLayout.LayoutParams(
@@ -220,8 +192,7 @@ private fun OfflineGameActivity.activeDiceControl(
                 ),
             )
         }
-    diceHost =
-        control
+    diceHost = control
 
     val cpuTurn =
         engine.isComputerPlayer(
@@ -229,42 +200,33 @@ private fun OfflineGameActivity.activeDiceControl(
         )
     control.contentDescription =
         if (cpuTurn) {
-            player.displayName +
-                " is thinking"
+            player.displayName + " is thinking"
         } else {
-            "Roll dice for " +
-                player.displayName
+            "Roll dice for " + player.displayName
         }
-    control.isEnabled =
-        !cpuTurn
-    // Keep opponent/CPU dice at full visual contrast as well. Interaction is
-    // controlled by isEnabled; opacity must not make the neutral face unreadable.
-    control.alpha =
-        1f
+    control.isEnabled = !cpuTurn
+    // Interaction is controlled by isEnabled; opacity stays full so the face
+    // remains readable after a roll and during CPU turns.
+    control.alpha = 1f
     control.layoutParams =
         LinearLayout.LayoutParams(
             dp(
                 if (isCompactSetup()) {
-                    58
+                    54
                 } else {
-                    64
+                    58
                 },
             ),
             dp(
                 if (isCompactSetup()) {
-                    58
+                    54
                 } else {
-                    64
+                    58
                 },
             ),
         ).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setMargins(
-                dp(2),
-                0,
-                dp(2),
-                0,
-            )
+            setMargins(dp(1), 0, dp(1), 0)
         }
 
     return control
