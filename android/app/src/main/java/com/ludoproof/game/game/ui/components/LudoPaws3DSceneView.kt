@@ -12,9 +12,12 @@ import android.os.SystemClock
 import android.util.AttributeSet
 import android.util.Log
 import android.view.TextureView
+import android.view.View
 import com.ludoproof.game.feature.characters.domain.model.AnimationCue
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import kotlin.math.max
 
 internal data class LudoPaws3DPawnKey(
@@ -318,10 +321,31 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         surface: SurfaceTexture,
     ) = Unit
 
+    override fun onVisibilityChanged(
+        changedView: View,
+        visibility: Int,
+    ) {
+        super.onVisibilityChanged(changedView, visibility)
+        updateRenderVisibility()
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        updateRenderVisibility()
+    }
+
     override fun onDetachedFromWindow() {
         stopRenderLoop()
         sceneState = LudoPaws3DSceneState()
         super.onDetachedFromWindow()
+    }
+
+    private fun updateRenderVisibility() {
+        renderLoop?.setPresentationVisible(
+            isShown &&
+                visibility == VISIBLE &&
+                windowVisibility == VISIBLE,
+        )
     }
 
     private fun startRenderLoop(
@@ -334,6 +358,10 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             surfaceTexture = surface,
             initialWidth = width,
             initialHeight = height,
+            initialPresentationVisible =
+                isShown &&
+                    visibility == VISIBLE &&
+                    windowVisibility == VISIBLE,
         ).also {
             renderLoop = it
             it.start()
@@ -367,7 +395,11 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         private val surfaceTexture: SurfaceTexture,
         initialWidth: Int,
         initialHeight: Int,
+        initialPresentationVisible: Boolean,
     ) : Thread("LudoPaws3D") {
+        private val visibilityLock = ReentrantLock()
+        private val visibilityChanged = visibilityLock.newCondition()
+
         @Volatile
         private var running = true
 
@@ -377,6 +409,9 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         @Volatile
         private var targetHeight = initialHeight
 
+        @Volatile
+        private var presentationVisible = initialPresentationVisible
+
         fun resize(
             width: Int,
             height: Int,
@@ -385,9 +420,31 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             targetHeight = height
         }
 
+        fun setPresentationVisible(visible: Boolean) {
+            if (presentationVisible == visible) return
+            presentationVisible = visible
+            if (visible) {
+                visibilityLock.withLock {
+                    visibilityChanged.signalAll()
+                }
+            }
+        }
+
         fun shutdown() {
             running = false
+            visibilityLock.withLock {
+                visibilityChanged.signalAll()
+            }
             interrupt()
+        }
+
+        private fun awaitPresentationVisible(): Boolean {
+            visibilityLock.withLock {
+                while (running && !presentationVisible) {
+                    visibilityChanged.await()
+                }
+                return running
+            }
         }
 
         override fun run() {
@@ -401,6 +458,8 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                 setOperational(true)
 
                 while (running) {
+                    if (!awaitPresentationVisible()) break
+
                     val frameStartedAtMillis = SystemClock.uptimeMillis()
                     val width = targetWidth.coerceAtLeast(1)
                     val height = targetHeight.coerceAtLeast(1)
