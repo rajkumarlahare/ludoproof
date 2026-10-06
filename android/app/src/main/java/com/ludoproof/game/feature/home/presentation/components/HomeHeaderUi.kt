@@ -78,7 +78,7 @@ private fun HomeActivity.homeIdentityRow(): LinearLayout =
         addView(
             homeProfilePill(),
             LinearLayout.LayoutParams(
-                dp(if (isCompact()) 174 else 192),
+                LinearLayout.LayoutParams.WRAP_CONTENT,
                 dp(if (isCompact()) 46 else 50),
             ),
         )
@@ -197,12 +197,14 @@ private fun HomeActivity.homeProfilePill(): LinearLayout =
                 shape = HomeGlassShape.PILL,
             )
         elevation = dp(7).toFloat()
+
         setPadding(
+            dp(10),
             dp(4),
             dp(4),
-            dp(7),
             dp(4),
         )
+
         setOnClickListener {
             startActivity(
                 Intent(
@@ -211,6 +213,34 @@ private fun HomeActivity.homeProfilePill(): LinearLayout =
                 ),
             )
         }
+
+        addView(
+            TextView(this@homeProfilePill).apply {
+                homeProfileNameText = this
+                text = homeDisplayName()
+                textSize = if (isCompact()) 14f else 16f
+                setTypeface(Typeface.DEFAULT_BOLD)
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER_VERTICAL
+                maxLines = 1
+                setShadowLayer(
+                    2.4f,
+                    0f,
+                    dp(1).toFloat(),
+                    0xB0000000.toInt(),
+                )
+                setPadding(
+                    0,
+                    0,
+                    dp(7),
+                    0,
+                )
+            },
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
 
         addView(
             HomeIconView(this@homeProfilePill).apply {
@@ -236,51 +266,7 @@ private fun HomeActivity.homeProfilePill(): LinearLayout =
                 dp(if (isCompact()) 38 else 42),
             ),
         )
-
-        addView(
-            TextView(this@homeProfilePill).apply {
-                homeProfileNameText = this
-                text = homeDisplayName()
-                textSize = if (isCompact()) 14f else 16f
-                setTypeface(Typeface.DEFAULT_BOLD)
-                setTextColor(Color.WHITE)
-                gravity = Gravity.CENTER_VERTICAL
-                maxLines = 1
-                setShadowLayer(
-                    2.4f,
-                    0f,
-                    dp(1).toFloat(),
-                    0xB0000000.toInt(),
-                )
-                setPadding(dp(6), 0, dp(2), 0)
-            },
-            LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                1f,
-            ),
-        )
-
-        addView(
-            HomeIconView(this@homeProfilePill).apply {
-                kind = HomeIconKind.EDIT
-                iconColor = Color.WHITE
-                setPadding(
-                    dp(5),
-                    dp(5),
-                    dp(5),
-                    dp(5),
-                )
-                importantForAccessibility =
-                    View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            },
-            LinearLayout.LayoutParams(
-                dp(if (isCompact()) 28 else 30),
-                dp(if (isCompact()) 28 else 30),
-            ),
-        )
     }
-
 private fun HomeActivity.homeShortcutRow(): LinearLayout =
     LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
