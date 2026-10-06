@@ -102,6 +102,26 @@ class HomeActivity : Activity() {
             ),
         )
 
+        // Decorative scene sits in the existing hero gap. It is intentionally
+        // independent from gameplay characters/dice and does not change the
+        // approved mode-button or footer positions.
+        val heroWidth =
+            minOf(
+                topHudWidth,
+                dp(if (isCompact()) 350 else 388),
+            )
+        contentHost.addView(
+            HomePetsHeroView(this),
+            FrameLayout.LayoutParams(
+                heroWidth,
+                dp(if (isCompact()) 208 else 232),
+                Gravity.TOP or Gravity.CENTER_HORIZONTAL,
+            ).apply {
+                topMargin =
+                    dp(if (isCompact()) 235 else 250)
+            },
+        )
+
         val brandWidth =
             minOf(
                 topHudWidth,
