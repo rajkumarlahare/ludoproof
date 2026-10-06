@@ -18,17 +18,20 @@ import com.ludoproof.game.ui.offline.state.resolveOfflineCharacterIds
 internal fun OfflineGameActivity.gameplayActionPanel(): LinearLayout =
     LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        setPadding(dp(4), dp(2), dp(4), dp(4))
+        gravity = Gravity.CENTER
+        setPadding(dp(4), 0, dp(4), 0)
 
         statusText =
             TextView(this@gameplayActionPanel).apply {
-                text = "Tap the dice beside the active player."
+                text = "Tap the dice."
                 LudoProofTheme.body(
                     this,
-                    if (isCompactSetup()) 10f else 11f,
+                    if (isCompactSetup()) 9.5f else 10.5f,
                     centered = true,
+                    bright = true,
                 )
-                setPadding(dp(4), dp(3), dp(4), dp(5))
+                maxLines = 1
+                setPadding(dp(4), dp(2), dp(4), dp(3))
             }
         addView(requireNotNull(statusText))
 
@@ -39,88 +42,35 @@ internal fun OfflineGameActivity.gameplayActionPanel(): LinearLayout =
         ) {
             addView(quickChatBar())
         }
-
-        addView(gameplayTools())
     }
 
 internal fun OfflineGameActivity.quickChatBar(): LinearLayout =
     LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
-        setPadding(dp(2), dp(4), dp(2), dp(7))
+        setPadding(dp(2), dp(1), dp(2), dp(2))
 
         listOf("👍", "😄", "👏", "😮").forEach { emoji ->
             addView(
                 Button(this@quickChatBar).apply {
                     text = emoji
-                    textSize = if (isCompactSetup()) 18f else 20f
+                    textSize = if (isCompactSetup()) 16f else 18f
                     minWidth = 0
                     minHeight = 0
                     LudoProofTheme.secondary(this)
+                    setPadding(0, 0, 0, 0)
                     setOnClickListener {
                         presentQuickReaction(emoji)
                     }
                 },
                 LinearLayout.LayoutParams(
                     0,
-                    dp(if (isCompactSetup()) 42 else 46),
+                    dp(if (isCompactSetup()) 34 else 38),
                     1f,
                 ).apply {
                     setMargins(dp(3), 0, dp(3), 0)
                 },
             )
-        }
-    }
-
-internal fun OfflineGameActivity.gameplayTools(): LinearLayout =
-    LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER
-
-        fun addTool(
-            label: String,
-            positive: Boolean,
-            action: () -> Unit,
-        ) {
-            addView(
-                Button(this@gameplayTools).apply {
-                    text = label
-                    textSize = if (isCompactSetup()) 9.5f else 10.5f
-                    if (positive) {
-                        LudoProofTheme.positive(this)
-                    } else {
-                        LudoProofTheme.secondary(this)
-                    }
-                    minHeight = 0
-                    setPadding(dp(4), dp(4), dp(4), dp(4))
-                    setOnClickListener { action() }
-                },
-                LinearLayout.LayoutParams(
-                    0,
-                    dp(if (isCompactSetup()) 42 else 46),
-                    1f,
-                ).apply {
-                    setMargins(dp(3), 0, dp(3), 0)
-                },
-            )
-        }
-
-        addTool("HISTORY", false) {
-            ArcadeDialogs.showProofHistory(
-                this@gameplayTools,
-                "OFFLINE HISTORY",
-                offlineHistory(engine.snapshot()),
-            )
-        }
-        addTool("ENGINE MAP", false) {
-            ArcadeDialogs.showNaturalWorldAudit(
-                this@gameplayTools,
-                engine.lastRandomnessAudit(),
-            )
-        }
-        addTool("NEW GAME", true) {
-            session.clear()
-            showSetup()
         }
     }
 
@@ -170,7 +120,7 @@ private fun OfflineGameActivity.ensureOfflineResultActions(
                 },
                 LinearLayout.LayoutParams(
                     0,
-                    dp(if (isCompactSetup()) 46 else 50),
+                    dp(if (isCompactSetup()) 44 else 48),
                     1f,
                 ).apply {
                     setMargins(dp(3), 0, dp(3), 0)
@@ -193,7 +143,7 @@ private fun OfflineGameActivity.ensureOfflineResultActions(
                 },
                 LinearLayout.LayoutParams(
                     0,
-                    dp(if (isCompactSetup()) 46 else 50),
+                    dp(if (isCompactSetup()) 44 else 48),
                     1f,
                 ).apply {
                     setMargins(dp(3), 0, dp(3), 0)
@@ -205,7 +155,7 @@ private fun OfflineGameActivity.ensureOfflineResultActions(
         actions,
         parent.indexOfChild(resultPanel) + 1,
         gameplaySectionParams(
-            if (isCompactSetup()) 6 else 8,
+            if (isCompactSetup()) 4 else 6,
         ).apply {
             leftMargin = dp(8)
             rightMargin = dp(8)
@@ -259,15 +209,6 @@ internal fun OfflineGameActivity.gameplaySectionParams(
         topMargin = dp(topMarginDp)
     }
 
-internal fun OfflineGameActivity.gameplayToolParams() =
-    LinearLayout.LayoutParams(
-        0,
-        LinearLayout.LayoutParams.WRAP_CONTENT,
-        1f,
-    ).apply {
-        setMargins(dp(5), dp(12), dp(5), 0)
-    }
-
 internal fun OfflineGameActivity.renderGame(
     state: MatchSnapshot,
 ) {
@@ -280,7 +221,7 @@ internal fun OfflineGameActivity.renderGame(
     if (state.status == "FINISHED") {
         val winnerName = winner?.displayName ?: "Player"
         resultPanel.visibility = View.VISIBLE
-        resultTitleText.text = "WINNER • $winnerName"
+        resultTitleText.text = "${winnerName.uppercase()} WINS"
         resultSubtitleText.text =
             if (
                 isComputerMode &&
@@ -367,7 +308,10 @@ internal fun OfflineGameActivity.renderGame(
                 "MATCH COMPLETE"
 
             computerTurn ->
-                (active?.displayName ?: "CPU") + " • CPU TURN"
+                (active?.displayName ?: "CPU") + " • THINKING"
+
+            isComputerMode && activePlayerId == engine.humanPlayerId() ->
+                "YOUR TURN"
 
             else ->
                 (active?.displayName ?: "Player") + " • TURN"
@@ -376,26 +320,17 @@ internal fun OfflineGameActivity.renderGame(
     infoText?.text =
         when {
             state.status == "FINISHED" ->
-                (winner?.displayName ?: "Player") +
-                    " wins • 4/4 home"
+                "4/4 PAWS HOME"
 
             pending != null -> {
-                val legalCount =
-                    pending.legalTokenIndexes.size
-                val moveLabel =
-                    if (legalCount == 1) {
-                        "move"
-                    } else {
-                        "moves"
-                    }
-                "Dice ${pending.outcome} • $legalCount legal $moveLabel • $activeHomeCount/4 home"
+                val legalCount = pending.legalTokenIndexes.size
+                val choiceLabel =
+                    if (legalCount == 1) "CHOICE" else "CHOICES"
+                "DICE ${pending.outcome} • $legalCount $choiceLabel • $activeHomeCount/4 HOME"
             }
 
-            computerTurn ->
-                "Choosing the best move • $activeHomeCount/4 home"
-
             else ->
-                "Roll the dice • $activeHomeCount/4 home"
+                "$activeHomeCount/4 PAWS HOME"
         }
 
     diceHost?.isEnabled = canRoll
@@ -405,28 +340,19 @@ internal fun OfflineGameActivity.renderGame(
 
     when {
         state.status == "FINISHED" ->
-            showStatus("Game complete • rematch or change setup.")
+            showStatus("Rematch or change setup.")
 
         computerTurn && pending != null ->
-            showStatus(
-                (active?.displayName ?: "CPU") +
-                    " • dice ${pending.outcome} • choosing a move…",
-            )
+            showStatus("Computer is choosing a paw…")
 
         computerTurn ->
-            showStatus((active?.displayName ?: "CPU") + " is thinking…")
+            showStatus("Computer is rolling…")
 
         pending != null ->
-            showStatus(
-                (active?.displayName ?: "Player") +
-                    " • dice ${pending.outcome} • move a highlighted token",
-            )
+            showStatus("Choose a glowing paw.")
 
         else ->
-            showStatus(
-                (active?.displayName ?: "Player") +
-                    " turn • tap the dice beside the profile",
-            )
+            showStatus("Tap the dice beside the active character.")
     }
 
     scheduleSingleLegalHumanMove(
@@ -455,10 +381,7 @@ private fun OfflineGameActivity.scheduleSingleLegalHumanMove(
     if (host.tag == eventKey) return
     host.tag = eventKey
 
-    showStatus(
-        (state.players.getOrNull(state.turnSeat)?.displayName ?: "Player") +
-            " • only one move • moving automatically…",
-    )
+    showStatus("Only one move • moving automatically…")
 
     handler.postDelayed(
         {

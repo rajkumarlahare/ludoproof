@@ -6,7 +6,6 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.ludoproof.game.feature.characters.domain.catalog.LudoPawsCharacterCatalog
@@ -22,7 +21,7 @@ class LudoPawsPlayerCardView(
     context: Context,
 ) : LinearLayout(context) {
     private val portrait =
-        ImageView(context)
+        LudoPawsCharacterAvatarView(context)
     private val nameText =
         TextView(context)
     private val stateText =
@@ -35,15 +34,17 @@ class LudoPawsPlayerCardView(
     init {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(7), dp(6), dp(8), dp(6))
+        clipChildren = false
+        clipToPadding = false
+        setPadding(dp(4), dp(5), dp(6), dp(5))
 
         addView(
             portrait,
             LayoutParams(
-                dp(48),
-                dp(48),
+                dp(50),
+                dp(50),
             ).apply {
-                marginEnd = dp(7)
+                marginEnd = dp(6)
             },
         )
 
@@ -98,19 +99,15 @@ class LudoPawsPlayerCardView(
             } else {
                 View.LAYOUT_DIRECTION_LTR
             }
-        copy.layoutDirection =
-            View.LAYOUT_DIRECTION_LTR
-        nameText.textDirection =
-            View.TEXT_DIRECTION_LTR
-        stateText.textDirection =
-            View.TEXT_DIRECTION_LTR
-        progressText.textDirection =
-            View.TEXT_DIRECTION_LTR
+        copy.layoutDirection = View.LAYOUT_DIRECTION_LTR
+        nameText.textDirection = View.TEXT_DIRECTION_LTR
+        stateText.textDirection = View.TEXT_DIRECTION_LTR
+        progressText.textDirection = View.TEXT_DIRECTION_LTR
         setPadding(
-            dp(if (portraitOnEnd) 8 else 2),
-            dp(6),
-            dp(if (portraitOnEnd) 2 else 8),
-            dp(6),
+            dp(if (portraitOnEnd) 6 else 2),
+            dp(5),
+            dp(if (portraitOnEnd) 2 else 6),
+            dp(5),
         )
 
         val character =
@@ -120,49 +117,29 @@ class LudoPawsPlayerCardView(
                     .character(
                         LudoPawsCharacterCatalog.DEFAULT_CHARACTER_ID,
                     )
-
-        val drawableId =
-            character
-                ?.fallbackDrawableName
-                ?.let {
-                    resources.getIdentifier(
-                        it,
-                        "drawable",
-                        context.packageName,
-                    )
-                }
-                ?: 0
-        if (drawableId != 0) {
-            portrait.setImageResource(drawableId)
-        } else {
-            portrait.setImageDrawable(null)
-        }
-        portrait.scaleType = ImageView.ScaleType.CENTER_CROP
-        portrait.background =
-            portraitBackground(
-                player.color,
-                active,
-            )
-        portrait.setPadding(dp(4), dp(4), dp(4), dp(4))
-
         val characterName =
-            character
-                ?.displayName
-                ?: "Paw"
-        nameText.text =
-            "$characterName • ${player.displayName}"
+            character?.displayName ?: "Paw"
+
+        portrait.bind(
+            characterId = character?.id,
+            ringColor = playerColor(player.color),
+            highlighted = active,
+        )
+
+        nameText.text = player.displayName
         nameText.textSize =
             if (compact) 10.5f else 11.5f
 
-        stateText.text =
+        val turnLabel =
             when {
                 active && computer -> "CPU TURN"
                 active && localPlayer -> "YOUR TURN"
-                active && player.teamId != null -> "TEAM ${player.teamId} • TURN"
+                active && player.teamId != null -> "TEAM ${player.teamId} TURN"
                 active -> "TURN"
-                player.teamId != null -> "TEAM ${player.teamId} • WAITING"
+                player.teamId != null -> "TEAM ${player.teamId}"
                 else -> "WAITING"
             }
+        stateText.text = "$characterName • $turnLabel"
         stateText.setTextColor(
             if (active) {
                 0xFFFFD54F.toInt()
@@ -170,10 +147,12 @@ class LudoPawsPlayerCardView(
                 0xFF76E4F7.toInt()
             },
         )
+        stateText.textSize =
+            if (compact) 8.4f else 9.3f
 
         val home =
             player.tokens.count {
-                it == 57
+                it == LudoPathEncoding.HOME_POSITION
             }
         val yard =
             player.tokens.count {
@@ -182,9 +161,13 @@ class LudoPawsPlayerCardView(
         val racing =
             player.tokens.size - home - yard
         progressText.text =
-            "$home HOME • $racing RACING • $yard YARD"
+            when {
+                home >= player.tokens.size -> "ALL PAWS HOME"
+                racing > 0 -> "$home/4 HOME • $racing MOVING"
+                else -> "$home/4 HOME • READY"
+            }
         progressText.textSize =
-            if (compact) 8.2f else 9f
+            if (compact) 8.1f else 8.8f
 
         background =
             cardBackground(
@@ -193,7 +176,7 @@ class LudoPawsPlayerCardView(
             )
         elevation =
             dp(
-                if (active) 6 else 2,
+                if (active) 7 else 2,
             ).toFloat()
 
         contentDescription =
@@ -207,7 +190,7 @@ class LudoPawsPlayerCardView(
                 append(home)
                 append(" home, ")
                 append(racing)
-                append(" racing, ")
+                append(" moving, ")
                 append(yard)
                 append(" in yard")
                 if (active) {
@@ -218,30 +201,17 @@ class LudoPawsPlayerCardView(
             View.IMPORTANT_FOR_ACCESSIBILITY_YES
     }
 
-    private fun portraitBackground(
-        colorName: String,
-        active: Boolean,
-    ): GradientDrawable =
-        GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(0xFFF9FBFF.toInt())
-            setStroke(
-                dp(if (active) 4 else 3),
-                playerColor(colorName),
-            )
-        }
-
     private fun cardBackground(
         colorName: String,
         active: Boolean,
     ): GradientDrawable =
         GradientDrawable().apply {
-            cornerRadius = dp(14).toFloat()
+            cornerRadius = dp(15).toFloat()
             setColor(
                 if (active) {
                     0xF22B3550.toInt()
                 } else {
-                    0xD91A2337.toInt()
+                    0xE01A2337.toInt()
                 },
             )
             setStroke(
