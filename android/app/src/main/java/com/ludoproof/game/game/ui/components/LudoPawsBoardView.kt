@@ -34,6 +34,10 @@ class LudoPawsBoardView @JvmOverloads constructor(
     private val baseBoard =
         LudoBoardView(context)
 
+    /** Presentation-only edge treatment; it never participates in board geometry. */
+    private val boardChrome =
+        LudoPawsBoardChromeView(context)
+
     private var snapshot: MatchSnapshot? = null
     private var localPlayerId: String? = null
     private var perspectiveColor: String? = null
@@ -74,6 +78,13 @@ class LudoPawsBoardView @JvmOverloads constructor(
         )
         addView(
             baseBoard,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT,
+            ),
+        )
+        addView(
+            boardChrome,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.MATCH_PARENT,
@@ -268,6 +279,7 @@ class LudoPawsBoardView @JvmOverloads constructor(
     fun reloadStyle() {
         boardSurface.reloadStyle()
         baseBoard.reloadStyle()
+        boardChrome.invalidate()
     }
 
     // BOARD SIZE LOCK: exactly mirror the approved LudoBoardView square.

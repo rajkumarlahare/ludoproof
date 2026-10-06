@@ -49,25 +49,30 @@ object LudoPawsPawnLayout {
             ?.trim()
             ?.takeIf(String::isNotBlank)
 
+    /**
+     * Keeps single animal pawns prominent enough to read as characters rather
+     * than generic dots while still shrinking deterministic shared-cell stacks.
+     * These values affect presentation only; board coordinates never change.
+     */
     fun radiusScale(
         position: Int,
         occupancy: Int,
     ): Float {
         val base =
             when (position) {
-                -1 -> 0.38f
-                57 -> 0.33f
-                else -> 0.35f
+                -1 -> 0.40f
+                LudoPathEncoding.HOME_POSITION -> 0.35f
+                else -> 0.37f
             }
         val crowdScale =
             when {
                 occupancy <= 1 -> 1f
-                occupancy == 2 -> 0.94f
-                occupancy == 3 -> 0.89f
-                occupancy == 4 -> 0.84f
-                occupancy <= 6 -> 0.76f
-                occupancy <= 9 -> 0.68f
-                else -> 0.60f
+                occupancy == 2 -> 0.92f
+                occupancy == 3 -> 0.86f
+                occupancy == 4 -> 0.80f
+                occupancy <= 6 -> 0.72f
+                occupancy <= 9 -> 0.64f
+                else -> 0.56f
             }
         return base * crowdScale
     }
