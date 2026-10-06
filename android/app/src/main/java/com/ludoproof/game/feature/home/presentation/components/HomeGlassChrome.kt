@@ -11,7 +11,6 @@ import android.graphics.PixelFormat
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
-import com.ludoproof.game.LudoProofTheme
 
 internal enum class HomeGlassShape {
     PILL,
@@ -39,9 +38,9 @@ internal fun homeGlassBackground(
 /**
  * Size-independent glass chrome used by the Ludo Paws home controls.
  *
- * The drawable deliberately owns the translucent body, cyan edge, inner rim,
- * top reflection and pressed treatment so pills, tiles and micro buttons keep
- * the same visual language without bitmap stretching artifacts.
+ * The drawable owns the translucent body, cyan edge, inner rim, top reflection
+ * and pressed treatment so pills, tiles and micro buttons share one scalable
+ * visual language without bitmap stretching artifacts.
  */
 private class HomeGlassChromeDrawable(
     context: Context,
@@ -263,9 +262,7 @@ private class HomeGlassChromeDrawable(
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 
     private fun dp(value: Float): Float =
-        LudoProofTheme.dp(context = contextRef, value = value).toFloat()
-
-    private val contextRef: Context = context.applicationContext
+        value * density
 
     private data class Palette(
         val top: Int,
