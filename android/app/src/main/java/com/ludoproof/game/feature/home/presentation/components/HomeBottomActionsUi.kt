@@ -92,18 +92,25 @@ private fun HomeActivity.bottomActionButton(
             action()
         }
 
+        val actionIcon: View =
+            if (iconKind == HomeIconKind.RATING) {
+                HomeGooglePlayIconView(
+                    this@bottomActionButton,
+                )
+            } else {
+                HomeIconView(this@bottomActionButton).apply {
+                    kind = iconKind
+                    iconColor = Color.WHITE
+                    importantForAccessibility =
+                        View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }
+            }
+
+        actionIcon.importantForAccessibility =
+            View.IMPORTANT_FOR_ACCESSIBILITY_NO
+
         addView(
-            HomeIconView(this@bottomActionButton).apply {
-                kind = iconKind
-                iconColor =
-                    if (iconKind == HomeIconKind.RATING) {
-                        0xFFFFD13B.toInt()
-                    } else {
-                        Color.WHITE
-                    }
-                importantForAccessibility =
-                    View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            },
+            actionIcon,
             LinearLayout.LayoutParams(
                 dp(if (isCompact()) 31 else 36),
                 dp(if (isCompact()) 31 else 36),
@@ -122,6 +129,8 @@ private fun HomeActivity.bottomActionButton(
                         text = label
                         textSize =
                             when {
+                                iconKind == HomeIconKind.RATING && isCompact() -> 9.2f
+                                iconKind == HomeIconKind.RATING -> 10.4f
                                 isCompact() && label.length > 8 -> 8.5f
                                 label.length > 8 -> 9.5f
                                 isCompact() -> 11f
@@ -145,27 +154,44 @@ private fun HomeActivity.bottomActionButton(
                 )
 
                 if (secondaryText != null) {
-                    addView(
-                        TextView(this@bottomActionButton).apply {
-                            text = secondaryText
-                            textSize = if (isCompact()) 8.5f else 9.5f
-                            setTypeface(Typeface.DEFAULT_BOLD)
-                            setTextColor(0xFFFFCF32.toInt())
-                            letterSpacing = 0.01f
-                            gravity = Gravity.CENTER
-                            maxLines = 1
-                            setShadowLayer(
-                                1.5f,
-                                0f,
-                                dp(1).toFloat(),
-                                0xB0000000.toInt(),
-                            )
-                        },
-                        LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                        ),
-                    )
+                    if (iconKind == HomeIconKind.RATING) {
+                        addView(
+                            HomeRatingStarsView(
+                                this@bottomActionButton,
+                            ).apply {
+                                importantForAccessibility =
+                                    View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                            },
+                            LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT,
+                                dp(if (isCompact()) 13 else 15),
+                            ).apply {
+                                topMargin = dp(1)
+                            },
+                        )
+                    } else {
+                        addView(
+                            TextView(this@bottomActionButton).apply {
+                                text = secondaryText
+                                textSize = if (isCompact()) 8.5f else 9.5f
+                                setTypeface(Typeface.DEFAULT_BOLD)
+                                setTextColor(0xFFFFCF32.toInt())
+                                letterSpacing = 0.01f
+                                gravity = Gravity.CENTER
+                                maxLines = 1
+                                setShadowLayer(
+                                    1.5f,
+                                    0f,
+                                    dp(1).toFloat(),
+                                    0xB0000000.toInt(),
+                                )
+                            },
+                            LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                            ),
+                        )
+                    }
                 }
             },
             LinearLayout.LayoutParams(
