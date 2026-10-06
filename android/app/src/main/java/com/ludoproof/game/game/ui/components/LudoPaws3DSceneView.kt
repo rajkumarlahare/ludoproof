@@ -105,7 +105,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                 now <
                 previousState.forwardStartedAtMillis +
                     previousState.forwardDurationMillis +
-                    HOME_CELEBRATION_TAIL_MILLIS
+                    LudoPaws3DRenderCadencePolicy.HOME_CELEBRATION_TAIL_MILLIS
             ) {
                 previousState.forwardMotion
             } else {
@@ -401,6 +401,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                 setOperational(true)
 
                 while (running) {
+                    val frameStartedAtMillis = SystemClock.uptimeMillis()
                     val width = targetWidth.coerceAtLeast(1)
                     val height = targetHeight.coerceAtLeast(1)
                     if (
@@ -419,10 +420,22 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                     )
                     renderer.drawFrame(
                         state = frameState,
-                        nowMillis = SystemClock.uptimeMillis(),
+                        nowMillis = frameStartedAtMillis,
                     )
                     if (!egl.swapBuffers()) error("EGL swapBuffers failed")
-                    SystemClock.sleep(FRAME_DELAY_MILLIS)
+
+                    val frameDelayMillis =
+                        LudoPaws3DRenderCadencePolicy.frameDelayMillis(
+                            state = frameState,
+                            nowMillis = frameStartedAtMillis,
+                        )
+                    val frameWorkMillis =
+                        (SystemClock.uptimeMillis() - frameStartedAtMillis)
+                            .coerceAtLeast(0L)
+                    val sleepMillis = frameDelayMillis - frameWorkMillis
+                    if (sleepMillis > 0L) {
+                        SystemClock.sleep(sleepMillis)
+                    }
                 }
             } catch (interrupted: InterruptedException) {
                 // Normal shutdown path.
@@ -550,9 +563,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
 
     private companion object {
         const val TAG = "LudoPaws3D"
-        const val FRAME_DELAY_MILLIS = 16L
         const val RENDER_THREAD_JOIN_MILLIS = 250L
-        const val HOME_CELEBRATION_TAIL_MILLIS = 1_400L
         const val MIN_CAPTURE_DURATION_MILLIS = 520L
         const val MAX_CAPTURE_DURATION_MILLIS = 1_200L
     }

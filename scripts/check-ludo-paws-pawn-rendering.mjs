@@ -22,6 +22,8 @@ const rendererPath =
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPaws3DSceneRenderer.kt";
 const policyPath =
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPaws3DCharacterPolicy.kt";
+const cadencePolicyPath =
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPaws3DRenderCadencePolicy.kt";
 const layoutPath =
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsPawnLayout.kt";
 const activityPath =
@@ -36,12 +38,15 @@ const testsPath =
   "android/app/src/test/java/com/ludoproof/game/LudoPawsPawnLayoutTest.kt";
 const policyTestsPath =
   "android/app/src/test/java/com/ludoproof/game/LudoPaws3DCharacterPolicyTest.kt";
+const cadenceTestsPath =
+  "android/app/src/test/java/com/ludoproof/game/LudoPaws3DRenderCadencePolicyTest.kt";
 
 const board = read(boardPath);
 const reactiveBoard = read(reactiveBoardPath);
 const scene = read(scenePath);
 const renderer = read(rendererPath);
 const policy = read(policyPath);
+const cadencePolicy = read(cadencePolicyPath);
 const layout = read(layoutPath);
 const activity = read(activityPath);
 const screen = read(screenPath);
@@ -49,6 +54,7 @@ const controls = read(controlsPath);
 const characterState = read(characterStatePath);
 const tests = read(testsPath);
 const policyTests = read(policyTestsPath);
+const cadenceTests = read(cadenceTestsPath);
 
 for (const [token, message] of [
   ["class LudoPawsBoardView", "Production board shell is missing."],
@@ -86,11 +92,29 @@ for (const token of [
   "bindRenderAssignments",
   "settings.gameSpeed.moveStepMs",
   "reducedMotion",
+  "LudoPaws3DRenderCadencePolicy",
+  ".frameDelayMillis(",
 ]) {
   requireText(
     scene,
     token,
     `Shared 3D scene runtime is missing required marker: ${token}`,
+  );
+}
+
+for (const token of [
+  "ACTIVE_FRAME_DELAY_MILLIS",
+  "IDLE_FRAME_DELAY_MILLIS",
+  "HOME_CELEBRATION_TAIL_MILLIS",
+  "hasActiveAnimation",
+  "captureReturns",
+  "activeReactions",
+  "reducedMotion",
+]) {
+  requireText(
+    cadencePolicy,
+    token,
+    `Adaptive 3D cadence policy is missing required marker: ${token}`,
   );
 }
 
@@ -171,6 +195,16 @@ requireText(
   "render thread color lookup follows installed seat assignments",
   "Render-thread selected-character binding coverage is missing.",
 );
+requireText(
+  cadenceTests,
+  "idle board uses lower cost cadence",
+  "Idle 3D cadence regression coverage is missing.",
+);
+requireText(
+  cadenceTests,
+  "reduced motion never burns active frame cadence",
+  "Reduced-motion 3D cadence regression coverage is missing.",
+);
 
 for (const retired of [
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsCaptureReturnOverlayView.kt",
@@ -209,5 +243,5 @@ for (const retainedMotion of ["Dog", "Goat", "Duck", "Cat"]) {
 }
 
 console.log(
-  "Ludo Paws pawn rendering gate passed: selected seat animals drive one shared 3D runtime over the locked authoritative board, with legal halos, movement sync, 3D capture return, shared-cell sizing and legacy renderer cleanup intact.",
+  "Ludo Paws pawn rendering gate passed: selected seat animals drive one shared adaptive-cadence 3D runtime over the locked authoritative board, with legal halos, movement sync, 3D capture return, shared-cell sizing and legacy renderer cleanup intact.",
 );
