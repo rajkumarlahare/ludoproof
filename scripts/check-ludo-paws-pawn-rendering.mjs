@@ -94,6 +94,12 @@ for (const token of [
   "reducedMotion",
   "LudoPaws3DRenderCadencePolicy",
   ".frameDelayMillis(",
+  "onVisibilityChanged",
+  "onWindowVisibilityChanged",
+  "setPresentationVisible",
+  "awaitPresentationVisible",
+  "ReentrantLock",
+  "visibilityChanged.signalAll()",
 ]) {
   requireText(
     scene,
@@ -278,5 +284,5 @@ for (const retainedMotion of ["Dog", "Goat", "Duck", "Cat"]) {
 }
 
 console.log(
-  "Ludo Paws pawn rendering gate passed: selected seat animals drive one shared adaptive-cadence 3D runtime over the locked authoritative board, with cached stable bindings/stack geometry, legal halos, movement sync, 3D capture return, shared-cell sizing and legacy renderer cleanup intact.",
+  "Ludo Paws pawn rendering gate passed: selected seat animals drive one shared visibility-suspended, adaptive-cadence 3D runtime over the locked authoritative board, with cached stable bindings/stack geometry, legal halos, movement sync, 3D capture return, shared-cell sizing and legacy renderer cleanup intact.",
 );
