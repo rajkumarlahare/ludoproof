@@ -31,9 +31,14 @@ function walk(directory) {
 const rootBuild = read("android/build.gradle.kts");
 const appBuild = read("android/app/build.gradle.kts");
 const manifest = read("android/app/src/main/AndroidManifest.xml");
-const theme = read(
-  "android/app/src/main/java/com/ludoproof/game/core/ui/theme/LudoProofTheme.kt",
+const application = read(
+  "android/app/src/main/java/com/ludoproof/game/core/app/LudoProofApplication.kt",
 );
+const immersiveWindow = read(
+  "android/app/src/main/java/com/ludoproof/game/core/ui/window/ImmersiveGameWindow.kt",
+);
+const baseTheme = read("android/app/src/main/res/values/styles.xml");
+const api30Theme = read("android/app/src/main/res/values-v30/styles.xml");
 
 requireMatch(
   "android/build.gradle.kts",
@@ -66,19 +71,85 @@ requireMatch(
   "LudoProof must declare itself as a game for platform form-factor semantics.",
 );
 requireMatch(
-  "LudoProofTheme.kt",
-  theme,
+  "AndroidManifest.xml",
+  manifest,
+  /android:theme="@style\/Theme\.LudoPaws"/,
+  "the app must use the fullscreen game launch theme so cold starts are edge-to-edge.",
+);
+requireMatch(
+  "res/values/styles.xml",
+  baseTheme,
+  /android:statusBarColor">@android:color\/transparent</,
+  "the launch theme must keep the status-bar surface transparent.",
+);
+requireMatch(
+  "res/values/styles.xml",
+  baseTheme,
+  /android:navigationBarColor">@android:color\/transparent</,
+  "the launch theme must keep the navigation-bar surface transparent.",
+);
+requireMatch(
+  "res/values/styles.xml",
+  baseTheme,
+  /android:windowLayoutInDisplayCutoutMode">shortEdges</,
+  "API 28-29 must opt into available short-edge display-cutout rendering.",
+);
+requireMatch(
+  "res/values-v30/styles.xml",
+  api30Theme,
+  /android:windowLayoutInDisplayCutoutMode">always</,
+  "API 30+ must allow the game background through every display-cutout region.",
+);
+requireMatch(
+  "ImmersiveGameWindow.kt",
+  immersiveWindow,
   /setDecorFitsSystemWindows\(false\)/,
   "edge-to-edge must remain explicitly supported.",
 );
 requireMatch(
-  "LudoProofTheme.kt",
-  theme,
+  "ImmersiveGameWindow.kt",
+  immersiveWindow,
   /WindowInsets\.Type\.systemBars\(\)/,
   "system-bar handling must remain explicit for immersive gameplay.",
 );
+requireMatch(
+  "ImmersiveGameWindow.kt",
+  immersiveWindow,
+  /LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS/,
+  "modern Android must retain full display-cutout coverage.",
+);
+requireMatch(
+  "ImmersiveGameWindow.kt",
+  immersiveWindow,
+  /LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES/,
+  "Android 9-10 compatibility must retain short-edge display-cutout coverage.",
+);
+requireMatch(
+  "ImmersiveGameWindow.kt",
+  immersiveWindow,
+  /statusBarColor\s*=\s*Color\.TRANSPARENT/,
+  "runtime status-bar surfaces must remain transparent.",
+);
+requireMatch(
+  "ImmersiveGameWindow.kt",
+  immersiveWindow,
+  /navigationBarColor\s*=\s*Color\.TRANSPARENT/,
+  "runtime navigation-bar surfaces must remain transparent.",
+);
+requireMatch(
+  "LudoProofApplication.kt",
+  application,
+  /ImmersiveGameWindow\.configure\(activity\)/,
+  "every Activity must inherit the fullscreen game-window contract.",
+);
+requireMatch(
+  "LudoProofApplication.kt",
+  application,
+  /ImmersiveGameWindow\.restore\(activity\)/,
+  "immersive fullscreen must be restored when an Activity resumes.",
+);
 
-if (/windowOptOutEdgeToEdgeEnforcement/.test(read("android/app/src/main/AndroidManifest.xml"))) {
+if (/windowOptOutEdgeToEdgeEnforcement/.test(manifest)) {
   failures.push(
     "AndroidManifest.xml: deprecated edge-to-edge opt-out is not allowed when targeting API 36.",
   );
@@ -119,5 +190,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Android 16 release gate passed: API 36 target, supported toolchain, immersive edge-to-edge, and predictive-back baseline are intact.",
+  "Android 16 release gate passed: API 36 target, cutout-safe immersive edge-to-edge, transparent system-bar surfaces, and predictive-back baseline are intact.",
 );
