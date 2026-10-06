@@ -124,11 +124,14 @@ for (const token of [
   "LudoPawsCharacterCatalog",
   "bindRenderAssignments",
   "ThreadLocal",
+  "RenderAssignments",
+  "current.snapshot === snapshot",
+  "current.characterIdsBySeat === characterIdsBySeat",
 ]) {
   requireText(
     policy,
     token,
-    `3D character identity policy is missing selected-character binding marker: ${token}`,
+    `3D character identity policy is missing selected-character/cache marker: ${token}`,
   );
 }
 
@@ -153,8 +156,20 @@ for (const token of [
   );
 }
 
-requireText(layout, "radiusScale", "Production pawn sizing policy is missing.");
-requireText(layout, "tokenOffsetFraction", "Deterministic shared-cell placement is missing.");
+for (const token of [
+  "radiusScale",
+  "tokenOffsetFraction",
+  "StackPlacementCache",
+  "WeakReference",
+  "stackPlacementCache",
+  "cached.snapshotRef.get() === snapshot",
+]) {
+  requireText(
+    layout,
+    token,
+    `Production pawn layout/cache policy is missing required marker: ${token}`,
+  );
+}
 
 const reactiveHost =
   activity.includes("LudoPawsReactiveBoardView?") &&
@@ -186,6 +201,16 @@ requireText(
   "Shared-cell sizing coverage is missing.",
 );
 requireText(
+  tests,
+  "stable snapshot and cell reuse the same stack placement map",
+  "Stable 3D stack-placement cache coverage is missing.",
+);
+requireText(
+  tests,
+  "stack placement cache invalidates for new snapshot or board cell size",
+  "3D stack-placement cache invalidation coverage is missing.",
+);
+requireText(
   policyTests,
   "seat assignment wins over ludo color for production rendering",
   "Selected-character-over-color rendering coverage is missing.",
@@ -194,6 +219,16 @@ requireText(
   policyTests,
   "render thread color lookup follows installed seat assignments",
   "Render-thread selected-character binding coverage is missing.",
+);
+requireText(
+  policyTests,
+  "render binding refreshes when selected seat list changes",
+  "3D character binding cache assignment invalidation coverage is missing.",
+);
+requireText(
+  policyTests,
+  "render binding refreshes for a new authoritative snapshot",
+  "3D character binding cache snapshot invalidation coverage is missing.",
 );
 requireText(
   cadenceTests,
@@ -243,5 +278,5 @@ for (const retainedMotion of ["Dog", "Goat", "Duck", "Cat"]) {
 }
 
 console.log(
-  "Ludo Paws pawn rendering gate passed: selected seat animals drive one shared adaptive-cadence 3D runtime over the locked authoritative board, with legal halos, movement sync, 3D capture return, shared-cell sizing and legacy renderer cleanup intact.",
+  "Ludo Paws pawn rendering gate passed: selected seat animals drive one shared adaptive-cadence 3D runtime over the locked authoritative board, with cached stable bindings/stack geometry, legal halos, movement sync, 3D capture return, shared-cell sizing and legacy renderer cleanup intact.",
 );

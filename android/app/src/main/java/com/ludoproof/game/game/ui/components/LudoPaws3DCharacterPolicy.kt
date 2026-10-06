@@ -19,15 +19,23 @@ enum class LudoPaws3DSpecies {
 
 internal object LudoPaws3DCharacterPolicy {
     /**
-     * The shared renderer currently asks for species by board color. Install a
-     * render-thread-local color -> selected-character mapping before each frame
-     * so production rendering follows the real seat selection without leaking
-     * cosmetics into MatchSnapshot's authoritative gameplay fields.
+     * The shared renderer asks for species by board color. The render thread
+     * installs a color -> selected-character mapping before drawing. Frames for
+     * one immutable snapshot reuse that binding instead of rebuilding a small
+     * map on every 16/33 ms render tick.
+     *
+     * Identity checks are deliberate: a fresh authoritative snapshot or a new
+     * seat-assignment list invalidates the binding immediately, while repeated
+     * frames for the same scene remain allocation-free here.
      */
-    private val renderSpeciesByColor =
-        ThreadLocal.withInitial<Map<String, LudoPaws3DSpecies>> {
-            emptyMap()
-        }
+    private data class RenderAssignments(
+        val snapshot: MatchSnapshot?,
+        val characterIdsBySeat: List<String>,
+        val speciesByColor: Map<String, LudoPaws3DSpecies>,
+    )
+
+    private val renderAssignments =
+        ThreadLocal<RenderAssignments?>()
 
     fun speciesForCharacterId(
         characterId: String?,
@@ -56,6 +64,15 @@ internal object LudoPaws3DCharacterPolicy {
         snapshot: MatchSnapshot?,
         characterIdsBySeat: List<String>,
     ) {
+        val current = renderAssignments.get()
+        if (
+            current != null &&
+            current.snapshot === snapshot &&
+            current.characterIdsBySeat === characterIdsBySeat
+        ) {
+            return
+        }
+
         val mapping =
             snapshot
                 ?.players
@@ -72,11 +89,17 @@ internal object LudoPaws3DCharacterPolicy {
                 }
                 ?.toMap()
                 .orEmpty()
-        renderSpeciesByColor.set(mapping)
+        renderAssignments.set(
+            RenderAssignments(
+                snapshot = snapshot,
+                characterIdsBySeat = characterIdsBySeat,
+                speciesByColor = mapping,
+            ),
+        )
     }
 
     fun clearRenderAssignments() {
-        renderSpeciesByColor.remove()
+        renderAssignments.remove()
     }
 
     /**
@@ -86,8 +109,9 @@ internal object LudoPaws3DCharacterPolicy {
     fun speciesForColor(
         color: String,
     ): LudoPaws3DSpecies? =
-        renderSpeciesByColor
+        renderAssignments
             .get()
+            ?.speciesByColor
             ?.get(color)
             ?: fallbackSpeciesForColor(color)
 
