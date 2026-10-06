@@ -17,7 +17,7 @@ import kotlin.math.roundToInt
  *
  * Character visuals are rendered by the shared 3D runtime. The proven board
  * remains authoritative for geometry/touch/game state, while 3D body language,
- * board FX, legal halos and animal audio are presentation-only.
+ * board FX and animal audio are presentation-only.
  */
 class LudoPawsReactiveBoardView @JvmOverloads constructor(
     context: Context,
@@ -25,7 +25,6 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
 ) : FrameLayout(context, attrs) {
     private val board = LudoPawsBoardView(context)
     private val pawn3DScene = LudoPaws3DSceneView(context)
-    private val pawn3DLegalHalo = LudoPaws3DLegalHaloView(context)
     private val gameFxOverlay = LudoPawsGameFxOverlayView(context)
     private val voicePlayer = LudoPawsVoicePlayer(context)
     private val settingsStore = GameSettingsStore(context)
@@ -59,15 +58,14 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
                 LayoutParams.MATCH_PARENT,
             ),
         )
+
+        // Normal gameplay is 3D-first. Keep the legacy 2D pawn layer hidden from
+        // the first frame so its circular pawn art cannot appear beside, ahead of,
+        // or behind an animal while the GL surface is starting or moving.
+        board.setClassicPawnFallbackVisible(false)
+
         addView(
             pawn3DScene,
-            LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                LayoutParams.MATCH_PARENT,
-            ),
-        )
-        addView(
-            pawn3DLegalHalo,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.MATCH_PARENT,
@@ -81,13 +79,19 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             ),
         )
 
-        pawn3DLegalHalo.visibility = View.GONE
-        board.setClassicPawnFallbackVisible(true)
         pawn3DScene.onOperationalChanged =
             { available ->
-                board.setClassicPawnFallbackVisible(!available)
-                pawn3DLegalHalo.visibility =
-                    if (available) View.VISIBLE else View.GONE
+                if (available) {
+                    board.setClassicPawnFallbackVisible(false)
+                } else if (
+                    isShown &&
+                    windowVisibility == View.VISIBLE
+                ) {
+                    // Only expose the proven classic-pawn fallback when the visible
+                    // 3D runtime actually becomes unavailable. Lifecycle teardown
+                    // while the board is hidden must never flash legacy circles.
+                    board.setClassicPawnFallbackVisible(true)
+                }
             }
     }
 
@@ -127,11 +131,6 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             playerId = playerId,
             perspectiveColor = perspectiveColor,
             characterIdsBySeat = characterIdsBySeat,
-        )
-        pawn3DLegalHalo.bind(
-            state = state,
-            playerId = playerId,
-            perspectiveColor = perspectiveColor,
         )
         gameFxOverlay.bind(
             previous = previous,
