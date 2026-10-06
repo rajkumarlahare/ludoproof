@@ -1,10 +1,5 @@
 package com.ludoproof.game.ui.offline.setup
 
-import android.app.Activity
-import android.graphics.Color
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -25,10 +20,8 @@ internal fun OfflineGameActivity.showSetup() {
 
     val scroll =
         ScrollView(this).apply {
-            isFillViewport =
-                true
-            overScrollMode =
-                View.OVER_SCROLL_NEVER
+            isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_NEVER
         }
 
     val contentHost =
@@ -60,13 +53,12 @@ internal fun OfflineGameActivity.showSetup() {
 
     val content =
         LinearLayout(this).apply {
-            orientation =
-                LinearLayout.VERTICAL
+            orientation = LinearLayout.VERTICAL
             setPadding(
                 0,
-                dp(14),
+                dp(if (isCompactSetup()) 10 else 12),
                 0,
-                dp(28),
+                dp(24),
             )
         }
     contentHost.addView(
@@ -74,8 +66,7 @@ internal fun OfflineGameActivity.showSetup() {
         FrameLayout.LayoutParams(
             contentWidth,
             FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP or
-                Gravity.CENTER_HORIZONTAL,
+            Gravity.TOP or Gravity.CENTER_HORIZONTAL,
         ),
     )
 
@@ -89,41 +80,34 @@ internal fun OfflineGameActivity.showSetup() {
 
     content.addView(
         backHeader(
-            if (
-                isComputerMode
-            ) {
-                "COMPUTER"
+            if (isComputerMode) {
+                "VS COMPUTER"
             } else {
-                "LOCAL PLAY"
+                "PASS & PLAY"
             },
         ),
     )
 
+    // Character identity is the main Ludo Paws choice, so it leads the setup.
+    // Classic rules are the only local ruleset and no longer need a form panel.
     content.addView(
-        gameTypePanel(),
+        characterPanel(),
         setupSectionParams(
-            if (isCompactSetup()) 14 else 18,
+            if (isCompactSetup()) 12 else 14,
         ),
     )
 
     content.addView(
         playersPanel(),
         setupSectionParams(
-            if (isCompactSetup()) 14 else 18,
-        ),
-    )
-
-    content.addView(
-        characterPanel(),
-        setupSectionParams(
-            if (isCompactSetup()) 14 else 18,
+            if (isCompactSetup()) 10 else 12,
         ),
     )
 
     content.addView(
         colorPanel(),
         setupSectionParams(
-            if (isCompactSetup()) 14 else 18,
+            if (isCompactSetup()) 10 else 12,
         ),
     )
 
@@ -131,33 +115,26 @@ internal fun OfflineGameActivity.showSetup() {
 
     content.addView(
         Button(this).apply {
-            text =
-                "PLAY"
-            textSize =
-                if (isCompactSetup()) 18f else 20f
-            LudoProofTheme
-                .primary(this)
+            text = "PLAY"
+            textSize = if (isCompactSetup()) 18f else 20f
+            LudoProofTheme.primary(this)
             setOnClickListener {
                 persistActiveCharacterSetup()
                 showGame(
                     session.start(
-                        playerCount =
-                            selectedPlayers,
-                        preferredColor =
-                            selectedColor,
+                        playerCount = selectedPlayers,
+                        preferredColor = selectedColor,
                     ),
                 )
             }
         },
         LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
-            dp(
-                if (isCompactSetup()) 60 else 64,
-            ),
+            dp(if (isCompactSetup()) 58 else 62),
         ).apply {
             setMargins(
                 if (isCompactSetup()) dp(10) else dp(42),
-                dp(20),
+                dp(if (isCompactSetup()) 16 else 18),
                 if (isCompactSetup()) dp(10) else dp(42),
                 0,
             )
@@ -167,8 +144,7 @@ internal fun OfflineGameActivity.showSetup() {
     setContentView(root)
 }
 
-internal fun OfflineGameActivity.setupHero():
-    FrameLayout =
+internal fun OfflineGameActivity.setupHero(): FrameLayout =
     FrameLayout(this).apply {
         val heroHeight =
             dp(
@@ -193,10 +169,8 @@ internal fun OfflineGameActivity.setupHero():
             LinearLayout(
                 this@setupHero,
             ).apply {
-                orientation =
-                    LinearLayout.VERTICAL
-                gravity =
-                    Gravity.CENTER_VERTICAL
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_VERTICAL
                 setPadding(
                     dp(if (isCompactSetup()) 98 else 138),
                     dp(14),
@@ -207,55 +181,43 @@ internal fun OfflineGameActivity.setupHero():
 
         copy.addView(
             TextView(this@setupHero).apply {
-                text =
-                    "LOCAL LUDO"
+                text = "LUDO PAWS"
                 LudoProofTheme.title(
                     this,
                     if (isCompactSetup()) 23f else 28f,
                     gold = true,
                 )
-                gravity =
-                    Gravity.START or
-                        Gravity.CENTER_VERTICAL
+                gravity = Gravity.START or Gravity.CENTER_VERTICAL
             },
         )
 
         copy.addView(
             TextView(this@setupHero).apply {
                 text =
-                    "Pass & play on one device"
+                    if (isComputerMode) {
+                        "Pick a paw and challenge the computer"
+                    } else {
+                        "Pick your paws and play together"
+                    }
                 LudoProofTheme.body(
                     this,
                     if (isCompactSetup()) 12f else 13f,
                     bright = true,
                 )
-                gravity =
-                    Gravity.START
-                setPadding(
-                    0,
-                    dp(4),
-                    0,
-                    0,
-                )
+                gravity = Gravity.START
+                setPadding(0, dp(4), 0, 0)
             },
         )
 
         copy.addView(
             TextView(this@setupHero).apply {
-                text =
-                    "Same v4 derivation • local recomputation"
+                text = "Classic board • four paws race home"
                 LudoProofTheme.body(
                     this,
                     if (isCompactSetup()) 10.5f else 11.5f,
                 )
-                gravity =
-                    Gravity.START
-                setPadding(
-                    0,
-                    dp(3),
-                    0,
-                    0,
-                )
+                gravity = Gravity.START
+                setPadding(0, dp(3), 0, 0)
             },
         )
 
@@ -268,20 +230,17 @@ internal fun OfflineGameActivity.setupHero():
         )
     }
 
-internal fun OfflineGameActivity.gameTypePanel():
-    LinearLayout =
+internal fun OfflineGameActivity.gameTypePanel(): LinearLayout =
     selectionPanel(
-        "SELECT GAME",
-        "Classic Ludo",
+        "CLASSIC LUDO",
+        "Four paws race from the yard to home.",
     ).apply {
         val row =
             LinearLayout(
                 this@gameTypePanel,
             ).apply {
-                orientation =
-                    LinearLayout.HORIZONTAL
-                gravity =
-                    Gravity.CENTER
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
             }
 
         row.addView(
@@ -293,9 +252,7 @@ internal fun OfflineGameActivity.gameTypePanel():
                 true,
             ) {},
             setupTileParams(
-                if (
-                    isCompactSetup()
-                ) {
+                if (isCompactSetup()) {
                     118
                 } else {
                     128
@@ -309,20 +266,14 @@ internal fun OfflineGameActivity.gameTypePanel():
             TextView(
                 this@gameTypePanel,
             ).apply {
-                text =
-                    "Board and dice styles can be changed from Settings."
+                text = "Board and dice looks can be changed in Settings."
                 LudoProofTheme.body(
                     this,
                     10.5f,
                     centered = true,
                     bright = true,
                 )
-                setPadding(
-                    dp(8),
-                    dp(10),
-                    dp(8),
-                    0,
-                )
+                setPadding(dp(8), dp(10), dp(8), 0)
             },
         )
     }
