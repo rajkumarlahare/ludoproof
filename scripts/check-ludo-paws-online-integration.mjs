@@ -22,11 +22,17 @@ const gameApi = read(
 const teamApi = read(
   "android/app/src/main/java/com/ludoproof/game/feature/team/data/remote/TeamMatchmakingApi.kt",
 );
+const cachedStore = read(
+  "android/app/src/main/java/com/ludoproof/game/feature/online/data/local/CachedMatchStore.kt",
+);
 const runtime = read(
   "android/app/src/main/java/com/ludoproof/game/feature/characters/data/local/LudoPawsCharacterRuntime.kt",
 );
 const policy = read(
   "android/app/src/main/java/com/ludoproof/game/feature/online/domain/OnlineLudoPawsCharacterPolicy.kt",
+);
+const mainActivity = read(
+  "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/MainActivity.kt",
 );
 const renderer = read(
   "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/actions/OnlineResponseRenderer.kt",
@@ -34,11 +40,32 @@ const renderer = read(
 const verificationRenderer = read(
   "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/actions/OnlineVerificationRenderer.kt",
 );
+const sessionActions = read(
+  "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/actions/OnlineSessionActions.kt",
+);
+const uiState = read(
+  "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/state/OnlineGameUiState.kt",
+);
 const verifiedDicePolicy = read(
   "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/state/OnlineVerifiedDicePresentationPolicy.kt",
 );
 const verifiedDiceTests = read(
   "android/app/src/test/java/com/ludoproof/game/OnlineVerifiedDicePresentationPolicyTest.kt",
+);
+const pendingRecoveryPolicy = read(
+  "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/state/OnlinePendingRollRecoveryPolicy.kt",
+);
+const pendingRecoveryTests = read(
+  "android/app/src/test/java/com/ludoproof/game/OnlinePendingRollRecoveryPolicyTest.kt",
+);
+const rollActionPolicy = read(
+  "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/state/OnlineRollActionPolicy.kt",
+);
+const rollActionTests = read(
+  "android/app/src/test/java/com/ludoproof/game/OnlineRollActionPolicyTest.kt",
+);
+const matchActions = read(
+  "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/actions/OnlineMatchActions.kt",
 );
 const presentation = read(
   "android/app/src/main/java/com/ludoproof/game/feature/online/presentation/OnlineLudoPawsPresentation.kt",
@@ -104,11 +131,13 @@ for (const marker of [
   "presentedDiceEventKey",
   "animate = shouldAnimate",
   "Waiting for the complete proof",
+  "onlineRollActionDecision(state)",
+  "hasAuthoritativeActionState()",
 ]) {
   requireText(
     verificationRenderer,
     marker,
-    `Remote verified-dice renderer is missing ${marker}.`,
+    `Remote verified-dice/recovery renderer is missing ${marker}.`,
   );
 }
 for (const marker of [
@@ -125,6 +154,115 @@ for (const marker of [
 }
 
 for (const marker of [
+  "CACHE_SOURCE_MARKER",
+  "OnlineStateSource.CACHE",
+  "OnlineCachedStateRestorePolicy.shouldApply",
+  "OnlinePendingRollRecoveryPolicy.action",
+  "currentStateSource = source",
+]) {
+  const target = marker === "CACHE_SOURCE_MARKER" ? cachedStore : renderer;
+  requireText(
+    target,
+    marker,
+    `Cache-safe pending-roll recovery wiring is missing ${marker}.`,
+  );
+}
+for (const marker of [
+  "if (source == OnlineStateSource.CACHE)",
+  "PendingRollSecretAction.KEEP",
+  "PendingRollSecretAction.CLEAR",
+  "pending.status == \"RESOLVED\"",
+]) {
+  requireText(
+    pendingRecoveryPolicy,
+    marker,
+    `Pending reveal-secret recovery policy is missing ${marker}.`,
+  );
+}
+for (const marker of [
+  "cachedStateNeverClearsSecretEvenWhenSnapshotIsBehind",
+  "authoritativeStateWithoutPendingRollClearsStaleSecret",
+  "creatingRollWithoutEchoedCommitmentKeepsSecret",
+  "committedRollWithMatchingCommitmentKeepsSecret",
+  "mismatchedAuthoritativeCommitmentClearsSecret",
+  "cachedRestoreRequiresSameSecureSessionMatch",
+]) {
+  requireText(
+    pendingRecoveryTests,
+    marker,
+    `Pending reveal-secret regression coverage is missing ${marker}.`,
+  );
+}
+
+for (const marker of [
+  "hasAuthoritativeState",
+  "SYNCING MATCH",
+  "NEW_ROLL",
+  "RESUME_COMMIT_THEN_REVEAL",
+  "RESUME_REVEAL_ONLY",
+  "WAIT_FOR_RECOVERY",
+  "MOVE_REQUIRED",
+  "localClientCommitment == remoteClientCommitment",
+]) {
+  requireText(
+    rollActionPolicy,
+    marker,
+    `Online roll recovery action policy is missing ${marker}.`,
+  );
+}
+for (const marker of [
+  "cachedOrStaleStateCannotAuthorizeRoll",
+  "creatingRoundWithMatchingSecretResumesCommitThenReveal",
+  "committedRoundWithMatchingSecretResumesRevealOnly",
+  "resolvingRoundWithMatchingSecretRetriesRevealOnly",
+  "lockedRoundWithoutLocalSecretWaitsInsteadOfStartingAnotherRoll",
+  "commitmentMismatchFailsClosed",
+  "resolvedRoundRequiresMoveNotAnotherRoll",
+]) {
+  requireText(
+    rollActionTests,
+    marker,
+    `Online roll recovery action coverage is missing ${marker}.`,
+  );
+}
+for (const marker of [
+  "val decision = onlineRollActionDecision(state)",
+  "OnlineRollActionKind.RESUME_COMMIT_THEN_REVEAL",
+  "OnlineRollActionKind.RESUME_REVEAL_ONLY",
+  "api.commitRoll",
+  "api.revealRoll",
+  "pendingRollStore.save",
+  "if (!hasAuthoritativeActionState())",
+]) {
+  requireText(
+    matchActions,
+    marker,
+    `Online roll/move action flow is missing ${marker}.`,
+  );
+}
+requireText(
+  uiState,
+  "val currentStateSource: OnlineStateSource? = null",
+  "Online UI state must preserve presentation-vs-authority source.",
+);
+requireText(
+  sessionActions,
+  "currentStateSource = null",
+  "Invalid-session cleanup must clear online action authority.",
+);
+for (const marker of [
+  "override fun onStop()",
+  "currentStateSource = null",
+  "realtimeConnected = false",
+]) {
+  requireText(
+    mainActivity,
+    marker,
+    `Background/resume safety must invalidate online action authority: ${marker}.`,
+  );
+}
+
+for (const marker of [
   "LudoPawsReactiveBoardView",
   "LudoPawsPlayerCardView",
   "characterIdsBySeat",
@@ -137,5 +275,5 @@ for (const marker of [
 }
 
 console.log(
-  "Ludo Paws online integration gate passed: canonical Dog/Goat/Duck/Cat identity, legacy alias compatibility, remote 3D presentation, exactly-once feedback, fail-closed verified-dice presentation and proof-state isolation are wired.",
+  "Ludo Paws online integration gate passed: canonical Dog/Goat/Duck/Cat identity, legacy alias compatibility, remote 3D presentation, exactly-once feedback, fail-closed verified-dice presentation, cache-safe pending-secret preservation, authoritative-only online mutations across restart/background/reconnect, reconnect-safe commit/reveal action recovery and proof-state isolation are wired.",
 );

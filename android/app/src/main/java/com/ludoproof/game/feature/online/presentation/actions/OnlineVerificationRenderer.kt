@@ -43,9 +43,6 @@ internal fun MainActivity.updateVerification(
             }
         } else {
             if (pending != null) {
-                // A new authoritative event exists but is not fully verified yet.
-                // Keep the dice visibly in-progress rather than leaving the last
-                // verified face static beside the new event status.
                 diceView.startRolling()
             } else {
                 diceView.stopRolling()
@@ -63,6 +60,53 @@ internal fun MainActivity.updateVerification(
         }
 }
 
+/**
+ * Cached snapshots are display-only. Losing connectivity also invalidates the
+ * in-memory action authority so a reconnect must obtain a fresh server snapshot
+ * before any mutation can be submitted.
+ */
+internal fun MainActivity.hasAuthoritativeActionState(): Boolean {
+    if (!isOnline) {
+        if (uiStateHolder.value.currentStateSource != null) {
+            uiStateHolder.update {
+                it.copy(
+                    currentStateSource = null,
+                )
+            }
+        }
+        return false
+    }
+    return uiStateHolder.value.currentStateSource ==
+        OnlineStateSource.AUTHORITATIVE
+}
+
+internal fun MainActivity.onlineRollActionDecision(
+    state: MatchSnapshot,
+): OnlineRollActionDecision {
+    val mySeat =
+        state.players.indexOfFirst {
+            it.playerId == playerId
+        }
+    val actionableSeat = state.actingSeat ?: state.turnSeat
+    val myTurn =
+        state.status == "ACTIVE" &&
+            mySeat >= 0 &&
+            actionableSeat == mySeat
+    val secret = pendingSecret
+
+    return OnlineRollActionPolicy.resolve(
+        isOnline = isOnline,
+        hasAuthoritativeState = hasAuthoritativeActionState(),
+        matchStatus = state.status,
+        myTurn = myTurn,
+        pendingStatus = state.pendingRoll?.status,
+        remoteClientCommitment = state.pendingRoll?.clientCommitment,
+        currentMatchId = state.matchId,
+        localSecretMatchId = secret?.matchId,
+        localClientCommitment = secret?.clientCommitment,
+    )
+}
+
 internal fun MainActivity.updateControls(
     state: MatchSnapshot,
 ) {
@@ -75,6 +119,8 @@ internal fun MainActivity.updateControls(
         state.status == "ACTIVE" &&
             mySeat >= 0 &&
             actionableSeat == mySeat
+    val authoritativeActions =
+        hasAuthoritativeActionState()
 
     val waiting = state.status == "WAITING"
     val active = state.status == "ACTIVE"
@@ -96,10 +142,10 @@ internal fun MainActivity.updateControls(
     createButton.visibility = if (canEnterAnotherMatch) View.VISIBLE else View.GONE
     joinButton.visibility = if (canEnterAnotherMatch) View.VISIBLE else View.GONE
 
-    createButton.isEnabled = canEnterAnotherMatch && isOnline
-    joinButton.isEnabled = canEnterAnotherMatch && isOnline
-    nameInput.isEnabled = canEnterAnotherMatch
-    matchInput.isEnabled = canEnterAnotherMatch
+    createButton.isEnabled = canEnterAnotherMatch && authoritativeActions
+    joinButton.isEnabled = canEnterAnotherMatch && authoritativeActions
+    nameInput.isEnabled = canEnterAnotherMatch && authoritativeActions
+    matchInput.isEnabled = canEnterAnotherMatch && authoritativeActions
 
     matchStatusPanel.visibility = View.VISIBLE
     resultPanel.visibility = if (finished) View.VISIBLE else View.GONE
@@ -116,7 +162,7 @@ internal fun MainActivity.updateControls(
     startButton.visibility = if (waiting) View.VISIBLE else View.GONE
     val requiredPlayers = state.targetPlayerCount ?: 2
     startButton.isEnabled =
-        isOnline &&
+        authoritativeActions &&
             waiting &&
             state.players.size >= requiredPlayers &&
             state.hostPlayerId == playerId
@@ -124,8 +170,6 @@ internal fun MainActivity.updateControls(
     refreshButton.visibility = if (finished) View.GONE else View.VISIBLE
     refreshButton.isEnabled = isOnline && !finished
 
-    // Public Team Up matches are allocated by the server. Sharing their room
-    // code would bypass team matchmaking ownership, so do not expose it.
     shareButton.visibility =
         if (state.matchMode == "TEAM_UP") View.GONE else View.VISIBLE
     shareButton.isEnabled =
@@ -134,11 +178,10 @@ internal fun MainActivity.updateControls(
     proofButton.visibility =
         if (active || finished) View.VISIBLE else View.GONE
 
+    val rollAction = onlineRollActionDecision(state)
     rollButton.visibility = if (active) View.VISIBLE else View.GONE
-    rollButton.isEnabled =
-        isOnline &&
-            myTurn &&
-            state.pendingRoll?.status != "RESOLVED"
+    rollButton.isEnabled = rollAction.enabled
+    rollButton.text = rollAction.label
 
     scheduleSingleLegalOnlineMove(
         state = state,
@@ -154,7 +197,12 @@ private fun MainActivity.scheduleSingleLegalOnlineMove(
         state.pendingRoll
             ?.takeIf { it.status == "RESOLVED" }
             ?: return
-    if (!myTurn || !isOnline) return
+    if (
+        !myTurn ||
+        !hasAuthoritativeActionState()
+    ) {
+        return
+    }
 
     val tokenIndex =
         LudoTurnAutomationPolicy.singleLegalTokenIndex(
@@ -173,6 +221,7 @@ private fun MainActivity.scheduleSingleLegalOnlineMove(
             val latestPending = latest?.pendingRoll
             val stillSameMove =
                 latest != null &&
+                    hasAuthoritativeActionState() &&
                     latest.status == "ACTIVE" &&
                     latestPending?.status == "RESOLVED" &&
                     latestPending.eventIndex == pending.eventIndex &&
@@ -195,13 +244,28 @@ private fun MainActivity.scheduleSingleLegalOnlineMove(
 }
 
 internal fun MainActivity.updateRollButton() {
-    val secret = pendingSecret
-    rollButton.text =
-        if (secret != null && secret.matchId == matchId) {
-            "RESUME VERIFIED ROLL"
-        } else {
-            "ROLL VERIFIED DICE"
-        }
+    val state = currentState
+    if (state == null) {
+        val secret = pendingSecret
+        rollButton.text =
+            if (
+                secret != null &&
+                secret.matchId == matchId
+            ) {
+                "RESUME VERIFIED ROLL"
+            } else {
+                "ROLL VERIFIED DICE"
+            }
+        // A restored local secret can explain what will resume, but it cannot
+        // authorize a mutation. The button becomes actionable only after a
+        // fresh authoritative snapshot passes OnlineRollActionPolicy.
+        rollButton.isEnabled = false
+        return
+    }
+
+    val action = onlineRollActionDecision(state)
+    rollButton.text = action.label
+    rollButton.isEnabled = action.enabled
 }
 
 internal fun MainActivity.proofDetails(

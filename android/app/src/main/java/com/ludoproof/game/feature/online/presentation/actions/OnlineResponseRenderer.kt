@@ -11,12 +11,22 @@ internal fun MainActivity.applyResponse(
     response: JSONObject,
     announce: Boolean = true,
 ) {
+    val source =
+        if (
+            response.optBoolean(
+                CachedMatchStore.CACHE_SOURCE_MARKER,
+                false,
+            )
+        ) {
+            OnlineStateSource.CACHE
+        } else {
+            OnlineStateSource.AUTHORITATIVE
+        }
+
     val envelope =
         try {
             GameJson.envelope(response)
         } catch (error: GameSchemaException) {
-            // Fail closed at the server-response boundary. Do not replace the
-            // last known-good state or cache malformed authoritative data.
             diceView.stopRolling()
             showStatus(
                 "Server state validation failed. Your last verified state was kept; refresh to retry.",
@@ -27,6 +37,25 @@ internal fun MainActivity.applyResponse(
             updateRollButton()
             return
         }
+
+    val state = envelope.state
+    if (state == null) {
+        showStatus(response.toString(2))
+        updateRollButton()
+        return
+    }
+
+    if (
+        source == OnlineStateSource.CACHE &&
+        !OnlineCachedStateRestorePolicy.shouldApply(
+            sessionMatchId = matchId,
+            cachedMatchId = state.matchId,
+        )
+    ) {
+        cachedMatchStore.clear()
+        updateRollButton()
+        return
+    }
 
     envelope.playerId?.let { resolvedPlayerId ->
         playerId = resolvedPlayerId
@@ -41,15 +70,13 @@ internal fun MainActivity.applyResponse(
         }
     }
 
-    val state = envelope.state
-    if (state == null) {
-        showStatus(response.toString(2))
-        updateRollButton()
-        return
-    }
-
     val previousState = currentState
     currentState = state
+    uiStateHolder.update {
+        it.copy(
+            currentStateSource = source,
+        )
+    }
     matchId = state.matchId
 
     val serverRevision =
@@ -66,9 +93,11 @@ internal fun MainActivity.applyResponse(
         updateConnectionLabel()
     }
 
-    // Team Up v1 is intentionally unranked until a dedicated team ledger can
-    // represent two co-winners without corrupting individual profile stats.
-    if (state.status == "FINISHED" && gameMode.ranked) {
+    if (
+        source == OnlineStateSource.AUTHORITATIVE &&
+        state.status == "FINISHED" &&
+        gameMode.ranked
+    ) {
         runCatching {
             ProfileStore(this).recordCompletedMatch(
                 matchId = state.matchId,
@@ -79,17 +108,20 @@ internal fun MainActivity.applyResponse(
         }
     }
 
-    response.optJSONObject("state")?.let { safeState ->
-        cachedMatchStore.save(
-            envelope.playerId ?: playerId,
-            safeState,
-        )
+    if (source == OnlineStateSource.AUTHORITATIVE) {
+        response.optJSONObject("state")?.let { safeState ->
+            cachedMatchStore.save(
+                envelope.playerId ?: playerId,
+                safeState,
+            )
+        }
     }
 
-    reconcilePendingSecret(state)
+    reconcilePendingSecret(
+        state = state,
+        source = source,
+    )
 
-    // Keep the proven legacy board synchronized as a safe fallback while the
-    // presentation-only Ludo Paws shell owns visible remote rendering.
     boardView.bind(state, playerId)
     OnlineLudoPawsPresentation.render(
         activity = this,
@@ -151,16 +183,16 @@ internal fun MainActivity.applyResponse(
 
 internal fun MainActivity.reconcilePendingSecret(
     state: MatchSnapshot,
+    source: OnlineStateSource,
 ) {
     val secret = pendingSecret ?: return
-    if (secret.matchId != state.matchId) {
-        pendingRollStore.clear()
-        pendingSecret = null
-        return
-    }
-
-    val remoteCommitment = state.pendingRoll?.clientCommitment
-    if (remoteCommitment == null || remoteCommitment != secret.clientCommitment) {
+    if (
+        OnlinePendingRollRecoveryPolicy.action(
+            source = source,
+            secret = secret,
+            state = state,
+        ) == PendingRollSecretAction.CLEAR
+    ) {
         pendingRollStore.clear()
         pendingSecret = null
     }

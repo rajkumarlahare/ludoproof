@@ -5,6 +5,7 @@ internal data class OnlineGameUiState(
     val playerToken: String? = null,
     val playerId: String? = null,
     val currentState: MatchSnapshot? = null,
+    val currentStateSource: OnlineStateSource? = null,
     val pendingSecret: PendingRollSecret? = null,
     val isOnline: Boolean = false,
     val presentedDiceEventKey: String? = null,
