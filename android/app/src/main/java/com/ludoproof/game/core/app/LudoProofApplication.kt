@@ -27,6 +27,10 @@ class LudoProofApplication :
     override fun onActivityResumed(
         activity: Activity,
     ) {
+        // OEMs may restore system bars after app switches, transient overlays,
+        // or window-focus changes. Reassert the game presentation on resume.
+        ImmersiveGameWindow.restore(activity)
+
         resumedActivities += 1
         if (resumedActivities == 1) {
             friendPresence.start()
@@ -51,7 +55,11 @@ class LudoProofApplication :
     override fun onActivityCreated(
         activity: Activity,
         savedInstanceState: Bundle?,
-    ) = Unit
+    ) {
+        // Keep every current and future Activity on the same edge-to-edge,
+        // cutout-aware fullscreen contract without per-screen duplication.
+        ImmersiveGameWindow.configure(activity)
+    }
 
     override fun onActivityStarted(
         activity: Activity,
