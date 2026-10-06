@@ -6,6 +6,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.ludoproof.game.*
+import com.ludoproof.game.feature.online.*
 
 internal fun MainActivity.onlineActionPanel(): LinearLayout =
     LudoProofTheme
