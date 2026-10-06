@@ -261,9 +261,9 @@ private fun HomeActivity.modeTitle(
         maxLines = 1
         letterSpacing = 0.005f
         setShadowLayer(
-            dp(2.2f),
+            dp(2).toFloat(),
             0f,
-            dp(1.6f),
+            dp(1).toFloat(),
             0xC9001A38.toInt(),
         )
     }
