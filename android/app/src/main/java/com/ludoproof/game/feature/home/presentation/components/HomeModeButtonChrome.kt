@@ -8,6 +8,7 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PixelFormat
+import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
@@ -61,12 +62,7 @@ private class HomeModeButtonChromeDrawable(
             color = 0xB8FFFFFF.toInt()
         }
     private val glossPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val streakPaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeCap = Paint.Cap.ROUND
-            strokeWidth = dp(1.7f)
-        }
+    private val reflectionPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val shadePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val pawPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val sparklePaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -127,6 +123,20 @@ private class HomeModeButtonChromeDrawable(
                 floatArrayOf(0f, 0.20f, 0.62f, 1f),
                 Shader.TileMode.CLAMP,
             )
+        reflectionPaint.shader =
+            RadialGradient(
+                rect.centerX() - rect.width() * 0.08f,
+                rect.top + rect.height() * 0.035f,
+                rect.width() * 0.58f,
+                intArrayOf(
+                    0xB8FFFFFF.toInt(),
+                    0x66FFFFFF,
+                    0x24FFFFFF,
+                    Color.TRANSPARENT,
+                ),
+                floatArrayOf(0f, 0.22f, 0.58f, 1f),
+                Shader.TileMode.CLAMP,
+            )
         shadePaint.shader =
             LinearGradient(
                 rect.left,
@@ -144,7 +154,6 @@ private class HomeModeButtonChromeDrawable(
 
         glowPaint.color = palette.glow
         outerRimPaint.color = palette.rim
-        streakPaint.color = 0xDFFFFFFF.toInt()
         pawPaint.color = palette.paw
         sparklePaint.color = 0x80FFFFFF.toInt()
 
@@ -166,7 +175,7 @@ private class HomeModeButtonChromeDrawable(
         outerRimPaint.alpha = drawableAlpha
         innerRimPaint.alpha = (0xB8 * alphaScale).toInt()
         glossPaint.alpha = (0xC8 * alphaScale).toInt()
-        streakPaint.alpha = (0xDF * alphaScale).toInt()
+        reflectionPaint.alpha = (0xA8 * alphaScale).toInt()
         shadePaint.alpha = drawableAlpha
         pawPaint.alpha = (0x72 * alphaScale).toInt()
         sparklePaint.alpha = (0x80 * alphaScale).toInt()
@@ -192,13 +201,16 @@ private class HomeModeButtonChromeDrawable(
             glossPaint,
         )
 
-        // Narrow specular streak sitting just below the upper rim.
-        canvas.drawLine(
-            rect.left + radius * 0.78f,
-            rect.top + dp(4.8f),
-            rect.right - radius * 0.78f,
-            rect.top + dp(4.8f),
-            streakPaint,
+        // Soft elliptical glass sheen. Unlike the former white stroke, this
+        // blooms in the middle and fades toward both ends like reflected light.
+        canvas.drawOval(
+            RectF(
+                rect.left + radius * 0.56f,
+                rect.top - rect.height() * 0.07f,
+                rect.right - radius * 0.56f,
+                rect.top + rect.height() * 0.27f,
+            ),
+            reflectionPaint,
         )
 
         canvas.drawRect(
@@ -224,6 +236,23 @@ private class HomeModeButtonChromeDrawable(
                 cy = rect.bottom - dp(15f),
                 scale = 0.96f,
                 rotateDegrees = 18f,
+            )
+        }
+
+        if (tone == HomeModeTone.PASS_AND_PLAY) {
+            drawPaw(
+                canvas = canvas,
+                cx = rect.left + dp(34f),
+                cy = rect.top + dp(19f),
+                scale = 0.44f,
+                rotateDegrees = -22f,
+            )
+            drawPaw(
+                canvas = canvas,
+                cx = rect.right - dp(35f),
+                cy = rect.top + dp(21f),
+                scale = 0.52f,
+                rotateDegrees = 20f,
             )
         }
 
@@ -308,7 +337,7 @@ private class HomeModeButtonChromeDrawable(
         outerRimPaint.colorFilter = colorFilter
         innerRimPaint.colorFilter = colorFilter
         glossPaint.colorFilter = colorFilter
-        streakPaint.colorFilter = colorFilter
+        reflectionPaint.colorFilter = colorFilter
         shadePaint.colorFilter = colorFilter
         pawPaint.colorFilter = colorFilter
         sparklePaint.colorFilter = colorFilter
