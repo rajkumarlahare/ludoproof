@@ -1,7 +1,14 @@
 package com.ludoproof.game
 
 import android.content.Context
-import android.graphics.*
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RadialGradient
+import android.graphics.RectF
+import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.View
 import kotlin.math.min
@@ -18,158 +25,52 @@ class ModeArtView @JvmOverloads constructor(
         PASS_AND_PLAY,
     }
 
-    var mode: Mode =
-        Mode.ONLINE
+    var mode: Mode = Mode.ONLINE
         set(value) {
             field = value
             invalidate()
         }
 
-    private val paint =
-        Paint(Paint.ANTI_ALIAS_FLAG)
+    private val density = resources.displayMetrics.density
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val stroke =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style =
-                Paint.Style.STROKE
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
         }
+
+    init {
+        // Software rendering is intentional for the tiny icon shadows only.
+        // The surrounding Home scene keeps its normal renderer.
+        setLayerType(LAYER_TYPE_SOFTWARE, null)
+    }
 
     override fun onMeasure(
         widthMeasureSpec: Int,
         heightMeasureSpec: Int,
     ) {
-        val desired =
-            dp(150f).toInt()
-        val w =
-            resolveSize(
-                desired,
-                widthMeasureSpec,
-            )
+        val desiredW = dp(64f).toInt()
+        val desiredH = dp(64f).toInt()
         setMeasuredDimension(
-            w,
-            resolveSize(
-                (w * .78f).toInt(),
-                heightMeasureSpec,
-            ),
+            resolveSize(desiredW, widthMeasureSpec),
+            resolveSize(desiredH, heightMeasureSpec),
         )
     }
 
-    override fun onDraw(
-        canvas: Canvas,
-    ) {
+    override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val w =
-            width.toFloat()
-        val h =
-            height.toFloat()
-        if (
-            w <= 0f ||
-            h <= 0f
-        ) {
-            return
-        }
+        if (width <= 0 || height <= 0) return
 
-        paint.shader =
-            LinearGradient(
-                0f,
-                0f,
-                0f,
-                h,
-                intArrayOf(
-                    0xFF062B72.toInt(),
-                    0xFF074DAA.toInt(),
-                    0xFF031A51.toInt(),
-                ),
-                floatArrayOf(
-                    0f,
-                    .55f,
-                    1f,
-                ),
-                Shader.TileMode.CLAMP,
-            )
-        canvas.drawRoundRect(
-            0f,
-            0f,
-            w,
-            h,
-            dp(16f),
-            dp(16f),
-            paint,
-        )
-        paint.shader =
-            null
+        val w = width.toFloat()
+        val h = height.toFloat()
 
-        paint.color =
-            0x2215C7FF
-        val grid =
-            dp(24f)
-        var x =
-            0f
-        while (
-            x <= w
-        ) {
-            canvas.drawLine(
-                x,
-                0f,
-                x,
-                h,
-                paint,
-            )
-            x +=
-                grid
-        }
-        var y =
-            0f
-        while (
-            y <= h
-        ) {
-            canvas.drawLine(
-                0f,
-                y,
-                w,
-                y,
-                paint,
-            )
-            y +=
-                grid
-        }
-
-        when (
-            mode
-        ) {
-            Mode.ONLINE ->
-                drawOnline(
-                    canvas,
-                    w,
-                    h,
-                )
-
-            Mode.TEAM_UP ->
-                drawTeamUp(
-                    canvas,
-                    w,
-                    h,
-                )
-
-            Mode.FRIENDS ->
-                drawFriends(
-                    canvas,
-                    w,
-                    h,
-                )
-
-            Mode.COMPUTER ->
-                drawComputer(
-                    canvas,
-                    w,
-                    h,
-                )
-
-            Mode.PASS_AND_PLAY ->
-                drawLocal(
-                    canvas,
-                    w,
-                    h,
-                )
+        when (mode) {
+            Mode.ONLINE -> drawOnline(canvas, w, h)
+            Mode.TEAM_UP -> drawTeamUp(canvas, w, h)
+            Mode.FRIENDS -> drawFriends(canvas, w, h)
+            Mode.COMPUTER -> drawComputer(canvas, w, h)
+            Mode.PASS_AND_PLAY -> drawPassAndPlay(canvas, w, h)
         }
     }
 
@@ -178,62 +79,54 @@ class ModeArtView @JvmOverloads constructor(
         w: Float,
         h: Float,
     ) {
-        val cx =
-            w * .5f
-        val cy =
-            h * .47f
-        val r =
-            min(
-                w,
-                h,
-            ) * .25f
+        val size = min(w, h)
+        val cx = w * 0.5f
+        val cy = h * 0.5f
+        val r = size * 0.36f
+
+        paint.shader = null
+        paint.color = 0x65002157
+        paint.setShadowLayer(dp(3.2f), 0f, dp(2.2f), 0x7B001534)
+        canvas.drawCircle(cx, cy + dp(1f), r * 1.04f, paint)
+        paint.clearShadowLayer()
 
         paint.shader =
             RadialGradient(
-                cx,
-                cy,
-                r * 2.2f,
+                cx - r * 0.38f,
+                cy - r * 0.42f,
+                r * 1.65f,
                 intArrayOf(
-                    0xAA00C8FF.toInt(),
-                    0x330079FF,
-                    Color.TRANSPARENT,
+                    0xFF8EFAFF.toInt(),
+                    0xFF20B8FF.toInt(),
+                    0xFF0870D7.toInt(),
+                    0xFF064AA2.toInt(),
                 ),
-                null,
+                floatArrayOf(0f, 0.32f, 0.72f, 1f),
                 Shader.TileMode.CLAMP,
             )
-        canvas.drawCircle(
-            cx,
-            cy,
-            r * 2.05f,
-            paint,
-        )
-        paint.shader =
-            null
+        canvas.drawCircle(cx, cy, r, paint)
+        paint.shader = null
 
-        paint.color =
-            0xFF073B91.toInt()
-        canvas.drawCircle(
-            cx,
-            cy,
-            r,
-            paint,
-        )
+        stroke.color = 0xFFF0FFFF.toInt()
+        stroke.strokeWidth = dp(1.8f)
+        canvas.drawCircle(cx, cy, r, stroke)
 
-        stroke.color =
-            0xFF8CEAFF.toInt()
-        stroke.strokeWidth =
-            dp(2f)
-        canvas.drawCircle(
-            cx,
-            cy,
-            r,
+        stroke.color = 0xE6E5FEFF.toInt()
+        stroke.strokeWidth = dp(1.45f)
+        canvas.drawOval(
+            RectF(
+                cx - r * 0.45f,
+                cy - r,
+                cx + r * 0.45f,
+                cy + r,
+            ),
             stroke,
         )
         canvas.drawOval(
             RectF(
-                cx - r * .48f,
+                cx - r * 0.78f,
                 cy - r,
-                cx + r * .48f,
+                cx + r * 0.78f,
                 cy + r,
             ),
             stroke,
@@ -241,265 +134,25 @@ class ModeArtView @JvmOverloads constructor(
         canvas.drawOval(
             RectF(
                 cx - r,
-                cy - r * .42f,
+                cy - r * 0.42f,
                 cx + r,
-                cy + r * .42f,
+                cy + r * 0.42f,
             ),
             stroke,
         )
-        canvas.drawLine(
-            cx - r,
-            cy,
-            cx + r,
-            cy,
-            stroke,
-        )
-
-        val nodes =
-            listOf(
-                Pair(
-                    w * .18f,
-                    h * .25f,
-                ),
-                Pair(
-                    w * .82f,
-                    h * .25f,
-                ),
-                Pair(
-                    w * .16f,
-                    h * .72f,
-                ),
-                Pair(
-                    w * .84f,
-                    h * .72f,
-                ),
-            )
-        nodes.forEachIndexed {
-                index,
-                node,
-            ->
-            stroke.color =
-                0x665EE9FF
-            stroke.strokeWidth =
-                dp(1.3f)
-            canvas.drawLine(
-                node.first,
-                node.second,
-                cx,
-                cy,
-                stroke,
-            )
-            drawNode(
-                canvas,
-                node.first,
-                node.second,
-                listOf(
-                    0xFF35C83D.toInt(),
-                    0xFFF22E35.toInt(),
-                    0xFF2A8CFF.toInt(),
-                    0xFFFFD324.toInt(),
-                )[index],
-            )
-        }
-
-        drawShield(
-            canvas,
-            cx,
-            cy + r * .12f,
-            r * .78f,
-        )
-
-        drawDie(
-            canvas,
-            w * .19f,
-            h * .68f,
-            r * .56f,
-            0xFFF4F7FF.toInt(),
-            -14f,
-            5,
-            0xFF083F9A.toInt(),
-        )
-        drawDie(
-            canvas,
-            w * .81f,
-            h * .67f,
-            r * .56f,
-            0xFFF4F7FF.toInt(),
-            13f,
-            4,
-            0xFF083F9A.toInt(),
-        )
-    }
-
-    private fun drawLocal(
-        canvas: Canvas,
-        w: Float,
-        h: Float,
-    ) {
-        val size =
-            min(
-                w,
-                h,
-            ) * .67f
-        val left =
-            (w - size) /
-                2f
-        val top =
-            h * .16f
+        canvas.drawLine(cx - r, cy, cx + r, cy, stroke)
 
         paint.shader =
             RadialGradient(
-                w * .5f,
-                h * .48f,
-                size,
-                intArrayOf(
-                    0x8800C8FF.toInt(),
-                    Color.TRANSPARENT,
-                ),
-                null,
+                cx - r * 0.46f,
+                cy - r * 0.52f,
+                r * 0.42f,
+                0xC8FFFFFF.toInt(),
+                Color.TRANSPARENT,
                 Shader.TileMode.CLAMP,
             )
-        canvas.drawCircle(
-            w * .5f,
-            h * .48f,
-            size,
-            paint,
-        )
-        paint.shader =
-            null
-
-        paint.color =
-            0xFFF4F8FF.toInt()
-        canvas.drawRoundRect(
-            left,
-            top,
-            left + size,
-            top + size,
-            dp(9f),
-            dp(9f),
-            paint,
-        )
-
-        val half =
-            size /
-                2f
-        val inset =
-            size *
-                .04f
-        val colors =
-            listOf(
-                0xFFE9323C.toInt(),
-                0xFF29B557.toInt(),
-                0xFF238CFF.toInt(),
-                0xFFFFD12C.toInt(),
-            )
-        colors.forEachIndexed {
-                index,
-                color,
-            ->
-            paint.color =
-                color
-            val x =
-                left +
-                    if (
-                        index %
-                            2 ==
-                        0
-                    ) {
-                        inset
-                    } else {
-                        half
-                    }
-            val y =
-                top +
-                    if (
-                        index <
-                            2
-                    ) {
-                        inset
-                    } else {
-                        half
-                    }
-            canvas.drawRoundRect(
-                x,
-                y,
-                x + half - inset,
-                y + half - inset,
-                dp(5f),
-                dp(5f),
-                paint,
-            )
-        }
-
-        stroke.color =
-            0x55052A69
-        stroke.strokeWidth =
-            dp(1f)
-        for (
-            i in
-            1..5
-        ) {
-            val p =
-                size *
-                    i /
-                    6f
-            canvas.drawLine(
-                left + p,
-                top,
-                left + p,
-                top + size,
-                stroke,
-            )
-            canvas.drawLine(
-                left,
-                top + p,
-                left + size,
-                top + p,
-                stroke,
-            )
-        }
-
-        val pawnSize =
-            size * .095f
-        drawPawn(
-            canvas,
-            left + size * .23f,
-            top + size * .25f,
-            pawnSize,
-            0xFFE9323C.toInt(),
-        )
-        drawPawn(
-            canvas,
-            left + size * .77f,
-            top + size * .25f,
-            pawnSize,
-            0xFF29B557.toInt(),
-        )
-        drawPawn(
-            canvas,
-            left + size * .24f,
-            top + size * .77f,
-            pawnSize,
-            0xFF238CFF.toInt(),
-        )
-        drawPawn(
-            canvas,
-            left + size * .77f,
-            top + size * .77f,
-            pawnSize,
-            0xFFFFD12C.toInt(),
-        )
-
-        drawDie(
-            canvas,
-            w * .5f,
-            top + size * .5f,
-            size * .20f,
-            0xFFF4F7FF.toInt(),
-            8f,
-            5,
-            0xFF073B91.toInt(),
-        )
+        canvas.drawCircle(cx - r * 0.30f, cy - r * 0.34f, r * 0.48f, paint)
+        paint.shader = null
     }
 
     private fun drawTeamUp(
@@ -507,106 +160,34 @@ class ModeArtView @JvmOverloads constructor(
         w: Float,
         h: Float,
     ) {
-        val cx =
-            w *
-                .5f
-        val cy =
-            h *
-                .48f
-        val radius =
-            min(
-                w,
-                h,
-            ) *
-                .12f
+        val size = min(w, h)
+        val back = size * 0.125f
+        val front = size * 0.15f
 
-        val points =
-            listOf(
-                Triple(
-                    w * .28f,
-                    h * .30f,
-                    0xFFE9323C.toInt(),
-                ),
-                Triple(
-                    w * .72f,
-                    h * .30f,
-                    0xFF29B557.toInt(),
-                ),
-                Triple(
-                    w * .28f,
-                    h * .70f,
-                    0xFF238CFF.toInt(),
-                ),
-                Triple(
-                    w * .72f,
-                    h * .70f,
-                    0xFFFFD12C.toInt(),
-                ),
-            )
-
-        stroke.strokeWidth =
-            dp(3f)
-        stroke.color =
-            0x99FFFFFF.toInt()
-        canvas.drawLine(
-            points[0].first,
-            points[0].second,
-            points[3].first,
-            points[3].second,
-            stroke,
+        drawPerson(
+            canvas = canvas,
+            cx = w * 0.31f,
+            cy = h * 0.48f,
+            radius = back,
+            topColor = 0xFF8CEBFF.toInt(),
+            bottomColor = 0xFF217FE5.toInt(),
         )
-        canvas.drawLine(
-            points[1].first,
-            points[1].second,
-            points[2].first,
-            points[2].second,
-            stroke,
+        drawPerson(
+            canvas = canvas,
+            cx = w * 0.69f,
+            cy = h * 0.48f,
+            radius = back,
+            topColor = 0xFFE9B8FF.toInt(),
+            bottomColor = 0xFF8B36DF.toInt(),
         )
-
-        points.forEach {
-                point ->
-            drawNode(
-                canvas,
-                point.first,
-                point.second,
-                point.third,
-            )
-        }
-
-        paint.color =
-            0xFFFFC62E.toInt()
-        canvas.drawCircle(
-            cx,
-            cy,
-            radius,
-            paint,
-        )
-        stroke.color =
-            Color.WHITE
-        stroke.strokeWidth =
-            dp(2f)
-        canvas.drawCircle(
-            cx,
-            cy,
-            radius,
-            stroke,
-        )
-        paint.color =
-            0xFF073B91.toInt()
-        paint.textAlign =
-            Paint.Align.CENTER
-        paint.textSize =
-            radius *
-                .82f
-        paint.typeface =
-            Typeface.DEFAULT_BOLD
-        canvas.drawText(
-            "2V2",
-            cx,
-            cy +
-                radius *
-                .28f,
-            paint,
+        drawPerson(
+            canvas = canvas,
+            cx = w * 0.50f,
+            cy = h * 0.52f,
+            radius = front,
+            topColor = 0xFFF9F3FF.toInt(),
+            bottomColor = 0xFF8F4AE7.toInt(),
+            front = true,
         )
     }
 
@@ -615,84 +196,114 @@ class ModeArtView @JvmOverloads constructor(
         w: Float,
         h: Float,
     ) {
-        val centerY =
-            h *
-                .5f
-        val size =
-            min(
-                w,
-                h,
-            ) *
-                .15f
+        val size = min(w, h)
+        val radius = size * 0.16f
 
-        drawPawn(
-            canvas,
-            w * .36f,
-            centerY,
-            size,
-            0xFF28C7FF.toInt(),
+        drawPerson(
+            canvas = canvas,
+            cx = w * 0.38f,
+            cy = h * 0.52f,
+            radius = radius,
+            topColor = 0xFFFFD64B.toInt(),
+            bottomColor = 0xFFFF8B12.toInt(),
+            front = true,
         )
-        drawPawn(
-            canvas,
-            w * .64f,
-            centerY,
-            size,
-            0xFFFF6B8A.toInt(),
+        drawPerson(
+            canvas = canvas,
+            cx = w * 0.62f,
+            cy = h * 0.49f,
+            radius = radius * 1.05f,
+            topColor = 0xFF83EFFF.toInt(),
+            bottomColor = 0xFF1479E5.toInt(),
+            front = true,
         )
+    }
 
-        val heart =
-            Path().apply {
-                moveTo(
-                    w * .50f,
-                    h * .66f,
-                )
-                cubicTo(
-                    w * .37f,
-                    h * .56f,
-                    w * .39f,
-                    h * .43f,
-                    w * .50f,
-                    h * .49f,
-                )
-                cubicTo(
-                    w * .61f,
-                    h * .43f,
-                    w * .63f,
-                    h * .56f,
-                    w * .50f,
-                    h * .66f,
-                )
-                close()
-            }
-        paint.color =
-            0xFFFF4E70.toInt()
-        canvas.drawPath(
-            heart,
+    private fun drawPerson(
+        canvas: Canvas,
+        cx: Float,
+        cy: Float,
+        radius: Float,
+        topColor: Int,
+        bottomColor: Int,
+        front: Boolean = false,
+    ) {
+        val headR = radius * 0.55f
+        val bodyW = radius * 1.52f
+        val bodyH = radius * 1.22f
+        val headCy = cy - radius * 0.62f
+        val bodyTop = cy + radius * 0.04f
+
+        paint.shader = null
+        paint.color = 0x6100183F
+        paint.setShadowLayer(
+            dp(if (front) 3.2f else 2.4f),
+            0f,
+            dp(2f),
+            0x7800112D,
+        )
+        canvas.drawOval(
+            RectF(
+                cx - bodyW * 0.58f,
+                bodyTop - dp(1f),
+                cx + bodyW * 0.58f,
+                bodyTop + bodyH,
+            ),
+            paint,
+        )
+        paint.clearShadowLayer()
+
+        paint.shader =
+            LinearGradient(
+                cx,
+                bodyTop,
+                cx,
+                bodyTop + bodyH,
+                topColor,
+                bottomColor,
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawRoundRect(
+            RectF(
+                cx - bodyW * 0.5f,
+                bodyTop,
+                cx + bodyW * 0.5f,
+                bodyTop + bodyH,
+            ),
+            radius * 0.55f,
+            radius * 0.55f,
             paint,
         )
 
-        stroke.color =
-            0xAAFFFFFF.toInt()
-        stroke.strokeWidth =
-            dp(2f)
-        canvas.drawLine(
-            w * .30f,
-            h * .24f,
-            w * .70f,
-            h * .24f,
+        paint.shader =
+            RadialGradient(
+                cx - headR * 0.32f,
+                headCy - headR * 0.35f,
+                headR * 1.65f,
+                intArrayOf(
+                    Color.WHITE,
+                    topColor,
+                    bottomColor,
+                ),
+                floatArrayOf(0f, 0.42f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawCircle(cx, headCy, headR, paint)
+        paint.shader = null
+
+        stroke.color = 0xCFFFFFFF.toInt()
+        stroke.strokeWidth = dp(if (front) 1.4f else 1.1f)
+        canvas.drawCircle(cx, headCy, headR, stroke)
+        canvas.drawRoundRect(
+            RectF(
+                cx - bodyW * 0.5f,
+                bodyTop,
+                cx + bodyW * 0.5f,
+                bodyTop + bodyH,
+            ),
+            radius * 0.55f,
+            radius * 0.55f,
             stroke,
-        )
-        drawNode(
-            canvas,
-            w * .30f,
-            h * .24f,
-            0xFF28C7FF.toInt(),
-        )
-        drawNode(
-            canvas,
-            w * .70f,
-            h * .24f,
-            0xFFFF6B8A.toInt(),
         )
     }
 
@@ -701,208 +312,185 @@ class ModeArtView @JvmOverloads constructor(
         w: Float,
         h: Float,
     ) {
-        val size =
-            min(
-                w,
-                h,
-            )
-        val rect =
+        val size = min(w, h)
+        val cx = w * 0.5f
+        val body =
             RectF(
-                w * .22f,
-                h * .20f,
-                w * .78f,
-                h * .66f,
+                cx - size * 0.34f,
+                h * 0.28f,
+                cx + size * 0.34f,
+                h * 0.76f,
             )
 
-        paint.color =
-            0xFF0A3D8C.toInt()
+        paint.shader = null
+        paint.color = 0x7000183B
+        paint.setShadowLayer(dp(3.5f), 0f, dp(2.4f), 0x80001432.toInt())
         canvas.drawRoundRect(
-            rect,
-            dp(12f),
-            dp(12f),
+            RectF(body).apply { offset(0f, dp(1.5f)) },
+            size * 0.12f,
+            size * 0.12f,
             paint,
         )
-        stroke.color =
-            0xFF8CEAFF.toInt()
-        stroke.strokeWidth =
-            dp(2f)
-        canvas.drawRoundRect(
-            rect,
-            dp(12f),
-            dp(12f),
-            stroke,
-        )
+        paint.clearShadowLayer()
 
-        paint.color =
-            0xFF70D82F.toInt()
-        canvas.drawCircle(
-            w * .43f,
-            h * .41f,
-            size * .035f,
-            paint,
-        )
-        canvas.drawCircle(
-            w * .57f,
-            h * .41f,
-            size * .035f,
-            paint,
-        )
+        paint.shader =
+            LinearGradient(
+                body.left,
+                body.top,
+                body.right,
+                body.bottom,
+                intArrayOf(
+                    0xFF94EEFF.toInt(),
+                    0xFF3B83ED.toInt(),
+                    0xFF6644D6.toInt(),
+                ),
+                null,
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawRoundRect(body, size * 0.12f, size * 0.12f, paint)
+        paint.shader = null
 
-        stroke.color =
-            0xFFFFFFFF.toInt()
-        stroke.strokeWidth =
-            dp(2.4f)
+        stroke.color = 0xEFFFFFFF.toInt()
+        stroke.strokeWidth = dp(1.4f)
+        canvas.drawRoundRect(body, size * 0.12f, size * 0.12f, stroke)
+
+        val screen =
+            RectF(
+                body.left + size * 0.075f,
+                body.top + size * 0.085f,
+                body.right - size * 0.075f,
+                body.bottom - size * 0.095f,
+            )
+        paint.shader =
+            LinearGradient(
+                screen.left,
+                screen.top,
+                screen.left,
+                screen.bottom,
+                0xFF123B78.toInt(),
+                0xFF081B46.toInt(),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawRoundRect(screen, size * 0.085f, size * 0.085f, paint)
+        paint.shader = null
+
+        stroke.color = 0xFF68EAFF.toInt()
+        stroke.strokeWidth = dp(1.2f)
+        canvas.drawRoundRect(screen, size * 0.085f, size * 0.085f, stroke)
+
+        // Antenna and cap.
+        stroke.color = 0xFFEAFDFF.toInt()
+        stroke.strokeWidth = dp(2f)
         canvas.drawLine(
-            w * .42f,
-            h * .53f,
-            w * .58f,
-            h * .53f,
+            cx,
+            body.top,
+            cx,
+            body.top - size * 0.14f,
             stroke,
         )
+        paint.color = 0xFF34B9FF.toInt()
+        canvas.drawCircle(cx, body.top - size * 0.16f, size * 0.055f, paint)
+        stroke.color = Color.WHITE
+        stroke.strokeWidth = dp(1f)
+        canvas.drawCircle(cx, body.top - size * 0.16f, size * 0.055f, stroke)
 
-        paint.color =
-            0xFFFFC62E.toInt()
+        // Ear blocks.
+        paint.color = 0xFF4D6DE4.toInt()
         canvas.drawRoundRect(
-            w * .43f,
-            h * .67f,
-            w * .57f,
-            h * .73f,
-            dp(3f),
-            dp(3f),
+            RectF(
+                body.left - size * 0.08f,
+                body.centerY() - size * 0.09f,
+                body.left + size * 0.02f,
+                body.centerY() + size * 0.09f,
+            ),
+            size * 0.04f,
+            size * 0.04f,
             paint,
         )
         canvas.drawRoundRect(
-            w * .34f,
-            h * .73f,
-            w * .66f,
-            h * .78f,
-            dp(3f),
-            dp(3f),
+            RectF(
+                body.right - size * 0.02f,
+                body.centerY() - size * 0.09f,
+                body.right + size * 0.08f,
+                body.centerY() + size * 0.09f,
+            ),
+            size * 0.04f,
+            size * 0.04f,
             paint,
         )
 
-        drawDie(
-            canvas,
-            w * .77f,
-            h * .70f,
-            size * .18f,
-            0xFFF4F7FF.toInt(),
-            9f,
-            5,
-            0xFF073B91.toInt(),
+        // Friendly cyan eyes and small smile.
+        paint.shader =
+            RadialGradient(
+                screen.left + screen.width() * 0.34f,
+                screen.centerY() - size * 0.02f,
+                size * 0.10f,
+                0xFFFFFFFF.toInt(),
+                0xFF3EEFFF.toInt(),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawCircle(
+            screen.left + screen.width() * 0.34f,
+            screen.centerY() - size * 0.02f,
+            size * 0.055f,
+            paint,
         )
+        paint.shader =
+            RadialGradient(
+                screen.left + screen.width() * 0.66f,
+                screen.centerY() - size * 0.02f,
+                size * 0.10f,
+                0xFFFFFFFF.toInt(),
+                0xFF3EEFFF.toInt(),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawCircle(
+            screen.left + screen.width() * 0.66f,
+            screen.centerY() - size * 0.02f,
+            size * 0.055f,
+            paint,
+        )
+        paint.shader = null
+
+        stroke.color = 0xFF8DF6FF.toInt()
+        stroke.strokeWidth = dp(1.5f)
+        val smile = Path()
+        smile.moveTo(screen.left + screen.width() * 0.40f, screen.centerY() + size * 0.10f)
+        smile.quadTo(
+            screen.centerX(),
+            screen.centerY() + size * 0.16f,
+            screen.left + screen.width() * 0.60f,
+            screen.centerY() + size * 0.10f,
+        )
+        canvas.drawPath(smile, stroke)
     }
 
-    private fun drawShield(
+    private fun drawPassAndPlay(
         canvas: Canvas,
-        cx: Float,
-        cy: Float,
-        size: Float,
+        w: Float,
+        h: Float,
     ) {
-        val path =
-            Path().apply {
-                moveTo(
-                    cx,
-                    cy - size * .62f,
-                )
-                lineTo(
-                    cx + size * .52f,
-                    cy - size * .38f,
-                )
-                lineTo(
-                    cx + size * .43f,
-                    cy + size * .25f,
-                )
-                quadTo(
-                    cx,
-                    cy + size * .72f,
-                    cx,
-                    cy + size * .72f,
-                )
-                quadTo(
-                    cx,
-                    cy + size * .72f,
-                    cx - size * .43f,
-                    cy + size * .25f,
-                )
-                lineTo(
-                    cx - size * .52f,
-                    cy - size * .38f,
-                )
-                close()
-            }
+        val size = min(w * 0.62f, h)
+        val dieSize = size * 0.50f
 
-        paint.color =
-            0xFFFFC62E.toInt()
-        canvas.drawPath(
-            path,
-            paint,
+        drawDie(
+            canvas = canvas,
+            cx = w * 0.39f,
+            cy = h * 0.53f,
+            size = dieSize,
+            rotation = -13f,
+            pipColor = 0xFFE52B45.toInt(),
+            value = 5,
         )
-
-        val inner =
-            Path().apply {
-                moveTo(
-                    cx,
-                    cy - size * .48f,
-                )
-                lineTo(
-                    cx + size * .39f,
-                    cy - size * .29f,
-                )
-                lineTo(
-                    cx + size * .31f,
-                    cy + size * .18f,
-                )
-                quadTo(
-                    cx,
-                    cy + size * .53f,
-                    cx,
-                    cy + size * .53f,
-                )
-                quadTo(
-                    cx,
-                    cy + size * .53f,
-                    cx - size * .31f,
-                    cy + size * .18f,
-                )
-                lineTo(
-                    cx - size * .39f,
-                    cy - size * .29f,
-                )
-                close()
-            }
-        paint.color =
-            0xFF1078E6.toInt()
-        canvas.drawPath(
-            inner,
-            paint,
+        drawDie(
+            canvas = canvas,
+            cx = w * 0.62f,
+            cy = h * 0.46f,
+            size = dieSize,
+            rotation = 11f,
+            pipColor = 0xFF2757CF.toInt(),
+            value = 4,
         )
-
-        stroke.color =
-            Color.WHITE
-        stroke.strokeWidth =
-            maxOf(
-                dp(2f),
-                size * .08f,
-            )
-        stroke.strokeCap =
-            Paint.Cap.ROUND
-        canvas.drawLine(
-            cx - size * .19f,
-            cy,
-            cx - size * .03f,
-            cy + size * .17f,
-            stroke,
-        )
-        canvas.drawLine(
-            cx - size * .03f,
-            cy + size * .17f,
-            cx + size * .24f,
-            cy - size * .17f,
-            stroke,
-        )
-        stroke.strokeCap =
-            Paint.Cap.BUTT
     }
 
     private fun drawDie(
@@ -910,25 +498,32 @@ class ModeArtView @JvmOverloads constructor(
         cx: Float,
         cy: Float,
         size: Float,
-        fill: Int,
-        angle: Float,
-        value: Int,
+        rotation: Float,
         pipColor: Int,
+        value: Int,
     ) {
         canvas.save()
-        canvas.rotate(
-            angle,
-            cx,
-            cy,
-        )
+        canvas.rotate(rotation, cx, cy)
 
         val rect =
             RectF(
-                cx - size / 2f,
-                cy - size / 2f,
-                cx + size / 2f,
-                cy + size / 2f,
+                cx - size * 0.5f,
+                cy - size * 0.5f,
+                cx + size * 0.5f,
+                cy + size * 0.5f,
             )
+
+        paint.shader = null
+        paint.color = 0x70001438
+        paint.setShadowLayer(dp(3f), 0f, dp(2f), 0x7C00112D)
+        canvas.drawRoundRect(
+            RectF(rect).apply { offset(0f, dp(1.3f)) },
+            size * 0.18f,
+            size * 0.18f,
+            paint,
+        )
+        paint.clearShadowLayer()
+
         paint.shader =
             LinearGradient(
                 rect.left,
@@ -936,143 +531,97 @@ class ModeArtView @JvmOverloads constructor(
                 rect.right,
                 rect.bottom,
                 intArrayOf(
-                    Color.WHITE,
-                    fill,
-                    0xFFD6E8FF.toInt(),
+                    0xFFFFFFFF.toInt(),
+                    0xFFF5F7FF.toInt(),
+                    0xFFD6DDF0.toInt(),
                 ),
                 null,
                 Shader.TileMode.CLAMP,
             )
+        canvas.drawRoundRect(rect, size * 0.18f, size * 0.18f, paint)
+        paint.shader = null
+
+        stroke.color = 0xC8FFFFFF.toInt()
+        stroke.strokeWidth = dp(1.2f)
+        canvas.drawRoundRect(rect, size * 0.18f, size * 0.18f, stroke)
+
+        // Small face reflection.
+        paint.shader =
+            LinearGradient(
+                rect.left,
+                rect.top,
+                rect.left,
+                rect.centerY(),
+                0xA8FFFFFF.toInt(),
+                Color.TRANSPARENT,
+                Shader.TileMode.CLAMP,
+            )
         canvas.drawRoundRect(
-            rect,
-            size * .18f,
-            size * .18f,
+            RectF(
+                rect.left + size * 0.08f,
+                rect.top + size * 0.06f,
+                rect.right - size * 0.08f,
+                rect.centerY(),
+            ),
+            size * 0.13f,
+            size * 0.13f,
             paint,
         )
-        paint.shader =
-            null
+        paint.shader = null
 
-        stroke.color =
-            0xAAFFFFFF.toInt()
-        stroke.strokeWidth =
-            dp(1.2f)
-        canvas.drawRoundRect(
-            rect,
-            size * .18f,
-            size * .18f,
-            stroke,
-        )
-
-        val offset =
-            size * .22f
-        val points =
-            when (
-                value
-            ) {
-                4 ->
-                    listOf(
-                        Pair(-offset, -offset),
-                        Pair(offset, -offset),
-                        Pair(-offset, offset),
-                        Pair(offset, offset),
-                    )
-                else ->
-                    listOf(
-                        Pair(-offset, -offset),
-                        Pair(offset, -offset),
-                        Pair(0f, 0f),
-                        Pair(-offset, offset),
-                        Pair(offset, offset),
-                    )
-            }
-        paint.color =
-            pipColor
-        points.forEach {
-                point ->
-            canvas.drawCircle(
-                cx + point.first,
-                cy + point.second,
-                size * .07f,
-                paint,
-            )
-        }
+        drawPips(canvas, rect, value, pipColor)
         canvas.restore()
     }
 
-    private fun drawPawn(
+    private fun drawPips(
         canvas: Canvas,
-        cx: Float,
-        cy: Float,
-        size: Float,
+        rect: RectF,
+        value: Int,
         color: Int,
     ) {
-        paint.color =
-            color
-        canvas.drawCircle(
-            cx,
-            cy - size * .35f,
-            size * .30f,
-            paint,
-        )
-        canvas.drawOval(
-            RectF(
-                cx - size * .32f,
-                cy - size * .15f,
-                cx + size * .32f,
-                cy + size * .44f,
-            ),
-            paint,
-        )
-        canvas.drawRoundRect(
-            cx - size * .46f,
-            cy + size * .28f,
-            cx + size * .46f,
-            cy + size * .50f,
-            size * .10f,
-            size * .10f,
-            paint,
-        )
-        stroke.color =
-            0x66FFFFFF
-        stroke.strokeWidth =
-            dp(1f)
-        canvas.drawCircle(
-            cx - size * .08f,
-            cy - size * .42f,
-            size * .11f,
-            stroke,
-        )
+        val x1 = rect.left + rect.width() * 0.29f
+        val x2 = rect.centerX()
+        val x3 = rect.right - rect.width() * 0.29f
+        val y1 = rect.top + rect.height() * 0.29f
+        val y2 = rect.centerY()
+        val y3 = rect.bottom - rect.height() * 0.29f
+        val r = rect.width() * 0.075f
+
+        paint.shader = null
+        paint.color = color
+
+        fun pip(x: Float, y: Float) {
+            paint.setShadowLayer(dp(0.8f), 0f, dp(0.5f), 0x55000000)
+            canvas.drawCircle(x, y, r, paint)
+            paint.clearShadowLayer()
+        }
+
+        when (value) {
+            1 -> pip(x2, y2)
+            2 -> {
+                pip(x1, y1)
+                pip(x3, y3)
+            }
+            3 -> {
+                pip(x1, y1)
+                pip(x2, y2)
+                pip(x3, y3)
+            }
+            4 -> {
+                pip(x1, y1)
+                pip(x3, y1)
+                pip(x1, y3)
+                pip(x3, y3)
+            }
+            else -> {
+                pip(x1, y1)
+                pip(x3, y1)
+                pip(x2, y2)
+                pip(x1, y3)
+                pip(x3, y3)
+            }
+        }
     }
 
-    private fun drawNode(
-        canvas: Canvas,
-        x: Float,
-        y: Float,
-        color: Int,
-    ) {
-        paint.color =
-            Color.WHITE
-        canvas.drawCircle(
-            x,
-            y,
-            dp(9f),
-            paint,
-        )
-        paint.color =
-            color
-        canvas.drawCircle(
-            x,
-            y,
-            dp(6f),
-            paint,
-        )
-    }
-
-    private fun dp(
-        value: Float,
-    ): Float =
-        value *
-            resources
-                .displayMetrics
-                .density
+    private fun dp(value: Float): Float = value * density
 }
