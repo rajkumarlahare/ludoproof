@@ -6,7 +6,6 @@ import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
 import com.ludoproof.game.feature.profile.domain.model.ProfileGameMode
@@ -36,30 +35,8 @@ class HomeActivity : Activity() {
         val (root, host) =
             LudoProofTheme.arcadeRoot(this)
 
-        val scroll =
-            ScrollView(this).apply {
-                isFillViewport = true
-                overScrollMode =
-                    View.OVER_SCROLL_NEVER
-                clipToPadding =
-                    false
-                setPadding(
-                    0,
-                    0,
-                    0,
-                    dp(if (isCompact()) 128 else 142),
-                )
-            }
-
         val contentHost =
             FrameLayout(this)
-        scroll.addView(
-            contentHost,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-            ),
-        )
 
         val horizontalPaddingDp =
             LudoProofTheme.pageHorizontalPaddingDp(this)
@@ -125,8 +102,12 @@ class HomeActivity : Activity() {
             ),
         )
 
+        // Home is a fixed game menu, not a document-style scrolling screen.
+        // Keeping the HUD/mode controls directly in the host prevents swipe
+        // gestures from sliding the profile/shortcut controls into the status
+        // bar/camera cutout while preserving their existing positions.
         host.addView(
-            scroll,
+            contentHost,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
