@@ -10,6 +10,9 @@ node_modules/
 .wrangler/
 .dev.vars
 
+# Local QA evidence
+artifacts/
+
 # Secrets
 .env
 .env.*
