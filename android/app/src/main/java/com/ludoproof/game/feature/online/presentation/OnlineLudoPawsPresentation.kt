@@ -3,12 +3,13 @@ package com.ludoproof.game.feature.online
 import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
-import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import com.ludoproof.game.LudoPawsPlayerCardView
 import com.ludoproof.game.LudoPawsReactiveBoardView
 import com.ludoproof.game.MainActivity
 import com.ludoproof.game.MatchSnapshot
+import com.ludoproof.game.OfflinePlayerLayout
+import com.ludoproof.game.PlayerSnapshot
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsFeedbackLedger
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReactionEngine
 import com.ludoproof.game.feature.online.domain.OnlineLudoPawsCharacterPolicy
@@ -20,8 +21,8 @@ import kotlin.math.roundToInt
 internal object OnlineLudoPawsPresentation {
     private data class Host(
         val board: LudoPawsReactiveBoardView,
-        val railScroll: HorizontalScrollView,
-        val rail: LinearLayout,
+        val topRail: LinearLayout,
+        val bottomRail: LinearLayout,
         val feedbackLedger: LudoPawsFeedbackLedger = LudoPawsFeedbackLedger(),
     )
 
@@ -51,11 +52,12 @@ internal object OnlineLudoPawsPresentation {
             perspectiveColor = localColor,
             characterIdsBySeat = characterIdsBySeat,
         )
-        renderRail(
+        renderRails(
             activity = activity,
             host = host,
             state = current,
             characterIdsBySeat = characterIdsBySeat,
+            perspectiveColor = localColor,
         )
         dispatchFeedback(
             activity = activity,
@@ -75,10 +77,12 @@ internal object OnlineLudoPawsPresentation {
             characterIdsBySeat = emptyList(),
         )
         host.board.visibility = View.GONE
-        host.railScroll.visibility = View.GONE
+        host.topRail.visibility = View.GONE
+        host.bottomRail.visibility = View.GONE
         runCatching {
             activity.boardFrame.removeView(host.board)
-            activity.matchStatusPanel.removeView(host.railScroll)
+            activity.matchStatusPanel.removeView(host.topRail)
+            activity.actionPanel.removeView(host.bottomRail)
         }
         activity.boardFrame.tag = null
         activity.boardView.visibility = View.VISIBLE
@@ -103,85 +107,166 @@ internal object OnlineLudoPawsPresentation {
             ),
         )
 
-        val rail =
-            LinearLayout(activity).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(
-                    dp(activity, 2),
-                    dp(activity, 2),
-                    dp(activity, 2),
-                    dp(activity, 2),
-                )
-            }
-        val railScroll =
-            HorizontalScrollView(activity).apply {
-                isHorizontalScrollBarEnabled = false
-                isFillViewport = true
-                overScrollMode = View.OVER_SCROLL_NEVER
-                addView(
-                    rail,
-                    FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.WRAP_CONTENT,
-                        FrameLayout.LayoutParams.WRAP_CONTENT,
-                    ),
-                )
-            }
+        val topRail = playerRail(activity)
         activity.matchStatusPanel.addView(
-            railScroll,
+            topRail,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                topMargin = dp(activity, 8)
+                topMargin = dp(activity, 4)
+            },
+        )
+
+        val bottomRail = playerRail(activity)
+        activity.actionPanel.addView(
+            bottomRail,
+            0,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                bottomMargin = dp(activity, 4)
             },
         )
 
         return Host(
             board = reactiveBoard,
-            railScroll = railScroll,
-            rail = rail,
+            topRail = topRail,
+            bottomRail = bottomRail,
         )
     }
 
-    private fun renderRail(
+    private fun playerRail(activity: MainActivity): LinearLayout =
+        LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            clipChildren = false
+            clipToPadding = false
+            minimumHeight = dp(activity, 62)
+        }
+
+    private fun renderRails(
         activity: MainActivity,
         host: Host,
         state: MatchSnapshot,
         characterIdsBySeat: List<String>,
+        perspectiveColor: String?,
     ) {
-        host.railScroll.visibility = View.VISIBLE
-        host.rail.removeAllViews()
-        val activePlayerId =
+        host.topRail.visibility = View.VISIBLE
+        host.bottomRail.visibility = View.VISIBLE
+        host.topRail.removeAllViews()
+        host.bottomRail.removeAllViews()
+
+        val activePlayer =
             state.players
                 .getOrNull(state.actingSeat ?: state.turnSeat)
-                ?.playerId
+        val preferredBottomLeftColor =
+            perspectiveColor
+                ?: state.players.firstOrNull()?.color
+                ?: "BLUE"
 
-        state.players
-            .sortedBy { it.seat }
-            .forEach { player ->
-                val local = player.playerId == activity.playerId
-                host.rail.addView(
-                    LudoPawsPlayerCardView(activity).apply {
-                        bind(
-                            player = player,
-                            characterId = characterIdsBySeat.getOrNull(player.seat),
-                            active =
-                                state.status == "ACTIVE" &&
-                                    player.playerId == activePlayerId,
-                            computer = false,
-                            compact = true,
-                            localPlayer = local,
-                        )
-                    },
-                    LinearLayout.LayoutParams(
-                        dp(activity, 148),
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                    ).apply {
-                        marginEnd = dp(activity, 6)
-                    },
-                )
+        addPlayerSlot(
+            activity = activity,
+            rail = host.topRail,
+            state = state,
+            slot = OfflinePlayerLayout.Slot.TOP_LEFT,
+            alignEnd = false,
+            activePlayer = activePlayer,
+            preferredBottomLeftColor = preferredBottomLeftColor,
+            characterIdsBySeat = characterIdsBySeat,
+        )
+        addPlayerSlot(
+            activity = activity,
+            rail = host.topRail,
+            state = state,
+            slot = OfflinePlayerLayout.Slot.TOP_RIGHT,
+            alignEnd = true,
+            activePlayer = activePlayer,
+            preferredBottomLeftColor = preferredBottomLeftColor,
+            characterIdsBySeat = characterIdsBySeat,
+        )
+        addPlayerSlot(
+            activity = activity,
+            rail = host.bottomRail,
+            state = state,
+            slot = OfflinePlayerLayout.Slot.BOTTOM_LEFT,
+            alignEnd = false,
+            activePlayer = activePlayer,
+            preferredBottomLeftColor = preferredBottomLeftColor,
+            characterIdsBySeat = characterIdsBySeat,
+        )
+        addPlayerSlot(
+            activity = activity,
+            rail = host.bottomRail,
+            state = state,
+            slot = OfflinePlayerLayout.Slot.BOTTOM_RIGHT,
+            alignEnd = true,
+            activePlayer = activePlayer,
+            preferredBottomLeftColor = preferredBottomLeftColor,
+            characterIdsBySeat = characterIdsBySeat,
+        )
+    }
+
+    private fun addPlayerSlot(
+        activity: MainActivity,
+        rail: LinearLayout,
+        state: MatchSnapshot,
+        slot: OfflinePlayerLayout.Slot,
+        alignEnd: Boolean,
+        activePlayer: PlayerSnapshot?,
+        preferredBottomLeftColor: String,
+        characterIdsBySeat: List<String>,
+    ) {
+        val player =
+            state.players.firstOrNull {
+                OfflinePlayerLayout.slotForColor(
+                    color = it.color,
+                    preferredBottomLeftColor = preferredBottomLeftColor,
+                ) == slot
             }
+
+        val host =
+            LinearLayout(activity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity =
+                    (if (alignEnd) Gravity.END else Gravity.START) or
+                        Gravity.CENTER_VERTICAL
+                clipChildren = false
+                clipToPadding = false
+            }
+
+        if (player != null) {
+            val active =
+                state.status == "ACTIVE" &&
+                    player.playerId == activePlayer?.playerId
+            host.addView(
+                LudoPawsPlayerCardView(activity).apply {
+                    bind(
+                        player = player,
+                        characterId = characterIdsBySeat.getOrNull(player.seat),
+                        active = active,
+                        computer = false,
+                        compact = true,
+                        localPlayer = player.playerId == activity.playerId,
+                        portraitOnEnd = alignEnd,
+                    )
+                },
+                LinearLayout.LayoutParams(
+                    dp(activity, 112),
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+        }
+
+        rail.addView(
+            host,
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f,
+            ),
+        )
     }
 
     private fun dispatchFeedback(
