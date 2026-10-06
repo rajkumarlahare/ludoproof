@@ -293,18 +293,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - name: Validate one-click runner PowerShell syntax
+      - name: Validate PowerShell script syntax
         shell: powershell
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile(
-            (Resolve-Path "scripts/run-ludoproof.ps1"),
-            [ref]$tokens,
-            [ref]$errors
-          ) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_.Message }
+          $scriptPaths = Get-ChildItem -Path "scripts" -Filter "*.ps1" -File
+          if ($scriptPaths.Count -eq 0) {
+            Write-Error "No PowerShell scripts found under scripts/."
             exit 1
           }
-          Write-Host "run-ludoproof.ps1 PowerShell syntax is valid."
+
+          foreach ($scriptPath in $scriptPaths) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $scriptPath.FullName,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error ("{0}: {1}" -f $scriptPath.Name, $_.Message) }
+              exit 1
+            }
+            Write-Host ("{0} PowerShell syntax is valid." -f $scriptPath.Name)
+          }
