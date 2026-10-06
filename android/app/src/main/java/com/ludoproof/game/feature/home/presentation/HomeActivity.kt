@@ -102,6 +102,23 @@ class HomeActivity : Activity() {
             ),
         )
 
+        val brandWidth =
+            minOf(
+                topHudWidth,
+                dp(if (isCompact()) 282 else 318),
+            )
+        contentHost.addView(
+            HomeBrandLogoView(this),
+            FrameLayout.LayoutParams(
+                brandWidth,
+                dp(if (isCompact()) 156 else 174),
+                Gravity.TOP or Gravity.CENTER_HORIZONTAL,
+            ).apply {
+                topMargin =
+                    dp(if (isCompact()) 163 else 177)
+            },
+        )
+
         // Home is a fixed game menu, not a document-style scrolling screen.
         // Keeping the HUD/mode controls directly in the host prevents swipe
         // gestures from sliding the profile/shortcut controls into the status
