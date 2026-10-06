@@ -245,12 +245,27 @@ private fun MainActivity.scheduleSingleLegalOnlineMove(
 
 internal fun MainActivity.updateRollButton() {
     val state = currentState
-    rollButton.text =
-        if (state == null) {
-            "ROLL VERIFIED DICE"
-        } else {
-            onlineRollActionDecision(state).label
-        }
+    if (state == null) {
+        val secret = pendingSecret
+        rollButton.text =
+            if (
+                secret != null &&
+                secret.matchId == matchId
+            ) {
+                "RESUME VERIFIED ROLL"
+            } else {
+                "ROLL VERIFIED DICE"
+            }
+        // A restored local secret can explain what will resume, but it cannot
+        // authorize a mutation. The button becomes actionable only after a
+        // fresh authoritative snapshot passes OnlineRollActionPolicy.
+        rollButton.isEnabled = false
+        return
+    }
+
+    val action = onlineRollActionDecision(state)
+    rollButton.text = action.label
+    rollButton.isEnabled = action.enabled
 }
 
 internal fun MainActivity.proofDetails(
