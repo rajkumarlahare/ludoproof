@@ -157,7 +157,7 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
             clipChildren = false
             clipToPadding = false
             addView(
-                boardView,
+                requireNotNull(boardView),
                 FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT,
@@ -203,6 +203,12 @@ internal fun OfflineGameActivity.gameplayHud(): LinearLayout =
     LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER
+        contentDescription =
+            if (isComputerMode) {
+                "VS COMPUTER"
+            } else {
+                "LOCAL MATCH"
+            }
         setPadding(
             dp(if (isCompactSetup()) 10 else 14),
             dp(if (isCompactSetup()) 5 else 7),
