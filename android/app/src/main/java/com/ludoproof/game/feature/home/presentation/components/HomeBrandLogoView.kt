@@ -2,7 +2,6 @@ package com.ludoproof.game.ui.home
 
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
@@ -30,7 +29,8 @@ internal class HomeBrandLogoView(
     private val textPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textAlign = Paint.Align.CENTER
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            typeface = Typeface.create("sans-serif-rounded", Typeface.BOLD)
+            isFakeBoldText = true
         }
 
     init {
@@ -58,119 +58,168 @@ internal class HomeBrandLogoView(
 
         drawWoodPlaque(canvas)
         drawSidePaws(canvas)
-        drawLogoWord(
-            canvas = canvas,
-            text = "Ludo",
-            centerX = 179f,
-            baselineY = 91f,
-            textSize = 78f,
-            topColor = 0xFFFFF06A.toInt(),
-            middleColor = 0xFFFFC52D.toInt(),
-            bottomColor = 0xFFF47A08.toInt(),
-            outlineColor = 0xFF45208F.toInt(),
-        )
-        drawLudoPaw(canvas)
+        drawLudo(canvas)
         drawLogoWord(
             canvas = canvas,
             text = "Paws",
-            centerX = 184f,
-            baselineY = 157f,
-            textSize = 76f,
-            topColor = 0xFFB9F7FF.toInt(),
-            middleColor = 0xFF39C8F6.toInt(),
-            bottomColor = 0xFF0799DB.toInt(),
-            outlineColor = 0xFF4A218F.toInt(),
+            centerX = 181f,
+            baselineY = 160f,
+            textSize = 82f,
+            topColor = 0xFFBAF8FF.toInt(),
+            middleColor = 0xFF48D1FF.toInt(),
+            bottomColor = 0xFF079BDD.toInt(),
+            outlineColor = 0xFF45208F.toInt(),
+            textScaleX = 1.06f,
         )
 
         canvas.restore()
     }
 
     private fun drawWoodPlaque(canvas: Canvas) {
-        val shadowRect = RectF(45f, 78f, 319f, 181f)
-        fill.shader = null
-        fill.color = 0xB33B1830.toInt()
-        canvas.drawRoundRect(
-            shadowRect,
-            24f,
-            24f,
-            fill,
-        )
+        val plank = Path().apply {
+            moveTo(55f, 73f)
+            cubicTo(39f, 73f, 31f, 82f, 31f, 96f)
+            lineTo(31f, 146f)
+            cubicTo(31f, 160f, 42f, 170f, 58f, 170f)
+            lineTo(302f, 170f)
+            cubicTo(319f, 170f, 330f, 159f, 330f, 145f)
+            lineTo(330f, 97f)
+            cubicTo(330f, 82f, 320f, 73f, 304f, 73f)
+            close()
+        }
 
-        val plank = RectF(42f, 70f, 316f, 173f)
+        fill.shader = null
+        fill.color = 0xA83A1731.toInt()
+        canvas.save()
+        canvas.translate(0f, 8f)
+        canvas.drawPath(plank, fill)
+        canvas.restore()
+
         fill.shader =
             LinearGradient(
                 0f,
-                plank.top,
+                72f,
                 0f,
-                plank.bottom,
+                171f,
                 intArrayOf(
-                    0xFFB96A43.toInt(),
-                    0xFF8C452F.toInt(),
-                    0xFF633123.toInt(),
+                    0xFFC37A4F.toInt(),
+                    0xFF975038.toInt(),
+                    0xFF633225.toInt(),
                 ),
                 floatArrayOf(0f, 0.55f, 1f),
                 Shader.TileMode.CLAMP,
             )
-        canvas.drawRoundRect(
-            plank,
-            22f,
-            22f,
-            fill,
-        )
+        canvas.drawPath(plank, fill)
         fill.shader = null
 
-        stroke.color = 0xFF4A2033.toInt()
-        stroke.strokeWidth = 5f
-        canvas.drawRoundRect(
-            plank,
-            22f,
-            22f,
-            stroke,
-        )
+        stroke.color = 0xFF512142.toInt()
+        stroke.strokeWidth = 5.5f
+        canvas.drawPath(plank, stroke)
 
-        stroke.color = 0x55FFD2A2
+        stroke.color = 0x55FFD7A8
         stroke.strokeWidth = 3f
-        canvas.drawArc(
-            RectF(58f, 91f, 151f, 139f),
-            205f,
-            105f,
-            false,
-            stroke,
-        )
-        canvas.drawArc(
-            RectF(201f, 103f, 299f, 151f),
-            198f,
-            111f,
-            false,
-            stroke,
-        )
-        canvas.drawLine(79f, 155f, 143f, 151f, stroke)
-        canvas.drawLine(224f, 87f, 280f, 92f, stroke)
+        canvas.drawArc(RectF(48f, 93f, 142f, 137f), 202f, 108f, false, stroke)
+        canvas.drawArc(RectF(206f, 103f, 315f, 149f), 195f, 112f, false, stroke)
+        canvas.drawLine(75f, 154f, 145f, 150f, stroke)
+        canvas.drawLine(220f, 89f, 286f, 94f, stroke)
 
-        fill.color = 0x77601F20
-        canvas.drawCircle(73f, 116f, 6f, fill)
-        canvas.drawCircle(286f, 139f, 5f, fill)
-        fill.color = 0x66F7C995
-        canvas.drawCircle(71f, 114f, 2.2f, fill)
-        canvas.drawCircle(284f, 137f, 1.8f, fill)
+        fill.color = 0x6F5D2527
+        canvas.drawCircle(69f, 118f, 5.5f, fill)
+        canvas.drawCircle(290f, 139f, 5f, fill)
+        fill.color = 0x66F6CCA0
+        canvas.drawCircle(67f, 116f, 2f, fill)
+        canvas.drawCircle(288f, 137f, 1.8f, fill)
     }
 
     private fun drawSidePaws(canvas: Canvas) {
         drawPawWithOutline(
             canvas = canvas,
-            centerX = 48f,
+            centerX = 31f,
             centerY = 126f,
-            scale = 0.82f,
-            color = 0xFFF34EF6.toInt(),
-            outline = 0xFF45208F.toInt(),
+            scale = 0.78f,
+            color = 0xFFF74EF8.toInt(),
+            outline = 0xFF4B208F.toInt(),
+            outlineWidth = 4.2f,
         )
         drawPawWithOutline(
             canvas = canvas,
-            centerX = 316f,
-            centerY = 146f,
-            scale = 0.60f,
-            color = 0xFF79F2FF.toInt(),
-            outline = 0xFF1C5BA2.toInt(),
+            centerX = 329f,
+            centerY = 144f,
+            scale = 0.61f,
+            color = 0xFF75EEFF.toInt(),
+            outline = 0xFF2556A5.toInt(),
+            outlineWidth = 4f,
+        )
+    }
+
+    private fun drawLudo(canvas: Canvas) {
+        drawLogoWord(
+            canvas = canvas,
+            text = "Lud",
+            centerX = 144f,
+            baselineY = 91f,
+            textSize = 83f,
+            topColor = 0xFFFFF16A.toInt(),
+            middleColor = 0xFFFFC82E.toInt(),
+            bottomColor = 0xFFF57E08.toInt(),
+            outlineColor = 0xFF45208F.toInt(),
+            textScaleX = 1.04f,
+        )
+        drawSolidPawO(canvas)
+    }
+
+    private fun drawSolidPawO(canvas: Canvas) {
+        val centerX = 254f
+        val centerY = 57f
+        val radius = 30f
+
+        fill.shader = null
+        fill.color = 0xA91B0A3B.toInt()
+        canvas.drawCircle(centerX + 2.5f, centerY + 6f, radius + 5f, fill)
+
+        fill.color = 0xFF4A208F.toInt()
+        canvas.drawCircle(centerX, centerY, radius + 5f, fill)
+
+        fill.shader =
+            LinearGradient(
+                0f,
+                centerY - radius,
+                0f,
+                centerY + radius,
+                intArrayOf(
+                    0xFFFFF36B.toInt(),
+                    0xFFFFC72B.toInt(),
+                    0xFFF47B08.toInt(),
+                ),
+                floatArrayOf(0f, 0.48f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawCircle(centerX, centerY, radius, fill)
+        fill.shader = null
+
+        stroke.color = 0x55FFFFFF
+        stroke.strokeWidth = 2f
+        canvas.drawArc(
+            RectF(
+                centerX - 21f,
+                centerY - 20f,
+                centerX + 21f,
+                centerY + 18f,
+            ),
+            205f,
+            92f,
+            false,
+            stroke,
+        )
+
+        drawPawWithOutline(
+            canvas = canvas,
+            centerX = centerX,
+            centerY = centerY + 1f,
+            scale = 0.48f,
+            color = 0xFF45206F.toInt(),
+            outline = 0xFF45206F.toInt(),
+            outlineWidth = 0f,
         )
     }
 
@@ -184,12 +233,15 @@ internal class HomeBrandLogoView(
         middleColor: Int,
         bottomColor: Int,
         outlineColor: Int,
+        textScaleX: Float,
     ) {
         textPaint.textSize = textSize
+        textPaint.textScaleX = textScaleX
         textPaint.style = Paint.Style.STROKE
         textPaint.shader = null
+
         textPaint.color = 0xB31C0B38.toInt()
-        textPaint.strokeWidth = 17f
+        textPaint.strokeWidth = 18f
         canvas.drawText(
             text,
             centerX + 2.5f,
@@ -198,22 +250,8 @@ internal class HomeBrandLogoView(
         )
 
         textPaint.color = outlineColor
-        textPaint.strokeWidth = 13f
-        canvas.drawText(
-            text,
-            centerX,
-            baselineY,
-            textPaint,
-        )
-
-        textPaint.color = 0xFFF8E9FF.toInt()
-        textPaint.strokeWidth = 5.5f
-        canvas.drawText(
-            text,
-            centerX,
-            baselineY,
-            textPaint,
-        )
+        textPaint.strokeWidth = 14f
+        canvas.drawText(text, centerX, baselineY, textPaint)
 
         textPaint.style = Paint.Style.FILL
         textPaint.shader =
@@ -230,43 +268,20 @@ internal class HomeBrandLogoView(
                 floatArrayOf(0f, 0.45f, 1f),
                 Shader.TileMode.CLAMP,
             )
-        canvas.drawText(
-            text,
-            centerX,
-            baselineY,
-            textPaint,
-        )
+        canvas.drawText(text, centerX, baselineY, textPaint)
         textPaint.shader = null
 
         textPaint.style = Paint.Style.STROKE
-        textPaint.color = 0x66FFFFFF
-        textPaint.strokeWidth = 1.7f
+        textPaint.color = 0x55FFFFFF
+        textPaint.strokeWidth = 1.8f
         canvas.drawText(
             text,
             centerX,
-            baselineY - 1.5f,
+            baselineY - 2f,
             textPaint,
         )
-    }
 
-    private fun drawLudoPaw(canvas: Canvas) {
-        textPaint.textSize = 78f
-        val totalWidth = textPaint.measureText("Ludo")
-        val startX = 179f - totalWidth / 2f
-        val pawX =
-            startX +
-                textPaint.measureText("Lud") +
-                textPaint.measureText("o") / 2f
-
-        drawPawWithOutline(
-            canvas = canvas,
-            centerX = pawX,
-            centerY = 61f,
-            scale = 0.43f,
-            color = 0xFF38206F.toInt(),
-            outline = 0xFFFFD84E.toInt(),
-            outlineWidth = 2.7f,
-        )
+        textPaint.textScaleX = 1f
     }
 
     private fun drawPawWithOutline(
@@ -280,16 +295,20 @@ internal class HomeBrandLogoView(
     ) {
         stroke.color = outline
         stroke.strokeWidth = outlineWidth
+        fill.shader = null
         fill.color = color
 
-        val pad = RectF(
-            centerX - 12f * scale,
-            centerY - 1f * scale,
-            centerX + 12f * scale,
-            centerY + 17f * scale,
-        )
+        val pad =
+            RectF(
+                centerX - 12f * scale,
+                centerY - 1f * scale,
+                centerX + 12f * scale,
+                centerY + 17f * scale,
+            )
         canvas.drawOval(pad, fill)
-        canvas.drawOval(pad, stroke)
+        if (outlineWidth > 0f) {
+            canvas.drawOval(pad, stroke)
+        }
 
         val toes =
             arrayOf(
@@ -300,7 +319,9 @@ internal class HomeBrandLogoView(
             )
         toes.forEach { (x, y, radius) ->
             canvas.drawCircle(x, y, radius, fill)
-            canvas.drawCircle(x, y, radius, stroke)
+            if (outlineWidth > 0f) {
+                canvas.drawCircle(x, y, radius, stroke)
+            }
         }
     }
 }
