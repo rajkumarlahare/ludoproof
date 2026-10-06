@@ -1,88 +1,94 @@
 package com.ludoproof.game.ui.home
 
 import android.content.Intent
-import android.graphics.drawable.GradientDrawable
+import android.graphics.Color
+import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.ludoproof.game.*
 
-internal fun HomeActivity.modeSection():
-    LinearLayout =
+internal fun HomeActivity.modeSection(): LinearLayout =
     LinearLayout(this).apply {
-        orientation =
-            LinearLayout.VERTICAL
-        gravity =
-            Gravity.CENTER_HORIZONTAL
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER_HORIZONTAL
+
+        // Keep the exact pre-polish section height so the user-approved bottom
+        // spacing does not move: compact 262dp, regular 296dp.
+        val rowHeight = dp(if (isCompact()) 82 else 92)
+        val rowGap = dp(if (isCompact()) 8 else 10)
 
         addView(
             homeModeRow(
-                listOf(
-                    HomeModeCard(
-                        mode = GameMode.ONLINE,
-                        title = "ONLINE",
-                        subtitle = "MATCHMAKING",
-                        artMode = ModeArtView.Mode.ONLINE,
-                        labelColors = intArrayOf(
-                            0xFF28C7FF.toInt(),
-                            0xFF126FD6.toInt(),
+                cards =
+                    listOf(
+                        HomeModeCard(
+                            mode = GameMode.ONLINE,
+                            title = "Online",
+                            subtitle = "Matchmaking",
+                            artMode = ModeArtView.Mode.ONLINE,
+                            tone = HomeModeTone.ONLINE,
+                        ),
+                        HomeModeCard(
+                            mode = GameMode.TEAM_UP,
+                            title = "Team Up",
+                            subtitle = "2 vs 2",
+                            artMode = ModeArtView.Mode.TEAM_UP,
+                            tone = HomeModeTone.TEAM_UP,
                         ),
                     ),
-                    HomeModeCard(
-                        mode = GameMode.TEAM_UP,
-                        title = "TEAM UP",
-                        subtitle = "2 VS 2",
-                        artMode = ModeArtView.Mode.TEAM_UP,
-                        labelColors = intArrayOf(
-                            0xFFFFC62E.toInt(),
-                            0xFFE38700.toInt(),
-                        ),
-                    ),
-                    HomeModeCard(
-                        mode = GameMode.FRIENDS,
-                        title = "FRIENDS",
-                        subtitle = "PRIVATE ROOM",
-                        artMode = ModeArtView.Mode.FRIENDS,
-                        labelColors = intArrayOf(
-                            0xFFFF6B8A.toInt(),
-                            0xFFD7285C.toInt(),
-                        ),
-                    ),
-                ),
+                height = rowHeight,
             ),
         )
 
         addView(
             homeModeRow(
-                listOf(
-                    HomeModeCard(
-                        mode = GameMode.COMPUTER,
-                        title = "COMPUTER",
-                        subtitle = "CPU",
-                        artMode = ModeArtView.Mode.COMPUTER,
-                        labelColors = intArrayOf(
-                            0xFF70D82F.toInt(),
-                            0xFF2FA91F.toInt(),
+                cards =
+                    listOf(
+                        HomeModeCard(
+                            mode = GameMode.FRIENDS,
+                            title = "Friends",
+                            subtitle = "Private room",
+                            artMode = ModeArtView.Mode.FRIENDS,
+                            tone = HomeModeTone.FRIENDS,
+                        ),
+                        HomeModeCard(
+                            mode = GameMode.COMPUTER,
+                            title = "Computer",
+                            subtitle = "CPU",
+                            artMode = ModeArtView.Mode.COMPUTER,
+                            tone = HomeModeTone.COMPUTER,
                         ),
                     ),
-                    HomeModeCard(
-                        mode = GameMode.PASS_AND_PLAY,
-                        title = "PASS & PLAY",
-                        subtitle = "OFFLINE",
-                        artMode = ModeArtView.Mode.PASS_AND_PLAY,
-                        labelColors = intArrayOf(
-                            0xFFFFC32A.toInt(),
-                            0xFFF08A00.toInt(),
-                        ),
-                    ),
+                height = rowHeight,
+            ),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                rowHeight,
+            ).apply {
+                topMargin = rowGap
+            },
+        )
+
+        addView(
+            homeWideModeCard(
+                HomeModeCard(
+                    mode = GameMode.PASS_AND_PLAY,
+                    title = "Pass & Play",
+                    subtitle = "Offline",
+                    artMode = ModeArtView.Mode.PASS_AND_PLAY,
+                    tone = HomeModeTone.PASS_AND_PLAY,
                 ),
             ),
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
+                rowHeight,
             ).apply {
-                topMargin = dp(if (isCompact()) 10 else 12)
+                topMargin = rowGap
+                marginStart = dp(2)
+                marginEnd = dp(2)
             },
         )
     }
@@ -92,27 +98,27 @@ private data class HomeModeCard(
     val title: String,
     val subtitle: String,
     val artMode: ModeArtView.Mode,
-    val labelColors: IntArray,
+    val tone: HomeModeTone,
 )
 
 private fun HomeActivity.homeModeRow(
     cards: List<HomeModeCard>,
+    height: Int,
 ): LinearLayout =
     LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
 
-        cards.forEachIndexed { index, card ->
+        cards.forEach { card ->
             addView(
                 homeGameCard(card),
                 LinearLayout.LayoutParams(
                     0,
-                    dp(if (isCompact()) 126 else 142),
+                    height,
                     1f,
                 ).apply {
-                    if (index > 0) {
-                        marginStart = dp(if (isCompact()) 5 else 7)
-                    }
+                    marginStart = dp(2)
+                    marginEnd = dp(2)
                 },
             )
         }
@@ -120,80 +126,145 @@ private fun HomeActivity.homeModeRow(
 
 private fun HomeActivity.homeGameCard(
     card: HomeModeCard,
-): LinearLayout =
-    LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(dp(3), dp(3), dp(3), dp(3))
+): FrameLayout =
+    FrameLayout(this).apply {
         background =
-            GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(
-                    0xFF168EEA.toInt(),
-                    0xFF0D5BB9.toInt(),
-                    0xFF073E91.toInt(),
-                ),
-            ).apply {
-                cornerRadius = dp(13).toFloat()
-                setStroke(dp(2), 0xFF5BE0FF.toInt())
-            }
-        elevation = dp(6).toFloat()
+            homeModeButtonBackground(
+                context = this@homeGameCard,
+                tone = card.tone,
+            )
+        elevation = dp(8).toFloat()
         isClickable = true
         isFocusable = true
-        contentDescription = card.title + ", " + card.subtitle
+        contentDescription = "${card.title}, ${card.subtitle}"
         setOnClickListener {
             openGameMode(card.mode)
         }
 
         addView(
-            ModeArtView(this@homeGameCard).apply {
-                mode = card.artMode
-                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            LinearLayout(this@homeGameCard).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(
+                    dp(if (isCompact()) 9 else 11),
+                    dp(5),
+                    dp(if (isCompact()) 18 else 20),
+                    dp(5),
+                )
+
+                addView(
+                    ModeArtView(this@homeGameCard).apply {
+                        mode = card.artMode
+                        importantForAccessibility =
+                            View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                    },
+                    LinearLayout.LayoutParams(
+                        dp(if (isCompact()) 50 else 56),
+                        dp(if (isCompact()) 54 else 62),
+                    ),
+                )
+
+                addView(
+                    modeTitle(card.title),
+                    LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        1f,
+                    ),
+                )
             },
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
             ),
         )
+    }
+
+private fun HomeActivity.homeWideModeCard(
+    card: HomeModeCard,
+): FrameLayout =
+    FrameLayout(this).apply {
+        background =
+            homeModeButtonBackground(
+                context = this@homeWideModeCard,
+                tone = card.tone,
+                wide = true,
+            )
+        elevation = dp(8).toFloat()
+        isClickable = true
+        isFocusable = true
+        contentDescription = "${card.title}, ${card.subtitle}"
+        setOnClickListener {
+            openGameMode(card.mode)
+        }
 
         addView(
-            LinearLayout(this@homeGameCard).apply {
-                orientation = LinearLayout.VERTICAL
+            LinearLayout(this@homeWideModeCard).apply {
+                orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
-                background =
-                    GradientDrawable(
-                        GradientDrawable.Orientation.TOP_BOTTOM,
-                        card.labelColors,
-                    ).apply {
-                        cornerRadius = dp(9).toFloat()
-                        setStroke(dp(1), 0x66FFFFFF)
-                    }
-
-                addView(
-                    TextView(this@homeGameCard).apply {
-                        text = card.title
-                        textSize = if (isCompact()) 11f else 12.5f
-                        setTypeface(android.graphics.Typeface.DEFAULT_BOLD)
-                        setTextColor(0xFFFFFFFF.toInt())
-                        gravity = Gravity.CENTER
-                        maxLines = 1
-                    },
+                setPadding(
+                    dp(if (isCompact()) 38 else 46),
+                    dp(5),
+                    dp(if (isCompact()) 38 else 46),
+                    dp(5),
                 )
 
                 addView(
-                    TextView(this@homeGameCard).apply {
-                        text = card.subtitle
-                        textSize = if (isCompact()) 8.5f else 9.5f
-                        setTextColor(0xE6FFFFFF.toInt())
-                        gravity = Gravity.CENTER
-                        maxLines = 1
+                    ModeArtView(this@homeWideModeCard).apply {
+                        mode = card.artMode
+                        importantForAccessibility =
+                            View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                    },
+                    LinearLayout.LayoutParams(
+                        dp(if (isCompact()) 76 else 84),
+                        dp(if (isCompact()) 58 else 66),
+                    ),
+                )
+
+                addView(
+                    modeTitle(
+                        text = card.title,
+                        wide = true,
+                    ),
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                    ).apply {
+                        marginStart = dp(if (isCompact()) 2 else 4)
                     },
                 )
             },
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(if (isCompact()) 38 else 42),
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
             ),
+        )
+    }
+
+private fun HomeActivity.modeTitle(
+    text: String,
+    wide: Boolean = false,
+): TextView =
+    TextView(this).apply {
+        this.text = text
+        textSize =
+            when {
+                wide && isCompact() -> 19f
+                wide -> 22f
+                isCompact() -> 16f
+                else -> 18f
+            }
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        setTextColor(Color.WHITE)
+        gravity = Gravity.CENTER
+        includeFontPadding = false
+        maxLines = 1
+        letterSpacing = 0.005f
+        setShadowLayer(
+            dp(2.2f),
+            0f,
+            dp(1.6f),
+            0xC9001A38.toInt(),
         )
     }
 
