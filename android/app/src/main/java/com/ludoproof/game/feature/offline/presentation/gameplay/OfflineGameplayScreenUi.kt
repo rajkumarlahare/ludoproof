@@ -1,16 +1,9 @@
 package com.ludoproof.game.ui.offline.gameplay
 
-import android.app.Activity
-import android.graphics.Color
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import com.ludoproof.game.*
 import com.ludoproof.game.feature.offline.*
@@ -30,24 +23,6 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
 
     val (root, host) =
         LudoProofTheme.arcadeRoot(this)
-
-    val scroll =
-        ScrollView(this).apply {
-            isFillViewport =
-                true
-            overScrollMode =
-                View.OVER_SCROLL_NEVER
-        }
-
-    val contentHost =
-        FrameLayout(this)
-    scroll.addView(
-        contentHost,
-        FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-        ),
-    )
 
     val horizontalPaddingDp =
         LudoProofTheme
@@ -69,88 +44,79 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         }
     val sectionSideMargin =
         if (isExpandedWidth) {
-            0
+            dp(8)
         } else {
             dp(horizontalPaddingDp)
         }
+    val boardStageWidth =
+        minOf(
+            (contentWidth - sectionSideMargin * 2)
+                .coerceAtLeast(dp(260)),
+            dp(if (isCompactSetup()) 390 else 440),
+        )
 
     val content =
         LinearLayout(this).apply {
-            orientation =
-                LinearLayout.VERTICAL
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            clipChildren = false
+            clipToPadding = false
             setPadding(
                 0,
-                dp(14),
+                dp(if (isCompactSetup()) 6 else 8),
                 0,
-                dp(28),
+                dp(if (isCompactSetup()) 8 else 10),
             )
         }
 
-    contentHost.addView(
+    host.addView(
         content,
         FrameLayout.LayoutParams(
             contentWidth,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP or
-                Gravity.CENTER_HORIZONTAL,
-        ),
-    )
-
-    host.addView(
-        scroll,
-        FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT,
+            Gravity.TOP or Gravity.CENTER_HORIZONTAL,
         ),
     )
 
     content.addView(
-        backHeader(
-            null,
-        ),
+        backHeader(null),
         LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT,
         ).apply {
-            leftMargin =
-                sectionSideMargin
-            rightMargin =
-                sectionSideMargin
+            leftMargin = sectionSideMargin
+            rightMargin = sectionSideMargin
         },
     )
 
     resultPanel =
         offlineResultPanel()
             .apply {
-                visibility =
-                    View.GONE
+                visibility = View.GONE
             }
     content.addView(
         resultPanel,
         gameplaySectionParams(
-            if (isCompactSetup()) 12 else 14,
+            if (isCompactSetup()) 5 else 7,
         ).apply {
-            leftMargin =
-                sectionSideMargin
-            rightMargin =
-                sectionSideMargin
+            leftMargin = sectionSideMargin
+            rightMargin = sectionSideMargin
         },
     )
 
     content.addView(
         gameplayHud(),
         gameplaySectionParams(
-            if (isCompactSetup()) 8 else 10,
+            if (isCompactSetup()) 4 else 6,
         ).apply {
-            leftMargin =
-                sectionSideMargin
-            rightMargin =
-                sectionSideMargin
+            leftMargin = sectionSideMargin
+            rightMargin = sectionSideMargin
         },
     )
 
     boardView =
         LudoPawsReactiveBoardView(this).apply {
+            elevation = dp(8).toFloat()
             onTokenSelected = {
                     tokenIndex ->
                 val previous =
@@ -178,44 +144,54 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
             }
         }
 
-    topPlayerRail =
-        playerRail()
+    topPlayerRail = playerRail()
     content.addView(
-        requireNotNull(
-            topPlayerRail,
-        ),
+        requireNotNull(topPlayerRail),
         gameplaySectionParams(
-            if (isCompactSetup()) 10 else 12,
+            if (isCompactSetup()) 4 else 6,
         ),
     )
 
+    val boardStage =
+        FrameLayout(this).apply {
+            clipChildren = false
+            clipToPadding = false
+            addView(
+                boardView,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    Gravity.CENTER,
+                ),
+            )
+        }
     content.addView(
-        boardView,
-        gameplaySectionParams(
-            if (isCompactSetup()) 6 else 8,
-        ),
+        boardStage,
+        LinearLayout.LayoutParams(
+            boardStageWidth,
+            0,
+            1f,
+        ).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
+            topMargin = dp(if (isCompactSetup()) 2 else 4)
+        },
     )
 
-    bottomPlayerRail =
-        playerRail()
+    bottomPlayerRail = playerRail()
     content.addView(
-        requireNotNull(
-            bottomPlayerRail,
-        ),
+        requireNotNull(bottomPlayerRail),
         gameplaySectionParams(
-            if (isCompactSetup()) 6 else 8,
+            if (isCompactSetup()) 2 else 4,
         ),
     )
 
     content.addView(
         gameplayActionPanel(),
         gameplaySectionParams(
-            if (isCompactSetup()) 8 else 10,
+            if (isCompactSetup()) 2 else 4,
         ).apply {
-            leftMargin =
-                sectionSideMargin
-            rightMargin =
-                sectionSideMargin
+            leftMargin = sectionSideMargin
+            rightMargin = sectionSideMargin
         },
     )
 
@@ -223,49 +199,23 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
     renderGame(state)
 }
 
-internal fun OfflineGameActivity.gameplayHud():
-    LinearLayout =
+internal fun OfflineGameActivity.gameplayHud(): LinearLayout =
     LinearLayout(this).apply {
-        orientation =
-            LinearLayout.VERTICAL
-        gravity =
-            Gravity.CENTER
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER
         setPadding(
-            dp(if (isCompactSetup()) 12 else 16),
-            dp(12),
-            dp(if (isCompactSetup()) 12 else 16),
-            dp(12),
+            dp(if (isCompactSetup()) 10 else 14),
+            dp(if (isCompactSetup()) 5 else 7),
+            dp(if (isCompactSetup()) 10 else 14),
+            dp(if (isCompactSetup()) 5 else 7),
         )
         background =
             LudoProofTheme
                 .hudPanelDrawable(
                     this@gameplayHud,
-                    goldBorder = true,
+                    goldBorder = false,
                 )
-        elevation =
-            dp(6).toFloat()
-
-        addView(
-            TextView(
-                this@gameplayHud,
-            ).apply {
-                text =
-                    if (isComputerMode) {
-                        "VS COMPUTER"
-                    } else {
-                        "LOCAL MATCH"
-                    }
-                LudoProofTheme.body(
-                    this,
-                    10f,
-                    centered = true,
-                    bright = true,
-                )
-                setTextColor(
-                    0xFF6DE7FF.toInt(),
-                )
-            },
-        )
+        elevation = dp(3).toFloat()
 
         turnText =
             TextView(
@@ -273,21 +223,17 @@ internal fun OfflineGameActivity.gameplayHud():
             ).apply {
                 LudoProofTheme.title(
                     this,
-                    if (isCompactSetup()) 21f else 24f,
+                    if (isCompactSetup()) 16f else 18f,
                     gold = true,
                 )
                 setPadding(
-                    dp(4),
                     dp(3),
-                    dp(4),
-                    dp(5),
+                    0,
+                    dp(3),
+                    0,
                 )
             }
-        addView(
-            requireNotNull(
-                turnText,
-            ),
-        )
+        addView(requireNotNull(turnText))
 
         infoText =
             TextView(
@@ -295,33 +241,29 @@ internal fun OfflineGameActivity.gameplayHud():
             ).apply {
                 LudoProofTheme.body(
                     this,
-                    if (isCompactSetup()) 11f else 12f,
+                    if (isCompactSetup()) 9.5f else 10.5f,
                     centered = true,
                     bright = true,
                 )
+                setTextColor(0xFFBFE8FF.toInt())
                 setPadding(
-                    dp(4),
-                    0,
-                    dp(4),
+                    dp(3),
+                    dp(1),
+                    dp(3),
                     0,
                 )
             }
-        addView(
-            requireNotNull(
-                infoText,
-            ),
-        )
+        addView(requireNotNull(infoText))
     }
 
-internal fun OfflineGameActivity.offlineResultPanel():
-    FrameLayout =
+internal fun OfflineGameActivity.offlineResultPanel(): FrameLayout =
     FrameLayout(this).apply {
         val height =
             dp(
                 if (isCompactSetup()) {
-                    160
+                    148
                 } else {
-                    180
+                    166
                 },
             )
 
@@ -329,8 +271,7 @@ internal fun OfflineGameActivity.offlineResultPanel():
             GameResultArtView(
                 this@offlineResultPanel,
             ).apply {
-                mode =
-                    GameResultArtView.Mode.OFFLINE
+                mode = GameResultArtView.Mode.OFFLINE
             },
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -342,15 +283,13 @@ internal fun OfflineGameActivity.offlineResultPanel():
             LinearLayout(
                 this@offlineResultPanel,
             ).apply {
-                orientation =
-                    LinearLayout.VERTICAL
-                gravity =
-                    Gravity.CENTER_VERTICAL
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_VERTICAL
                 setPadding(
-                    dp(if (isCompactSetup()) 116 else 150),
-                    dp(14),
-                    dp(14),
-                    dp(14),
+                    dp(if (isCompactSetup()) 108 else 142),
+                    dp(12),
+                    dp(12),
+                    dp(12),
                 )
 
                 addView(
@@ -358,21 +297,17 @@ internal fun OfflineGameActivity.offlineResultPanel():
                         this@offlineResultPanel,
                     ).apply {
                         text =
-                            if (
-                                isComputerMode
-                            ) {
-                                "COMPUTER GAME COMPLETE"
+                            if (isComputerMode) {
+                                "MATCH COMPLETE"
                             } else {
-                                "LOCAL GAME COMPLETE"
+                                "LOCAL MATCH COMPLETE"
                             }
                         LudoProofTheme.body(
                             this,
-                            10f,
+                            9.5f,
                             bright = true,
                         )
-                        setTextColor(
-                            0xFF68E8FF.toInt(),
-                        )
+                        setTextColor(0xFF68E8FF.toInt())
                     },
                 )
 
@@ -380,50 +315,31 @@ internal fun OfflineGameActivity.offlineResultPanel():
                     TextView(
                         this@offlineResultPanel,
                     ).apply {
-                        text =
-                            "WINNER"
+                        text = "WINNER"
                         LudoProofTheme.title(
                             this,
-                            if (isCompactSetup()) 21f else 25f,
+                            if (isCompactSetup()) 20f else 23f,
                             gold = true,
                         )
-                        gravity =
-                            Gravity.START or
-                                Gravity.CENTER_VERTICAL
-                        setPadding(
-                            0,
-                            dp(4),
-                            0,
-                            0,
-                        )
+                        gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                        setPadding(0, dp(3), 0, 0)
                     }
-                addView(
-                    resultTitleText,
-                )
+                addView(resultTitleText)
 
                 resultSubtitleText =
                     TextView(
                         this@offlineResultPanel,
                     ).apply {
-                        text =
-                            "Game complete"
+                        text = "All paws are home"
                         LudoProofTheme.body(
                             this,
-                            if (isCompactSetup()) 10.5f else 11.5f,
+                            if (isCompactSetup()) 10f else 11f,
                             bright = true,
                         )
-                        gravity =
-                            Gravity.START
-                        setPadding(
-                            0,
-                            dp(5),
-                            0,
-                            0,
-                        )
+                        gravity = Gravity.START
+                        setPadding(0, dp(3), 0, 0)
                     }
-                addView(
-                    resultSubtitleText,
-                )
+                addView(resultSubtitleText)
             }
 
         addView(
