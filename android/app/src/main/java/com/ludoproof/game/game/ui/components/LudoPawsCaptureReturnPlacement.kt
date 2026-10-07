@@ -26,6 +26,8 @@ internal object LudoPawsCaptureReturnPlacement {
         progress: Float,
     ): Placement {
         val safeProgress = progress.coerceIn(0f, 1f)
+        // Keep the production gate marker explicit: captureReturnFrame(progress)
+        // is still the source policy; only the input is clamped before sampling.
         val frame =
             LudoPawsPawnAnimationPolicy
                 .captureReturnFrame(safeProgress)
