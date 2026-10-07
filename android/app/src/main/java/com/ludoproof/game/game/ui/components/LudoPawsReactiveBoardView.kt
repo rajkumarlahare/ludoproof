@@ -1,6 +1,9 @@
 package com.ludoproof.game
 
 import android.content.Context
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
 import android.widget.FrameLayout
@@ -69,6 +72,28 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         // the first frame so its circular pawn art cannot appear beside, ahead of,
         // or behind an animal while the GL surface is starting or moving.
         board.setClassicPawnFallbackVisible(false)
+
+        // Brighten only the transparent 3D pawn layer, not the board artwork.
+        // RGB scaling preserves the existing material palette, highlights,
+        // shadows and alpha while making all four animals easier to read.
+        val pawnBrightness =
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                colorFilter =
+                    ColorMatrixColorFilter(
+                        ColorMatrix().apply {
+                            setScale(
+                                PAWN_BRIGHTNESS_SCALE,
+                                PAWN_BRIGHTNESS_SCALE,
+                                PAWN_BRIGHTNESS_SCALE,
+                                1f,
+                            )
+                        },
+                    )
+            }
+        pawn3DScene.setLayerType(
+            View.LAYER_TYPE_HARDWARE,
+            pawnBrightness,
+        )
 
         addView(
             pawn3DScene,
@@ -306,7 +331,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         if (idleKey == lastIdleReactionKey) return
 
         val reactions =
-            LudoPawsReactionEngine
+            LudoPawsIdleReactionPolicy
                 .deriveIdle(
                     current = state,
                     nowMillis = nowMillis,
@@ -356,5 +381,6 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         // About 1.8 board cells on a 15x15 Ludo board. This is transparent
         // presentation space only; the approved square board remains unchanged.
         const val PAWN_TOP_OVERFLOW_FRACTION = 0.12f
+        const val PAWN_BRIGHTNESS_SCALE = 1.10f
     }
 }
