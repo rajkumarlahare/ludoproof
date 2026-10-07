@@ -6,10 +6,18 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.view.View
+import com.ludoproof.game.feature.characters.domain.model.AnimationCue
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsFxPolicy
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
+import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
+import kotlin.math.PI
+import kotlin.math.floor
+import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /**
  * Phase 10 presentation-only board FX layer.
@@ -34,16 +42,34 @@ internal class LudoPawsGameFxOverlayView(
             fromPosition != 57 && toPosition == 57
     }
 
+    private val settingsStore = GameSettingsStore(context)
     private var snapshot: MatchSnapshot? = null
     private var perspectiveColor: String? = null
     private var reactions: List<LudoPawsReaction> = emptyList()
     private var transitions: List<TokenTransition> = emptyList()
+    private var captureTransitions: List<TokenTransition> = emptyList()
+    private var forwardMotion: LudoPawsPawnMotion? = null
     private var reducedMotion = false
     private var reactionProgress = 0f
     private var transitionProgress = 1f
+    private var captureProgress = -1f
+    private var movementProgress = 1f
+    private var captureContactDelayMillis = 0L
+    private var captureDurationMillis = 0L
     private var reactionAnimator: ValueAnimator? = null
     private var transitionAnimator: ValueAnimator? = null
+    private var captureAnimator: ValueAnimator? = null
+    private var movementAnimator: ValueAnimator? = null
     private val painter = LudoPawsFxPainter(context)
+    private val movementGroundPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+        }
+    private val movementGroundRingPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = context.resources.displayMetrics.density * 1.25f
+        }
 
     init {
         isClickable = false
@@ -63,8 +89,47 @@ internal class LudoPawsGameFxOverlayView(
                 it in OfflinePlayerLayout.COLORS
             }
         this.reducedMotion = reducedMotion
-        transitions = detectTransitions(previous, current)
+
+        val detected = detectTransitions(previous, current)
+        transitions = detected.filterNot(TokenTransition::isCaptureReturn)
+        captureTransitions = detected.filter(TokenTransition::isCaptureReturn)
+
+        val settings = settingsStore.snapshot()
+        val motions =
+            LudoPawsPawnAnimationPolicy.plans(
+                previous = previous,
+                current = current,
+            )
+        forwardMotion =
+            motions.firstOrNull {
+                it.kind == LudoPawsPawnMotionKind.FORWARD
+            }
+        val movementDurationMillis =
+            forwardMotion
+                ?.let { motion ->
+                    max(
+                        settings.gameSpeed.moveStepMs,
+                        motion.visualSteps.toLong() * settings.gameSpeed.moveStepMs,
+                    )
+                }
+                ?: 0L
+        captureContactDelayMillis =
+            if (captureTransitions.isNotEmpty()) {
+                movementDurationMillis
+            } else {
+                0L
+            }
+        captureDurationMillis =
+            if (captureTransitions.isNotEmpty()) {
+                LudoPawsGameplayPacingPolicy
+                    .captureReturnDurationMillis(settings.gameSpeed)
+            } else {
+                0L
+            }
+
         startTransitionAnimationIfNeeded()
+        startCaptureAnimationIfNeeded()
+        startMovementGroundingIfNeeded(movementDurationMillis)
         invalidate()
     }
 
@@ -75,9 +140,9 @@ internal class LudoPawsGameFxOverlayView(
         reactionAnimator?.cancel()
         this.reducedMotion = reducedMotion
         this.reactions = reactions.take(MAX_SIMULTANEOUS_REACTIONS)
-        reactionProgress = 0f
 
         if (this.reactions.isEmpty()) {
+            reactionProgress = 0f
             invalidate()
             return
         }
@@ -91,10 +156,23 @@ internal class LudoPawsGameFxOverlayView(
                     )
                     .durationMs
             }
+        val waitForContact =
+            this.reactions.any {
+                it.animationCue == AnimationCue.CAPTURE ||
+                    it.animationCue == AnimationCue.CAPTURED
+            }
+        val startDelay =
+            if (waitForContact) {
+                captureContactDelayMillis
+            } else {
+                0L
+            }
+        reactionProgress = if (startDelay > 0L) -1f else 0f
 
         reactionAnimator =
             ValueAnimator.ofFloat(0f, 1f).apply {
                 this.duration = duration
+                this.startDelay = startDelay
                 addUpdateListener {
                     reactionProgress = it.animatedValue as Float
                     invalidate()
@@ -117,12 +195,22 @@ internal class LudoPawsGameFxOverlayView(
     fun stop() {
         reactionAnimator?.cancel()
         transitionAnimator?.cancel()
+        captureAnimator?.cancel()
+        movementAnimator?.cancel()
         reactionAnimator = null
         transitionAnimator = null
+        captureAnimator = null
+        movementAnimator = null
         reactions = emptyList()
         transitions = emptyList()
+        captureTransitions = emptyList()
+        forwardMotion = null
         reactionProgress = 0f
         transitionProgress = 1f
+        captureProgress = -1f
+        movementProgress = 1f
+        captureContactDelayMillis = 0L
+        captureDurationMillis = 0L
         invalidate()
     }
 
@@ -154,13 +242,20 @@ internal class LudoPawsGameFxOverlayView(
         }
 
         drawTransitions(canvas, cell)
-        reactions.forEach { reaction ->
-            drawReaction(
-                canvas = canvas,
-                state = current,
-                cell = cell,
-                reaction = reaction,
-            )
+        drawMovementGrounding(
+            canvas = canvas,
+            state = current,
+            cell = cell,
+        )
+        if (reactionProgress >= 0f) {
+            reactions.forEach { reaction ->
+                drawReaction(
+                    canvas = canvas,
+                    state = current,
+                    cell = cell,
+                    reaction = reaction,
+                )
+            }
         }
 
         if (turns != 0) {
@@ -194,6 +289,84 @@ internal class LudoPawsGameFxOverlayView(
 
                         override fun onAnimationCancel(animation: Animator) {
                             transitionAnimator = null
+                        }
+                    },
+                )
+                start()
+            }
+    }
+
+    private fun startCaptureAnimationIfNeeded() {
+        captureAnimator?.cancel()
+        if (captureTransitions.isEmpty()) {
+            captureProgress = -1f
+            captureAnimator = null
+            return
+        }
+
+        // Negative progress means "not visible yet". This prevents even the
+        // captured ghost/paw flash from appearing before physical contact.
+        captureProgress = -1f
+        captureAnimator =
+            ValueAnimator.ofFloat(0f, 1f).apply {
+                startDelay = captureContactDelayMillis
+                duration =
+                    if (reducedMotion) {
+                        REDUCED_CAPTURE_FLASH_DURATION_MS
+                    } else {
+                        captureDurationMillis.coerceAtLeast(1L)
+                    }
+                addUpdateListener {
+                    captureProgress = it.animatedValue as Float
+                    invalidate()
+                }
+                addListener(
+                    object : AnimatorListenerAdapter() {
+                        override fun onAnimationEnd(animation: Animator) {
+                            captureProgress = 1f
+                            captureAnimator = null
+                            invalidate()
+                        }
+
+                        override fun onAnimationCancel(animation: Animator) {
+                            captureAnimator = null
+                        }
+                    },
+                )
+                start()
+            }
+    }
+
+    private fun startMovementGroundingIfNeeded(durationMillis: Long) {
+        movementAnimator?.cancel()
+        if (
+            forwardMotion == null ||
+            durationMillis <= 0L ||
+            reducedMotion
+        ) {
+            movementProgress = 1f
+            movementAnimator = null
+            return
+        }
+
+        movementProgress = 0f
+        movementAnimator =
+            ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = durationMillis
+                addUpdateListener {
+                    movementProgress = it.animatedValue as Float
+                    invalidate()
+                }
+                addListener(
+                    object : AnimatorListenerAdapter() {
+                        override fun onAnimationEnd(animation: Animator) {
+                            movementProgress = 1f
+                            movementAnimator = null
+                            invalidate()
+                        }
+
+                        override fun onAnimationCancel(animation: Animator) {
+                            movementAnimator = null
                         }
                     },
                 )
@@ -246,60 +419,22 @@ internal class LudoPawsGameFxOverlayView(
         cell: Float,
     ) {
         transitions.forEach { transition ->
-            val from =
-                LudoPawsFxBoardGeometry.tokenCenter(
-                    color = transition.color,
-                    tokenIndex = transition.tokenIndex,
-                    position = transition.fromPosition,
+            drawTransition(
+                canvas = canvas,
+                transition = transition,
+                cell = cell,
+                progress = transitionProgress,
+            )
+        }
+
+        if (captureProgress >= 0f) {
+            captureTransitions.forEach { transition ->
+                drawTransition(
+                    canvas = canvas,
+                    transition = transition,
                     cell = cell,
+                    progress = captureProgress,
                 )
-            val to =
-                LudoPawsFxBoardGeometry.tokenCenter(
-                    color = transition.color,
-                    tokenIndex = transition.tokenIndex,
-                    position = transition.toPosition,
-                    cell = cell,
-                )
-            if (from == null || to == null) {
-                return@forEach
-            }
-
-            val color = playerColor(transition.color)
-            when {
-                transition.isCaptureReturn ->
-                    painter.drawCaptureReturn(
-                        canvas = canvas,
-                        from = from,
-                        to = to,
-                        color = color,
-                        cell = cell,
-                        progress = transitionProgress,
-                        reducedMotion = reducedMotion,
-                    )
-
-                transition.isHomeArrival ->
-                    painter.drawPawTrail(
-                        canvas = canvas,
-                        from = from,
-                        to = to,
-                        color = color,
-                        cell = cell,
-                        progress = transitionProgress,
-                        emphasis = 1f,
-                        reducedMotion = reducedMotion,
-                    )
-
-                else ->
-                    painter.drawPawTrail(
-                        canvas = canvas,
-                        from = from,
-                        to = to,
-                        color = color,
-                        cell = cell,
-                        progress = transitionProgress,
-                        emphasis = .55f,
-                        reducedMotion = reducedMotion,
-                    )
             }
         }
 
@@ -311,6 +446,164 @@ internal class LudoPawsGameFxOverlayView(
                 reducedMotion = reducedMotion,
             )
         }
+    }
+
+    private fun drawTransition(
+        canvas: Canvas,
+        transition: TokenTransition,
+        cell: Float,
+        progress: Float,
+    ) {
+        val from =
+            LudoPawsFxBoardGeometry.tokenCenter(
+                color = transition.color,
+                tokenIndex = transition.tokenIndex,
+                position = transition.fromPosition,
+                cell = cell,
+            )
+        val to =
+            LudoPawsFxBoardGeometry.tokenCenter(
+                color = transition.color,
+                tokenIndex = transition.tokenIndex,
+                position = transition.toPosition,
+                cell = cell,
+            )
+        if (from == null || to == null) {
+            return
+        }
+
+        val color = playerColor(transition.color)
+        when {
+            transition.isCaptureReturn ->
+                painter.drawCaptureReturn(
+                    canvas = canvas,
+                    from = from,
+                    to = to,
+                    color = color,
+                    cell = cell,
+                    progress = progress,
+                    reducedMotion = reducedMotion,
+                )
+
+            transition.isHomeArrival ->
+                painter.drawPawTrail(
+                    canvas = canvas,
+                    from = from,
+                    to = to,
+                    color = color,
+                    cell = cell,
+                    progress = progress,
+                    emphasis = 1f,
+                    reducedMotion = reducedMotion,
+                )
+
+            else ->
+                painter.drawPawTrail(
+                    canvas = canvas,
+                    from = from,
+                    to = to,
+                    color = color,
+                    cell = cell,
+                    progress = progress,
+                    emphasis = .55f,
+                    reducedMotion = reducedMotion,
+                )
+        }
+    }
+
+    private fun drawMovementGrounding(
+        canvas: Canvas,
+        state: MatchSnapshot,
+        cell: Float,
+    ) {
+        val motion = forwardMotion ?: return
+        if (
+            movementAnimator == null ||
+            movementProgress !in 0f..1f ||
+            reducedMotion
+        ) {
+            return
+        }
+        val player =
+            state.players.firstOrNull {
+                it.playerId == motion.playerId
+            } ?: return
+        val totalSteps = motion.visualSteps.coerceAtLeast(1)
+        val visualProgress =
+            (movementProgress.coerceIn(0f, .999999f) * totalSteps)
+        val whole =
+            floor(visualProgress)
+                .toInt()
+                .coerceIn(0, totalSteps - 1)
+        val fraction =
+            (visualProgress - whole)
+                .coerceIn(0f, 1f)
+        val fromPosition =
+            LudoPathEncoding.positionAtVisualStep(
+                fromPosition = motion.fromPosition,
+                step = whole,
+            ) ?: return
+        val toPosition =
+            LudoPathEncoding.positionAtVisualStep(
+                fromPosition = motion.fromPosition,
+                step = (whole + 1).coerceAtMost(totalSteps),
+            ) ?: return
+        val from =
+            LudoPawsFxBoardGeometry.tokenCenter(
+                color = player.color,
+                tokenIndex = motion.tokenIndex,
+                position = fromPosition,
+                cell = cell,
+            ) ?: return
+        val to =
+            LudoPawsFxBoardGeometry.tokenCenter(
+                color = player.color,
+                tokenIndex = motion.tokenIndex,
+                position = toPosition,
+                cell = cell,
+            ) ?: return
+
+        val eased = fraction * fraction * (3f - 2f * fraction)
+        val x = from.first + (to.first - from.first) * eased
+        val y = from.second + (to.second - from.second) * eased
+        val hop =
+            sin(PI.toFloat() * fraction)
+                .coerceAtLeast(0f)
+        val contact = (1f - hop * .78f).coerceIn(.22f, 1f)
+        val color = playerColor(player.color)
+        val fillAlpha = (22f + 50f * contact).roundToInt()
+        val ringAlpha = (28f + 56f * contact).roundToInt()
+        val radiusX = cell * (.15f + .055f * contact)
+        val radiusY = cell * (.055f + .028f * contact)
+
+        movementGroundPaint.color =
+            Color.argb(
+                fillAlpha,
+                Color.red(color),
+                Color.green(color),
+                Color.blue(color),
+            )
+        movementGroundRingPaint.color =
+            Color.argb(
+                ringAlpha,
+                Color.red(color),
+                Color.green(color),
+                Color.blue(color),
+            )
+        canvas.drawOval(
+            x - radiusX,
+            y - radiusY,
+            x + radiusX,
+            y + radiusY,
+            movementGroundPaint,
+        )
+        canvas.drawOval(
+            x - radiusX * .92f,
+            y - radiusY * .92f,
+            x + radiusX * .92f,
+            y + radiusY * .92f,
+            movementGroundRingPaint,
+        )
     }
 
     private fun drawReaction(
@@ -380,5 +673,6 @@ internal class LudoPawsGameFxOverlayView(
         const val MAX_SIMULTANEOUS_REACTIONS = 6
         const val MAX_TRANSITIONS = 8
         const val TRANSITION_DURATION_MS = 720L
+        const val REDUCED_CAPTURE_FLASH_DURATION_MS = 120L
     }
 }
