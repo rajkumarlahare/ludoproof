@@ -16,7 +16,7 @@ import kotlin.math.min
  * Geometry, token coordinates, touch mapping and authoritative game state remain
  * owned by LudoBoardView/LudoPawsBoardView. This layer only adds the raised,
  * toy-board finish used by the garden reference: colored recessed homes,
- * beveled road tiles, glossy center treatment and a deeper outer board edge.
+ * beveled road tiles and glossy center treatment.
  */
 internal class LudoPawsBoardChromeView(
     context: Context,
@@ -64,7 +64,6 @@ internal class LudoPawsBoardChromeView(
         drawYardDepth(canvas, cell)
         drawCrossTileDepth(canvas, cell)
         drawCenterDepth(canvas, cell)
-        drawOuterBoardDepth(canvas, size)
     }
 
     private fun drawYardDepth(
@@ -341,63 +340,6 @@ internal class LudoPawsBoardChromeView(
             center.left + dp(1f),
             center.bottom - dp(1f),
             strokePaint,
-        )
-    }
-
-    private fun drawOuterBoardDepth(
-        canvas: Canvas,
-        size: Float,
-    ) {
-        val inner =
-            RectF(
-                dp(4.8f),
-                dp(4.8f),
-                size - dp(4.8f),
-                size - dp(4.8f),
-            )
-        strokePaint.strokeWidth = dp(1.15f)
-        strokePaint.color = 0xA8FFFFFF.toInt()
-        canvas.drawRoundRect(
-            inner,
-            dp(3.2f),
-            dp(3.2f),
-            strokePaint,
-        )
-
-        // A heavier lower/right edge gives the straight-on square the depth of a
-        // physical toy board without introducing perspective or changing geometry.
-        edgeShadePaint.strokeWidth = dp(3.2f)
-        edgeShadePaint.color = 0x80101820.toInt()
-        canvas.drawLine(
-            dp(5f),
-            size - dp(4.1f),
-            size - dp(5f),
-            size - dp(4.1f),
-            edgeShadePaint,
-        )
-        canvas.drawLine(
-            size - dp(4.1f),
-            dp(5f),
-            size - dp(4.1f),
-            size - dp(5f),
-            edgeShadePaint,
-        )
-
-        edgeHighlightPaint.strokeWidth = dp(1.15f)
-        edgeHighlightPaint.color = 0xB8FFFFFF.toInt()
-        canvas.drawLine(
-            dp(5f),
-            dp(4.4f),
-            size - dp(5f),
-            dp(4.4f),
-            edgeHighlightPaint,
-        )
-        canvas.drawLine(
-            dp(4.4f),
-            dp(5f),
-            dp(4.4f),
-            size - dp(5f),
-            edgeHighlightPaint,
         )
     }
 
