@@ -349,6 +349,7 @@ internal fun OfflineGameActivity.renderGame(
         }
 
     diceHost?.isEnabled = canRoll
+    diceView?.setAttentionEnabled(canRoll)
     // Disabled means non-interactive only. Never fade the dice itself: after a
     // resolved roll the player still needs to read that face while moving.
     diceHost?.alpha = 1f
