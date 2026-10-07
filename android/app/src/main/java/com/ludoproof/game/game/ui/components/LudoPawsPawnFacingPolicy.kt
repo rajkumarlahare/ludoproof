@@ -1,6 +1,8 @@
 package com.ludoproof.game
 
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.atan2
 
 /**
  * Presentation-only facing policy for the 3D animal pawns.
@@ -24,13 +26,12 @@ internal object LudoPawsPawnFacingPolicy {
             return FRONT_YAW_DEGREES
         }
 
-        return if (abs(dx) >= abs(dy)) {
-            if (dx >= 0f) 90f else -90f
-        } else {
-            // Screen Y grows downward. Down therefore points toward the local
-            // player/front, while up points away and shows the animal's back.
-            if (dy >= 0f) 0f else 180f
-        }
+        // The generated animals face the viewer at yaw 0. Screen Y grows down,
+        // so atan2(dx, dy) maps down=0, right=+90, up=180 and left=-90 while
+        // still allowing a natural diagonal heading for yard-entry jumps.
+        return Math.toDegrees(
+            atan2(dx.toDouble(), dy.toDouble()),
+        ).toFloat()
     }
 
     fun movingYaw(
