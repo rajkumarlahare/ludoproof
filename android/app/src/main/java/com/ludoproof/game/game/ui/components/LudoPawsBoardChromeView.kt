@@ -16,7 +16,7 @@ import kotlin.math.min
  * Geometry, token coordinates, touch mapping and authoritative game state remain
  * owned by LudoBoardView/LudoPawsBoardView. This layer only adds the raised,
  * toy-board finish used by the garden reference: colored recessed homes,
- * beveled road tiles and glossy center treatment.
+ * glossy raised road tiles and glossy center treatment.
  */
 internal class LudoPawsBoardChromeView(
     context: Context,
@@ -34,18 +34,6 @@ internal class LudoPawsBoardChromeView(
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.FILL
             color = 0x50000000
-        }
-    private val edgeHighlightPaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = dp(1.15f)
-            color = 0x82FFFFFF.toInt()
-        }
-    private val edgeShadePaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = dp(1.35f)
-            color = 0x6A101820
         }
 
     init {
@@ -278,10 +266,13 @@ internal class LudoPawsBoardChromeView(
                 axisBoundary(col + 1, cell),
                 axisBoundary(row + 1, cell),
             )
-        val inset = min(raw.width(), raw.height()) * 0.035f
-        val depth = min(raw.width(), raw.height()) * 0.075f
-        val radius = min(raw.width(), raw.height()) * 0.105f
+        val tileSize = min(raw.width(), raw.height())
+        val inset = tileSize * 0.035f
+        val depth = tileSize * 0.075f
+        val radius = tileSize * 0.105f
 
+        // Keep enough lower depth for the approved raised-board look, but remove the
+        // old hard grey strip. The softer shadow now reads as molded thickness.
         val shadow =
             RectF(
                 raw.left + inset,
@@ -289,7 +280,7 @@ internal class LudoPawsBoardChromeView(
                 raw.right - inset,
                 raw.bottom - inset,
             )
-        shadowPaint.color = 0x44000000
+        shadowPaint.color = 0x26000000
         canvas.drawRoundRect(
             shadow,
             radius,
@@ -304,19 +295,22 @@ internal class LudoPawsBoardChromeView(
                 raw.right - inset,
                 raw.bottom - inset - depth * 0.42f,
             )
+
+        // Premium glossy face. A vertical translucent gradient preserves the actual
+        // white/colored road cell underneath instead of turning its lower half grey.
         fillPaint.shader =
             LinearGradient(
                 face.left,
                 face.top,
-                face.right,
+                face.left,
                 face.bottom,
                 intArrayOf(
-                    0x62FFFFFF,
-                    0x20FFFFFF,
-                    0x05000000,
-                    0x26000000,
+                    0x70FFFFFF,
+                    0x34FFFFFF,
+                    0x12FFFFFF,
+                    0x0E000000,
                 ),
-                floatArrayOf(0f, 0.30f, 0.66f, 1f),
+                floatArrayOf(0f, 0.25f, 0.70f, 1f),
                 Shader.TileMode.CLAMP,
             )
         canvas.drawRoundRect(
@@ -327,28 +321,67 @@ internal class LudoPawsBoardChromeView(
         )
         fillPaint.shader = null
 
+        // Broad reflected-light band instead of a drawn white outline. The fade makes
+        // each road tile look polished/glassy without the previous capsule-button line.
+        val sheenInset = tileSize * 0.055f
+        val sheen =
+            RectF(
+                face.left + sheenInset,
+                face.top + tileSize * 0.025f,
+                face.right - sheenInset,
+                face.top + face.height() * 0.46f,
+            )
+        fillPaint.shader =
+            LinearGradient(
+                sheen.left,
+                sheen.top,
+                sheen.left,
+                sheen.bottom,
+                intArrayOf(
+                    0x78FFFFFF,
+                    0x30FFFFFF,
+                    Color.TRANSPARENT,
+                ),
+                floatArrayOf(0f, 0.46f, 1f),
+                Shader.TileMode.CLAMP,
+            )
         canvas.drawRoundRect(
-            face,
-            radius,
-            radius,
-            edgeHighlightPaint,
+            sheen,
+            radius * 0.82f,
+            radius * 0.82f,
+            fillPaint,
         )
+        fillPaint.shader = null
 
-        edgeShadePaint.strokeWidth = dp(1.05f)
-        canvas.drawLine(
-            face.left + radius * 0.65f,
-            face.bottom,
-            face.right - radius * 0.65f,
-            face.bottom,
-            edgeShadePaint,
+        // A very light lower polish keeps the face visually clean while the separate
+        // shadow underneath supplies depth. There is intentionally no hard bottom/right stroke.
+        val lowerPolish =
+            RectF(
+                face.left + sheenInset,
+                face.top + face.height() * 0.70f,
+                face.right - sheenInset,
+                face.bottom - tileSize * 0.025f,
+            )
+        fillPaint.shader =
+            LinearGradient(
+                lowerPolish.left,
+                lowerPolish.top,
+                lowerPolish.left,
+                lowerPolish.bottom,
+                intArrayOf(
+                    Color.TRANSPARENT,
+                    0x14FFFFFF,
+                ),
+                floatArrayOf(0f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawRoundRect(
+            lowerPolish,
+            radius * 0.72f,
+            radius * 0.72f,
+            fillPaint,
         )
-        canvas.drawLine(
-            face.right,
-            face.top + radius * 0.65f,
-            face.right,
-            face.bottom - radius * 0.65f,
-            edgeShadePaint,
-        )
+        fillPaint.shader = null
     }
 
     private fun drawCenterDepth(
