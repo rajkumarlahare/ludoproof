@@ -13,11 +13,19 @@ import kotlin.math.max
 object LudoPawsGameplayPacingPolicy {
     const val DICE_SETTLE_DURATION_MILLIS = 450L
 
+    fun diceResultHoldMillis(speed: GameSpeed): Long =
+        when (speed) {
+            GameSpeed.SLOW -> 850L
+            GameSpeed.NORMAL -> 700L
+            GameSpeed.FAST -> 520L
+        }
+
+    /** Small tail after the common result hold before a forced single move. */
     fun postRollAutoMoveDelayMillis(speed: GameSpeed): Long =
         when (speed) {
-            GameSpeed.SLOW -> 1_000L
-            GameSpeed.NORMAL -> 800L
-            GameSpeed.FAST -> 600L
+            GameSpeed.SLOW -> 150L
+            GameSpeed.NORMAL -> 100L
+            GameSpeed.FAST -> 80L
         }
 
     fun captureReturnDurationMillis(speed: GameSpeed): Long =
