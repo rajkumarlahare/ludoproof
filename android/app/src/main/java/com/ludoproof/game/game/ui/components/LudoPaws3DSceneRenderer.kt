@@ -77,13 +77,26 @@ internal class LudoPaws3DSceneRenderer {
             this.width,
             this.height,
         )
+
+        // LudoPawsReactiveBoardView may give this transparent surface extra
+        // pixels only above the square board. Keep world-space board Y=0 at the
+        // exact visual board edge by mapping that overflow to negative world Y.
+        // The board, pawn centers, path geometry and model scale therefore remain
+        // unchanged while heads/ears/horns can render above the top row.
+        val topOverflow =
+            (this.height - this.width)
+                .coerceAtLeast(0)
+                .toFloat()
+        val boardBottom =
+            (this.height.toFloat() - topOverflow)
+                .coerceAtLeast(1f)
         Matrix.orthoM(
             projection,
             0,
             0f,
             this.width.toFloat(),
-            this.height.toFloat(),
-            0f,
+            boardBottom,
+            -topOverflow,
             -100f,
             100f,
         )
