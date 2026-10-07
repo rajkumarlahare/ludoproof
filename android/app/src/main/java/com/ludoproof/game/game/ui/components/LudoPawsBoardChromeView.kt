@@ -348,25 +348,6 @@ internal class LudoPawsBoardChromeView(
         canvas: Canvas,
         size: Float,
     ) {
-        val outerInset = dp(1.8f)
-        val outer =
-            RectF(
-                outerInset,
-                outerInset,
-                size - outerInset,
-                size - outerInset,
-            )
-        val radius = dp(4.5f)
-
-        strokePaint.strokeWidth = dp(3.6f)
-        strokePaint.color = 0xE3162230.toInt()
-        canvas.drawRoundRect(
-            outer,
-            radius,
-            radius,
-            strokePaint,
-        )
-
         val inner =
             RectF(
                 dp(4.8f),
