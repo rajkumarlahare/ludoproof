@@ -10,21 +10,21 @@ enum class GameSpeed(
 ) {
     SLOW(
         label = "SLOW",
-        moveStepMs = 320L,
-        rollDelayMs = 620L,
-        cpuThinkMs = 850L,
+        moveStepMs = 360L,
+        rollDelayMs = 760L,
+        cpuThinkMs = 1_000L,
     ),
     NORMAL(
         label = "NORMAL",
-        moveStepMs = 240L,
-        rollDelayMs = 430L,
-        cpuThinkMs = 600L,
+        moveStepMs = 280L,
+        rollDelayMs = 600L,
+        cpuThinkMs = 720L,
     ),
     FAST(
         label = "FAST",
-        moveStepMs = 180L,
-        rollDelayMs = 260L,
-        cpuThinkMs = 380L,
+        moveStepMs = 210L,
+        rollDelayMs = 420L,
+        cpuThinkMs = 500L,
     );
 
     fun next(): GameSpeed =
