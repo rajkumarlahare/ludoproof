@@ -582,7 +582,12 @@ internal class LudoPaws3DSceneRenderer {
         val elapsed =
             (nowMillis - state.forwardStartedAtMillis)
                 .coerceAtLeast(0L)
-        if (elapsed >= state.forwardDurationMillis) {
+        val travelDuration =
+            (
+                state.forwardDurationMillis -
+                    LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
+            ).coerceAtLeast(1L)
+        if (elapsed >= travelDuration) {
             return LudoPawsFxBoardGeometry.tokenCenter(
                 color = player.color,
                 tokenIndex = tokenIndex,
@@ -670,7 +675,11 @@ internal class LudoPaws3DSceneRenderer {
         val elapsed =
             (nowMillis - state.forwardStartedAtMillis)
                 .coerceAtLeast(0L)
-        val duration = state.forwardDurationMillis
+        val duration =
+            (
+                state.forwardDurationMillis -
+                    LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
+            ).coerceAtLeast(1L)
 
         // HOME owns its celebratory spin after the final hop. Reset the path-facing
         // contribution there so the species animation remains centered on the player.
