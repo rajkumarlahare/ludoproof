@@ -7,7 +7,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.widget.FrameLayout
-import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -111,16 +110,6 @@ class LudoPawsBoardView @JvmOverloads constructor(
                     it in OfflinePlayerLayout.COLORS
                 }
 
-        // The base board and 3D pawns already rotate into the selected player's
-        // perspective. Rotate the presentation-only chrome by the exact same amount
-        // so glossy homes, road tiles, and center treatment stay attached to their
-        // authoritative board colors after color selection.
-        val chromeQuarterTurns =
-            this.perspectiveColor
-                ?.let(OfflinePlayerLayout::rotationQuarterTurns)
-                ?: 0
-        boardChrome.rotation = chromeQuarterTurns * 90f
-
         // A null snapshot keeps the exact approved board geometry/theme but prevents
         // LudoBoardView from drawing any classic token on the 3D presentation layer.
         boardSurface.bind(
@@ -133,6 +122,13 @@ class LudoPawsBoardView @JvmOverloads constructor(
             playerId = playerId,
             perspectiveColor = this.perspectiveColor,
         )
+
+        // Keep presentation-only chrome aligned with the player's perspective.
+        val chromeQuarterTurns =
+            this.perspectiveColor
+                ?.let(OfflinePlayerLayout::rotationQuarterTurns)
+                ?: 0
+        boardChrome.rotation = chromeQuarterTurns * 90f
     }
 
     /**
@@ -217,6 +213,8 @@ class LudoPawsBoardView @JvmOverloads constructor(
                 quarterTurns = turns,
             )
 
+        val roadMin = cell * 5f
+        val roadMax = cell * 10f
         val hit =
             legal
                 .mapNotNull { tokenIndex ->
@@ -246,23 +244,45 @@ class LudoPawsBoardView @JvmOverloads constructor(
                     val tokenY =
                         center.second +
                             (placement?.offsetYFraction ?: 0f) * cell
-                    val distance =
-                        hypot(
-                            (logicalTouch.first - tokenX).toDouble(),
-                            (logicalTouch.second - tokenY).toDouble(),
-                        )
+
+                    // The released board has stretched three-lane roads. Side-road
+                    // cells are tall/narrow while top/bottom-road cells are
+                    // wide/short, so a fixed circular hit radius makes side-road
+                    // animals unnecessarily hard to tap. Match the touch target to
+                    // the actual visual cell proportions without changing geometry.
+                    val onSideRoad =
+                        tokenY in roadMin..roadMax &&
+                            (tokenX < roadMin || tokenX > roadMax)
+                    val onTopBottomRoad =
+                        tokenX in roadMin..roadMax &&
+                            (tokenY < roadMin || tokenY > roadMax)
+                    val halfWidth =
+                        when {
+                            onSideRoad -> cell * 0.58f
+                            onTopBottomRoad -> cell * 0.98f
+                            else -> cell * 0.70f
+                        }
+                    val halfHeight =
+                        when {
+                            onSideRoad -> cell * 0.98f
+                            onTopBottomRoad -> cell * 0.58f
+                            else -> cell * 0.70f
+                        }
+                    val dx = (logicalTouch.first - tokenX) / halfWidth
+                    val dy = (logicalTouch.second - tokenY) / halfHeight
+                    val normalizedDistanceSquared =
+                        dx.toDouble() * dx.toDouble() +
+                            dy.toDouble() * dy.toDouble()
+
                     TokenTouchCandidate(
                         tokenIndex = tokenIndex,
-                        distance = distance,
+                        normalizedDistanceSquared = normalizedDistanceSquared,
                     )
                 }
-                .minByOrNull(TokenTouchCandidate::distance)
+                .minByOrNull(TokenTouchCandidate::normalizedDistanceSquared)
                 ?: return
 
-        // The 3D animals are intentionally larger than the retired classic pawns.
-        // Keep a generous but cell-bounded target so tapping the visible animal is
-        // reliable without selecting a token from a neighboring road cell.
-        if (hit.distance <= cell * 0.58f) {
+        if (hit.normalizedDistanceSquared <= 1.0) {
             onTokenSelected?.invoke(hit.tokenIndex)
         }
     }
@@ -310,6 +330,6 @@ class LudoPawsBoardView @JvmOverloads constructor(
 
     private data class TokenTouchCandidate(
         val tokenIndex: Int,
-        val distance: Double,
+        val normalizedDistanceSquared: Double,
     )
 }
