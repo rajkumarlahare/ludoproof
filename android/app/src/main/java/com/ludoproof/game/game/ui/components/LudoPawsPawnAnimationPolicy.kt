@@ -38,9 +38,12 @@ data class LudoPawsCaptureReturnFrame(
  */
 object LudoPawsPawnAnimationPolicy {
     private const val CAPTURE_RETURN_VISUAL_STEPS = 4
-    private const val IMPACT_END = .18f
-    private const val POP_END = .34f
-    private const val RETURN_END = .90f
+
+    // With the 1.9s capture presentation these ratios produce roughly:
+    // 150ms impact, 170ms shove/pop, 1.1s return and 450ms yard settle/breath.
+    private const val IMPACT_END = .08f
+    private const val POP_END = .17f
+    private const val RETURN_END = .76f
 
     fun plans(
         previous: MatchSnapshot?,
@@ -125,7 +128,7 @@ object LudoPawsPawnAnimationPolicy {
 
     /**
      * Four-stage presentation sequence for a captured pawn:
-     * impact shake -> pop -> curved return -> soft yard settle.
+     * impact shake -> contact pop -> curved return -> soft yard settle.
      */
     fun captureReturnFrame(
         progress: Float,
@@ -164,8 +167,8 @@ object LudoPawsPawnAnimationPolicy {
                     phase = LudoPawsCaptureReturnPhase.POP,
                     routeProgress = 0f,
                     shakeXCells = 0f,
-                    liftCells = pop * .24f,
-                    scale = 1f + pop * .18f,
+                    liftCells = pop * .20f,
+                    scale = 1f + pop * .15f,
                 )
             }
 
@@ -181,8 +184,8 @@ object LudoPawsPawnAnimationPolicy {
                     liftCells =
                         sin(local * PI)
                             .toFloat() *
-                            .58f,
-                    scale = 1.05f - routed * .13f,
+                            .52f,
+                    scale = 1.04f - routed * .12f,
                 )
             }
 
@@ -198,14 +201,14 @@ object LudoPawsPawnAnimationPolicy {
                     liftCells =
                         sin(local * PI)
                             .toFloat() *
-                            .11f *
+                            .09f *
                             (1f - local),
                     scale =
                         .92f +
                             .08f * local +
                             sin(local * PI)
                                 .toFloat() *
-                            .04f,
+                            .035f,
                 )
             }
         }
