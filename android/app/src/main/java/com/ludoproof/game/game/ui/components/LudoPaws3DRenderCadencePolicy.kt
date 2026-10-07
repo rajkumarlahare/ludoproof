@@ -13,6 +13,7 @@ internal object LudoPaws3DRenderCadencePolicy {
     internal const val ACTIVE_FRAME_DELAY_MILLIS = 16L
     internal const val IDLE_FRAME_DELAY_MILLIS = 33L
     internal const val HOME_CELEBRATION_TAIL_MILLIS = 1_400L
+    internal const val FORWARD_LANDING_SETTLE_MILLIS = 90L
 
     fun frameDelayMillis(
         state: LudoPaws3DSceneState,
