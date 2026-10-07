@@ -28,6 +28,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
 ) : FrameLayout(context, attrs) {
     private val board = LudoPawsBoardView(context)
     private val pawn3DScene = LudoPaws3DSceneView(context)
+    private val legalHalo = LudoPaws3DLegalHaloView(context)
     private val gameFxOverlay = LudoPawsGameFxOverlayView(context)
     private val voicePlayer = LudoPawsVoicePlayer(context)
     private val settingsStore = GameSettingsStore(context)
@@ -102,6 +103,16 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
                 LayoutParams.MATCH_PARENT,
             ),
         )
+        // This overlay highlights only currently legal pawns. It never previews
+        // the destination square, so the player gets an actionable cue without
+        // being shown where the pawn will finish before movement starts.
+        addView(
+            legalHalo,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT,
+            ),
+        )
         addView(
             gameFxOverlay,
             LayoutParams(
@@ -162,6 +173,11 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             playerId = playerId,
             perspectiveColor = perspectiveColor,
             characterIdsBySeat = characterIdsBySeat,
+        )
+        legalHalo.bind(
+            state = state,
+            playerId = playerId,
+            perspectiveColor = perspectiveColor,
         )
         gameFxOverlay.bind(
             previous = previous,
@@ -331,7 +347,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         if (idleKey == lastIdleReactionKey) return
 
         val reactions =
-            LudoPawsReactionEngine
+            LudoPawsIdleReactionPolicy
                 .deriveIdle(
                     current = state,
                     nowMillis = nowMillis,
