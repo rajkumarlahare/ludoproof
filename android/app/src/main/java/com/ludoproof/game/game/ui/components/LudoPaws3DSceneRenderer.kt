@@ -244,6 +244,12 @@ internal class LudoPaws3DSceneRenderer {
                                 facingYawDegrees = facingYawDegrees,
                                 presentationScale =
                                     captureVisual?.scale ?: 1f,
+                                attentionScale =
+                                    legalAttentionScale(
+                                        state = state,
+                                        key = key,
+                                        nowMillis = nowMillis,
+                                    ),
                             ),
                         )
                     }
@@ -288,6 +294,7 @@ internal class LudoPaws3DSceneRenderer {
             pawn.radius *
                 MODEL_SCALE_PER_RADIUS *
                 pawn.presentationScale *
+                pawn.attentionScale *
                 reaction.scale
         val rootY =
             pawn.y +
@@ -1228,6 +1235,43 @@ internal class LudoPaws3DSceneRenderer {
                 "3D pawn shader compile failed: ${GLES30.glGetShaderInfoLog(shader)}"
             }
         }
+
+    private fun legalAttentionScale(
+        state: LudoPaws3DSceneState,
+        key: LudoPaws3DPawnKey,
+        nowMillis: Long,
+    ): Float {
+        if (state.reducedMotion) return 1f
+        val snapshot = state.snapshot ?: return 1f
+        val pending = snapshot.pendingRoll ?: return 1f
+        if (pending.status != "RESOLVED") return 1f
+        if (state.localPlayerId != key.playerId) return 1f
+        val player =
+            snapshot.players.firstOrNull {
+                it.playerId == key.playerId
+            } ?: return 1f
+        if (pending.seat != player.seat) return 1f
+        if (key.tokenIndex !in pending.legalTokenIndexes) return 1f
+        if (state.forwardMotion != null || state.captureReturns.isNotEmpty()) return 1f
+
+        val cycleMillis = 900L
+        val phase =
+            (
+                nowMillis % cycleMillis
+            ).toFloat() /
+                cycleMillis.toFloat()
+        val breath =
+            (
+                sin(
+                    phase *
+                        PI.toFloat() *
+                        2f,
+                ) +
+                    1f
+                ) *
+                .5f
+        return 1f + breath * .065f
+    }
 
     private data class RenderPawn(
         val key: LudoPaws3DPawnKey,
