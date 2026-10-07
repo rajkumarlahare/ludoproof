@@ -40,13 +40,13 @@ internal fun OfflineGameActivity.renderPlayerRails(
 
     val presentationBlocked =
         SystemClock.uptimeMillis() < gameplayActionBlockedUntilMillis
-    val latestEvent = state.history.lastOrNull()
-    val presentationPlayerId =
-        latestEvent
-            ?.playerId
+    val presentationEvent =
+        state.history
+            .lastOrNull()
             ?.takeIf {
                 presentationBlocked
             }
+    val presentationPlayerId = presentationEvent?.playerId
     val activePlayer =
         state.players
             .firstOrNull {
@@ -88,13 +88,10 @@ internal fun OfflineGameActivity.renderPlayerRails(
     // is on screen. Keep that face visible and non-interactive until the pawn
     // has fully finished moving/capturing; the next player's dice is rendered
     // only after the presentation block releases.
-    if (
-        presentationBlocked &&
-        latestEvent?.playerId == presentationPlayerId
-    ) {
+    presentationEvent?.let { event ->
         val outcome =
-            latestEvent.effectiveOutcome
-                ?: latestEvent.outcome
+            event.effectiveOutcome
+                ?: event.outcome
         diceView?.showOutcome(
             outcome = outcome,
             animate = false,
