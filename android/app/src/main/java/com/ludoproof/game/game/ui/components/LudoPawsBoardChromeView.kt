@@ -3,38 +3,49 @@ package com.ludoproof.game
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Shader
 import android.view.View
 import kotlin.math.min
 
 /**
- * Presentation-only chrome drawn over the locked Ludo board.
+ * Presentation-only depth/chrome layer drawn over the locked Ludo board.
  *
- * This view never changes board geometry, token coordinates, touch mapping or
- * authoritative game state. It only gives the square a cleaner game-board edge
- * and small Ludo-color corner accents that remain readable on every board skin.
+ * Geometry, token coordinates, touch mapping and authoritative game state remain
+ * owned by LudoBoardView/LudoPawsBoardView. This layer only adds the raised,
+ * toy-board finish used by the garden reference: colored recessed homes,
+ * beveled road tiles, glossy center treatment and a deeper outer board edge.
  */
 internal class LudoPawsBoardChromeView(
     context: Context,
 ) : View(context) {
-    private val outerStroke =
+    private val fillPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = dp(3.5f)
-            color = 0xE61A263B.toInt()
+            style = Paint.Style.FILL
         }
-    private val innerStroke =
+    private val strokePaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = dp(1.0f)
-            color = 0xA6FFFFFF.toInt()
+            strokeJoin = Paint.Join.ROUND
         }
-    private val accentStroke =
+    private val shadowPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = 0x50000000
+        }
+    private val edgeHighlightPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = dp(3.0f)
-            strokeCap = Paint.Cap.ROUND
+            strokeWidth = dp(1.15f)
+            color = 0x82FFFFFF.toInt()
+        }
+    private val edgeShadePaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = dp(1.35f)
+            color = 0x6A101820
         }
 
     init {
@@ -48,7 +59,296 @@ internal class LudoPawsBoardChromeView(
         val size = min(width, height).toFloat()
         if (size <= 0f) return
 
-        val outerInset = outerStroke.strokeWidth / 2f
+        val cell = size / 15f
+
+        drawYardDepth(canvas, cell)
+        drawCrossTileDepth(canvas, cell)
+        drawCenterDepth(canvas, cell)
+        drawOuterBoardDepth(canvas, size)
+    }
+
+    private fun drawYardDepth(
+        canvas: Canvas,
+        cell: Float,
+    ) {
+        drawRaisedYard(canvas, cell, row = 0, col = 0, color = RED)
+        drawRaisedYard(canvas, cell, row = 0, col = 9, color = GREEN)
+        drawRaisedYard(canvas, cell, row = 9, col = 9, color = YELLOW)
+        drawRaisedYard(canvas, cell, row = 9, col = 0, color = BLUE)
+    }
+
+    private fun drawRaisedYard(
+        canvas: Canvas,
+        cell: Float,
+        row: Int,
+        col: Int,
+        color: Int,
+    ) {
+        val yard =
+            RectF(
+                axisBoundary(col, cell),
+                axisBoundary(row, cell),
+                axisBoundary(col + 6, cell),
+                axisBoundary(row + 6, cell),
+            )
+
+        // Give the large colored quadrant a soft molded-plastic highlight while
+        // leaving the canonical base color visible underneath.
+        fillPaint.shader =
+            LinearGradient(
+                yard.left,
+                yard.top,
+                yard.right,
+                yard.bottom,
+                intArrayOf(
+                    0x48FFFFFF,
+                    0x08FFFFFF,
+                    0x30000000,
+                ),
+                floatArrayOf(0f, 0.46f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawRect(yard, fillPaint)
+        fillPaint.shader = null
+
+        val platform =
+            RectF(
+                yard.left + cell * 0.50f,
+                yard.top + cell * 0.50f,
+                yard.right - cell * 0.50f,
+                yard.bottom - cell * 0.50f,
+            )
+        val depth = cell * 0.13f
+        val radius = cell * 0.34f
+
+        val platformShadow =
+            RectF(
+                platform.left + cell * 0.035f,
+                platform.top + depth,
+                platform.right + cell * 0.035f,
+                platform.bottom + depth,
+            )
+        shadowPaint.color = 0x66000000
+        canvas.drawRoundRect(
+            platformShadow,
+            radius,
+            radius,
+            shadowPaint,
+        )
+
+        fillPaint.shader =
+            LinearGradient(
+                platform.left,
+                platform.top,
+                platform.right,
+                platform.bottom,
+                intArrayOf(
+                    brighten(color, 1.24f),
+                    brighten(color, 1.07f),
+                    color,
+                    darken(color, 0.70f),
+                ),
+                floatArrayOf(0f, 0.22f, 0.68f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawRoundRect(
+            platform,
+            radius,
+            radius,
+            fillPaint,
+        )
+        fillPaint.shader = null
+
+        strokePaint.shader = null
+        strokePaint.strokeWidth = dp(1.55f)
+        strokePaint.color = darken(color, 0.48f)
+        canvas.drawRoundRect(
+            platform,
+            radius,
+            radius,
+            strokePaint,
+        )
+
+        val highlight =
+            RectF(
+                platform.left + cell * 0.10f,
+                platform.top + cell * 0.09f,
+                platform.right - cell * 0.10f,
+                platform.bottom - cell * 0.12f,
+            )
+        strokePaint.strokeWidth = dp(1.25f)
+        strokePaint.color = 0xA8FFFFFF.toInt()
+        canvas.drawRoundRect(
+            highlight,
+            radius * 0.78f,
+            radius * 0.78f,
+            strokePaint,
+        )
+    }
+
+    private fun drawCrossTileDepth(
+        canvas: Canvas,
+        cell: Float,
+    ) {
+        for (row in 0 until 6) {
+            for (col in 6 until 9) {
+                drawRaisedCellOverlay(canvas, cell, row, col)
+            }
+        }
+        for (row in 9 until 15) {
+            for (col in 6 until 9) {
+                drawRaisedCellOverlay(canvas, cell, row, col)
+            }
+        }
+        for (row in 6 until 9) {
+            for (col in 0 until 6) {
+                drawRaisedCellOverlay(canvas, cell, row, col)
+            }
+        }
+        for (row in 6 until 9) {
+            for (col in 9 until 15) {
+                drawRaisedCellOverlay(canvas, cell, row, col)
+            }
+        }
+    }
+
+    private fun drawRaisedCellOverlay(
+        canvas: Canvas,
+        cell: Float,
+        row: Int,
+        col: Int,
+    ) {
+        val raw =
+            RectF(
+                axisBoundary(col, cell),
+                axisBoundary(row, cell),
+                axisBoundary(col + 1, cell),
+                axisBoundary(row + 1, cell),
+            )
+        val inset = min(raw.width(), raw.height()) * 0.035f
+        val depth = min(raw.width(), raw.height()) * 0.075f
+        val radius = min(raw.width(), raw.height()) * 0.105f
+
+        val shadow =
+            RectF(
+                raw.left + inset,
+                raw.top + inset + depth,
+                raw.right - inset,
+                raw.bottom - inset,
+            )
+        shadowPaint.color = 0x44000000
+        canvas.drawRoundRect(
+            shadow,
+            radius,
+            radius,
+            shadowPaint,
+        )
+
+        val face =
+            RectF(
+                raw.left + inset,
+                raw.top + inset,
+                raw.right - inset,
+                raw.bottom - inset - depth * 0.42f,
+            )
+        fillPaint.shader =
+            LinearGradient(
+                face.left,
+                face.top,
+                face.right,
+                face.bottom,
+                intArrayOf(
+                    0x62FFFFFF,
+                    0x20FFFFFF,
+                    0x05000000,
+                    0x26000000,
+                ),
+                floatArrayOf(0f, 0.30f, 0.66f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawRoundRect(
+            face,
+            radius,
+            radius,
+            fillPaint,
+        )
+        fillPaint.shader = null
+
+        canvas.drawRoundRect(
+            face,
+            radius,
+            radius,
+            edgeHighlightPaint,
+        )
+
+        edgeShadePaint.strokeWidth = dp(1.05f)
+        canvas.drawLine(
+            face.left + radius * 0.65f,
+            face.bottom,
+            face.right - radius * 0.65f,
+            face.bottom,
+            edgeShadePaint,
+        )
+        canvas.drawLine(
+            face.right,
+            face.top + radius * 0.65f,
+            face.right,
+            face.bottom - radius * 0.65f,
+            edgeShadePaint,
+        )
+    }
+
+    private fun drawCenterDepth(
+        canvas: Canvas,
+        cell: Float,
+    ) {
+        val center =
+            RectF(
+                axisBoundary(6, cell),
+                axisBoundary(6, cell),
+                axisBoundary(9, cell),
+                axisBoundary(9, cell),
+            )
+        fillPaint.shader =
+            LinearGradient(
+                center.left,
+                center.top,
+                center.right,
+                center.bottom,
+                intArrayOf(
+                    0x42FFFFFF,
+                    0x08FFFFFF,
+                    0x26000000,
+                ),
+                floatArrayOf(0f, 0.48f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawRect(center, fillPaint)
+        fillPaint.shader = null
+
+        strokePaint.strokeWidth = dp(1.3f)
+        strokePaint.color = 0x8EFFFFFF.toInt()
+        canvas.drawLine(
+            center.left + dp(1f),
+            center.top + dp(1f),
+            center.right - dp(1f),
+            center.top + dp(1f),
+            strokePaint,
+        )
+        canvas.drawLine(
+            center.left + dp(1f),
+            center.top + dp(1f),
+            center.left + dp(1f),
+            center.bottom - dp(1f),
+            strokePaint,
+        )
+    }
+
+    private fun drawOuterBoardDepth(
+        canvas: Canvas,
+        size: Float,
+    ) {
+        val outerInset = dp(1.8f)
         val outer =
             RectF(
                 outerInset,
@@ -56,89 +356,106 @@ internal class LudoPawsBoardChromeView(
                 size - outerInset,
                 size - outerInset,
             )
-        val outerRadius = dp(4.5f)
+        val radius = dp(4.5f)
+
+        strokePaint.strokeWidth = dp(3.6f)
+        strokePaint.color = 0xE3162230.toInt()
         canvas.drawRoundRect(
             outer,
-            outerRadius,
-            outerRadius,
-            outerStroke,
+            radius,
+            radius,
+            strokePaint,
         )
 
-        val innerInset = dp(5.0f)
         val inner =
             RectF(
-                innerInset,
-                innerInset,
-                size - innerInset,
-                size - innerInset,
+                dp(4.8f),
+                dp(4.8f),
+                size - dp(4.8f),
+                size - dp(4.8f),
             )
+        strokePaint.strokeWidth = dp(1.15f)
+        strokePaint.color = 0xA8FFFFFF.toInt()
         canvas.drawRoundRect(
             inner,
-            dp(2.5f),
-            dp(2.5f),
-            innerStroke,
+            dp(3.2f),
+            dp(3.2f),
+            strokePaint,
         )
 
-        val accentLength = size * 0.105f
-        val accentInset = dp(8f)
-        drawCornerAccent(
-            canvas = canvas,
-            x = accentInset,
-            y = accentInset,
-            dx = accentLength,
-            dy = accentLength,
-            color = RED,
+        // A heavier lower/right edge gives the straight-on square the depth of a
+        // physical toy board without introducing perspective or changing geometry.
+        edgeShadePaint.strokeWidth = dp(3.2f)
+        edgeShadePaint.color = 0x80101820.toInt()
+        canvas.drawLine(
+            dp(5f),
+            size - dp(4.1f),
+            size - dp(5f),
+            size - dp(4.1f),
+            edgeShadePaint,
         )
-        drawCornerAccent(
-            canvas = canvas,
-            x = size - accentInset,
-            y = accentInset,
-            dx = -accentLength,
-            dy = accentLength,
-            color = GREEN,
+        canvas.drawLine(
+            size - dp(4.1f),
+            dp(5f),
+            size - dp(4.1f),
+            size - dp(5f),
+            edgeShadePaint,
         )
-        drawCornerAccent(
-            canvas = canvas,
-            x = size - accentInset,
-            y = size - accentInset,
-            dx = -accentLength,
-            dy = -accentLength,
-            color = YELLOW,
+
+        edgeHighlightPaint.strokeWidth = dp(1.15f)
+        edgeHighlightPaint.color = 0xB8FFFFFF.toInt()
+        canvas.drawLine(
+            dp(5f),
+            dp(4.4f),
+            size - dp(5f),
+            dp(4.4f),
+            edgeHighlightPaint,
         )
-        drawCornerAccent(
-            canvas = canvas,
-            x = accentInset,
-            y = size - accentInset,
-            dx = accentLength,
-            dy = -accentLength,
-            color = BLUE,
+        canvas.drawLine(
+            dp(4.4f),
+            dp(5f),
+            dp(4.4f),
+            size - dp(5f),
+            edgeHighlightPaint,
         )
     }
 
-    private fun drawCornerAccent(
-        canvas: Canvas,
-        x: Float,
-        y: Float,
-        dx: Float,
-        dy: Float,
+    /** Mirrors the released LudoBoardView visual boundaries without changing them. */
+    private fun axisBoundary(
+        index: Int,
+        cell: Float,
+    ): Float {
+        val yardSpan = cell * 5f
+        val roadSpan = cell * 5f
+        val yardStep = yardSpan / 6f
+        val roadStep = roadSpan / 3f
+
+        return when {
+            index <= 6 -> index * yardStep
+            index <= 9 -> yardSpan + (index - 6) * roadStep
+            else -> yardSpan + roadSpan + (index - 9) * yardStep
+        }
+    }
+
+    private fun brighten(
         color: Int,
-    ) {
-        accentStroke.color = color
-        canvas.drawLine(
-            x,
-            y,
-            x + dx,
-            y,
-            accentStroke,
+        factor: Float,
+    ): Int =
+        Color.rgb(
+            (Color.red(color) * factor).toInt().coerceIn(0, 255),
+            (Color.green(color) * factor).toInt().coerceIn(0, 255),
+            (Color.blue(color) * factor).toInt().coerceIn(0, 255),
         )
-        canvas.drawLine(
-            x,
-            y,
-            x,
-            y + dy,
-            accentStroke,
+
+    private fun darken(
+        color: Int,
+        factor: Float,
+    ): Int =
+        Color.rgb(
+            (Color.red(color) * factor).toInt().coerceIn(0, 255),
+            (Color.green(color) * factor).toInt().coerceIn(0, 255),
+            (Color.blue(color) * factor).toInt().coerceIn(0, 255),
         )
-    }
 
     private fun dp(value: Float): Float =
         value * resources.displayMetrics.density
