@@ -153,20 +153,28 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                         it.kind == LudoPawsPawnMotionKind.CAPTURE_RETURN
                     }
                     .associate { motion ->
-                        val duration =
-                            (motion.visualSteps.toLong() * settings.gameSpeed.moveStepMs)
-                                .coerceIn(
-                                    MIN_CAPTURE_DURATION_MILLIS,
-                                    MAX_CAPTURE_DURATION_MILLIS,
-                                )
+                        // The captured animal must remain on the occupied square
+                        // until the attacker has visibly completed its full route.
+                        // Its impact/pop/yard return begins only after contact.
+                        val contactAtMillis =
+                            now +
+                                if (newForward != null) {
+                                    forwardDurationMillis
+                                } else {
+                                    0L
+                                }
                         LudoPaws3DPawnKey(
                             playerId = motion.playerId,
                             tokenIndex = motion.tokenIndex,
                         ) to
                             LudoPaws3DCaptureReturnState(
                                 motion = motion,
-                                startedAtMillis = now,
-                                durationMillis = duration,
+                                startedAtMillis = contactAtMillis,
+                                durationMillis =
+                                    LudoPawsGameplayPacingPolicy
+                                        .captureReturnDurationMillis(
+                                            settings.gameSpeed,
+                                        ),
                             )
                     }
             }
@@ -254,10 +262,30 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                         previous == null ||
                         reaction.priority >= previous.priority
                     ) {
+                        val captureStart =
+                            if (reaction.animationCue == AnimationCue.CAPTURED) {
+                                current.captureReturns[key]?.startedAtMillis
+                            } else {
+                                null
+                            }
+                        val attackerContact =
+                            if (
+                                reaction.animationCue == AnimationCue.CAPTURE &&
+                                current.forwardMotion?.playerId == key.playerId &&
+                                current.forwardMotion?.tokenIndex == key.tokenIndex
+                            ) {
+                                current.forwardStartedAtMillis +
+                                    current.forwardDurationMillis
+                            } else {
+                                null
+                            }
                         next[key] =
                             LudoPaws3DActiveReaction(
                                 cue = reaction.animationCue,
-                                startedAtMillis = now,
+                                startedAtMillis =
+                                    captureStart
+                                        ?: attackerContact
+                                        ?: now,
                                 durationMillis = duration,
                                 priority = reaction.priority,
                             )
@@ -623,7 +651,5 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
     private companion object {
         const val TAG = "LudoPaws3D"
         const val RENDER_THREAD_JOIN_MILLIS = 250L
-        const val MIN_CAPTURE_DURATION_MILLIS = 520L
-        const val MAX_CAPTURE_DURATION_MILLIS = 1_200L
     }
 }

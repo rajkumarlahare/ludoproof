@@ -1,5 +1,6 @@
 package com.ludoproof.game.feature.offline
 
+import com.ludoproof.game.LudoPawsGameplayPacingPolicy
 import com.ludoproof.game.MatchSnapshot
 import com.ludoproof.game.OfflineGameActivity
 import com.ludoproof.game.feature.offline.domain.ai.LudoPawsComputerMovePolicy
@@ -8,6 +9,7 @@ import com.ludoproof.game.feature.offline.presentation.feedback.OfflineLudoPawsF
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.ui.offline.gameplay.OfflineTurnTransitionFeedbackPolicy
+import com.ludoproof.game.ui.offline.gameplay.renderCommittedMove
 import com.ludoproof.game.ui.offline.gameplay.renderGame
 
 internal fun OfflineGameActivity.rollOffline() {
@@ -162,13 +164,20 @@ internal fun OfflineGameActivity.scheduleComputerTurnIfNeeded(
                     current = next,
                     action = OfflineFeedbackAction.MOVE,
                 )
-                renderGame(next)
+                renderCommittedMove(
+                    previous = latest,
+                    current = next,
+                )
             }.onFailure { error ->
                 computerActionRevision = null
                 showStatus(error.message ?: "Computer move failed")
             }
         },
-        (speed.cpuThinkMs / 2).coerceAtLeast(180L),
+        maxOf(
+            (speed.cpuThinkMs / 2).coerceAtLeast(180L),
+            LudoPawsGameplayPacingPolicy
+                .postRollAutoMoveDelayMillis(speed),
+        ),
     )
 }
 
@@ -176,7 +185,16 @@ private fun OfflineGameActivity.renderRolledState(
     previous: MatchSnapshot?,
     current: MatchSnapshot,
 ) {
-    renderGame(current)
+    val speed =
+        GameSettingsStore(this)
+            .snapshot()
+            .gameSpeed
+    renderGame(
+        state = current,
+        presentationDelayMillis =
+            LudoPawsGameplayPacingPolicy
+                .diceResultHoldMillis(speed),
+    )
     OfflineTurnTransitionFeedbackPolicy
         .message(
             previous = previous,

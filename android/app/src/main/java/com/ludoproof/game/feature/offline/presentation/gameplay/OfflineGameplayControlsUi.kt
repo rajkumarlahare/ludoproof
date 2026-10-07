@@ -1,5 +1,6 @@
 package com.ludoproof.game.ui.offline.gameplay
 
+import android.os.SystemClock
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -211,7 +212,19 @@ internal fun OfflineGameActivity.gameplaySectionParams(
 
 internal fun OfflineGameActivity.renderGame(
     state: MatchSnapshot,
+    presentationDelayMillis: Long = 0L,
 ) {
+    if (presentationDelayMillis > 0L) {
+        gameplayActionBlockedUntilMillis =
+            maxOf(
+                gameplayActionBlockedUntilMillis,
+                SystemClock.uptimeMillis() + presentationDelayMillis,
+            )
+    }
+    val blockedRemainingMillis =
+        (gameplayActionBlockedUntilMillis - SystemClock.uptimeMillis())
+            .coerceAtLeast(0L)
+
     val active = state.players.getOrNull(state.turnSeat)
     val winner =
         state.players.find {
@@ -239,6 +252,7 @@ internal fun OfflineGameActivity.renderGame(
     val activePlayerId = active?.playerId
     val interactionPlayerId =
         if (
+            blockedRemainingMillis > 0L ||
             isComputerMode &&
             engine.isComputerPlayer(activePlayerId)
         ) {
@@ -294,7 +308,8 @@ internal fun OfflineGameActivity.renderGame(
     val canRoll =
         state.status == "ACTIVE" &&
             pending == null &&
-            !computerTurn
+            !computerTurn &&
+            blockedRemainingMillis == 0L
     val activeHomeCount =
         active?.tokens
             ?.count {
@@ -339,6 +354,9 @@ internal fun OfflineGameActivity.renderGame(
     diceHost?.alpha = 1f
 
     when {
+        blockedRemainingMillis > 0L ->
+            showStatus("Finishing the current paw action…")
+
         state.status == "FINISHED" ->
             showStatus("Rematch or change setup.")
 
@@ -355,11 +373,91 @@ internal fun OfflineGameActivity.renderGame(
             showStatus("Tap the dice beside the active character.")
     }
 
+    if (blockedRemainingMillis > 0L) {
+        schedulePresentationUnlock(
+            state = state,
+            delayMillis = blockedRemainingMillis,
+        )
+        return
+    }
+
     scheduleSingleLegalHumanMove(
         state = state,
         activePlayerId = activePlayerId,
     )
     scheduleComputerTurnIfNeeded(state)
+}
+
+internal fun OfflineGameActivity.renderCommittedMove(
+    previous: MatchSnapshot?,
+    current: MatchSnapshot,
+) {
+    val speed =
+        GameSettingsStore(this)
+            .snapshot()
+            .gameSpeed
+    val motions =
+        LudoPawsPawnAnimationPolicy.plans(
+            previous = previous,
+            current = current,
+        )
+    val captured =
+        motions.any {
+            it.kind == LudoPawsPawnMotionKind.CAPTURE_RETURN
+        }
+    val delay =
+        LudoPawsGameplayPacingPolicy
+            .interactionDelayAfterMoveMillis(
+                previous = previous,
+                current = current,
+                speed = speed,
+            )
+
+    renderGame(
+        state = current,
+        presentationDelayMillis = delay,
+    )
+    showStatus(
+        if (captured) {
+            "Capture • contact, push and return…"
+        } else {
+            "Paw is moving…"
+        },
+    )
+}
+
+private fun OfflineGameActivity.schedulePresentationUnlock(
+    state: MatchSnapshot,
+    delayMillis: Long,
+) {
+    val matchId = state.matchId
+    val turnSeat = state.turnSeat
+    val pendingEventIndex = state.pendingRoll?.eventIndex
+    val latestEventIndex = state.history.lastOrNull()?.eventIndex
+
+    handler.postDelayed(
+        {
+            val latest = session.snapshot() ?: return@postDelayed
+            val stillSamePresentation =
+                latest.matchId == matchId &&
+                    latest.turnSeat == turnSeat &&
+                    latest.pendingRoll?.eventIndex == pendingEventIndex &&
+                    latest.history.lastOrNull()?.eventIndex == latestEventIndex
+            if (!stillSamePresentation) return@postDelayed
+
+            if (
+                SystemClock.uptimeMillis() <
+                gameplayActionBlockedUntilMillis
+            ) {
+                renderGame(latest)
+                return@postDelayed
+            }
+
+            gameplayActionBlockedUntilMillis = 0L
+            renderGame(latest)
+        },
+        delayMillis.coerceAtLeast(1L),
+    )
 }
 
 private fun OfflineGameActivity.scheduleSingleLegalHumanMove(
@@ -381,8 +479,12 @@ private fun OfflineGameActivity.scheduleSingleLegalHumanMove(
     if (host.tag == eventKey) return
     host.tag = eventKey
 
-    showStatus("Only one move • moving automatically…")
+    showStatus("Only one move • holding the dice result…")
 
+    val speed =
+        GameSettingsStore(this)
+            .snapshot()
+            .gameSpeed
     handler.postDelayed(
         {
             val latest = session.snapshot()
@@ -415,7 +517,10 @@ private fun OfflineGameActivity.scheduleSingleLegalHumanMove(
                     current = next,
                     action = OfflineFeedbackAction.MOVE,
                 )
-                renderGame(next)
+                renderCommittedMove(
+                    previous = latest,
+                    current = next,
+                )
             }.onFailure { error ->
                 if (host.tag == eventKey) {
                     host.tag = null
@@ -425,6 +530,7 @@ private fun OfflineGameActivity.scheduleSingleLegalHumanMove(
                 )
             }
         },
-        320L,
+        LudoPawsGameplayPacingPolicy
+            .postRollAutoMoveDelayMillis(speed),
     )
 }
