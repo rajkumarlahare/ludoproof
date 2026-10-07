@@ -1,6 +1,5 @@
 package com.ludoproof.game
 
-import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
 
