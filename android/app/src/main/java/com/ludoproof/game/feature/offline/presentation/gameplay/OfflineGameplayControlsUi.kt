@@ -501,8 +501,9 @@ private fun OfflineGameActivity.scheduleSingleLegalHumanMove(
             val stillSameMove =
                 latest != null &&
                     latest.status == "ACTIVE" &&
-                    latestActive?.playerId == activePlayerId &&
-                    !engine.isComputerPlayer(latestActive?.playerId) &&
+                    latestActive != null &&
+                    latestActive.playerId == activePlayerId &&
+                    !engine.isComputerPlayer(latestActive.playerId) &&
                     latestPending?.eventIndex == pending.eventIndex &&
                     latestPending.outcome != null &&
                     LudoTurnAutomationPolicy.singleAutomaticTokenIndex(
