@@ -468,9 +468,16 @@ private fun OfflineGameActivity.scheduleSingleLegalHumanMove(
     if (engine.isComputerPlayer(activePlayerId)) return
 
     val pending = state.pendingRoll ?: return
+    val activePlayer =
+        state.players
+            .firstOrNull { it.playerId == activePlayerId }
+            ?: return
+    val outcome = pending.outcome ?: return
     val tokenIndex =
-        LudoTurnAutomationPolicy.singleLegalTokenIndex(
-            pending.legalTokenIndexes,
+        LudoTurnAutomationPolicy.singleAutomaticTokenIndex(
+            tokens = activePlayer.tokens,
+            roll = outcome,
+            legalTokenIndexes = pending.legalTokenIndexes,
         ) ?: return
 
     val eventKey =
@@ -479,7 +486,7 @@ private fun OfflineGameActivity.scheduleSingleLegalHumanMove(
     if (host.tag == eventKey) return
     host.tag = eventKey
 
-    showStatus("Only one move • holding the dice result…")
+    showStatus("Only one effective move • holding the dice result…")
 
     val speed =
         GameSettingsStore(this)
@@ -497,8 +504,11 @@ private fun OfflineGameActivity.scheduleSingleLegalHumanMove(
                     latestActive?.playerId == activePlayerId &&
                     !engine.isComputerPlayer(latestActive?.playerId) &&
                     latestPending?.eventIndex == pending.eventIndex &&
-                    LudoTurnAutomationPolicy.singleLegalTokenIndex(
-                        latestPending.legalTokenIndexes,
+                    latestPending.outcome != null &&
+                    LudoTurnAutomationPolicy.singleAutomaticTokenIndex(
+                        tokens = latestActive.tokens,
+                        roll = latestPending.outcome,
+                        legalTokenIndexes = latestPending.legalTokenIndexes,
                     ) == tokenIndex
 
             if (!stillSameMove) {
