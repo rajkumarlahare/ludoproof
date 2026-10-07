@@ -115,6 +115,7 @@ class OfflineGameEngine(
                 pendingClientCommitment = null,
                 pendingProofDigest = null,
                 winnerPlayerId = null,
+                finishedPlayerIds = mutableListOf(),
                 history = mutableListOf(),
                 lastAudit = null,
                 revision = 1,
@@ -347,25 +348,44 @@ class OfflineGameEngine(
         clearPending(current)
 
         if (player.tokens.all { it == HOME_POSITION }) {
-            current.status = "FINISHED"
-            current.winnerPlayerId = player.playerId
+            if (player.playerId !in current.finishedPlayerIds) {
+                current.finishedPlayerIds += player.playerId
+            }
+
+            if (
+                current.finishedPlayerIds.size >=
+                current.players.size - 1
+            ) {
+                current.status = "FINISHED"
+                // Keep the first finisher as the match winner. The last remaining
+                // player is the final placement and the match ends only then.
+                current.winnerPlayerId =
+                    current.finishedPlayerIds.firstOrNull()
+                current.revision += 1
+                persist()
+                runCatching {
+                    profileStore.recordCompletedMatch(
+                        matchId = current.matchId,
+                        mode = ProfileGameMode.CLASSIC,
+                        source =
+                            if (computerMode) {
+                                ProfileMatchSource.COMPUTER
+                            } else {
+                                ProfileMatchSource.LOCAL
+                            },
+                        won =
+                            current.winnerPlayerId ==
+                                current.players.firstOrNull()?.playerId,
+                    )
+                }
+                return current.toSnapshot()
+            }
+
+            // A player who has completed all four paws is placed and removed
+            // from turn rotation. The remaining players continue normally.
+            advanceTurn(current)
             current.revision += 1
             persist()
-            runCatching {
-                profileStore.recordCompletedMatch(
-                    matchId = current.matchId,
-                    mode = ProfileGameMode.CLASSIC,
-                    source =
-                        if (computerMode) {
-                            ProfileMatchSource.COMPUTER
-                        } else {
-                            ProfileMatchSource.LOCAL
-                        },
-                    won =
-                        player.playerId ==
-                            current.players.firstOrNull()?.playerId,
-                )
-            }
             return current.toSnapshot()
         }
 
@@ -466,8 +486,18 @@ class OfflineGameEngine(
     }
 
     private fun advanceTurn(current: LocalState) {
-        current.turnSeat =
-            (current.turnSeat + 1) % current.players.size
+        val playerCount = current.players.size
+        repeat(playerCount) {
+            current.turnSeat =
+                (current.turnSeat + 1) % playerCount
+            if (
+                current.players[current.turnSeat].playerId !in
+                    current.finishedPlayerIds
+            ) {
+                return
+            }
+        }
+        error("No active player remains before match completion")
     }
 
     private fun persist() {
@@ -480,6 +510,10 @@ class OfflineGameEngine(
                 .put("eventIndex", current.eventIndex)
                 .put("revision", current.revision)
                 .put("winnerPlayerId", current.winnerPlayerId)
+                .put(
+                    "finishedPlayerIds",
+                    JSONArray(current.finishedPlayerIds),
+                )
                 .put(
                     "players",
                     JSONArray().apply {
@@ -667,6 +701,21 @@ class OfflineGameEngine(
                 }
             }
 
+            val restoredFinishedPlayerIds =
+                json.optJSONArray("finishedPlayerIds")
+                    ?.let { values ->
+                        buildList {
+                            for (index in 0 until values.length()) {
+                                add(values.getString(index))
+                            }
+                        }
+                    }
+                    ?.toMutableList()
+                    ?: players
+                        .filter { it.tokens.all { position -> position == HOME_POSITION } }
+                        .map { it.playerId }
+                        .toMutableList()
+
             LocalState(
                 matchId =
                     json.optString("matchId")
@@ -706,6 +755,7 @@ class OfflineGameEngine(
                 pendingProofDigest =
                     if (restorePending) restoredProofDigest else null,
                 winnerPlayerId = json.nullableString("winnerPlayerId"),
+                finishedPlayerIds = restoredFinishedPlayerIds,
                 history = history,
                 lastAudit =
                     OfflineRandomnessAudit.fromJson(
@@ -799,6 +849,20 @@ class OfflineGameEngine(
         val winner = restored.winnerPlayerId
         check(winner == null || winner in ids) {
             "Offline save has an invalid winner"
+        }
+        check(
+            restored.finishedPlayerIds.distinct().size ==
+                restored.finishedPlayerIds.size &&
+                restored.finishedPlayerIds.all { it in ids },
+        ) {
+            "Offline save has invalid finish-order state"
+        }
+        check(
+            restored.finishedPlayerIds.size <=
+                restored.players.size - 1 ||
+                restored.status == "FINISHED",
+        ) {
+            "Offline active save cannot have all players finished"
         }
         if (restored.status == "FINISHED") {
             check(winner != null) {
@@ -944,6 +1008,7 @@ class OfflineGameEngine(
         var pendingClientCommitment: String?,
         var pendingProofDigest: String?,
         var winnerPlayerId: String?,
+        val finishedPlayerIds: MutableList<String>,
         val history: MutableList<LocalHistoryEvent>,
         var lastAudit: OfflineRandomnessAudit?,
         var revision: Int,
