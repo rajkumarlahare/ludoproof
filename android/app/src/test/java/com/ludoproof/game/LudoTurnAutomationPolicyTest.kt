@@ -50,7 +50,7 @@ class LudoTurnAutomationPolicyTest {
     }
 
     @Test
-    fun autoMoveExistsOnlyWhenExactlyOneLegalTokenExists() {
+    fun legacySingleLegalTokenIndexStillRequiresOneToken() {
         assertNull(
             LudoTurnAutomationPolicy.singleLegalTokenIndex(emptySet()),
         )
@@ -60,6 +60,76 @@ class LudoTurnAutomationPolicyTest {
         )
         assertNull(
             LudoTurnAutomationPolicy.singleLegalTokenIndex(setOf(0, 2)),
+        )
+    }
+
+    @Test
+    fun autoMoveCollapsesMultiplePawnsWithTheSameDestination() {
+        assertEquals(
+            0,
+            LudoTurnAutomationPolicy.singleAutomaticTokenIndex(
+                tokens = listOf(20, 20, -1, -1),
+                roll = 3,
+                legalTokenIndexes = setOf(0, 1),
+            ),
+        )
+    }
+
+    @Test
+    fun autoMoveCollapsesMultipleYardPawnsEnteringTheSameStartCell() {
+        assertEquals(
+            0,
+            LudoTurnAutomationPolicy.singleAutomaticTokenIndex(
+                tokens = listOf(-1, -1, 18, 30),
+                roll = 6,
+                legalTokenIndexes = setOf(0, 1),
+            ),
+        )
+    }
+
+    @Test
+    fun autoMoveCollapsesAllFourPawnsWhenTheyShareOneDestination() {
+        assertEquals(
+            0,
+            LudoTurnAutomationPolicy.singleAutomaticTokenIndex(
+                tokens = listOf(14, 14, 14, 14),
+                roll = 5,
+                legalTokenIndexes = setOf(0, 1, 2, 3),
+            ),
+        )
+    }
+
+    @Test
+    fun autoMoveRemainsManualWhenLegalPawnsHaveDifferentDestinations() {
+        assertNull(
+            LudoTurnAutomationPolicy.singleAutomaticTokenIndex(
+                tokens = listOf(20, 25, -1, -1),
+                roll = 3,
+                legalTokenIndexes = setOf(0, 1),
+            ),
+        )
+    }
+
+    @Test
+    fun autoMoveFailsClosedForAnInconsistentLegalTokenSet() {
+        assertNull(
+            LudoTurnAutomationPolicy.singleAutomaticTokenIndex(
+                tokens = listOf(20, 57, -1, -1),
+                roll = 3,
+                legalTokenIndexes = setOf(0, 1),
+            ),
+        )
+    }
+
+    @Test
+    fun autoMoveUsesCanonicalDestinationAcrossLegacyEntryEncoding() {
+        assertEquals(
+            0,
+            LudoTurnAutomationPolicy.singleAutomaticTokenIndex(
+                tokens = listOf(51, 52, -1, -1),
+                roll = 5,
+                legalTokenIndexes = setOf(0, 1),
+            ),
         )
     }
 }
