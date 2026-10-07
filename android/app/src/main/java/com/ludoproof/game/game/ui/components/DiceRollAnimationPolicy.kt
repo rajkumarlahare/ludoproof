@@ -119,6 +119,10 @@ object DiceRollAnimationPolicy {
 }
 
 
+/**
+ * Pure presentation policy for the actionable dice attention cue.
+ * It never chooses or changes the authoritative outcome.
+ */
 object DiceAttentionAnimationPolicy {
     private const val CYCLE_MILLIS = 900L
 
