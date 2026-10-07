@@ -496,6 +496,7 @@ private fun OfflineGameActivity.scheduleSingleLegalHumanMove(
         {
             val latest = session.snapshot()
             val latestPending = latest?.pendingRoll
+            val latestOutcome = latestPending?.outcome
             val latestActive =
                 latest?.players?.getOrNull(latest.turnSeat)
             val stillSameMove =
@@ -505,10 +506,10 @@ private fun OfflineGameActivity.scheduleSingleLegalHumanMove(
                     latestActive.playerId == activePlayerId &&
                     !engine.isComputerPlayer(latestActive.playerId) &&
                     latestPending?.eventIndex == pending.eventIndex &&
-                    latestPending.outcome != null &&
+                    latestOutcome != null &&
                     LudoTurnAutomationPolicy.singleAutomaticTokenIndex(
                         tokens = latestActive.tokens,
-                        roll = latestPending.outcome,
+                        roll = latestOutcome,
                         legalTokenIndexes = latestPending.legalTokenIndexes,
                     ) == tokenIndex
 
