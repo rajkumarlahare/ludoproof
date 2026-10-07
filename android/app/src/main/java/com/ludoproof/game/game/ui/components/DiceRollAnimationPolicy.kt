@@ -9,7 +9,8 @@ import kotlin.math.sin
  * authoritative outcome; it only turns elapsed time into a visual pose.
  */
 object DiceRollAnimationPolicy {
-    const val SETTLE_DURATION_MILLIS = 300L
+    const val SETTLE_DURATION_MILLIS =
+        LudoPawsGameplayPacingPolicy.DICE_SETTLE_MILLIS
 
     private val rollingFaces =
         intArrayOf(2, 5, 3, 6, 4, 1, 5, 2, 6, 3, 1, 4)
