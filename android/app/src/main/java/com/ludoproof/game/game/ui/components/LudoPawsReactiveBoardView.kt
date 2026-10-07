@@ -347,7 +347,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         if (idleKey == lastIdleReactionKey) return
 
         val reactions =
-            LudoPawsIdleReactionPolicy
+            LudoPawsReactionEngine
                 .deriveIdle(
                     current = state,
                     nowMillis = nowMillis,
