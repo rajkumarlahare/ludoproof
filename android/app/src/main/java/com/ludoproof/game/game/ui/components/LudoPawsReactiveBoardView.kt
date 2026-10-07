@@ -28,7 +28,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
 ) : FrameLayout(context, attrs) {
     private val board = LudoPawsBoardView(context)
     private val pawn3DScene = LudoPaws3DSceneView(context)
-    private val legalHalo = LudoPaws3DLegalHaloView(context)
+    private val legalPulse = LudoPaws3DLegalPulseView(context)
     private val gameFxOverlay = LudoPawsGameFxOverlayView(context)
     private val voicePlayer = LudoPawsVoicePlayer(context)
     private val settingsStore = GameSettingsStore(context)
@@ -103,11 +103,11 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
                 LayoutParams.MATCH_PARENT,
             ),
         )
-        // This overlay highlights only currently legal pawns. It never previews
-        // the destination square, so the player gets an actionable cue without
-        // being shown where the pawn will finish before movement starts.
+        // Legal choices use a pawn-local shimmer/sparkle instead of any circular
+        // follow halo. The cue marks only selectable pawns and never previews the
+        // destination square.
         addView(
-            legalHalo,
+            legalPulse,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.MATCH_PARENT,
@@ -174,7 +174,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             perspectiveColor = perspectiveColor,
             characterIdsBySeat = characterIdsBySeat,
         )
-        legalHalo.bind(
+        legalPulse.bind(
             state = state,
             playerId = playerId,
             perspectiveColor = perspectiveColor,
