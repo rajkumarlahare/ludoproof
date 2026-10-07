@@ -146,9 +146,6 @@ class DiceView @JvmOverloads constructor(
                 !rolling &&
                 !settling
         if (shouldPulse == attentionPulsing) {
-            if (shouldPulse) {
-                postOnAnimation(animationTicker)
-            }
             return
         }
 
@@ -157,6 +154,7 @@ class DiceView @JvmOverloads constructor(
             attentionPhaseStartedAtMillis = SystemClock.uptimeMillis()
             postOnAnimation(animationTicker)
         } else {
+            removeCallbacks(animationTicker)
             resetTransform()
             invalidate()
         }
