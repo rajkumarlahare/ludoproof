@@ -1,18 +1,19 @@
 package com.ludoproof.game
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
 import kotlin.math.min
 
 /**
- * Keeps the existing legal-move affordance visible when the legacy 2D pawn-art
- * overlay is hidden behind the production 3D runtime.
+ * Presentation-only legal-move affordance for the 3D pawn runtime.
  *
- * This view is presentation-only and reads the same authoritative snapshot used
- * by LudoBoardView. It never performs hit-testing or move validation.
+ * Only the pawn(s) that can actually move pulse after a resolved roll. The
+ * destination is intentionally never previewed here.
  */
 internal class LudoPaws3DLegalHaloView(
     context: Context,
@@ -20,18 +21,22 @@ internal class LudoPaws3DLegalHaloView(
     private var snapshot: MatchSnapshot? = null
     private var localPlayerId: String? = null
     private var perspectiveColor: String? = null
+    private var pulse = 0f
+    private var pulseAnimator: ValueAnimator? = null
 
+    private val glowPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+        }
     private val haloPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = density(4.5f)
-            color = Color.argb(235, 255, 193, 7)
+            strokeWidth = density(3.8f)
         }
     private val corePaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = density(1.6f)
-            color = Color.WHITE
+            strokeWidth = density(1.35f)
         }
 
     init {
@@ -50,7 +55,24 @@ internal class LudoPaws3DLegalHaloView(
         this.perspectiveColor =
             perspectiveColor
                 ?.takeIf { it in OfflinePlayerLayout.COLORS }
+
+        val shouldPulse =
+            state?.pendingRoll?.let { pending ->
+                pending.status == "RESOLVED" &&
+                    pending.legalTokenIndexes.isNotEmpty() &&
+                    playerId != null
+            } == true
+        if (shouldPulse) {
+            startPulseIfNeeded()
+        } else {
+            stopPulse()
+        }
         invalidate()
+    }
+
+    override fun onDetachedFromWindow() {
+        stopPulse()
+        super.onDetachedFromWindow()
     }
 
     override fun onDraw(
@@ -94,8 +116,13 @@ internal class LudoPaws3DLegalHaloView(
             )
         }
 
-        pending.legalTokenIndexes.forEach {
-                tokenIndex ->
+        val breath = 0.5f - kotlin.math.abs(pulse - 0.5f)
+        val radiusBoost = 1f + breath * 0.14f
+        val glowAlpha = (22 + breath * 76f).toInt().coerceIn(0, 255)
+        val haloAlpha = (135 + breath * 100f).toInt().coerceIn(0, 255)
+        val coreAlpha = (95 + breath * 120f).toInt().coerceIn(0, 255)
+
+        pending.legalTokenIndexes.forEach { tokenIndex ->
             val position =
                 player.tokens.getOrNull(tokenIndex)
                     ?: return@forEach
@@ -128,16 +155,26 @@ internal class LudoPaws3DLegalHaloView(
                             position = position,
                             occupancy = placement?.occupancy ?: 1,
                         )
+
+            glowPaint.color = Color.argb(glowAlpha, 255, 193, 7)
             canvas.drawCircle(
                 x,
                 y,
-                radius * 1.14f,
+                radius * 1.34f * radiusBoost,
+                glowPaint,
+            )
+            haloPaint.color = Color.argb(haloAlpha, 255, 193, 7)
+            canvas.drawCircle(
+                x,
+                y,
+                radius * 1.18f * radiusBoost,
                 haloPaint,
             )
+            corePaint.color = Color.argb(coreAlpha, 255, 255, 255)
             canvas.drawCircle(
                 x,
                 y,
-                radius * 1.03f,
+                radius * 1.05f * radiusBoost,
                 corePaint,
             )
         }
@@ -147,8 +184,35 @@ internal class LudoPaws3DLegalHaloView(
         }
     }
 
+    private fun startPulseIfNeeded() {
+        if (pulseAnimator != null) return
+        pulseAnimator =
+            ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = PULSE_DURATION_MS
+                repeatCount = ValueAnimator.INFINITE
+                repeatMode = ValueAnimator.REVERSE
+                interpolator = AccelerateDecelerateInterpolator()
+                addUpdateListener {
+                    pulse = it.animatedValue as Float
+                    invalidate()
+                }
+                start()
+            }
+    }
+
+    private fun stopPulse() {
+        pulseAnimator?.cancel()
+        pulseAnimator = null
+        pulse = 0f
+        invalidate()
+    }
+
     private fun density(
         value: Float,
     ): Float =
         value * resources.displayMetrics.density
+
+    private companion object {
+        const val PULSE_DURATION_MS = 760L
+    }
 }
