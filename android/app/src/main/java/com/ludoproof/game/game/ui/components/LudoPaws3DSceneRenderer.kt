@@ -599,7 +599,7 @@ internal class LudoPaws3DSceneRenderer {
         val totalSteps = motion.visualSteps.coerceAtLeast(1)
         val visualProgress =
             elapsed.toFloat() /
-                state.forwardDurationMillis.toFloat() *
+                travelDuration.toFloat() *
                 totalSteps.toFloat()
         val whole =
             floor(visualProgress)
