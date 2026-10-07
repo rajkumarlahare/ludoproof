@@ -133,7 +133,10 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
                         current = next,
                         action = OfflineFeedbackAction.MOVE,
                     )
-                    renderGame(next)
+                    renderCommittedMove(
+                        previous = previous,
+                        current = next,
+                    )
                 }.onFailure {
                         error ->
                     showStatus(
