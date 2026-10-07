@@ -88,12 +88,12 @@ internal fun OfflineGameActivity.renderPlayerRails(
     // is on screen. Keep that face visible and non-interactive until the pawn
     // has fully finished moving/capturing; the next player's dice is rendered
     // only after the presentation block releases.
-    presentationEvent?.let { event ->
-        val outcome =
-            event.effectiveOutcome
-                ?: event.outcome
+    val presentationOutcome =
+        presentationEvent?.effectiveOutcome
+            ?: presentationEvent?.outcome
+    if (presentationOutcome != null) {
         diceView?.showOutcome(
-            outcome = outcome,
+            outcome = presentationOutcome,
             animate = false,
         )
     }
