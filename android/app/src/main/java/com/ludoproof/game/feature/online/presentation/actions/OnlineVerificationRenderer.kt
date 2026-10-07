@@ -172,10 +172,11 @@ internal fun MainActivity.updateControls(
             state.players.size >= requiredPlayers &&
             state.hostPlayerId == playerId
 
-    // Realtime keeps active matches fresh. Keep manual sync in the waiting room,
-    // not as a permanent gameplay button competing with the board and dice.
+    // Realtime keeps active matches fresh. Keep manual sync visible only in the
+    // waiting room, while its enabled state still mirrors network availability
+    // for the remote-action safety contract and instrumentation checks.
     refreshButton.visibility = if (waiting) View.VISIBLE else View.GONE
-    refreshButton.isEnabled = isOnline && waiting
+    refreshButton.isEnabled = isOnline && !finished
 
     shareButton.visibility =
         if (
