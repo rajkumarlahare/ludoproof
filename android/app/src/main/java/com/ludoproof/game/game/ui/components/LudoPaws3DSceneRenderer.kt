@@ -205,6 +205,20 @@ internal class LudoPaws3DSceneRenderer {
                                     position = renderPosition,
                                     occupancy = occupants,
                                 )
+                        val facingYawDegrees =
+                            if (captureVisual == null) {
+                                facingYawDegrees(
+                                    player = player,
+                                    tokenIndex = tokenIndex,
+                                    state = state,
+                                    nowMillis = nowMillis,
+                                    size = size,
+                                    cell = cell,
+                                    turns = turns,
+                                )
+                            } else {
+                                LudoPawsPawnFacingPolicy.FRONT_YAW_DEGREES
+                            }
 
                         add(
                             RenderPawn(
@@ -214,6 +228,7 @@ internal class LudoPaws3DSceneRenderer {
                                 x = rotated.first,
                                 y = rotated.second,
                                 radius = radius,
+                                facingYawDegrees = facingYawDegrees,
                                 presentationScale =
                                     captureVisual?.scale ?: 1f,
                             ),
@@ -269,7 +284,7 @@ internal class LudoPaws3DSceneRenderer {
                 val pose =
                     base.copy(
                         liftY = base.liftY + reaction.liftY,
-                        bodyYawDegrees = base.bodyYawDegrees + reaction.bodyYawDegrees,
+                        bodyYawDegrees = pawn.facingYawDegrees + base.bodyYawDegrees + reaction.bodyYawDegrees,
                         headTiltDegrees = base.headTiltDegrees + reaction.headTiltDegrees,
                         earBounceDegrees = base.earBounceDegrees + reaction.primaryAppendageDegrees,
                         tailWagDegrees = base.tailWagDegrees + reaction.secondaryAppendageDegrees,
@@ -294,7 +309,7 @@ internal class LudoPaws3DSceneRenderer {
                 val pose =
                     base.copy(
                         liftY = base.liftY + reaction.liftY,
-                        bodyYawDegrees = base.bodyYawDegrees + reaction.bodyYawDegrees,
+                        bodyYawDegrees = pawn.facingYawDegrees + base.bodyYawDegrees + reaction.bodyYawDegrees,
                         headTiltDegrees = base.headTiltDegrees + reaction.headTiltDegrees,
                         earFlickDegrees = base.earFlickDegrees + reaction.primaryAppendageDegrees,
                         beardSwingDegrees = base.beardSwingDegrees + reaction.secondaryAppendageDegrees,
@@ -320,7 +335,7 @@ internal class LudoPaws3DSceneRenderer {
                 val pose =
                     base.copy(
                         liftY = base.liftY + reaction.liftY,
-                        bodyYawDegrees = base.bodyYawDegrees + reaction.bodyYawDegrees,
+                        bodyYawDegrees = pawn.facingYawDegrees + base.bodyYawDegrees + reaction.bodyYawDegrees,
                         wingFlapDegrees = base.wingFlapDegrees + reaction.primaryAppendageDegrees,
                         headTiltDegrees = base.headTiltDegrees + reaction.headTiltDegrees,
                     )
@@ -344,7 +359,7 @@ internal class LudoPaws3DSceneRenderer {
                 val pose =
                     base.copy(
                         liftY = base.liftY + reaction.liftY,
-                        bodyYawDegrees = base.bodyYawDegrees + reaction.bodyYawDegrees,
+                        bodyYawDegrees = pawn.facingYawDegrees + base.bodyYawDegrees + reaction.bodyYawDegrees,
                         headTiltDegrees = base.headTiltDegrees + reaction.headTiltDegrees,
                         earTwitchDegrees = base.earTwitchDegrees + reaction.primaryAppendageDegrees,
                         tailSwayDegrees = base.tailSwayDegrees + reaction.secondaryAppendageDegrees,
@@ -603,6 +618,154 @@ internal class LudoPaws3DSceneRenderer {
         val arc = cell * 0.22f * hop
         return (linearX + dx / distance * arc) to
             (linearY + dy / distance * arc)
+    }
+
+    private fun facingYawDegrees(
+        player: PlayerSnapshot,
+        tokenIndex: Int,
+        state: LudoPaws3DSceneState,
+        nowMillis: Long,
+        size: Float,
+        cell: Float,
+        turns: Int,
+    ): Float {
+        if (state.reducedMotion) {
+            return LudoPawsPawnFacingPolicy.FRONT_YAW_DEGREES
+        }
+        val motion =
+            state.forwardMotion
+                ?.takeIf {
+                    it.playerId == player.playerId &&
+                        it.tokenIndex == tokenIndex &&
+                        state.forwardDurationMillis > 0L
+                }
+                ?: return LudoPawsPawnFacingPolicy.FRONT_YAW_DEGREES
+        val elapsed =
+            (nowMillis - state.forwardStartedAtMillis)
+                .coerceAtLeast(0L)
+        val duration = state.forwardDurationMillis
+
+        // HOME owns its celebratory spin after the final hop. Reset the path-facing
+        // contribution there so the species animation remains centered on the player.
+        if (
+            motion.toPosition == LudoPathEncoding.HOME_POSITION &&
+            elapsed >= duration
+        ) {
+            return LudoPawsPawnFacingPolicy.FRONT_YAW_DEGREES
+        }
+
+        val totalSteps = motion.visualSteps.coerceAtLeast(1)
+        if (elapsed < duration) {
+            val visualProgress =
+                elapsed.toFloat() /
+                    duration.toFloat() *
+                    totalSteps.toFloat()
+            val whole =
+                floor(visualProgress)
+                    .toInt()
+                    .coerceIn(0, totalSteps - 1)
+            val fraction =
+                (visualProgress - whole)
+                    .coerceIn(0f, 1f)
+            val targetYaw =
+                segmentFacingYaw(
+                    player = player,
+                    tokenIndex = tokenIndex,
+                    motion = motion,
+                    step = whole,
+                    size = size,
+                    cell = cell,
+                    turns = turns,
+                )
+                    ?: LudoPawsPawnFacingPolicy.FRONT_YAW_DEGREES
+            val previousYaw =
+                if (whole > 0) {
+                    segmentFacingYaw(
+                        player = player,
+                        tokenIndex = tokenIndex,
+                        motion = motion,
+                        step = whole - 1,
+                        size = size,
+                        cell = cell,
+                        turns = turns,
+                    ) ?: targetYaw
+                } else {
+                    LudoPawsPawnFacingPolicy.FRONT_YAW_DEGREES
+                }
+            return LudoPawsPawnFacingPolicy.movingYaw(
+                previousYawDegrees = previousYaw,
+                targetYawDegrees = targetYaw,
+                stepProgress = fraction,
+            )
+        }
+
+        val lastTravelYaw =
+            segmentFacingYaw(
+                player = player,
+                tokenIndex = tokenIndex,
+                motion = motion,
+                step = totalSteps - 1,
+                size = size,
+                cell = cell,
+                turns = turns,
+            ) ?: LudoPawsPawnFacingPolicy.FRONT_YAW_DEGREES
+        return LudoPawsPawnFacingPolicy.settlingYaw(
+            lastTravelYawDegrees = lastTravelYaw,
+            elapsedAfterMoveMillis = elapsed - duration,
+        )
+    }
+
+    private fun segmentFacingYaw(
+        player: PlayerSnapshot,
+        tokenIndex: Int,
+        motion: LudoPawsPawnMotion,
+        step: Int,
+        size: Float,
+        cell: Float,
+        turns: Int,
+    ): Float? {
+        val fromPosition =
+            LudoPathEncoding.positionAtVisualStep(
+                fromPosition = motion.fromPosition,
+                step = step.coerceAtLeast(0),
+            ) ?: return null
+        val toPosition =
+            LudoPathEncoding.positionAtVisualStep(
+                fromPosition = motion.fromPosition,
+                step = (step + 1).coerceAtMost(motion.visualSteps.coerceAtLeast(1)),
+            ) ?: return null
+        val from =
+            LudoPawsFxBoardGeometry.tokenCenter(
+                color = player.color,
+                tokenIndex = tokenIndex,
+                position = fromPosition,
+                cell = cell,
+            ) ?: return null
+        val to =
+            LudoPawsFxBoardGeometry.tokenCenter(
+                color = player.color,
+                tokenIndex = tokenIndex,
+                position = toPosition,
+                cell = cell,
+            ) ?: return null
+        val visibleFrom =
+            rotatePoint(
+                x = from.first,
+                y = from.second,
+                size = size,
+                turns = turns,
+            )
+        val visibleTo =
+            rotatePoint(
+                x = to.first,
+                y = to.second,
+                size = size,
+                turns = turns,
+            )
+        return LudoPawsPawnFacingPolicy.yawForVisibleDelta(
+            dx = visibleTo.first - visibleFrom.first,
+            dy = visibleTo.second - visibleFrom.second,
+        )
     }
 
     private fun occupancyByCenter(
@@ -989,6 +1152,7 @@ internal class LudoPaws3DSceneRenderer {
         val x: Float,
         val y: Float,
         val radius: Float,
+        val facingYawDegrees: Float = LudoPawsPawnFacingPolicy.FRONT_YAW_DEGREES,
         val presentationScale: Float = 1f,
     )
 
