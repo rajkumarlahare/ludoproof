@@ -171,10 +171,34 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         widthMeasureSpec: Int,
         heightMeasureSpec: Int,
     ) {
-        val desired = density(380f).roundToInt()
-        val resolvedWidth = resolveSize(desired, widthMeasureSpec)
-        val resolvedHeight = resolveSize(resolvedWidth, heightMeasureSpec)
-        val size = min(resolvedWidth, resolvedHeight)
+        val parentWidth = MeasureSpec.getSize(widthMeasureSpec)
+        val parentHeight = MeasureSpec.getSize(heightMeasureSpec)
+        val screenWidth = resources.displayMetrics.widthPixels
+        val compactScreen =
+            screenWidth <= density(600f).roundToInt()
+
+        // On phones the board is intentionally allowed to outgrow the centered
+        // content column and use the physical screen width. The board stage and
+        // its ancestors already disable child clipping, so this expands the
+        // square equally left/right instead of stretching it. Tablet/expanded
+        // layouts keep the existing constrained content width.
+        val requestedWidth =
+            if (compactScreen) {
+                screenWidth
+            } else {
+                parentWidth
+            }
+        val resolvedHeight =
+            if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.UNSPECIFIED) {
+                requestedWidth
+            } else {
+                parentHeight
+            }
+        val size =
+            min(
+                requestedWidth,
+                resolvedHeight,
+            ).coerceAtLeast(1)
         val exact = MeasureSpec.makeMeasureSpec(size, MeasureSpec.EXACTLY)
         super.onMeasure(exact, exact)
     }
