@@ -25,9 +25,10 @@ internal object LudoPawsCaptureReturnPlacement {
         cell: Float,
         progress: Float,
     ): Placement {
+        val safeProgress = progress.coerceIn(0f, 1f)
         val frame =
             LudoPawsPawnAnimationPolicy
-                .captureReturnFrame(progress)
+                .captureReturnFrame(safeProgress)
         val route = frame.routeProgress.coerceIn(0f, 1f)
         val linearX = from.first + (to.first - from.first) * route
         val linearY = from.second + (to.second - from.second) * route
@@ -35,6 +36,10 @@ internal object LudoPawsCaptureReturnPlacement {
         val dx = to.first - from.first
         val dy = to.second - from.second
         val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
+        val directionX =
+            if (distance > 0.001f) dx / distance else 0f
+        val directionY =
+            if (distance > 0.001f) dy / distance else 0f
         val curveAmount =
             if (distance > 0.001f) {
                 sin(route * PI.toFloat()) * cell * CURVE_CELLS
@@ -46,13 +51,31 @@ internal object LudoPawsCaptureReturnPlacement {
         val perpendicularY =
             if (distance > 0.001f) dx / distance else 0f
 
+        // Before the actual yard trip starts, visibly shove the captured animal
+        // away from the contact square and let it rebound. Because SceneView now
+        // begins this timeline only after the attacker reaches the square, the
+        // sequence reads as contact -> push/stumble -> return instead of a pawn
+        // disappearing before the hit lands.
+        val contactPush =
+            if (safeProgress < CONTACT_END) {
+                sin(
+                    (safeProgress / CONTACT_END) *
+                        PI.toFloat(),
+                ) *
+                    cell * CONTACT_PUSH_CELLS
+            } else {
+                0f
+            }
+
         return Placement(
             x =
                 linearX +
+                    directionX * contactPush +
                     perpendicularX * curveAmount +
                     frame.shakeXCells * cell,
             y =
                 linearY +
+                    directionY * contactPush +
                     perpendicularY * curveAmount -
                     frame.liftCells * cell,
             scale = frame.scale,
@@ -60,5 +83,7 @@ internal object LudoPawsCaptureReturnPlacement {
         )
     }
 
+    private const val CONTACT_END = .34f
+    private const val CONTACT_PUSH_CELLS = .14f
     private const val CURVE_CELLS = .34f
 }
