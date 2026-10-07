@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
@@ -102,40 +103,35 @@ class HomeActivity : Activity() {
             ),
         )
 
-        // Decorative scene sits in the existing hero gap. It is intentionally
-        // independent from gameplay characters/dice and does not change the
-        // approved mode-button or footer positions.
+        // The supplied artwork already contains the complete Home hero:
+        // Ludo Paws logo, wood, pets, pedestals and paw die. Render it as one
+        // transparent image so the old generated logo/pet layers cannot stack
+        // or leak into the center area. Mode/footer positions stay unchanged.
         val heroWidth =
             minOf(
                 topHudWidth,
                 dp(if (isCompact()) 350 else 388),
             )
         contentHost.addView(
-            HomePetsHeroView(this),
+            ImageView(this).apply {
+                setImageResource(
+                    R.drawable.ludo_paws_home_hero,
+                )
+                scaleType =
+                    ImageView.ScaleType.FIT_CENTER
+                adjustViewBounds = false
+                contentDescription =
+                    "Ludo Paws characters"
+                importantForAccessibility =
+                    View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            },
             FrameLayout.LayoutParams(
                 heroWidth,
-                dp(if (isCompact()) 208 else 232),
+                dp(if (isCompact()) 272 else 302),
                 Gravity.TOP or Gravity.CENTER_HORIZONTAL,
             ).apply {
                 topMargin =
-                    dp(if (isCompact()) 235 else 250)
-            },
-        )
-
-        val brandWidth =
-            minOf(
-                topHudWidth,
-                dp(if (isCompact()) 282 else 318),
-            )
-        contentHost.addView(
-            HomeBrandLogoView(this),
-            FrameLayout.LayoutParams(
-                brandWidth,
-                dp(if (isCompact()) 156 else 174),
-                Gravity.TOP or Gravity.CENTER_HORIZONTAL,
-            ).apply {
-                topMargin =
-                    dp(if (isCompact()) 163 else 177)
+                    dp(if (isCompact()) 158 else 168)
             },
         )
 
