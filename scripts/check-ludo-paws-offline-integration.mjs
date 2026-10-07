@@ -71,6 +71,16 @@ requireText(
 );
 
 requireText(
+  "android/app/src/main/java/com/ludoproof/game/feature/offline/domain/engine/OfflineGameEngine.kt",
+  [
+    "finishedPlayerIds",
+    "current.finishedPlayerIds.size",
+    "players.size - 1",
+    "advanceTurn(current)",
+  ],
+);
+
+requireText(
   "android/app/src/main/java/com/ludoproof/game/feature/offline/domain/engine/OfflineMatchInvariantPolicy.kt",
   [
     "OfflineMatchInvariantPolicy",
@@ -104,6 +114,7 @@ requireText(
     "twoAndFourPlayerMatchesFinishThroughProductionEngineAndCpuPolicy",
     "LudoPawsComputerMovePolicy.chooseToken",
     "OfflineMatchInvariantPolicy.requireValid",
+    "finishedPlayers >= playerCount - 1",
     "MAX_TRANSITIONS",
   ],
 );
