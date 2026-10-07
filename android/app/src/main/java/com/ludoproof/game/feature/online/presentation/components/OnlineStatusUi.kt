@@ -1,121 +1,78 @@
 package com.ludoproof.game.ui.online
 
-import android.app.Activity
-import android.content.Intent
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.text.InputType
 import android.view.Gravity
-import android.view.View
-import android.widget.Button
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
-import org.json.JSONObject
-import java.util.concurrent.Executors
 import com.ludoproof.game.*
-import com.ludoproof.game.feature.online.*
 
-internal fun MainActivity.onlineMatchStatusPanel():
-    LinearLayout =
+internal fun MainActivity.onlineMatchStatusPanel(): LinearLayout =
     LinearLayout(this).apply {
-        orientation =
-            LinearLayout.VERTICAL
-        gravity =
-            Gravity.CENTER
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER
         setPadding(
-            dp(if (isCompactOnline()) 12 else 16),
-            dp(12),
-            dp(if (isCompactOnline()) 12 else 16),
-            dp(12),
+            dp(if (isCompactOnline()) 8 else 10),
+            dp(if (isCompactOnline()) 5 else 7),
+            dp(if (isCompactOnline()) 8 else 10),
+            dp(if (isCompactOnline()) 5 else 7),
         )
         background =
-            LudoProofTheme
-                .hudPanelDrawable(
-                    this@onlineMatchStatusPanel,
-                    goldBorder = true,
-                )
-        elevation =
-            dp(6).toFloat()
+            LudoProofTheme.hudPanelDrawable(
+                this@onlineMatchStatusPanel,
+                goldBorder = false,
+            )
+        elevation = dp(3).toFloat()
 
         matchInfoText =
-            TextView(
-                this@onlineMatchStatusPanel,
-            ).apply {
-                text =
-                    "No active match"
+            TextView(this@onlineMatchStatusPanel).apply {
+                text = "No active match"
                 LudoProofTheme.body(
                     this,
-                    11f,
+                    9f,
                     centered = true,
                     bright = true,
                 )
-                setTextColor(
-                    0xFF6EE7FF.toInt(),
-                )
+                setTextColor(0xFF6EE7FF.toInt())
+                maxLines = 1
             }
-        addView(
-            matchInfoText,
-        )
+        addView(matchInfoText)
 
         turnText =
-            TextView(
-                this@onlineMatchStatusPanel,
-            ).apply {
-                text =
-                    "Waiting for a match."
+            TextView(this@onlineMatchStatusPanel).apply {
+                text = "Waiting for a match."
                 LudoProofTheme.title(
                     this,
-                    if (isCompactOnline()) 20f else 23f,
+                    if (isCompactOnline()) 16f else 18f,
                     gold = true,
                 )
-                setPadding(
-                    dp(6),
-                    dp(5),
-                    dp(6),
-                    dp(5),
-                )
+                setPadding(dp(4), dp(2), dp(4), dp(2))
+                maxLines = 2
             }
-        addView(
-            turnText,
-        )
+        addView(turnText)
 
         playersText =
-            TextView(
-                this@onlineMatchStatusPanel,
-            ).apply {
-                text =
-                    "Players will appear here."
+            TextView(this@onlineMatchStatusPanel).apply {
+                text = "Players will appear here."
                 LudoProofTheme.body(
                     this,
-                    if (isCompactOnline()) 11f else 12f,
+                    if (isCompactOnline()) 9.5f else 10.5f,
                     centered = true,
                     bright = true,
                 )
-                setPadding(
-                    dp(4),
-                    0,
-                    dp(4),
-                    0,
-                )
+                setPadding(dp(4), 0, dp(4), 0)
+                maxLines = 4
             }
-        addView(
-            playersText,
-        )
+        addView(playersText)
     }
 
-internal fun MainActivity.onlineResultPanel():
-    FrameLayout =
+internal fun MainActivity.onlineResultPanel(): FrameLayout =
     FrameLayout(this).apply {
         val height =
             dp(
                 if (isCompactOnline()) {
-                    164
+                    148
                 } else {
-                    184
+                    166
                 },
             )
 
@@ -123,8 +80,7 @@ internal fun MainActivity.onlineResultPanel():
             GameResultArtView(
                 this@onlineResultPanel,
             ).apply {
-                mode =
-                    GameResultArtView.Mode.ONLINE
+                mode = GameResultArtView.Mode.ONLINE
             },
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -136,31 +92,26 @@ internal fun MainActivity.onlineResultPanel():
             LinearLayout(
                 this@onlineResultPanel,
             ).apply {
-                orientation =
-                    LinearLayout.VERTICAL
-                gravity =
-                    Gravity.CENTER_VERTICAL
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_VERTICAL
                 setPadding(
-                    dp(if (isCompactOnline()) 118 else 154),
-                    dp(14),
-                    dp(14),
-                    dp(14),
+                    dp(if (isCompactOnline()) 108 else 142),
+                    dp(12),
+                    dp(12),
+                    dp(12),
                 )
 
                 addView(
                     TextView(
                         this@onlineResultPanel,
                     ).apply {
-                        text =
-                            "MATCH COMPLETE"
+                        text = "MATCH COMPLETE"
                         LudoProofTheme.body(
                             this,
-                            10f,
+                            9.5f,
                             bright = true,
                         )
-                        setTextColor(
-                            0xFF68E8FF.toInt(),
-                        )
+                        setTextColor(0xFF68E8FF.toInt())
                     },
                 )
 
@@ -168,50 +119,32 @@ internal fun MainActivity.onlineResultPanel():
                     TextView(
                         this@onlineResultPanel,
                     ).apply {
-                        text =
-                            "WINNER"
+                        text = "WINNER"
                         LudoProofTheme.title(
                             this,
-                            if (isCompactOnline()) 21f else 25f,
+                            if (isCompactOnline()) 20f else 23f,
                             gold = true,
                         )
-                        gravity =
-                            Gravity.START or
-                                Gravity.CENTER_VERTICAL
-                        setPadding(
-                            0,
-                            dp(4),
-                            0,
-                            0,
-                        )
+                        gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                        setPadding(0, dp(3), 0, 0)
                     }
-                addView(
-                    resultTitleText,
-                )
+                addView(resultTitleText)
 
                 resultSubtitleText =
                     TextView(
                         this@onlineResultPanel,
                     ).apply {
-                        text =
-                            "Server-authoritative result • verified history available"
+                        text = "Verified result"
                         LudoProofTheme.body(
                             this,
-                            if (isCompactOnline()) 10.5f else 11.5f,
+                            if (isCompactOnline()) 10f else 11f,
                             bright = true,
                         )
-                        gravity =
-                            Gravity.START
-                        setPadding(
-                            0,
-                            dp(5),
-                            0,
-                            0,
-                        )
+                        gravity = Gravity.START
+                        setPadding(0, dp(3), 0, 0)
+                        maxLines = 2
                     }
-                addView(
-                    resultSubtitleText,
-                )
+                addView(resultSubtitleText)
             }
 
         addView(

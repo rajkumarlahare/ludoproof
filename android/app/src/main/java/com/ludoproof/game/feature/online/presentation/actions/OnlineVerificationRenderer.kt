@@ -152,6 +152,11 @@ internal fun MainActivity.updateControls(
     boardFrame.visibility = if (active || finished) View.VISIBLE else View.GONE
     actionPanel.visibility = View.VISIBLE
 
+    // During actual play the character rails carry player identity/progress.
+    // Hide duplicate protocol/match copy so the Ludo board stays visually primary.
+    matchInfoText.visibility = if (waiting) View.VISIBLE else View.GONE
+    playersText.visibility = if (waiting) View.VISIBLE else View.GONE
+
     verificationPanel.visibility =
         if (active || finished) View.VISIBLE else View.GONE
 
@@ -167,13 +172,25 @@ internal fun MainActivity.updateControls(
             state.players.size >= requiredPlayers &&
             state.hostPlayerId == playerId
 
-    refreshButton.visibility = if (finished) View.GONE else View.VISIBLE
+    // Realtime keeps active matches fresh. Keep manual sync visible only in the
+    // waiting room, while its enabled state still mirrors network availability
+    // for the remote-action safety contract and instrumentation checks.
+    refreshButton.visibility = if (waiting) View.VISIBLE else View.GONE
     refreshButton.isEnabled = isOnline && !finished
 
     shareButton.visibility =
-        if (state.matchMode == "TEAM_UP") View.GONE else View.VISIBLE
+        if (
+            waiting &&
+            state.matchMode != "TEAM_UP"
+        ) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
     shareButton.isEnabled =
-        state.matchMode != "TEAM_UP" && state.matchId.isNotBlank()
+        waiting &&
+            state.matchMode != "TEAM_UP" &&
+            state.matchId.isNotBlank()
 
     proofButton.visibility =
         if (active || finished) View.VISIBLE else View.GONE
