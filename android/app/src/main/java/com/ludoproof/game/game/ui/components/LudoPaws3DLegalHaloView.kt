@@ -12,10 +12,11 @@ import kotlin.math.min
 /**
  * Presentation-only legal-move affordance for the 3D pawn runtime.
  *
- * Only the pawn(s) that can actually move pulse after a resolved roll. The
- * destination is intentionally never previewed here.
+ * Only pawn-local shimmer marks are rendered. There is deliberately no circle,
+ * ring or destination preview around the animal. This keeps the cue attached to
+ * the pawn itself while preserving the production no-follow-circle contract.
  */
-internal class LudoPaws3DLegalHaloView(
+internal class LudoPaws3DLegalPulseView(
     context: Context,
 ) : View(context) {
     private var snapshot: MatchSnapshot? = null
@@ -24,19 +25,15 @@ internal class LudoPaws3DLegalHaloView(
     private var pulse = 0f
     private var pulseAnimator: ValueAnimator? = null
 
-    private val glowPaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-        }
-    private val haloPaint =
+    private val glintPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = density(3.8f)
+            strokeCap = Paint.Cap.ROUND
         }
-    private val corePaint =
+    private val sparklePaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = density(1.35f)
+            strokeCap = Paint.Cap.ROUND
         }
 
     init {
@@ -56,11 +53,16 @@ internal class LudoPaws3DLegalHaloView(
             perspectiveColor
                 ?.takeIf { it in OfflinePlayerLayout.COLORS }
 
+        val player =
+            state
+                ?.players
+                ?.firstOrNull { it.playerId == playerId }
         val shouldPulse =
             state?.pendingRoll?.let { pending ->
-                pending.status == "RESOLVED" &&
-                    pending.legalTokenIndexes.isNotEmpty() &&
-                    playerId != null
+                player != null &&
+                    pending.status == "RESOLVED" &&
+                    pending.seat == player.seat &&
+                    pending.legalTokenIndexes.isNotEmpty()
             } == true
         if (shouldPulse) {
             startPulseIfNeeded()
@@ -81,17 +83,19 @@ internal class LudoPaws3DLegalHaloView(
         super.onDraw(canvas)
         val state = snapshot ?: return
         val pending = state.pendingRoll ?: return
-        if (
-            pending.status != "RESOLVED" ||
-            pending.legalTokenIndexes.isEmpty()
-        ) {
-            return
-        }
         val localId = localPlayerId ?: return
         val player =
             state.players.firstOrNull {
                 it.playerId == localId
             } ?: return
+        if (
+            pending.status != "RESOLVED" ||
+            pending.seat != player.seat ||
+            pending.legalTokenIndexes.isEmpty()
+        ) {
+            return
+        }
+
         val size = min(width, height).toFloat()
         if (size <= 0f) return
         val cell =
@@ -116,11 +120,9 @@ internal class LudoPaws3DLegalHaloView(
             )
         }
 
-        val breath = 0.5f - kotlin.math.abs(pulse - 0.5f)
-        val radiusBoost = 1f + breath * 0.14f
-        val glowAlpha = (22 + breath * 76f).toInt().coerceIn(0, 255)
-        val haloAlpha = (135 + breath * 100f).toInt().coerceIn(0, 255)
-        val coreAlpha = (95 + breath * 120f).toInt().coerceIn(0, 255)
+        val breath = pulse.coerceIn(0f, 1f)
+        val glintAlpha = (28 + breath * 72f).toInt().coerceIn(0, 255)
+        val sparkleAlpha = (78 + breath * 122f).toInt().coerceIn(0, 255)
 
         pending.legalTokenIndexes.forEach { tokenIndex ->
             val position =
@@ -156,26 +158,40 @@ internal class LudoPaws3DLegalHaloView(
                             occupancy = placement?.occupancy ?: 1,
                         )
 
-            glowPaint.color = Color.argb(glowAlpha, 255, 193, 7)
-            canvas.drawCircle(
-                x,
-                y,
-                radius * 1.34f * radiusBoost,
-                glowPaint,
+            // A short sheen sits over the pawn body itself. It brightens/fades
+            // instead of drawing a ring around the token or its destination.
+            glintPaint.strokeWidth = (radius * 0.11f).coerceAtLeast(density(1f))
+            glintPaint.color = Color.argb(glintAlpha, 255, 255, 255)
+            val glintRise = radius * (0.08f * breath)
+            canvas.drawLine(
+                x - radius * 0.24f,
+                y - radius * 0.42f - glintRise,
+                x + radius * 0.08f,
+                y - radius * 0.12f - glintRise,
+                glintPaint,
             )
-            haloPaint.color = Color.argb(haloAlpha, 255, 193, 7)
-            canvas.drawCircle(
-                x,
-                y,
-                radius * 1.18f * radiusBoost,
-                haloPaint,
+
+            // A tiny four-point sparkle above the animal makes the legal choice
+            // readable at a glance without becoming a follow-circle.
+            sparklePaint.strokeWidth = (radius * 0.075f).coerceAtLeast(density(0.8f))
+            sparklePaint.color = Color.argb(sparkleAlpha, 255, 224, 120)
+            val sparkleX = x + radius * 0.38f
+            val sparkleY = y - radius * (0.88f + 0.08f * breath)
+            val longArm = radius * (0.18f + 0.06f * breath)
+            val shortArm = radius * (0.11f + 0.035f * breath)
+            canvas.drawLine(
+                sparkleX,
+                sparkleY - longArm,
+                sparkleX,
+                sparkleY + longArm,
+                sparklePaint,
             )
-            corePaint.color = Color.argb(coreAlpha, 255, 255, 255)
-            canvas.drawCircle(
-                x,
-                y,
-                radius * 1.05f * radiusBoost,
-                corePaint,
+            canvas.drawLine(
+                sparkleX - shortArm,
+                sparkleY,
+                sparkleX + shortArm,
+                sparkleY,
+                sparklePaint,
             )
         }
 
@@ -213,6 +229,6 @@ internal class LudoPaws3DLegalHaloView(
         value * resources.displayMetrics.density
 
     private companion object {
-        const val PULSE_DURATION_MS = 760L
+        const val PULSE_DURATION_MS = 720L
     }
 }
