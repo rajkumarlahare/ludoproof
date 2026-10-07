@@ -38,4 +38,51 @@ object LudoTurnAutomationPolicy {
     ): Int? =
         legalTokenIndexes
             .singleOrNull()
+
+    /**
+     * Returns one representative token when all legal tokens produce the same
+     * effective destination. Token identity is not a meaningful choice in that
+     * case, so the move can be automated without changing gameplay semantics.
+     *
+     * The legal-token set remains authoritative; this policy only collapses
+     * interchangeable legal tokens for presentation/automation.
+     */
+    fun singleAutomaticTokenIndex(
+        tokens: List<Int>,
+        roll: Int,
+        legalTokenIndexes: Set<Int>,
+    ): Int? {
+        require(roll in 1..6) {
+            "dice outcome must be between 1 and 6"
+        }
+
+        if (legalTokenIndexes.isEmpty()) return null
+
+        val destinationsByToken =
+            legalTokenIndexes.associateWith { tokenIndex ->
+                tokens
+                    .getOrNull(tokenIndex)
+                    ?.let { position ->
+                        LudoPathEncoding.destinationForRoll(
+                            position = position,
+                            roll = roll,
+                        )
+                    }
+            }
+
+        // Fail closed if the snapshot is internally inconsistent. We never
+        // auto-select from a partially invalid legal-token set.
+        if (destinationsByToken.values.any { it == null }) {
+            return null
+        }
+
+        val distinctDestinations =
+            destinationsByToken.values
+                .filterNotNull()
+                .distinct()
+
+        if (distinctDestinations.size != 1) return null
+
+        return destinationsByToken.keys.minOrNull()
+    }
 }
