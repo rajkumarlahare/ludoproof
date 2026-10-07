@@ -2,7 +2,6 @@ package com.ludoproof.game.ui.offline.gameplay
 
 import android.os.SystemClock
 import android.view.Gravity
-import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import com.ludoproof.game.*
@@ -39,9 +38,21 @@ internal fun OfflineGameActivity.renderPlayerRails(
     top.removeAllViews()
     bottom.removeAllViews()
 
+    val presentationBlocked =
+        SystemClock.uptimeMillis() < gameplayActionBlockedUntilMillis
+    val presentationEvent =
+        state.history
+            .lastOrNull()
+            ?.takeIf {
+                presentationBlocked
+            }
+    val presentationPlayerId = presentationEvent?.playerId
     val activePlayer =
         state.players
-            .getOrNull(state.turnSeat)
+            .firstOrNull {
+                it.playerId == presentationPlayerId
+            }
+            ?: state.players.getOrNull(state.turnSeat)
 
     addPlayerSlot(
         top,
@@ -71,6 +82,21 @@ internal fun OfflineGameActivity.renderPlayerRails(
         alignEnd = true,
         activePlayer = activePlayer,
     )
+
+    // A committed move advances the authoritative turn immediately, but the
+    // previous player's resolved dice face still belongs to the animation that
+    // is on screen. Keep that face visible and non-interactive until the pawn
+    // has fully finished moving/capturing; the next player's dice is rendered
+    // only after the presentation block releases.
+    val presentationOutcome =
+        presentationEvent?.effectiveOutcome
+            ?: presentationEvent?.outcome
+    if (presentationOutcome != null) {
+        diceView?.showOutcome(
+            outcome = presentationOutcome,
+            animate = false,
+        )
+    }
 }
 
 private fun OfflineGameActivity.addPlayerSlot(
@@ -206,19 +232,9 @@ private fun OfflineGameActivity.activeDiceControl(
         } else {
             "Roll dice for " + player.displayName
         }
-    control.isEnabled = !cpuTurn
-    // While a committed pawn move/capture is still presenting, keep the dice
-    // slot reserved but invisible. The next dice appears only after the paw has
-    // reached/settled at its destination, so players never see a premature roll.
-    control.visibility =
-        if (
-            SystemClock.uptimeMillis() <
-            gameplayActionBlockedUntilMillis
-        ) {
-            View.INVISIBLE
-        } else {
-            View.VISIBLE
-        }
+    control.isEnabled =
+        !cpuTurn &&
+            SystemClock.uptimeMillis() >= gameplayActionBlockedUntilMillis
     control.alpha = 1f
     control.layoutParams =
         LinearLayout.LayoutParams(
