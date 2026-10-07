@@ -113,12 +113,11 @@ internal class LudoPawsGameFxOverlayView(
                     )
                 }
                 ?: 0L
-        captureContactDelayMillis =
-            if (captureTransitions.isNotEmpty()) {
-                movementDurationMillis
-            } else {
-                0L
-            }
+
+        // Keep every destination-centered reaction hidden until the moving pawn
+        // has actually reached its final square. Capture FX use this same contact
+        // boundary, so no safe/home/capture ring can leak an advance destination.
+        captureContactDelayMillis = movementDurationMillis
         captureDurationMillis =
             if (captureTransitions.isNotEmpty()) {
                 LudoPawsGameplayPacingPolicy
@@ -156,13 +155,13 @@ internal class LudoPawsGameFxOverlayView(
                     )
                     .durationMs
             }
-        val waitForContact =
-            this.reactions.any {
-                it.animationCue == AnimationCue.CAPTURE ||
-                    it.animationCue == AnimationCue.CAPTURED
-            }
+
+        // Any reaction produced by a committed pawn move is destination based in
+        // the current snapshot. Delay it until the forward route is finished so
+        // the UI never previews the square where the pawn will stop.
+        val waitForArrival = forwardMotion != null
         val startDelay =
-            if (waitForContact) {
+            if (waitForArrival) {
                 captureContactDelayMillis
             } else {
                 0L
