@@ -108,6 +108,42 @@ internal class LudoPawsBoardChromeView(
         val radius = cell * 0.40f
         val depth = cell * 0.13f
 
+        // The legacy board underneath draws a dark rounded stroke exactly on this
+        // platform boundary. Cover the tiny outward half of that stroke with a
+        // slightly larger molded shell so no black pencil-like outline can leak
+        // around the glossy home platform in normal Ludo Paws presentation.
+        val outlineCover = dp(1.4f)
+        val platformShell =
+            RectF(
+                platform.left - outlineCover,
+                platform.top - outlineCover,
+                platform.right + outlineCover,
+                platform.bottom + outlineCover,
+            )
+        val shellRadius = radius + outlineCover
+        fillPaint.shader =
+            LinearGradient(
+                platformShell.left,
+                platformShell.top,
+                platformShell.right,
+                platformShell.bottom,
+                intArrayOf(
+                    brighten(color, 1.24f),
+                    brighten(color, 1.10f),
+                    color,
+                    darken(color, 0.80f),
+                ),
+                floatArrayOf(0f, 0.25f, 0.68f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawRoundRect(
+            platformShell,
+            shellRadius,
+            shellRadius,
+            fillPaint,
+        )
+        fillPaint.shader = null
+
         // Soft lower body: this reads as thickness instead of a black border line.
         val platformDepth =
             RectF(
@@ -150,7 +186,7 @@ internal class LudoPawsBoardChromeView(
                     brighten(color, 1.28f),
                     brighten(color, 1.12f),
                     color,
-                    darken(color, 0.68f),
+                    darken(color, 0.80f),
                 ),
                 floatArrayOf(0f, 0.24f, 0.66f, 1f),
                 Shader.TileMode.CLAMP,
