@@ -125,10 +125,18 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             }
         val forwardDurationMillis =
             if (newForward != null) {
-                max(
-                    settings.gameSpeed.moveStepMs,
-                    newForward.visualSteps.toLong() * settings.gameSpeed.moveStepMs,
-                )
+                val travelDuration =
+                    max(
+                        settings.gameSpeed.moveStepMs,
+                        newForward.visualSteps.toLong() * settings.gameSpeed.moveStepMs,
+                    )
+                travelDuration +
+                    if (settings.reducedMotionEnabled) {
+                        0L
+                    } else {
+                        LudoPaws3DRenderCadencePolicy
+                            .FORWARD_LANDING_SETTLE_MILLIS
+                    }
             } else if (forward != null) {
                 previousState.forwardDurationMillis
             } else {
