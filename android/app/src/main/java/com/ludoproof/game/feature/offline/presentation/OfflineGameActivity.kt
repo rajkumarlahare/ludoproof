@@ -110,6 +110,7 @@ class OfflineGameActivity : ComponentActivity() {
     internal var statusText: TextView? = null
     internal var computerActionRevision: Int? = null
     internal var presentedDiceEventKey: String? = null
+    internal var gameplayActionBlockedUntilMillis: Long = 0L
     internal var exitConfirmationDialog: Dialog? = null
     internal var turnHandoffDialog: Dialog? = null
     internal var quickReactionView: View? = null
@@ -164,6 +165,8 @@ class OfflineGameActivity : ComponentActivity() {
             null
         presentedDiceEventKey =
             null
+        gameplayActionBlockedUntilMillis =
+            0L
         feedbackLedger.clear()
         activeCharacterMatchId =
             null
