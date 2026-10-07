@@ -51,6 +51,12 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         isFocusable = false
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
 
+        // The approved board itself remains square and unchanged. Only the
+        // transparent 3D pawn surface is allowed to extend above this container
+        // so a large animal on the top row is not clipped at the board edge.
+        clipChildren = false
+        clipToPadding = false
+
         addView(
             board,
             LayoutParams(
@@ -199,8 +205,34 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
                 requestedWidth,
                 resolvedHeight,
             ).coerceAtLeast(1)
+
+        configurePawnTopOverflow(size)
+
         val exact = MeasureSpec.makeMeasureSpec(size, MeasureSpec.EXACTLY)
         super.onMeasure(exact, exact)
+    }
+
+    private fun configurePawnTopOverflow(boardSize: Int) {
+        val topOverflow =
+            (boardSize * PAWN_TOP_OVERFLOW_FRACTION)
+                .roundToInt()
+                .coerceAtLeast(0)
+        val params = pawn3DScene.layoutParams as LayoutParams
+        val targetHeight = boardSize + topOverflow
+        if (
+            params.height == targetHeight &&
+            params.topMargin == -topOverflow
+        ) {
+            return
+        }
+
+        // Negative top margin + matching extra height keeps the bottom edge and
+        // every board-space pawn coordinate exactly where they were. The added
+        // pixels exist only above the board for heads/ears/horns to render into.
+        params.width = LayoutParams.MATCH_PARENT
+        params.height = targetHeight
+        params.topMargin = -topOverflow
+        pawn3DScene.layoutParams = params
     }
 
     private fun updateIdleClock(
@@ -319,4 +351,10 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
 
     private fun density(value: Float): Float =
         value * resources.displayMetrics.density
+
+    private companion object {
+        // About 1.8 board cells on a 15x15 Ludo board. This is transparent
+        // presentation space only; the approved square board remains unchanged.
+        const val PAWN_TOP_OVERFLOW_FRACTION = 0.12f
+    }
 }
