@@ -237,6 +237,11 @@ internal class LudoPaws3DSceneRenderer {
                 }
             }.sortedBy(RenderPawn::y)
 
+        // Shadows are drawn as a separate background pass so one pawn's shadow
+        // can never darken another pawn that was already painted in front of it.
+        // The board coordinates remain authoritative; this pass is visual only.
+        renderPawns.forEach(::drawContactShadow)
+
         renderPawns.forEach { pawn ->
             // Preserve depth inside one animal but use painter ordering between
             // animals. This prevents one pawn's nose/ear depth cutting another.
@@ -271,7 +276,9 @@ internal class LudoPaws3DSceneRenderer {
                 MODEL_SCALE_PER_RADIUS *
                 pawn.presentationScale *
                 reaction.scale
-        val rootY = pawn.y + pawn.radius * ROOT_Y_OFFSET_PER_RADIUS
+        val rootY =
+            pawn.y +
+                pawn.radius * rootYOffsetPerRadius(pawn.species)
 
         when (pawn.species) {
             LudoPaws3DSpecies.DOG -> {
@@ -828,6 +835,70 @@ internal class LudoPaws3DSceneRenderer {
         }
     }
 
+    private fun rootYOffsetPerRadius(
+        species: LudoPaws3DSpecies,
+    ): Float =
+        when (species) {
+            // These offsets preserve the old foot baseline after the visual model
+            // scale increases from 0.72 to 1.20. Only the body grows upward/outward.
+            LudoPaws3DSpecies.DOG -> 0.01f
+            LudoPaws3DSpecies.GOAT -> 0.02f
+            LudoPaws3DSpecies.DUCK -> 0.14f
+            LudoPaws3DSpecies.CAT -> 0.02f
+        }
+
+    private fun footBaselinePerRadius(
+        species: LudoPaws3DSpecies,
+    ): Float =
+        when (species) {
+            LudoPaws3DSpecies.DOG -> 1.19f
+            LudoPaws3DSpecies.GOAT -> 1.17f
+            LudoPaws3DSpecies.DUCK -> 0.99f
+            LudoPaws3DSpecies.CAT -> 1.18f
+        }
+
+    private fun drawContactShadow(pawn: RenderPawn) {
+        val visualRadius =
+            pawn.radius * pawn.presentationScale
+        val shadowY =
+            pawn.y +
+                pawn.radius * footBaselinePerRadius(pawn.species)
+
+        Matrix.setIdentityM(root, 0)
+        Matrix.translateM(
+            root,
+            0,
+            pawn.x,
+            shadowY,
+            -0.80f,
+        )
+
+        // Keep shadows out of the depth buffer. They are board-contact cues only
+        // and must never occlude or clip the 3D animal geometry drawn afterwards.
+        GLES30.glDepthMask(false)
+        drawPart(
+            parent = root,
+            translateX = 0f,
+            translateY = 0f,
+            translateZ = 0f,
+            scaleX = visualRadius * 1.70f,
+            scaleY = visualRadius * 0.42f,
+            scaleZ = 0.02f,
+            color = SHADOW_OUTER,
+        )
+        drawPart(
+            parent = root,
+            translateX = 0f,
+            translateY = 0f,
+            translateZ = 0.01f,
+            scaleX = visualRadius * 1.45f,
+            scaleY = visualRadius * 0.30f,
+            scaleZ = 0.02f,
+            color = SHADOW_INNER,
+        )
+        GLES30.glDepthMask(true)
+    }
+
     private fun drawDuck(
         parent: FloatArray,
         pose: Duck3DPose,
@@ -1306,8 +1377,12 @@ internal class LudoPaws3DSceneRenderer {
     }
 
     private companion object {
-        const val MODEL_SCALE_PER_RADIUS = 0.72f
-        const val ROOT_Y_OFFSET_PER_RADIUS = 0.48f
+        // 0.72 -> 1.20 is a 1.67x visual enlargement. Logical radius, path,
+        // stacking, hit testing and animation timing stay exactly as before.
+        const val MODEL_SCALE_PER_RADIUS = 1.20f
+
+        val SHADOW_OUTER = floatArrayOf(0.025f, 0.030f, 0.040f, 0.07f)
+        val SHADOW_INNER = floatArrayOf(0.020f, 0.025f, 0.035f, 0.16f)
 
         val WHITE = floatArrayOf(1f, 1f, 1f, 1f)
         val EYE_DARK = floatArrayOf(0.025f, 0.030f, 0.035f, 1f)
@@ -1371,9 +1446,9 @@ internal class LudoPaws3DSceneRenderer {
                 vec3 viewDir = vec3(0.0, 0.0, 1.0);
                 vec3 halfDir = normalize(light + viewDir);
                 float diffuse = max(dot(normal, light), 0.0);
-                float specular = pow(max(dot(normal, halfDir), 0.0), 28.0) * 0.20;
-                float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.2) * 0.10;
-                vec3 rgb = uColor.rgb * (0.42 + diffuse * 0.58) + vec3(specular + rim);
+                float specular = pow(max(dot(normal, halfDir), 0.0), 28.0) * 0.18;
+                float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.2) * 0.08;
+                vec3 rgb = uColor.rgb * (0.36 + diffuse * 0.64) + vec3((specular + rim) * uColor.a);
                 outColor = vec4(rgb, uColor.a);
             }
         """
