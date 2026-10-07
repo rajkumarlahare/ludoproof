@@ -1291,6 +1291,7 @@ internal class LudoPaws3DSceneRenderer {
         val radius: Float,
         val facingYawDegrees: Float = LudoPawsPawnFacingPolicy.FRONT_YAW_DEGREES,
         val presentationScale: Float = 1f,
+        val attentionScale: Float = 1f,
     )
 
     private data class CaptureVisual(
