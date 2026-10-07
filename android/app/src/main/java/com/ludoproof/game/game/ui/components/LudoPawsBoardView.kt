@@ -111,6 +111,16 @@ class LudoPawsBoardView @JvmOverloads constructor(
                     it in OfflinePlayerLayout.COLORS
                 }
 
+        // The base board and 3D pawns already rotate into the selected player's
+        // perspective. Rotate the presentation-only chrome by the exact same amount
+        // so glossy homes, road tiles, and center treatment stay attached to their
+        // authoritative board colors after color selection.
+        val chromeQuarterTurns =
+            this.perspectiveColor
+                ?.let(OfflinePlayerLayout::rotationQuarterTurns)
+                ?: 0
+        boardChrome.rotation = chromeQuarterTurns * 90f
+
         // A null snapshot keeps the exact approved board geometry/theme but prevents
         // LudoBoardView from drawing any classic token on the 3D presentation layer.
         boardSurface.bind(
