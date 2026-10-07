@@ -91,8 +91,8 @@ internal class LudoPawsBoardChromeView(
                 axisBoundary(row + 6, cell),
             )
 
-        // Give the large colored quadrant a soft molded-plastic highlight while
-        // leaving the canonical base color visible underneath.
+        // Keep the large quadrant glossy, but let the pawn platform itself carry
+        // the molded depth. No hard outline is used around the platform.
         fillPaint.shader =
             LinearGradient(
                 yard.left,
@@ -117,24 +117,41 @@ internal class LudoPawsBoardChromeView(
                 yard.right - cell * 0.50f,
                 yard.bottom - cell * 0.50f,
             )
+        val radius = cell * 0.40f
         val depth = cell * 0.13f
-        val radius = cell * 0.34f
 
-        val platformShadow =
+        // Soft lower body: this reads as thickness instead of a black border line.
+        val platformDepth =
             RectF(
-                platform.left + cell * 0.035f,
+                platform.left + cell * 0.025f,
                 platform.top + depth,
-                platform.right + cell * 0.035f,
+                platform.right + cell * 0.025f,
                 platform.bottom + depth,
             )
-        shadowPaint.color = 0x66000000
+        fillPaint.shader =
+            LinearGradient(
+                platformDepth.left,
+                platformDepth.top,
+                platformDepth.right,
+                platformDepth.bottom,
+                intArrayOf(
+                    darken(color, 0.76f),
+                    darken(color, 0.58f),
+                    darken(color, 0.42f),
+                ),
+                floatArrayOf(0f, 0.58f, 1f),
+                Shader.TileMode.CLAMP,
+            )
         canvas.drawRoundRect(
-            platformShadow,
+            platformDepth,
             radius,
             radius,
-            shadowPaint,
+            fillPaint,
         )
+        fillPaint.shader = null
 
+        // Broad outer bevel. Because this is a filled surface rather than a stroke,
+        // the rim fades naturally around the curved corners like molded plastic.
         fillPaint.shader =
             LinearGradient(
                 platform.left,
@@ -142,12 +159,12 @@ internal class LudoPawsBoardChromeView(
                 platform.right,
                 platform.bottom,
                 intArrayOf(
-                    brighten(color, 1.24f),
-                    brighten(color, 1.07f),
+                    brighten(color, 1.28f),
+                    brighten(color, 1.12f),
                     color,
-                    darken(color, 0.70f),
+                    darken(color, 0.68f),
                 ),
-                floatArrayOf(0f, 0.22f, 0.68f, 1f),
+                floatArrayOf(0f, 0.24f, 0.66f, 1f),
                 Shader.TileMode.CLAMP,
             )
         canvas.drawRoundRect(
@@ -158,31 +175,68 @@ internal class LudoPawsBoardChromeView(
         )
         fillPaint.shader = null
 
-        strokePaint.shader = null
-        strokePaint.strokeWidth = dp(1.55f)
-        strokePaint.color = darken(color, 0.48f)
-        canvas.drawRoundRect(
-            platform,
-            radius,
-            radius,
-            strokePaint,
-        )
-
-        val highlight =
+        val face =
             RectF(
-                platform.left + cell * 0.10f,
-                platform.top + cell * 0.09f,
-                platform.right - cell * 0.10f,
-                platform.bottom - cell * 0.12f,
+                platform.left + cell * 0.115f,
+                platform.top + cell * 0.105f,
+                platform.right - cell * 0.115f,
+                platform.bottom - cell * 0.145f,
             )
-        strokePaint.strokeWidth = dp(1.25f)
-        strokePaint.color = 0xA8FFFFFF.toInt()
+        val faceRadius = radius * 0.74f
+
+        // Inset face creates the curved sidewall without a visible white/black line.
+        fillPaint.shader =
+            LinearGradient(
+                face.left,
+                face.top,
+                face.right,
+                face.bottom,
+                intArrayOf(
+                    brighten(color, 1.18f),
+                    brighten(color, 1.07f),
+                    color,
+                    darken(color, 0.84f),
+                ),
+                floatArrayOf(0f, 0.28f, 0.70f, 1f),
+                Shader.TileMode.CLAMP,
+            )
         canvas.drawRoundRect(
-            highlight,
-            radius * 0.78f,
-            radius * 0.78f,
-            strokePaint,
+            face,
+            faceRadius,
+            faceRadius,
+            fillPaint,
         )
+        fillPaint.shader = null
+
+        // Diffuse top sheen: a broad translucent fill, intentionally not a stroke.
+        val sheen =
+            RectF(
+                face.left + cell * 0.035f,
+                face.top + cell * 0.025f,
+                face.right - cell * 0.035f,
+                face.top + face.height() * 0.46f,
+            )
+        fillPaint.shader =
+            LinearGradient(
+                sheen.left,
+                sheen.top,
+                sheen.left,
+                sheen.bottom,
+                intArrayOf(
+                    0x55FFFFFF,
+                    0x18FFFFFF,
+                    Color.TRANSPARENT,
+                ),
+                floatArrayOf(0f, 0.52f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawRoundRect(
+            sheen,
+            faceRadius * 0.90f,
+            faceRadius * 0.90f,
+            fillPaint,
+        )
+        fillPaint.shader = null
     }
 
     private fun drawCrossTileDepth(
