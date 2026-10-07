@@ -32,6 +32,24 @@ class DiceRollAnimationPolicyTest {
     }
 
     @Test
+    fun attentionPulseBreathesWithoutChangingTheFace() {
+        val start =
+            DiceAttentionAnimationPolicy.frame(0L)
+        val middle =
+            DiceAttentionAnimationPolicy.frame(450L)
+        val end =
+            DiceAttentionAnimationPolicy.frame(900L)
+
+        assertEquals(1, start.face)
+        assertEquals(1, middle.face)
+        assertEquals(1, end.face)
+        assertTrue(middle.scale > start.scale)
+        assertEquals(start.scale, end.scale, .0001f)
+        assertTrue(middle.translationYFraction < 0f)
+        assertTrue(middle.borderPulse > start.borderPulse)
+    }
+
+    @Test
     fun settleKeepsVerifiedOutcomeAndEndsAtIdentity() {
         val middle =
             DiceRollAnimationPolicy.settleFrame(
