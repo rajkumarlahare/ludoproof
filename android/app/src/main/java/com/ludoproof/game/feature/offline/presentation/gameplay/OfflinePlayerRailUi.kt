@@ -1,6 +1,8 @@
 package com.ludoproof.game.ui.offline.gameplay
 
+import android.os.SystemClock
 import android.view.Gravity
+import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import com.ludoproof.game.*
@@ -205,8 +207,18 @@ private fun OfflineGameActivity.activeDiceControl(
             "Roll dice for " + player.displayName
         }
     control.isEnabled = !cpuTurn
-    // Interaction is controlled by isEnabled; opacity stays full so the face
-    // remains readable after a roll and during CPU turns.
+    // While a committed pawn move/capture is still presenting, keep the dice
+    // slot reserved but invisible. The next dice appears only after the paw has
+    // reached/settled at its destination, so players never see a premature roll.
+    control.visibility =
+        if (
+            SystemClock.uptimeMillis() <
+            gameplayActionBlockedUntilMillis
+        ) {
+            View.INVISIBLE
+        } else {
+            View.VISIBLE
+        }
     control.alpha = 1f
     control.layoutParams =
         LinearLayout.LayoutParams(

@@ -1,6 +1,9 @@
 package com.ludoproof.game
 
 import android.content.Context
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
 import android.widget.FrameLayout
@@ -25,6 +28,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
 ) : FrameLayout(context, attrs) {
     private val board = LudoPawsBoardView(context)
     private val pawn3DScene = LudoPaws3DSceneView(context)
+    private val legalPulse = LudoPaws3DLegalPulseView(context)
     private val gameFxOverlay = LudoPawsGameFxOverlayView(context)
     private val voicePlayer = LudoPawsVoicePlayer(context)
     private val settingsStore = GameSettingsStore(context)
@@ -70,8 +74,40 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         // or behind an animal while the GL surface is starting or moving.
         board.setClassicPawnFallbackVisible(false)
 
+        // Brighten only the transparent 3D pawn layer, not the board artwork.
+        // RGB scaling preserves the existing material palette, highlights,
+        // shadows and alpha while making all four animals easier to read.
+        val pawnBrightness =
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                colorFilter =
+                    ColorMatrixColorFilter(
+                        ColorMatrix().apply {
+                            setScale(
+                                PAWN_BRIGHTNESS_SCALE,
+                                PAWN_BRIGHTNESS_SCALE,
+                                PAWN_BRIGHTNESS_SCALE,
+                                1f,
+                            )
+                        },
+                    )
+            }
+        pawn3DScene.setLayerType(
+            View.LAYER_TYPE_HARDWARE,
+            pawnBrightness,
+        )
+
         addView(
             pawn3DScene,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT,
+            ),
+        )
+        // Legal choices use a pawn-local shimmer/sparkle instead of any circular
+        // follow halo. The cue marks only selectable pawns and never previews the
+        // destination square.
+        addView(
+            legalPulse,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.MATCH_PARENT,
@@ -137,6 +173,11 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             playerId = playerId,
             perspectiveColor = perspectiveColor,
             characterIdsBySeat = characterIdsBySeat,
+        )
+        legalPulse.bind(
+            state = state,
+            playerId = playerId,
+            perspectiveColor = perspectiveColor,
         )
         gameFxOverlay.bind(
             previous = previous,
@@ -356,5 +397,6 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         // About 1.8 board cells on a 15x15 Ludo board. This is transparent
         // presentation space only; the approved square board remains unchanged.
         const val PAWN_TOP_OVERFLOW_FRACTION = 0.12f
+        const val PAWN_BRIGHTNESS_SCALE = 1.10f
     }
 }
