@@ -4,8 +4,9 @@ package com.ludoproof.game
  * Pure gameplay policy shared by local and remote presentation layers.
  *
  * This policy never invents a move when the player has a real choice. A move is
- * automatic only when the authoritative legal-token set contains exactly one
- * token. Opening-roll handling is also explicit so the guaranteed opening six
+ * automatic only when the authoritative legal-token set contains one effective
+ * move, either because one token is legal or because all legal tokens are
+ * interchangeable. Opening-roll handling is also explicit so the guaranteed opening six
  * can be bound into a versioned ruleset without changing normal dice behavior.
  */
 object LudoTurnAutomationPolicy {
