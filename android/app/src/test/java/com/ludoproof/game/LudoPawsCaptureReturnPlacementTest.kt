@@ -83,8 +83,24 @@ class LudoPawsCaptureReturnPlacementTest {
 
         assertEquals(LudoPawsCaptureReturnPhase.IMPACT_SHAKE, impact.phase)
         assertEquals(LudoPawsCaptureReturnPhase.POP, pop.phase)
-        assertTrue(kotlin.math.abs(impact.x - from.first) < 4f)
-        assertTrue(kotlin.math.abs(pop.x - from.first) < 4f)
+        assertTrue(kotlin.math.abs(impact.x - from.first) < 8f)
+        assertTrue(kotlin.math.abs(pop.x - from.first) < 8f)
         assertNotEquals(1f, pop.scale, .0001f)
+    }
+
+    @Test
+    fun contactPhaseIncludesVisibleShoveTowardReturnRoute() {
+        val from = 100f to 100f
+        val to = 40f to 100f
+        val pushed =
+            LudoPawsCaptureReturnPlacement.sample(
+                from = from,
+                to = to,
+                cell = 30f,
+                progress = .17f,
+            )
+
+        assertTrue(pushed.x < from.first)
+        assertTrue(kotlin.math.abs(pushed.x - from.first) > 1f)
     }
 }
