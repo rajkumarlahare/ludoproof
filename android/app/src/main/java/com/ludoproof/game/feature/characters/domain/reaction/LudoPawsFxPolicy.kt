@@ -131,4 +131,5 @@ object LudoPawsFxPolicy {
             allowShake = false,
             allowConfetti = false,
         )
+    }
 }
