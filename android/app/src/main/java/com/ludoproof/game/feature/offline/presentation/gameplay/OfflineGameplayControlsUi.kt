@@ -1,5 +1,7 @@
 package com.ludoproof.game.ui.offline.gameplay
 
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.SystemClock
 import android.view.Gravity
 import android.view.View
@@ -12,6 +14,9 @@ import com.ludoproof.game.feature.offline.presentation.feedback.OfflineFeedbackA
 import com.ludoproof.game.feature.offline.presentation.feedback.OfflineLudoPawsFeedbackDispatcher
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
+import com.ludoproof.game.ui.home.HomeGlassShape
+import com.ludoproof.game.ui.home.HomeGlassTone
+import com.ludoproof.game.ui.home.homeGlassBackground
 import com.ludoproof.game.ui.offline.common.*
 import com.ludoproof.game.ui.offline.setup.*
 import com.ludoproof.game.ui.offline.state.resolveOfflineCharacterIds
@@ -68,7 +73,7 @@ private fun OfflineGameActivity.ensureOfflineResultActions(
     state: MatchSnapshot,
 ) {
     val parent =
-        resultPanel.parent as? LinearLayout
+        resultPanel.parent as? android.widget.FrameLayout
             ?: return
     val existing =
         parent.findViewWithTag<View>(
@@ -90,65 +95,101 @@ private fun OfflineGameActivity.ensureOfflineResultActions(
             tag = OFFLINE_RESULT_ACTIONS_TAG
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(4), 0, dp(4), 0)
-
-            addView(
-                Button(this@ensureOfflineResultActions).apply {
-                    text = "REMATCH"
-                    textSize = if (isCompactSetup()) 11f else 12f
-                    minHeight = 0
-                    LudoProofTheme.positive(this)
-                    setOnClickListener {
-                        GameSoundFeedback.click(
-                            this@ensureOfflineResultActions,
-                        )
-                        startOfflineRematch()
-                    }
-                },
-                LinearLayout.LayoutParams(
-                    0,
-                    dp(if (isCompactSetup()) 44 else 48),
-                    1f,
-                ).apply {
-                    setMargins(dp(3), 0, dp(3), 0)
-                },
-            )
-
-            addView(
-                Button(this@ensureOfflineResultActions).apply {
-                    text = "CHANGE SETUP"
-                    textSize = if (isCompactSetup()) 10f else 11f
-                    minHeight = 0
-                    LudoProofTheme.secondary(this)
-                    setOnClickListener {
-                        GameSoundFeedback.click(
-                            this@ensureOfflineResultActions,
-                        )
-                        session.clear()
-                        showSetup()
-                    }
-                },
-                LinearLayout.LayoutParams(
-                    0,
-                    dp(if (isCompactSetup()) 44 else 48),
-                    1f,
-                ).apply {
-                    setMargins(dp(3), 0, dp(3), 0)
-                },
-            )
+            setPadding(0, 0, 0, 0)
         }
+
+    actions.addView(
+        offlineResultActionButton(
+            label = "REMATCH",
+            description = "Start a rematch",
+        ) {
+            startOfflineRematch()
+        },
+        LinearLayout.LayoutParams(
+            0,
+            dp(if (isCompactSetup()) 46 else 50),
+            1f,
+        ).apply {
+            setMargins(dp(4), 0, dp(4), 0)
+        },
+    )
+
+    actions.addView(
+        offlineResultActionButton(
+            label = "EXIT",
+            description = "Exit the finished match",
+        ) {
+            requestOfflineExit()
+        },
+        LinearLayout.LayoutParams(
+            0,
+            dp(if (isCompactSetup()) 46 else 50),
+            1f,
+        ).apply {
+            setMargins(dp(4), 0, dp(4), 0)
+        },
+    )
+
+    val maxActionWidth =
+        dp(if (isCompactSetup()) 340 else 460)
+    val availableWidth =
+        (parent.width - dp(24))
+            .coerceAtLeast(dp(220))
+    val actionWidth =
+        minOf(
+            maxActionWidth,
+            availableWidth,
+        )
 
     parent.addView(
         actions,
-        parent.indexOfChild(resultPanel) + 1,
-        gameplaySectionParams(
-            if (isCompactSetup()) 4 else 6,
+        android.widget.FrameLayout.LayoutParams(
+            actionWidth,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL,
         ).apply {
-            leftMargin = dp(8)
-            rightMargin = dp(8)
+            bottomMargin =
+                dp(if (isCompactSetup()) 72 else 84)
         },
     )
 }
+
+private fun OfflineGameActivity.offlineResultActionButton(
+    label: String,
+    description: String,
+    action: () -> Unit,
+): Button =
+    Button(this).apply {
+        text = label
+        textSize = if (isCompactSetup()) 11.5f else 13f
+        setTextColor(Color.WHITE)
+        setTypeface(Typeface.DEFAULT_BOLD)
+        includeFontPadding = false
+        gravity = Gravity.CENTER
+        minWidth = 0
+        minHeight = 0
+        stateListAnimator = null
+        elevation = dp(6).toFloat()
+        background =
+            homeGlassBackground(
+                context = this@offlineResultActionButton,
+                shape = HomeGlassShape.PILL,
+                tone = HomeGlassTone.GLASS,
+            )
+        setPadding(
+            dp(if (isCompactSetup()) 8 else 12),
+            0,
+            dp(if (isCompactSetup()) 8 else 12),
+            0,
+        )
+        contentDescription = description
+        setOnClickListener {
+            GameSoundFeedback.click(
+                this@offlineResultActionButton,
+            )
+            action()
+        }
+    }
 
 private fun OfflineGameActivity.startOfflineRematch() {
     val finished =
