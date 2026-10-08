@@ -352,10 +352,6 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         playReactions(
             reactions = reactions,
             characterIdsBySeat = currentCharacterIdsBySeat,
-            reducedMotion =
-                settingsStore
-                    .snapshot()
-                    .reducedMotionEnabled,
         )
     }
 
