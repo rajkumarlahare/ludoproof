@@ -78,6 +78,53 @@ object LudoPawsSoundPool {
             rate = rate,
         )
 
+    /**
+     * Starts loading an authored asset without scheduling playback.
+     *
+     * Calling this before the first interactive move removes the one-time
+     * SoundPool load latency from the movement audio clock. A successful return
+     * means the clip was already cached or the asynchronous load was accepted.
+     */
+    @Synchronized
+    fun preloadAsset(
+        context: Context,
+        assetPath: String,
+    ): Boolean =
+        preloadSource(
+            context = context,
+            key = "asset:$assetPath",
+            loader = { soundPool ->
+                context.applicationContext.assets
+                    .openFd(assetPath)
+                    .use { descriptor ->
+                        soundPool.load(
+                            descriptor,
+                            1,
+                        )
+                    }
+            },
+        )
+
+    /**
+     * Starts loading a packaged raw-resource clip without scheduling playback.
+     */
+    @Synchronized
+    fun preload(
+        context: Context,
+        @RawRes resourceId: Int,
+    ): Boolean =
+        preloadSource(
+            context = context,
+            key = "res:$resourceId",
+            loader = { soundPool ->
+                soundPool.load(
+                    context.applicationContext,
+                    resourceId,
+                    1,
+                )
+            },
+        )
+
     @Synchronized
     fun release() {
         runCatching {
