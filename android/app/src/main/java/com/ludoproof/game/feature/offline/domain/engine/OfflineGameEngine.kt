@@ -461,15 +461,18 @@ class OfflineGameEngine(
         var captures = 0
         current.players.forEachIndexed { seat, opponent ->
             if (seat == movingSeat) return@forEachIndexed
-            opponent.tokens =
-                opponent.tokens.map { position ->
-                    if (globalCell(opponent.color, position) == global) {
-                        captures += 1
-                        -1
-                    } else {
-                        position
+
+            val matchingTokenIndexes =
+                opponent.tokens.mapIndexedNotNull { index, position ->
+                    index.takeIf {
+                        globalCell(opponent.color, position) == global
                     }
-                }.toMutableList()
+                }
+
+            if (matchingTokenIndexes.size != 1) return@forEachIndexed
+
+            opponent.tokens[matchingTokenIndexes.single()] = -1
+            captures += 1
         }
         return captures
     }
