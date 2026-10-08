@@ -16,6 +16,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import org.json.JSONObject
 import java.util.concurrent.Executors
+import com.ludoproof.game.ui.game.addGameTopActions
 import com.ludoproof.game.ui.online.*
 import com.ludoproof.game.feature.online.*
 
@@ -590,6 +591,15 @@ class MainActivity : Activity() {
             ),
         )
 
+        addGameTopActions(
+            host = host,
+            context = this,
+            onBack = { requestRemoteExitForTopControl() },
+            onSettings = {
+                ArcadeDialogs.showSettings(this)
+            },
+        )
+
         setContentView(root)
         updateRollButton()
         restorePublicMatchmakingUi()
@@ -659,6 +669,10 @@ class MainActivity : Activity() {
         )
         realtimeClient.disconnect()
         super.onStop()
+    }
+
+    private fun requestRemoteExitForTopControl() {
+        requestRemoteExit()
     }
 
     internal fun canRenderUi(): Boolean =
