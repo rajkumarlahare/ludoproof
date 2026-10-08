@@ -81,5 +81,15 @@ class DiceRollAnimationPolicyTest {
         )
     }
 
+    @Test
+    fun reducedMotionStillCyclesReadableFaces() {
+        val first =
+            DiceRollAnimationPolicy.reducedMotionRollingFace(0L)
+        val later =
+            DiceRollAnimationPolicy.reducedMotionRollingFace(330L)
 
+        assertTrue(first in 1..6)
+        assertTrue(later in 1..6)
+        assertTrue(first != later)
+    }
 }
