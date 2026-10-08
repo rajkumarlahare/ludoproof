@@ -130,4 +130,5 @@ object LudoPawsFxPolicy {
             allowRotation = true,
             allowShake = false,
             allowConfetti = false,
-        )}
+        )
+}
