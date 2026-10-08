@@ -183,7 +183,6 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         playReactions(
             reactions = reactions,
             characterIdsBySeat = characterIdsBySeat,
-            reducedMotion = reducedMotion,
         )
         scheduleIdleReaction(
             state = state,
@@ -371,7 +370,6 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         pawn3DScene.playReactions(reactions)
         gameFxOverlay.play(
             reactions = reactions,
-            reducedMotion = reducedMotion,
         )
         voicePlayer.playHighestPriority(
             reactions = reactions,
