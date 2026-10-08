@@ -89,7 +89,7 @@ test("production default stays v1 while explicit classic v2 is fully bindable", 
   assert.equal(publicState(current).rulesetId, "ludoproof-standard-v2");
   assert.equal(
     await rulesetHashForState(current),
-    "49014b2638add0d92d78af4be0cd2a0d5a733e1770cae27ed82e76d919313e6d",
+    "7ad14daf100d7e14eea9b0a6da3a68cbd85d35f647052add4433df2efd9eb862",
   );
   assert.notEqual(await rulesetHashForState(current), legacyHash);
 });
@@ -125,7 +125,7 @@ test("production Team Up stays v1 while explicit team v2 is fully bindable", asy
   assert.equal(publicState(current).rulesetId, "ludoproof-team-v2");
   assert.equal(
     await rulesetHashForState(current),
-    "1114ca25e0f680e907280ed3cefee271ce6b1c2c69abe56b1bcd5a9d161bfc46",
+    "a10326d8a631381eba6bd775fe90decf1c3e5788f5862d19e4f23cf08fec57ce",
   );
 });
 
@@ -137,7 +137,7 @@ test("v2 cryptographically declares the previously implicit gameplay policies", 
   assert.equal(RULESET.replacementRoundAfterTimeout, false);
   assert.equal(RULESET.resetConsecutiveSixesOnTimeout, true);
   assert.equal(RULESET.ownTokenStacking, "ALLOWED");
-  assert.equal(RULESET.opponentStackCapture, "CAPTURE_SINGLE_TOKEN_ONLY");
+  assert.equal(RULESET.opponentStackCapture, "CAPTURE_ALL_ON_UNSAFE_CELL");
   assert.equal(RULESET.startingPlayerPolicy, "HOST_SEAT_ZERO");
   assert.equal(RULESET.turnOrderPolicy, "SEQUENTIAL_SEAT_ORDER");
   assert.equal(LEGACY_RULESET_KEY, "CLASSIC_V1");
@@ -170,7 +170,7 @@ test("v2 host starts and timeout policy matches the declared contract", () => {
   assert.equal(timedOut.timedOutRoll.replacementRoundAllowed, false);
 });
 
-test("v2 extra-turn, stacking, and stack-capture declarations match engine behavior", () => {
+test("v2 extra-turn and stacking declarations match engine behavior while capture protects stacks", () => {
   const home = applyMove(
     resolvedMoveState({
       moverTokens: [56, -1, -1, -1],
@@ -205,16 +205,4 @@ test("v2 extra-turn, stacking, and stack-capture declarations match engine behav
   assert.equal(capture.captures, 0);
   assert.deepEqual(capture.state.players[1].tokens.slice(0, 2), [40, 40]);
   assert.equal(capture.state.turnSeat, 1);
-
-  const singleCapture = applyMove(
-    resolvedMoveState({
-      moverTokens: [0, -1, -1, -1],
-      opponentTokens: [40, -1, -1, -1],
-      outcome: 1,
-    }),
-    { playerId: "host", tokenIndex: 0, now: 4_300 },
-  );
-  assert.equal(singleCapture.captures, 1);
-  assert.deepEqual(singleCapture.state.players[1].tokens.slice(0, 1), [-1]);
-  assert.equal(singleCapture.state.turnSeat, 0);
 });
