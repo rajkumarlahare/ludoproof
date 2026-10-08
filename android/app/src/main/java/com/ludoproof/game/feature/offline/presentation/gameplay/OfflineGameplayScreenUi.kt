@@ -155,6 +155,10 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         ),
     )
 
+    // BOARD GEOMETRY LOCK:
+    // Keep the approved board size independent from optional gameplay controls.
+    // A weighted vertical slot would remeasure/shrink the square board whenever
+    // quick chat or another future action adds height below it.
     val boardStage =
         FrameLayout(this).apply {
             clipChildren = false
@@ -172,8 +176,7 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         boardStage,
         LinearLayout.LayoutParams(
             boardStageWidth,
-            0,
-            1f,
+            boardStageWidth,
         ).apply {
             gravity = Gravity.CENTER_HORIZONTAL
             topMargin = dp(if (isCompactSetup()) 2 else 4)
