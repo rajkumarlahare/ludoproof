@@ -392,7 +392,8 @@ internal fun settingsPrivacyLink(
 ): TextView =
     TextView(context).apply {
         text = "Privacy Policy"
-        textSize = 14f        setTypeface(
+        textSize = 14f
+        setTypeface(
             Typeface.DEFAULT,
             Typeface.ITALIC,
         )
