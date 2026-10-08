@@ -652,6 +652,9 @@ internal class LudoPaws3DSceneRenderer {
         cell: Float,
         turns: Int,
     ): Float {
+        if (state.reducedMotion) {
+            return LudoPawsPawnFacingPolicy.FRONT_YAW_DEGREES
+        }
         val motion =
             state.forwardMotion
                 ?.takeIf {
