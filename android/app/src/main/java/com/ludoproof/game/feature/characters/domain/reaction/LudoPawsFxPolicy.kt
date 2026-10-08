@@ -14,7 +14,8 @@ data class LudoPawsFxPlan(
 /**
  * Pure presentation policy for Phase 10 animation and effects.
  *
- * Full-motion presentation policy for board reactions and effects.
+ * Reduced Motion deliberately removes spatial motion and dense particles while
+ * retaining short fades/highlights so important game feedback is not lost.
  */
 object LudoPawsFxPolicy {
     fun plan(
@@ -130,6 +131,4 @@ object LudoPawsFxPolicy {
             allowRotation = true,
             allowShake = false,
             allowConfetti = false,
-        )
-
-}
+        )}
