@@ -594,7 +594,7 @@ class MainActivity : Activity() {
         addGameTopActions(
             host = host,
             context = this,
-            onBack = { requestRemoteExitForTopControl() },
+            onBack = { requestRemoteExit() },
             onSettings = {
                 ArcadeDialogs.showSettings(this)
             },
@@ -669,10 +669,6 @@ class MainActivity : Activity() {
         )
         realtimeClient.disconnect()
         super.onStop()
-    }
-
-    private fun requestRemoteExitForTopControl() {
-        requestRemoteExit()
     }
 
     internal fun canRenderUi(): Boolean =
