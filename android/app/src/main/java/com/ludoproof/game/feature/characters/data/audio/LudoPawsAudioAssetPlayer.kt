@@ -61,6 +61,47 @@ internal object LudoPawsAudioAssetPlayer {
         )
     }
 
+    /**
+     * Prewarms the same authored/raw SFX resolution chain used by playSfx.
+     *
+     * Only the first available authored asset is loaded, avoiding unnecessary
+     * SoundPool memory use when future numbered variants are added.
+     */
+    fun preloadSfx(
+        context: Context,
+        rawResourceNames: List<String>,
+        assetPaths: List<String> = emptyList(),
+    ) {
+        for (assetPath in assetPaths) {
+            if (
+                LudoPawsSoundPool.preloadAsset(
+                    context = context,
+                    assetPath = assetPath,
+                )
+            ) {
+                return
+            }
+        }
+
+        val resourceId =
+            rawResourceNames
+                .asSequence()
+                .map {
+                    rawResourceId(
+                        context = context,
+                        resourceName = it,
+                    )
+                }
+                .firstOrNull { it != 0 }
+
+        if (resourceId != null) {
+            LudoPawsSoundPool.preload(
+                context = context,
+                resourceId = resourceId,
+            )
+        }
+    }
+
     fun playSfx(
         context: Context,
         rawResourceNames: List<String>,
