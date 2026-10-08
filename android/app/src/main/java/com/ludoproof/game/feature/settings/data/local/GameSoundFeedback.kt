@@ -29,7 +29,9 @@ object GameSoundFeedback {
             context = context,
             names = listOf("lp_sfx_move_paw"),
             fallback = LudoPawsProceduralAudio.Sfx.MOVE_PAW,
-            volume = .38f,
+            // Authored jump/tick clips are intentionally more prominent than the
+            // old generic movement cue so every step remains clearly audible.
+            volume = .72f,
             assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
         )
 
