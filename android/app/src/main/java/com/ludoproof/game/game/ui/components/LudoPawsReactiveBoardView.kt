@@ -155,7 +155,6 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
                 previous = previous,
                 current = state,
             )
-
         board.bind(
             state = state,
             playerId = playerId,
@@ -183,6 +182,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         playReactions(
             reactions = reactions,
             characterIdsBySeat = characterIdsBySeat,
+            reducedMotion = reducedMotion,
         )
         scheduleIdleReaction(
             state = state,
@@ -352,6 +352,10 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         playReactions(
             reactions = reactions,
             characterIdsBySeat = currentCharacterIdsBySeat,
+            reducedMotion =
+                settingsStore
+                    .snapshot()
+                    .reducedMotionEnabled,
         )
     }
 
