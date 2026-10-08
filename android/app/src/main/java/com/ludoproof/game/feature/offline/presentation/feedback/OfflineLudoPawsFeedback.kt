@@ -69,7 +69,9 @@ object OfflineLudoPawsFeedbackPolicy {
             when (highest?.momentType) {
                 GameMomentType.SIX_ROLLED -> OfflineFeedbackSound.SIX
                 GameMomentType.TOKEN_LEFT_YARD -> OfflineFeedbackSound.YARD_EXIT
-                GameMomentType.ONLY_LEGAL_MOVE -> OfflineFeedbackSound.MOVE
+                // Movement ticks are owned by the synchronized 3D step clock.
+                // Never emit a second generic move sound from reaction feedback.
+                GameMomentType.ONLY_LEGAL_MOVE -> OfflineFeedbackSound.NONE
                 GameMomentType.CAPTURE_MADE,
                 GameMomentType.TOKEN_CAPTURED,
                 -> OfflineFeedbackSound.CAPTURE
@@ -101,8 +103,10 @@ object OfflineLudoPawsFeedbackPolicy {
         val sound =
             when {
                 dedicatedSound != OfflineFeedbackSound.NONE -> dedicatedSound
+                // A committed movement is already rendered/audio-ticked per visual step.
+                // Do not fall back to a second one-shot movement cue.
                 action == OfflineFeedbackAction.MOVE && tokenMovementCommitted ->
-                    OfflineFeedbackSound.MOVE
+                    OfflineFeedbackSound.NONE
                 else -> OfflineFeedbackSound.NONE
             }
 
@@ -205,13 +209,10 @@ object OfflineLudoPawsFeedbackDispatcher {
                 current = safeCurrent,
                 action = action,
             )
-        val moverCharacterId =
-            movementSeat(previous, safeCurrent)
-                ?.let { seat -> characterIdForSeat(safeCurrent, seat) }
-
         when (decision.sound) {
             OfflineFeedbackSound.NONE -> Unit
-            OfflineFeedbackSound.MOVE -> GameSoundFeedback.move(context, moverCharacterId)
+            // Kept for enum compatibility; synchronized movement uses moveStep().
+            OfflineFeedbackSound.MOVE -> Unit
             OfflineFeedbackSound.SIX -> GameSoundFeedback.six(context)
             OfflineFeedbackSound.YARD_EXIT -> GameSoundFeedback.yardExit(context)
             OfflineFeedbackSound.CAPTURE -> GameSoundFeedback.capture(context)
@@ -230,36 +231,4 @@ object OfflineLudoPawsFeedbackDispatcher {
         )
     }
 
-    private fun movementSeat(
-        previous: MatchSnapshot?,
-        current: MatchSnapshot,
-    ): Int? {
-        previous ?: return null
-        return current.players.firstOrNull { player ->
-            val before =
-                previous.players.firstOrNull {
-                    it.playerId == player.playerId
-                } ?: return@firstOrNull false
-            before.tokens != player.tokens &&
-                player.tokens.indices.any { index ->
-                    val from = before.tokens.getOrNull(index) ?: -1
-                    val to = player.tokens.getOrNull(index) ?: -1
-                    to > from
-                }
-        }?.seat
-    }
-
-    private fun characterIdForSeat(
-        state: MatchSnapshot,
-        seat: Int,
-    ): String =
-        state.players.getOrNull(seat)?.characterId
-            ?.takeIf(String::isNotBlank)
-            ?: when (seat) {
-                0 -> "dog"
-                1 -> "goat"
-                2 -> "duck"
-                3 -> "cat"
-                else -> "dog"
-            }
 }
