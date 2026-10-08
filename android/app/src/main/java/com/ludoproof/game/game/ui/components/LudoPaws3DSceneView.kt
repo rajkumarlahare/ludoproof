@@ -16,6 +16,7 @@ import android.view.View
 import com.ludoproof.game.feature.characters.domain.model.AnimationCue
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
+import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.math.max
@@ -73,6 +74,10 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         isOpaque = false
         isClickable = false
         isFocusable = false
+
+        // Prewarm the first movement tick while the board is being created so
+        // the first audible step is not held behind SoundPool's async load.
+        GameSoundFeedback.preloadMovementStep(context)
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
         surfaceTextureListener = this
     }
