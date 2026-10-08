@@ -410,6 +410,8 @@ internal class LudoPaws3DSceneRenderer {
         }
     }
 
+    // Active-move squash/stretch envelope. Kept presentation-only so board
+    // coordinates, route state, hit testing and timing remain authoritative.
     private fun movementScalePose(
         pawn: RenderPawn,
         state: LudoPaws3DSceneState,
@@ -439,8 +441,8 @@ internal class LudoPaws3DSceneRenderer {
                     LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
             ).coerceAtLeast(1L)
 
-        // A visible, but still soft, squash/stretch envelope:
-        // settle at ~95%, spring to ~109%, then normalize before landing.
+        // Noticeable but controlled squash/stretch:
+        // 94% anticipation -> 110% spring -> 102% travel -> 95% landing.
         val anticipationMillis =
             min(
                 70L,
