@@ -182,7 +182,6 @@ requireText(
     "DiceAttentionAnimationPolicy",
     ".rollingFrame(",
     ".settleFrame(",
-    "reducedMotionEnabled",
     "setAttentionEnabled(",
     "attentionPulsing",
     "fun showOutcome(",
@@ -237,7 +236,6 @@ requireText(
 requireText(
   "android/app/src/main/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsFxPolicy.kt",
   [
-    "reducedMotion",
     "allowTranslation",
     "allowConfetti",
   ],
