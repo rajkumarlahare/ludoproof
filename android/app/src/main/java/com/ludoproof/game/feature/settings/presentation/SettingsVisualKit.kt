@@ -11,6 +11,9 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import com.ludoproof.game.ui.home.HomeGlassShape
+import com.ludoproof.game.ui.home.HomeGlassTone
+import com.ludoproof.game.ui.home.homeGlassBackground
 
 internal fun settingsCompactPanel(
     context: Context,
