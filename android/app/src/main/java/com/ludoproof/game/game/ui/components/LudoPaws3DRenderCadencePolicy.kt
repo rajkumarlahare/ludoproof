@@ -15,6 +15,19 @@ internal object LudoPaws3DRenderCadencePolicy {
     internal const val HOME_CELEBRATION_TAIL_MILLIS = 1_400L
     internal const val FORWARD_LANDING_SETTLE_MILLIS = 90L
 
+    /**
+     * The visual pawn reaches the destination square before the short landing
+     * settle tail completes. Capture impact must begin on that contact frame so
+     * the attacker and captured pawn can react together.
+     */
+    internal fun captureContactDelayMillis(
+        forwardDurationMillis: Long,
+    ): Long =
+        (
+            forwardDurationMillis -
+                FORWARD_LANDING_SETTLE_MILLIS
+        ).coerceAtLeast(0L)
+
     fun frameDelayMillis(
         state: LudoPaws3DSceneState,
         nowMillis: Long,
