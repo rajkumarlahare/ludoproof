@@ -44,7 +44,6 @@ internal class LudoPawsGameFxOverlayView(
     private var transitions: List<TokenTransition> = emptyList()
     private var captureTransitions: List<TokenTransition> = emptyList()
     private var forwardMotion: LudoPawsPawnMotion? = null
-    private var reducedMotion = false
     private var reactionProgress = 0f
     private var transitionProgress = 1f
     private var captureProgress = -1f
@@ -65,14 +64,12 @@ internal class LudoPawsGameFxOverlayView(
         previous: MatchSnapshot?,
         current: MatchSnapshot?,
         perspectiveColor: String?,
-        reducedMotion: Boolean,
     ) {
         snapshot = current
         this.perspectiveColor =
             perspectiveColor?.takeIf {
                 it in OfflinePlayerLayout.COLORS
             }
-        this.reducedMotion = reducedMotion
 
         val detected = detectTransitions(previous, current)
         transitions = detected.filterNot(TokenTransition::isCaptureReturn)
@@ -117,10 +114,8 @@ internal class LudoPawsGameFxOverlayView(
 
     fun play(
         reactions: List<LudoPawsReaction>,
-        reducedMotion: Boolean,
     ) {
         reactionAnimator?.cancel()
-        this.reducedMotion = reducedMotion
         this.reactions = reactions.take(MAX_SIMULTANEOUS_REACTIONS)
 
         if (this.reactions.isEmpty()) {
@@ -134,7 +129,6 @@ internal class LudoPawsGameFxOverlayView(
                 LudoPawsFxPolicy
                     .plan(
                         cue = it.animationCue,
-                        reducedMotion = reducedMotion,
                     )
                     .durationMs
             }
@@ -239,7 +233,7 @@ internal class LudoPawsGameFxOverlayView(
 
     private fun startTransitionAnimationIfNeeded() {
         transitionAnimator?.cancel()
-        if (transitions.isEmpty() || reducedMotion) {
+        if (transitions.isEmpty()) {
             transitionProgress = 1f
             transitionAnimator = null
             return
@@ -285,11 +279,7 @@ internal class LudoPawsGameFxOverlayView(
             ValueAnimator.ofFloat(0f, 1f).apply {
                 startDelay = captureContactDelayMillis
                 duration =
-                    if (reducedMotion) {
-                        REDUCED_CAPTURE_FLASH_DURATION_MS
-                    } else {
-                        captureDurationMillis.coerceAtLeast(1L)
-                    }
+                    captureDurationMillis.coerceAtLeast(1L)
                 addUpdateListener {
                     captureProgress = it.animatedValue as Float
                     invalidate()
@@ -380,7 +370,6 @@ internal class LudoPawsGameFxOverlayView(
                 canvas = canvas,
                 cell = cell,
                 progress = transitionProgress,
-                reducedMotion = reducedMotion,
             )
         }
     }
@@ -419,8 +408,7 @@ internal class LudoPawsGameFxOverlayView(
                     color = color,
                     cell = cell,
                     progress = progress,
-                    reducedMotion = reducedMotion,
-                )
+                    )
 
             transition.isHomeArrival ->
                 painter.drawPawTrail(
@@ -431,8 +419,7 @@ internal class LudoPawsGameFxOverlayView(
                     cell = cell,
                     progress = progress,
                     emphasis = 1f,
-                    reducedMotion = reducedMotion,
-                )
+                    )
 
             else ->
                 painter.drawPawTrail(
@@ -443,8 +430,7 @@ internal class LudoPawsGameFxOverlayView(
                     cell = cell,
                     progress = progress,
                     emphasis = .55f,
-                    reducedMotion = reducedMotion,
-                )
+                        )
         }
     }
 
@@ -474,7 +460,6 @@ internal class LudoPawsGameFxOverlayView(
         val plan =
             LudoPawsFxPolicy.plan(
                 cue = reaction.animationCue,
-                reducedMotion = reducedMotion,
             )
 
         painter.drawReaction(
@@ -485,7 +470,6 @@ internal class LudoPawsGameFxOverlayView(
             progress = reactionProgress,
             particleCount = plan.particleCount,
             allowConfetti = plan.allowConfetti,
-            reducedMotion = reducedMotion,
         )
     }
 
