@@ -11,37 +11,30 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import com.ludoproof.game.ui.home.HomeGlassShape
+import com.ludoproof.game.ui.home.HomeGlassTone
+import com.ludoproof.game.ui.home.homeGlassBackground
 
 internal fun settingsCompactPanel(
     context: Context,
     dialog: Dialog,
 ): LinearLayout =
     LinearLayout(context).apply {
-        orientation =
-            LinearLayout.VERTICAL
+        orientation = LinearLayout.VERTICAL
         setPadding(
-            settingsDp(context, 16),
-            settingsDp(context, 14),
-            settingsDp(context, 16),
-            settingsDp(context, 16),
+            settingsDp(context, 8),
+            settingsDp(context, 8),
+            settingsDp(context, 8),
+            settingsDp(context, 8),
         )
+        // Reuse the exact Home glass language used by the game top Back/Settings
+        // controls. This keeps the settings surface translucent and consistent.
         background =
-            GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(
-                    0xFF08378F.toInt(),
-                    0xFF06296F.toInt(),
-                    0xFF031B50.toInt(),
-                ),
-            ).apply {
-                cornerRadius =
-                    settingsDp(context, 18)
-                        .toFloat()
-                setStroke(
-                    settingsDp(context, 3),
-                    0xFFFFC735.toInt(),
-                )
-            }
+            homeGlassBackground(
+                context = context,
+                shape = HomeGlassShape.TILE,
+                tone = HomeGlassTone.GLASS,
+            )
 
         addView(
             settingsHeader(
@@ -52,7 +45,7 @@ internal fun settingsCompactPanel(
         addView(
             settingsDivider(
                 context,
-                topBottomMarginDp = 8,
+                topBottomMarginDp = 4,
             ),
         )
     }
@@ -71,9 +64,9 @@ private fun settingsHeader(
                             .configuration
                             .screenWidthDp < 380
                     ) {
-                        22f
+                        20f
                     } else {
-                        25f
+                        23f
                     }
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextColor(0xFFFFD34E.toInt())
@@ -90,7 +83,7 @@ private fun settingsHeader(
             title,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                settingsDp(context, 50),
+                settingsDp(context, 40),
                 Gravity.CENTER,
             ).apply {
                 leftMargin = settingsDp(context, 48)
@@ -131,8 +124,8 @@ private fun settingsHeader(
         addView(
             close,
             FrameLayout.LayoutParams(
-                settingsDp(context, 42),
-                settingsDp(context, 42),
+                settingsDp(context, 38),
+                settingsDp(context, 38),
                 Gravity.END or Gravity.CENTER_VERTICAL,
             ),
         )
@@ -146,12 +139,12 @@ internal fun settingsCompactRow(
     LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        minimumHeight = settingsDp(context, 66)
+        minimumHeight = settingsDp(context, 50)
         setPadding(
-            settingsDp(context, 8),
-            settingsDp(context, 7),
-            settingsDp(context, 4),
-            settingsDp(context, 7),
+            settingsDp(context, 5),
+            settingsDp(context, 3),
+            settingsDp(context, 2),
+            settingsDp(context, 3),
         )
 
         addView(
@@ -163,9 +156,9 @@ internal fun settingsCompactRow(
                             .configuration
                             .screenWidthDp < 380
                     ) {
-                        16f
+                        14.5f
                     } else {
-                        18f
+                        16f
                     }
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextColor(Color.WHITE)
@@ -212,31 +205,38 @@ internal fun settingsDropdownField(
                     .configuration
                     .screenWidthDp < 380
             ) {
-                14f
+                13.5f
             } else {
-                15.5f
+                14.5f
             }
         setTypeface(Typeface.DEFAULT_BOLD)
-        setTextColor(0xFFFFD75B.toInt())
+        setTextColor(0xFFFFE07A.toInt())
         gravity = Gravity.CENTER_VERTICAL
         setPadding(
-            settingsDp(context, 14),
-            0,
             settingsDp(context, 12),
             0,
+            settingsDp(context, 10),
+            0,
         )
-        minHeight = settingsDp(context, 48)
+        minHeight = settingsDp(context, 40)
         isClickable = true
         isFocusable = true
+        elevation = settingsDp(context, 3).toFloat()
         background =
-            GradientDrawable().apply {
-                setColor(0xE6061A4B.toInt())
+            GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    0xCC2A8BC2.toInt(),
+                    0xCC0C4D83.toInt(),
+                    0xE50A315F.toInt(),
+                ),
+            ).apply {
                 cornerRadius =
-                    settingsDp(context, 12)
+                    settingsDp(context, 11)
                         .toFloat()
                 setStroke(
-                    settingsDp(context, 2),
-                    0xCCF4C647.toInt(),
+                    settingsDp(context, 1.5f),
+                    0xB8A8EEFF.toInt(),
                 )
             }
         layoutParams =
@@ -248,12 +248,12 @@ internal fun settingsDropdownField(
                             .configuration
                             .screenWidthDp < 380
                     ) {
-                        184
+                        168
                     } else {
-                        220
+                        194
                     },
                 ),
-                settingsDp(context, 48),
+                settingsDp(context, 40),
             )
     }
 
@@ -275,14 +275,19 @@ internal class SettingsBooleanControl(
         orientation = HORIZONTAL
         gravity = Gravity.CENTER
         background =
-            GradientDrawable().apply {
-                setColor(0xE6061A4B.toInt())
+            GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    0xD90A315F.toInt(),
+                    0xE5062248.toInt(),
+                ),
+            ).apply {
                 cornerRadius =
                     settingsDp(context, 999)
                         .toFloat()
                 setStroke(
-                    settingsDp(context, 2),
-                    0xCCF4C647.toInt(),
+                    settingsDp(context, 1.5f),
+                    0xB8A8EEFF.toInt(),
                 )
             }
         setPadding(
@@ -291,10 +296,11 @@ internal class SettingsBooleanControl(
             settingsDp(context, 2),
             settingsDp(context, 2),
         )
+        elevation = settingsDp(context, 3).toFloat()
         layoutParams =
             LinearLayout.LayoutParams(
-                settingsDp(context, 132),
-                settingsDp(context, 46),
+                settingsDp(context, 112),
+                settingsDp(context, 38),
             )
 
         addView(
@@ -328,7 +334,7 @@ internal class SettingsBooleanControl(
     ): TextView =
         TextView(context).apply {
             text = label
-            textSize = 14f
+            textSize = 12.5f
             setTypeface(Typeface.DEFAULT_BOLD)
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
@@ -352,34 +358,59 @@ internal class SettingsBooleanControl(
 
     private fun render() {
         offText.background =
-            segmentBackground(selected = !value)
+            segmentBackground(
+                selected = !value,
+                accent =
+                    if (!value) {
+                        0xFFFFB52E.toInt()
+                    } else {
+                        Color.TRANSPARENT
+                    },
+            )
         onText.background =
-            segmentBackground(selected = value)
+            segmentBackground(
+                selected = value,
+                accent =
+                    if (value) {
+                        0xFF29C8FF.toInt()
+                    } else {
+                        Color.TRANSPARENT
+                    },
+            )
         offText.setTextColor(
             if (!value) {
                 Color.WHITE
             } else {
-                0xFFAEC7EB.toInt()
+                0xFFA9C6E7.toInt()
             },
         )
         onText.setTextColor(
             if (value) {
                 Color.WHITE
             } else {
-                0xFFAEC7EB.toInt()
+                0xFFA9C6E7.toInt()
             },
         )
     }
 
     private fun segmentBackground(
         selected: Boolean,
+        accent: Int,
     ): GradientDrawable =
         GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
             if (selected) {
                 intArrayOf(
-                    0xFFFFC93A.toInt(),
-                    0xFFFF8500.toInt(),
+                    if (accent == 0xFF29C8FF.toInt()) {
+                        0xFF39D6FF.toInt()
+                    } else {
+                        0xFFFFC53B.toInt()
+                    },
+                    if (accent == 0xFF29C8FF.toInt()) {
+                        0xFF0E7ECC.toInt()
+                    } else {
+                        0xFFFF8500.toInt()
+                    },
                 )
             } else {
                 intArrayOf(
@@ -399,7 +430,7 @@ internal fun settingsPrivacyLink(
 ): TextView =
     TextView(context).apply {
         text = "Privacy Policy"
-        textSize = 15f
+        textSize = 14f
         setTypeface(
             Typeface.DEFAULT,
             Typeface.ITALIC,
@@ -433,27 +464,17 @@ internal fun showSettingsChoiceDialog(
         LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(
-                settingsDp(context, 14),
-                settingsDp(context, 14),
-                settingsDp(context, 14),
-                settingsDp(context, 14),
+                settingsDp(context, 10),
+                settingsDp(context, 10),
+                settingsDp(context, 10),
+                settingsDp(context, 10),
             )
             background =
-                GradientDrawable(
-                    GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(
-                        0xFF08378F.toInt(),
-                        0xFF041E59.toInt(),
-                    ),
-                ).apply {
-                    cornerRadius =
-                        settingsDp(context, 16)
-                            .toFloat()
-                    setStroke(
-                        settingsDp(context, 2),
-                        0xFFFFC735.toInt(),
-                    )
-                }
+                homeGlassBackground(
+                    context = context,
+                    shape = HomeGlassShape.TILE,
+                    tone = HomeGlassTone.GLASS,
+                )
 
             addView(
                 TextView(context).apply {
@@ -498,10 +519,10 @@ internal fun showSettingsChoiceDialog(
                 )
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(
-                    settingsDp(context, 14),
                     settingsDp(context, 12),
-                    settingsDp(context, 14),
+                    settingsDp(context, 9),
                     settingsDp(context, 12),
+                    settingsDp(context, 9),
                 )
                 isClickable = true
                 isFocusable = true
@@ -527,7 +548,7 @@ internal fun showSettingsChoiceDialog(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                topMargin = settingsDp(context, 4)
+                topMargin = settingsDp(context, 3)
             },
         )
     }
@@ -536,13 +557,25 @@ internal fun showSettingsChoiceDialog(
     panel.addView(scroll)
 
     dialog.setContentView(panel)
-    sizeDialog(dialog, .78f)
+    sizeDialog(dialog, .72f)
     dialog.show()
 }
 
 internal fun settingsDp(
     context: Context,
     value: Int,
+): Int =
+    (
+        value *
+            context.resources
+                .displayMetrics
+                .density
+        )
+        .toInt()
+
+internal fun settingsDp(
+    context: Context,
+    value: Float,
 ): Int =
     (
         value *

@@ -553,21 +553,17 @@ internal fun showSettingsDialog(
                 ),
             )
         }
+    // Keep the dialog compact by wrapping the dense settings content.
     dialog.setContentView(
         scroll,
         ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            (
-                context.resources
-                    .displayMetrics
-                    .heightPixels *
-                    .88f
-                ).toInt(),
+            ViewGroup.LayoutParams.WRAP_CONTENT,
         ),
     )
     sizeDialog(
         dialog,
-        .91f,
+        .84f,
     )
     dialog.show()
 }
