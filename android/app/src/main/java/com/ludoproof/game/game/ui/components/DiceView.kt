@@ -131,7 +131,6 @@ class DiceView @JvmOverloads constructor(
     fun setAttentionEnabled(enabled: Boolean) {
         val shouldPulse =
             enabled &&
-                !settingsStore.snapshot().reducedMotionEnabled &&
                 !rolling &&
                 !settling
         if (shouldPulse == attentionPulsing) {
@@ -174,10 +173,6 @@ class DiceView @JvmOverloads constructor(
         removeCallbacks(animationTicker)
         targetOutcome = outcome
         face = outcome
-        reducedMotion =
-            settingsStore
-                .snapshot()
-                .reducedMotionEnabled
         contentDescription =
             "Dice outcome $outcome."
 
