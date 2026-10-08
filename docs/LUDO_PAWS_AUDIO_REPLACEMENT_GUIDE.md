@@ -2,20 +2,77 @@
 
 This is the quick designer-facing map for changing game audio without editing gameplay code.
 
-## Resolution order
+## Source-of-truth audio folder
 
-Animal vocals resolve in this order:
+Authored production audio now lives at the repository root under:
 
-1. Situation-specific clip, for example `lp_vocal_dog_capture_01.wav`.
-2. Packaged species primitive, for example `lp_vocal_dog_yip.wav`.
-3. Built-in generated non-verbal fallback.
+`audio/`
 
-Physical SFX resolve in this order:
+The Android build automatically mirrors supported `.wav` and `.ogg` files
+from this tree into APK assets. You therefore push the source file once from
+your local repository; do **not** manually copy it into `android/app/src/main/res/raw/`.
 
-1. Preferred named clip under `android/app/src/main/res/raw/`.
-2. Built-in generated situation-specific fallback.
+Runtime resolution for physical SFX is:
 
-There are no legacy generic SFX aliases in the runtime path. This prevents unrelated events from accidentally sharing the same historical placeholder WAV.
+1. authored repository audio under `/audio/`,
+2. stable `res/raw` resource name,
+3. built-in generated situation-specific fallback.
+
+This keeps audio files editable without touching gameplay code while preserving
+a safe fallback before a clip is uploaded.
+
+## Pawn jump — first asset
+
+Push this file from the local repo:
+
+`audio/sfx/gameplay/movement/jump/lp_sfx_jump_01.wav`
+
+Optional variants:
+
+- `lp_sfx_jump_02.wav`
+- `lp_sfx_jump_03.wav`
+
+No Kotlin change is needed to replace or add these numbered jump clips.
+
+## Planned physical SFX folders
+
+Use one behavior per folder:
+
+- `audio/sfx/ui/click/`
+- `audio/sfx/gameplay/movement/jump/`
+- `audio/sfx/gameplay/dice/`
+- `audio/sfx/gameplay/yard_exit/`
+- `audio/sfx/gameplay/capture/`
+- `audio/sfx/gameplay/safe/`
+- `audio/sfx/gameplay/home_lane/`
+- `audio/sfx/gameplay/home/`
+- `audio/sfx/gameplay/fail/`
+- `audio/sfx/gameplay/third_six/`
+- `audio/sfx/gameplay/victory/`
+- `audio/sfx/gameplay/defeat/`
+
+Animal voices remain separately organized by character under
+`audio/voices/<character>/`.
+
+## Existing stable raw fallbacks
+
+The following names remain supported as fallback/compatibility points:
+
+- `lp_sfx_ui_click`
+- `lp_sfx_dice_roll`
+- `lp_sfx_move_paw`
+- `lp_sfx_move_hoof`
+- `lp_sfx_move_web`
+- `lp_sfx_six`
+- `lp_sfx_yard_exit`
+- `lp_sfx_capture_impact`
+- `lp_sfx_safe_shimmer`
+- `lp_sfx_home_lane`
+- `lp_sfx_home_sparkle`
+- `lp_sfx_fail_soft`
+- `lp_sfx_third_six`
+- `lp_sfx_victory_sting`
+- `lp_sfx_defeat_sting`
 
 ## Character situation overrides
 
@@ -40,58 +97,11 @@ Cues:
 - `victory`
 - `defeat`
 
-Examples:
+## Replacement rules
 
-- Dog capture: `lp_vocal_dog_capture_01.wav`
-- Goat captured: `lp_vocal_goat_captured_01.wav`
-- Duck victory: `lp_vocal_duck_victory_01.wav`
-- Cat safe: `lp_vocal_cat_safe_01.wav`
-
-Optional second variants use `_02`. If `_02` is absent, the resolver tries the other named clip and then the character fallback.
-
-## Built-in character primitive names
-
-These names can also be supplied as WAV/OGG files to replace the generated default for a whole vocal family:
-
-- `lp_vocal_dog_yip`
-- `lp_vocal_dog_whine`
-- `lp_vocal_dog_ruff`
-- `lp_vocal_goat_bleat`
-- `lp_vocal_goat_soft_bleat`
-- `lp_vocal_duck_quack`
-- `lp_vocal_duck_soft_quack`
-- `lp_vocal_cat_chirp`
-- `lp_vocal_cat_mew`
-- `lp_vocal_cat_purr`
-- `lp_vocal_cat_huff`
-
-Situation-specific files always win over these primitive names.
-
-## Physical SFX names
-
-Drop any of these into `android/app/src/main/res/raw/`:
-
-- `lp_sfx_ui_click`
-- `lp_sfx_dice_roll`
-- `lp_sfx_move_paw`
-- `lp_sfx_move_hoof`
-- `lp_sfx_move_web`
-- `lp_sfx_six`
-- `lp_sfx_yard_exit`
-- `lp_sfx_capture_impact`
-- `lp_sfx_safe_shimmer`
-- `lp_sfx_home_lane`
-- `lp_sfx_home_sparkle`
-- `lp_sfx_fail_soft`
-- `lp_sfx_third_six`
-- `lp_sfx_victory_sting`
-- `lp_sfx_defeat_sting`
-
-## Rules for replacement clips
-
-- Keep animal vocals non-verbal. No spoken English/Hindi/game commentary.
+- Keep animal vocals non-verbal.
 - Prefer short mono clips: roughly 0.1–0.8 seconds.
-- Avoid clipping and very loud normalization; character vocals and game SFX can overlap on capture/home events.
-- Normal movement should remain subtle. Major events may be brighter/louder.
-- Rebuild the Android app after replacing a `res/raw` file.
+- Avoid clipping and very loud normalization.
+- Normal movement should remain subtle.
+- Rebuild the Android app after replacing an audio file.
 - Do not put dice outcomes, legal-move decisions, turn logic, or fairness decisions inside audio code.
