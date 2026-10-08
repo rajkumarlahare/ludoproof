@@ -76,7 +76,7 @@ internal fun MainActivity.onlineTopBar(): LinearLayout =
 
     }
 
-private fun MainActivity.requestRemoteExit() {
+internal fun MainActivity.requestRemoteExit() {
     val activeTeamMatch =
         gameMode == GameMode.TEAM_UP &&
             currentState?.status == "ACTIVE"
