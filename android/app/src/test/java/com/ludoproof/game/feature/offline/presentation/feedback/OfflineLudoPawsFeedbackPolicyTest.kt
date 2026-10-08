@@ -26,7 +26,7 @@ class OfflineLudoPawsFeedbackPolicyTest {
         val onlyLegalMove =
             reaction(
                 type = GameMomentType.ONLY_LEGAL_MOVE,
-                cue = VoiceCue.MOVE,
+                cue = VoiceCue.SILENT,
                 animation = AnimationCue.EXCITED,
                 priority = 40,
             )
