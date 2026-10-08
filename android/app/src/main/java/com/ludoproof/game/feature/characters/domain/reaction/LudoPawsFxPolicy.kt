@@ -117,7 +117,6 @@ object LudoPawsFxPolicy {
                     allowConfetti = true,
                 )
         }
-    }
 
     private fun lively(
         durationMs: Long,
@@ -132,4 +131,3 @@ object LudoPawsFxPolicy {
             allowConfetti = false,
         )
     }
-}
