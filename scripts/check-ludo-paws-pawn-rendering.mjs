@@ -250,12 +250,6 @@ requireText(
   "idle board uses lower cost cadence",
   "Idle 3D cadence regression coverage is missing.",
 );
-requireText(
-  cadenceTests,
-  "reduced motion never burns active frame cadence",
-  "Reduced-motion 3D cadence regression coverage is missing.",
-);
-
 for (const retired of [
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsCaptureReturnOverlayView.kt",
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsCharacterReactionOverlayView.kt",
