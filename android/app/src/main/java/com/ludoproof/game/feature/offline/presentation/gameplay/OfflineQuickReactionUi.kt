@@ -83,24 +83,22 @@ internal fun OfflineGameActivity.presentQuickReaction(
         (bubble.parent as? ViewGroup)?.removeView(bubble)
     }
 
-{
-        bubble.animate()
-            .alpha(1f)
-            .scaleX(1f)
-            .scaleY(1f)
-            .translationY(0f)
-            .setDuration(170L)
-            .withEndAction {
-                bubble.animate()
-                    .alpha(0f)
-                    .translationY(-dp(presentation.riseDp).toFloat())
-                    .setStartDelay(260L)
-                    .setDuration((presentation.durationMs - 430L).coerceAtLeast(500L))
-                    .withEndAction(::removeBubble)
-                    .start()
-            }
-            .start()
-
+    bubble.animate()
+        .alpha(1f)
+        .scaleX(1f)
+        .scaleY(1f)
+        .translationY(0f)
+        .setDuration(170L)
+        .withEndAction {
+            bubble.animate()
+                .alpha(0f)
+                .translationY(-dp(presentation.riseDp).toFloat())
+                .setStartDelay(260L)
+                .setDuration((presentation.durationMs - 430L).coerceAtLeast(500L))
+                .withEndAction(::removeBubble)
+                .start()
+        }
+        .start()
 
 
     return true
