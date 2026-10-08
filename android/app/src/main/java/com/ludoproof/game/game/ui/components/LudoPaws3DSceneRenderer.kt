@@ -22,6 +22,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.min
+import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -290,15 +291,23 @@ internal class LudoPaws3DSceneRenderer {
                 state = state,
                 nowMillis = nowMillis,
             )
+        val movementPose =
+            movementScalePose(
+                pawn = pawn,
+                state = state,
+                nowMillis = nowMillis,
+            )
         val modelScale =
             pawn.radius *
                 MODEL_SCALE_PER_RADIUS *
                 pawn.presentationScale *
                 pawn.attentionScale *
-                reaction.scale
+                reaction.scale *
+                movementPose.scale
         val rootY =
             pawn.y +
-                pawn.radius * rootYOffsetPerRadius(pawn.species)
+                pawn.radius * rootYOffsetPerRadius(pawn.species) +
+                movementPose.liftY
 
         when (pawn.species) {
             LudoPaws3DSpecies.DOG -> {
@@ -337,7 +346,6 @@ internal class LudoPaws3DSceneRenderer {
                     base.copy(
                         liftY = base.liftY + reaction.liftY,
                         bodyYawDegrees = pawn.facingYawDegrees + base.bodyYawDegrees + reaction.bodyYawDegrees,
-                        headTiltDegrees = base.headTiltDegrees + reaction.headTiltDegrees,
                         earFlickDegrees = base.earFlickDegrees + reaction.primaryAppendageDegrees,
                         beardSwingDegrees = base.beardSwingDegrees + reaction.secondaryAppendageDegrees,
                         tailFlickDegrees = base.tailFlickDegrees + reaction.tertiaryAppendageDegrees,
@@ -403,6 +411,155 @@ internal class LudoPaws3DSceneRenderer {
         }
     }
 
+    // Active-move squash/stretch envelope. Kept presentation-only so board
+    // coordinates, route state, hit testing and timing remain authoritative.
+    private fun movementScalePose(
+        pawn: RenderPawn,
+        state: LudoPaws3DSceneState,
+        nowMillis: Long,
+    ): MovementScalePose {
+        val forward = state.forwardMotion
+        if (
+            forward == null ||
+            forward.playerId != pawn.key.playerId ||
+            forward.tokenIndex != pawn.key.tokenIndex ||
+            state.forwardDurationMillis <= 0L
+        ) {
+            return MovementScalePose()
+        }
+
+        val elapsed =
+            (nowMillis - state.forwardStartedAtMillis)
+                .coerceAtLeast(0L)
+        val totalDuration = state.forwardDurationMillis
+        if (elapsed >= totalDuration) {
+            return MovementScalePose()
+        }
+
+        val travelDuration =
+            (
+                totalDuration -
+                    LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
+            ).coerceAtLeast(1L)
+
+        // Noticeable but controlled squash/stretch:
+        // 94% anticipation -> 110% spring -> 102% travel -> 95% landing.
+        val anticipationMillis =
+            min(
+                70L,
+                max(
+                    45L,
+                    travelDuration / 8L,
+                ),
+            )
+        val takeoffMillis =
+            min(
+                125L,
+                max(
+                    85L,
+                    travelDuration / 5L,
+                ),
+            )
+        val landingMillis =
+            min(
+                85L,
+                max(
+                    55L,
+                    LudoPaws3DRenderCadencePolicy
+                        .FORWARD_LANDING_SETTLE_MILLIS / 4L,
+                ),
+            )
+
+        val scale: Float
+        val liftY: Float
+
+        when {
+            elapsed < anticipationMillis -> {
+                val t =
+                    smoothStep(
+                        elapsed.toFloat() /
+                            anticipationMillis.toFloat(),
+                    )
+                scale = lerp(1f, 0.94f, t)
+                liftY = 0f
+            }
+
+            elapsed < anticipationMillis + takeoffMillis -> {
+                val t =
+                    smoothStep(
+                        (
+                            elapsed - anticipationMillis
+                        ).toFloat() /
+                            takeoffMillis.toFloat(),
+                    )
+                scale = lerp(0.94f, 1.10f, t)
+                liftY = lerp(0f, pawn.radius * 0.34f, t)
+            }
+
+            elapsed < travelDuration -> {
+                val travelElapsed =
+                    elapsed - anticipationMillis - takeoffMillis
+                val travelWindow =
+                    (
+                        travelDuration -
+                            anticipationMillis -
+                            takeoffMillis
+                    ).coerceAtLeast(1L)
+                val t =
+                    (
+                        travelElapsed.toFloat() /
+                            travelWindow.toFloat()
+                    ).coerceIn(0f, 1f)
+                scale = lerp(1.10f, 1.02f, smoothStep(t))
+                liftY = lerp(pawn.radius * 0.34f, 0f, smoothStep(t))
+            }
+
+            elapsed < totalDuration - landingMillis -> {
+                scale = 1.02f
+                liftY = 0f
+            }
+
+            else -> {
+                val t =
+                    smoothStep(
+                        (
+                            elapsed - (totalDuration - landingMillis)
+                        ).toFloat() /
+                            landingMillis.toFloat(),
+                    )
+                val landingT =
+                    (
+                        t * 2f
+                    ).coerceAtMost(1f)
+                scale =
+                    when {
+                        t < 0.5f ->
+                            lerp(1.02f, 0.95f, smoothStep(landingT))
+
+                        else ->
+                            lerp(
+                                0.95f,
+                                1f,
+                                smoothStep(
+                                    (t - 0.5f) * 2f,
+                                ),
+                            )
+                    }
+                liftY = 0f
+            }
+        }
+
+        return MovementScalePose(
+            scale = scale,
+            liftY = liftY,
+        )
+    }
+
+    private data class MovementScalePose(
+        val scale: Float = 1f,
+        val liftY: Float = 0f,
+    )
+
     private fun reactionPose(
         pawn: RenderPawn,
         state: LudoPaws3DSceneState,
@@ -453,9 +610,14 @@ internal class LudoPaws3DSceneRenderer {
                 state.forwardDurationMillis > 0L &&
                 elapsed < state.forwardDurationMillis
             ) {
+                val travelDuration =
+                    (
+                        state.forwardDurationMillis -
+                            LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
+                    ).coerceAtLeast(1L)
                 val visualProgress =
                     elapsed.toFloat() /
-                        state.forwardDurationMillis.toFloat() *
+                        travelDuration.toFloat() *
                         forward.visualSteps.toFloat()
                 val stepFraction = visualProgress - floor(visualProgress)
                 return MotionFrame(
@@ -1159,6 +1321,20 @@ internal class LudoPaws3DSceneRenderer {
             mvp = mvp,
             color = color,
         )
+    }
+
+    private fun lerp(
+        start: Float,
+        end: Float,
+        progress: Float,
+    ): Float =
+        start + (end - start) * progress.coerceIn(0f, 1f)
+
+    private fun smoothStep(
+        progress: Float,
+    ): Float {
+        val t = progress.coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
     }
 
     private fun idleDurationMillis(

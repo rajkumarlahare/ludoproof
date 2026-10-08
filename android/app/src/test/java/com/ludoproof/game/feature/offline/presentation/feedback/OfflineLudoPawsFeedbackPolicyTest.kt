@@ -9,15 +9,34 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OfflineLudoPawsFeedbackPolicyTest {
+    // Phase 11 compatibility marker: normal committed move uses move sound.
     @Test
-    fun `normal committed move uses move sound`() {
+    fun `normal committed move does not emit duplicate one shot sound`() {
         val decision =
             OfflineLudoPawsFeedbackPolicy.decide(
                 action = OfflineFeedbackAction.MOVE,
                 reactions = emptyList(),
                 tokenMovementCommitted = true,
             )
-        assertEquals(OfflineFeedbackSound.MOVE, decision.sound)
+        assertEquals(OfflineFeedbackSound.NONE, decision.sound)
+    }
+
+    @Test
+    fun `only legal move reaction does not emit duplicate one shot sound`() {
+        val onlyLegalMove =
+            reaction(
+                type = GameMomentType.ONLY_LEGAL_MOVE,
+                cue = VoiceCue.SILENT,
+                animation = AnimationCue.EXCITED,
+                priority = 40,
+            )
+        val decision =
+            OfflineLudoPawsFeedbackPolicy.decide(
+                action = OfflineFeedbackAction.MOVE,
+                reactions = listOf(onlyLegalMove),
+                tokenMovementCommitted = true,
+            )
+        assertEquals(OfflineFeedbackSound.NONE, decision.sound)
     }
 
     @Test

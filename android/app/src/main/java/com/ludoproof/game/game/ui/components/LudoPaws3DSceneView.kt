@@ -16,6 +16,7 @@ import android.view.View
 import com.ludoproof.game.feature.characters.domain.model.AnimationCue
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
+import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.math.max
@@ -55,6 +56,8 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
 ) : TextureView(context, attrs), TextureView.SurfaceTextureListener {
     private val settingsStore = GameSettingsStore(context)
+    private var movementAudioMotionKey: String? = null
+    private var movementAudioNextStep: Int = 1
 
     @Volatile
     private var sceneState = LudoPaws3DSceneState()
@@ -71,6 +74,10 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         isOpaque = false
         isClickable = false
         isFocusable = false
+
+        // Prewarm the first movement tick while the board is being created so
+        // the first audible step is not held behind SoundPool's async load.
+        GameSoundFeedback.preloadMovementStep(context)
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
         surfaceTextureListener = this
     }
@@ -98,6 +105,12 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             motions.firstOrNull {
                 it.kind == LudoPawsPawnMotionKind.FORWARD
             }
+
+        if (newForward != null) {
+            movementAudioMotionKey =
+                "${state?.matchId}:${newForward.playerId}:${newForward.tokenIndex}:${newForward.fromPosition}:${newForward.toPosition}"
+            movementAudioNextStep = 1
+        }
 
         val retainedForward =
             if (
@@ -469,6 +482,41 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             interrupt()
         }
 
+        private fun emitMovementStepSounds(
+            state: LudoPaws3DSceneState,
+            nowMillis: Long,
+        ) {
+            val forward = state.forwardMotion ?: return
+            if (state.forwardDurationMillis <= 0L) return
+
+            val motionKey =
+                "${state.snapshot?.matchId}:${forward.playerId}:${forward.tokenIndex}:${forward.fromPosition}:${forward.toPosition}"
+            if (motionKey != movementAudioMotionKey) {
+                movementAudioMotionKey = motionKey
+                movementAudioNextStep = 1
+            }
+
+            val stepDuration =
+                LudoPawsGameplayPacingPolicy.movementAudioStepDurationMillis(
+                    forwardDurationMillis = state.forwardDurationMillis,
+                    visualSteps = forward.visualSteps,
+                )
+            if (stepDuration <= 0L) return
+
+            val elapsed =
+                (nowMillis - state.forwardStartedAtMillis)
+                    .coerceAtLeast(0L)
+            while (
+                movementAudioNextStep <= forward.visualSteps &&
+                elapsed >= movementAudioNextStep.toLong() * stepDuration
+            ) {
+                com.ludoproof.game.feature.settings.data.local.GameSoundFeedback.moveStep(
+                    context = context,
+                )
+                movementAudioNextStep += 1
+            }
+        }
+
         private fun awaitPresentationVisible(): Boolean {
             visibilityLock.withLock {
                 while (running && !presentationVisible) {
@@ -509,6 +557,10 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                         characterIdsBySeat = frameState.characterIdsBySeat,
                     )
                     renderer.drawFrame(
+                        state = frameState,
+                        nowMillis = frameStartedAtMillis,
+                    )
+                    emitMovementStepSounds(
                         state = frameState,
                         nowMillis = frameStartedAtMillis,
                     )

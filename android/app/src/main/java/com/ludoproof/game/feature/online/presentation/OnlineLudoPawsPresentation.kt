@@ -307,44 +307,16 @@ internal object OnlineLudoPawsPresentation {
                 ),
             )
 
-        val dedicatedReactionSound =
-            if (reactions.isNotEmpty()) {
-                GameSoundFeedback.reaction(
-                    context = activity,
-                    reactions = reactions,
-                    characterIdsBySeat = characterIdsBySeat,
-                ).also {
-                    LudoPawsHaptics.reaction(
-                        context = activity,
-                        reactions = reactions,
-                    )
-                }
-            } else {
-                false
-            }
-
-        if (
-            !dedicatedReactionSound &&
-            hasTokenMovement(
-                previous = previous,
-                current = current,
+        if (reactions.isNotEmpty()) {
+            GameSoundFeedback.reaction(
+                context = activity,
+                reactions = reactions,
+                characterIdsBySeat = characterIdsBySeat,
             )
-        ) {
-            val eventIndex =
-                current.history.lastOrNull()?.eventIndex
-                    ?: current.randomEventIndex
-            if (
-                host.feedbackLedger.once(
-                    matchId = current.matchId,
-                    key = "MOVE:$eventIndex",
-                )
-            ) {
-                val seat = movementSeat(previous, current)
-                GameSoundFeedback.move(
-                    context = activity,
-                    characterId = seat?.let(characterIdsBySeat::getOrNull),
-                )
-            }
+            LudoPawsHaptics.reaction(
+                context = activity,
+                reactions = reactions,
+            )
         }
     }
 

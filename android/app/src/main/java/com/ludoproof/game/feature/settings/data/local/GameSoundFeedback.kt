@@ -1,6 +1,7 @@
 package com.ludoproof.game.feature.settings.data.local
 
 import android.content.Context
+import com.ludoproof.game.core.audio.LudoPawsAudioCatalog
 import com.ludoproof.game.feature.characters.data.audio.LudoPawsAudioAssetPlayer
 import com.ludoproof.game.feature.characters.data.audio.LudoPawsProceduralAudio
 import com.ludoproof.game.feature.characters.domain.reaction.GameMomentType
@@ -9,10 +10,9 @@ import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 /**
  * Short game/UI sound facade.
  *
- * Every sound resolves one stable preferred res/raw name and otherwise uses the
- * distinct built-in generated default. Legacy placeholder WAV aliases are not
- * consulted because several historical files contained identical audio and
- * would mask the situation-specific defaults.
+ * Every sound resolves one stable preferred authored asset family and otherwise
+ * uses the existing res/raw/generated fallback. Legacy placeholder WAV aliases
+ * are not consulted because several historical files contained identical audio.
  */
 object GameSoundFeedback {
     fun click(context: Context) =
@@ -21,6 +21,32 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_ui_click"),
             fallback = LudoPawsProceduralAudio.Sfx.CLICK,
             volume = .46f,
+        )
+
+    /**
+     * Preloads the exact movement-step clip family used by the synchronized
+     * visual movement clock. This does not play anything and does not alter
+     * gameplay timing.
+     */
+    fun preloadMovementStep(context: Context) {
+        LudoPawsAudioAssetPlayer.preloadSfx(
+            context = context,
+            rawResourceNames = listOf("lp_sfx_move_paw"),
+            assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
+        )
+    }
+
+    /** One short physical tick for exactly one visual pawn step. */
+    fun moveStep(context: Context) =
+        play(
+            context = context,
+            names = listOf("lp_sfx_move_paw"),
+            fallback = LudoPawsProceduralAudio.Sfx.MOVE_PAW,
+            // SoundPool accepts a maximum per-channel volume of 1.0f.
+            // Use the maximum authored tick level so the pawn step is as prominent
+            // as Android's mixer allows without introducing clipping in the app layer.
+            volume = 1.0f,
+            assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
         )
 
     fun move(
@@ -53,6 +79,7 @@ object GameSoundFeedback {
             names = movement.first,
             fallback = movement.second,
             volume = movement.third,
+            assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
         )
     }
 
@@ -158,7 +185,10 @@ object GameSoundFeedback {
         return when (highest.momentType) {
             GameMomentType.SIX_ROLLED -> played { six(context) }
             GameMomentType.TOKEN_LEFT_YARD -> played { yardExit(context) }
-            GameMomentType.ONLY_LEGAL_MOVE -> played { move(context, characterId) }
+            // Per-cell movement ticks are emitted by the synchronized 3D movement
+            // clock. Playing the legacy one-shot move cue here would double-fire
+            // the sound for every move.
+            GameMomentType.ONLY_LEGAL_MOVE -> false
             GameMomentType.CAPTURE_MADE,
             GameMomentType.TOKEN_CAPTURED,
             -> played { capture(context) }
@@ -199,6 +229,7 @@ object GameSoundFeedback {
         fallback: LudoPawsProceduralAudio.Sfx,
         volume: Float,
         playbackRate: Float = 1f,
+        assetPaths: List<String> = emptyList(),
     ) {
         if (
             !GameSettingsStore(context)
@@ -213,6 +244,7 @@ object GameSoundFeedback {
             fallback = fallback,
             volume = volume,
             playbackRate = playbackRate,
+            assetPaths = assetPaths,
         )
     }
 }

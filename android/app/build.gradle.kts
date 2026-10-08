@@ -39,8 +39,23 @@ if (releaseSigningPartiallyConfigured) {
     )
 }
 
+
+val authoredAudioDir = rootProject.projectDir.parentFile.resolve("audio")
+val generatedAudioAssetsDir = layout.buildDirectory.dir("generated/audio-assets")
+val syncAuthoredAudioAssets =
+    tasks.register<Sync>("syncAuthoredAudioAssets") {
+        from(authoredAudioDir) {
+            include("**/*.wav", "**/*.ogg")
+        }
+        into(generatedAudioAssetsDir.map { it.dir("audio") })
+    }
+
 android {
     namespace = "com.ludoproof.game"
+
+    androidResources {
+        noCompress += listOf("wav", "ogg")
+    }
     compileSdk = 36
 
     defaultConfig {
@@ -110,6 +125,18 @@ android {
         abortOnError = true
         checkReleaseBuilds = true
     }
+}
+
+android {
+    sourceSets {
+        getByName("main") {
+            assets.srcDir(generatedAudioAssetsDir)
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(syncAuthoredAudioAssets)
 }
 
 dependencies {

@@ -5,16 +5,17 @@ import com.ludoproof.game.core.audio.LudoPawsSoundPool
 import com.ludoproof.game.feature.characters.domain.audio.LudoPawsProceduralVocal
 
 /**
- * Resolves stable raw-resource names before falling back to procedural audio.
+ * Resolves authored assets before raw-resource and procedural fallbacks.
  *
  * Vocal lookup has three tiers:
- * 1. exact situation override (`lp_vocal_dog_capture_01`),
- * 2. packaged species primitive (`lp_vocal_dog_yip`),
+ * 1. exact situation override,
+ * 2. packaged species primitive,
  * 3. generated copyright-safe emergency fallback.
  *
- * This is the only Android resource lookup boundary for character/game sounds.
- * A designer can therefore add or replace an .ogg/.wav under res/raw using the
- * documented name without touching Kotlin gameplay or reaction code.
+ * Physical SFX lookup has two authored tiers:
+ * 1. repository-owned /audio asset paths,
+ * 2. stable res/raw resource names,
+ * followed by the generated situation-specific fallback.
  */
 internal object LudoPawsAudioAssetPlayer {
     fun playVocal(
@@ -60,13 +61,68 @@ internal object LudoPawsAudioAssetPlayer {
         )
     }
 
+    /**
+     * Prewarms the same authored/raw SFX resolution chain used by playSfx.
+     *
+     * Only the first available authored asset is loaded, avoiding unnecessary
+     * SoundPool memory use when future numbered variants are added.
+     */
+    fun preloadSfx(
+        context: Context,
+        rawResourceNames: List<String>,
+        assetPaths: List<String> = emptyList(),
+    ) {
+        for (assetPath in assetPaths) {
+            if (
+                LudoPawsSoundPool.preloadAsset(
+                    context = context,
+                    assetPath = assetPath,
+                )
+            ) {
+                return
+            }
+        }
+
+        val resourceId =
+            rawResourceNames
+                .asSequence()
+                .map {
+                    rawResourceId(
+                        context = context,
+                        resourceName = it,
+                    )
+                }
+                .firstOrNull { it != 0 }
+
+        if (resourceId != null) {
+            LudoPawsSoundPool.preload(
+                context = context,
+                resourceId = resourceId,
+            )
+        }
+    }
+
     fun playSfx(
         context: Context,
         rawResourceNames: List<String>,
         fallback: LudoPawsProceduralAudio.Sfx,
         volume: Float,
         playbackRate: Float = 1f,
+        assetPaths: List<String> = emptyList(),
     ) {
+        for (assetPath in assetPaths) {
+            if (
+                LudoPawsSoundPool.playAsset(
+                    context = context,
+                    assetPath = assetPath,
+                    volume = volume,
+                    rate = playbackRate,
+                )
+            ) {
+                return
+            }
+        }
+
         val resourceId =
             rawResourceNames
                 .asSequence()
