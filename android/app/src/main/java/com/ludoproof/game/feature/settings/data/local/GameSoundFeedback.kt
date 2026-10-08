@@ -29,9 +29,10 @@ object GameSoundFeedback {
             context = context,
             names = listOf("lp_sfx_move_paw"),
             fallback = LudoPawsProceduralAudio.Sfx.MOVE_PAW,
-            // Authored jump/tick clips are intentionally more prominent than the
-            // old generic movement cue so every step remains clearly audible.
-            volume = .72f,
+            // SoundPool accepts a maximum per-channel volume of 1.0f.
+            // Use the maximum authored tick level so the pawn step is as prominent
+            // as Android's mixer allows without introducing clipping in the app layer.
+            volume = 1.0f,
             assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
         )
 
