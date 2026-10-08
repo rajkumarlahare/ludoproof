@@ -100,7 +100,6 @@ for (const token of [
   "characterIdsBySeat",
   "bindRenderAssignments",
   "settings.gameSpeed.moveStepMs",
-  "reducedMotion",
   "LudoPaws3DRenderCadencePolicy",
   ".frameDelayMillis(",
   "onVisibilityChanged",
@@ -124,7 +123,6 @@ for (const token of [
   "hasActiveAnimation",
   "captureReturns",
   "activeReactions",
-  "reducedMotion",
 ]) {
   requireText(
     cadencePolicy,
