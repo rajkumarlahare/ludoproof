@@ -4,7 +4,6 @@ import android.app.AlertDialog
 import android.os.Build
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -24,17 +23,6 @@ internal fun MainActivity.onlineTopBar(): LinearLayout =
 
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-
-        addView(
-            Button(this@onlineTopBar).apply {
-                LudoProofTheme.homeCircularAction(this, "‹")
-                contentDescription = "Back"
-                setOnClickListener {
-                    requestRemoteExit()
-                }
-            },
-            LinearLayout.LayoutParams(dp(50), dp(50)),
-        )
 
         addView(
             LinearLayout(this@onlineTopBar).apply {
@@ -86,19 +74,9 @@ internal fun MainActivity.onlineTopBar(): LinearLayout =
             ),
         )
 
-        addView(
-            Button(this@onlineTopBar).apply {
-                LudoProofTheme.homeCircularAction(this, "⚙")
-                contentDescription = "Settings"
-                setOnClickListener {
-                    ArcadeDialogs.showSettings(this@onlineTopBar)
-                }
-            },
-            LinearLayout.LayoutParams(dp(50), dp(50)),
-        )
     }
 
-private fun MainActivity.requestRemoteExit() {
+internal fun MainActivity.requestRemoteExit() {
     val activeTeamMatch =
         gameMode == GameMode.TEAM_UP &&
             currentState?.status == "ACTIVE"

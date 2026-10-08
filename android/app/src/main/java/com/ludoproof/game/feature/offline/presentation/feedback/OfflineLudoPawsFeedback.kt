@@ -9,8 +9,6 @@ import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReactionEngine
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.feature.settings.data.local.LudoPawsHaptics
-import com.ludoproof.game.ui.offline.gameplay.OfflinePassAndPlayHandoffPolicy
-import com.ludoproof.game.ui.offline.gameplay.presentPassAndPlayHandoff
 
 enum class OfflineFeedbackAction {
     ROLL,
@@ -176,27 +174,6 @@ object OfflineLudoPawsFeedbackDispatcher {
             current = current,
             action = action,
         )
-
-        val safeCurrent = current ?: return
-        val handoff =
-            OfflinePassAndPlayHandoffPolicy.resolve(
-                mode = activity.gameMode,
-                previous = previous,
-                current = safeCurrent,
-            ) ?: return
-        val handoffKey =
-            "HANDOFF:${safeCurrent.randomEventIndex}:${handoff.seat}"
-        if (
-            ledger.once(
-                matchId = safeCurrent.matchId,
-                key = handoffKey,
-            )
-        ) {
-            activity.presentPassAndPlayHandoff(
-                previous = previous,
-                current = safeCurrent,
-            )
-        }
     }
 
     fun committed(

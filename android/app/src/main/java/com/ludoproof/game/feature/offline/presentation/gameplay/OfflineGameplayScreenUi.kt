@@ -9,6 +9,8 @@ import com.ludoproof.game.*
 import com.ludoproof.game.feature.offline.*
 import com.ludoproof.game.feature.offline.presentation.feedback.OfflineFeedbackAction
 import com.ludoproof.game.feature.offline.presentation.feedback.OfflineLudoPawsFeedbackDispatcher
+import com.ludoproof.game.ui.game.addGameTopActions
+import com.ludoproof.game.ui.dialogs.showSettingsDialog
 import com.ludoproof.game.ui.offline.common.*
 import com.ludoproof.game.ui.offline.setup.*
 
@@ -48,12 +50,12 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         } else {
             dp(horizontalPaddingDp)
         }
+    // BOARD WIDTH LOCK:
+    // Use the available gameplay width; the 1dp side inset is the only intentional gap.
+    // The board stage stays square, so increasing width increases height uniformly.
     val boardStageWidth =
-        minOf(
-            (contentWidth - sectionSideMargin * 2)
-                .coerceAtLeast(dp(260)),
-            dp(if (isCompactSetup()) 390 else 440),
-        )
+        (contentWidth - dp(2))
+            .coerceAtLeast(dp(1))
 
     val content =
         LinearLayout(this).apply {
@@ -78,17 +80,6 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         ),
     )
 
-    content.addView(
-        backHeader(null),
-        LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-        ).apply {
-            leftMargin = sectionSideMargin
-            rightMargin = sectionSideMargin
-        },
-    )
-
     resultPanel =
         offlineResultPanel()
             .apply {
@@ -98,16 +89,6 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         resultPanel,
         gameplaySectionParams(
             if (isCompactSetup()) 5 else 7,
-        ).apply {
-            leftMargin = sectionSideMargin
-            rightMargin = sectionSideMargin
-        },
-    )
-
-    content.addView(
-        gameplayHud(),
-        gameplaySectionParams(
-            if (isCompactSetup()) 4 else 6,
         ).apply {
             leftMargin = sectionSideMargin
             rightMargin = sectionSideMargin
@@ -155,6 +136,10 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         ),
     )
 
+    // BOARD GEOMETRY LOCK:
+    // Keep the approved board size independent from optional gameplay controls.
+    // A weighted vertical slot would remeasure/shrink the square board whenever
+    // quick chat or another future action adds height below it.
     val boardStage =
         FrameLayout(this).apply {
             clipChildren = false
@@ -172,8 +157,7 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         boardStage,
         LinearLayout.LayoutParams(
             boardStageWidth,
-            0,
-            1f,
+            boardStageWidth,
         ).apply {
             gravity = Gravity.CENTER_HORIZONTAL
             topMargin = dp(if (isCompactSetup()) 2 else 4)
@@ -198,8 +182,60 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         },
     )
 
+    addGameTopActions(
+        host = host,
+        context = this,
+        onBack = { requestOfflineExit() },
+        onSettings = {
+            showSettingsDialog(
+                this,
+            ) {
+                val current = engine.snapshot()
+                if (current != null) {
+                    showGame(current)
+                } else {
+                    showSetup()
+                }
+            }
+        },
+    )
+
     setContentView(root)
-    renderGame(state)
+
+    // CENTER LOCK:
+    // Center the board in the real device viewport, not in the vertical flow between
+    // the player rails. This preserves the existing rail/dice spacing around the board.
+    host.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+        centerBoardInViewport()
+    }
+    boardView?.post {
+        centerBoardInViewport()
+        renderGame(state)
+    }
+}
+
+internal fun OfflineGameActivity.centerBoardInViewport() {
+    val boardStage =
+        boardView?.parent as? FrameLayout
+            ?: return
+    val content =
+        boardStage.parent as? LinearLayout
+            ?: return
+    val viewport =
+        content.parent as? FrameLayout
+            ?: return
+
+    if (viewport.height <= 0 || boardStage.height <= 0) {
+        return
+    }
+
+    val boardCenterY =
+        boardStage.top + boardStage.height / 2f
+    val viewportCenterY =
+        viewport.height / 2f
+
+    content.translationY =
+        viewportCenterY - boardCenterY
 }
 
 internal fun OfflineGameActivity.gameplayHud(): LinearLayout =

@@ -211,7 +211,6 @@ internal fun MainActivity.onlineActionPanel(): LinearLayout =
                     setPadding(dp(6), dp(5), dp(6), 0)
                     maxLines = 2
                 }
-            addView(statusText)
         }
 
 internal fun MainActivity.responsiveControlRow(
