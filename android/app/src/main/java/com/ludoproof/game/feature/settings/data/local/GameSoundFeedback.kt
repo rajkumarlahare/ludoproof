@@ -159,7 +159,10 @@ object GameSoundFeedback {
         return when (highest.momentType) {
             GameMomentType.SIX_ROLLED -> played { six(context) }
             GameMomentType.TOKEN_LEFT_YARD -> played { yardExit(context) }
-            GameMomentType.ONLY_LEGAL_MOVE -> played { move(context, characterId) }
+            // Per-cell movement ticks are emitted by the synchronized 3D movement
+            // clock. Playing the legacy one-shot move cue here would double-fire
+            // the sound for every move.
+            GameMomentType.ONLY_LEGAL_MOVE -> false
             GameMomentType.CAPTURE_MADE,
             GameMomentType.TOKEN_CAPTURED,
             -> played { capture(context) }
