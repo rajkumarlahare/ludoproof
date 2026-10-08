@@ -47,7 +47,13 @@ internal class LudoPawsFxPainter(
         color: Int,
         cell: Float,
         progress: Float,
+        reducedMotion: Boolean,
     ) {
+        if (reducedMotion) {
+            drawDestinationFlash(canvas, to, color, cell)
+            return
+        }
+
         val eased = easeOutCubic(progress)
         val x = lerp(from.first, to.first, eased)
         val y = lerp(from.second, to.second, eased)
@@ -84,7 +90,12 @@ internal class LudoPawsFxPainter(
         cell: Float,
         progress: Float,
         emphasis: Float,
+        reducedMotion: Boolean,
     ) {
+        if (reducedMotion) {
+            drawDestinationFlash(canvas, to, color, cell)
+            return
+        }
         val fade = (1f - progress).coerceIn(0f, 1f)
         if (fade <= 0f) {
             return
@@ -112,11 +123,16 @@ internal class LudoPawsFxPainter(
         progress: Float,
         particleCount: Int,
         allowConfetti: Boolean,
+        reducedMotion: Boolean,
     ) {
         val color = reactionColor(cue)
         val fade = (1f - progress).coerceIn(0f, 1f)
         val pulse =
-            cell * (.30f + .58f * easeOutCubic(progress))
+            if (reducedMotion) {
+                cell * .46f
+            } else {
+                cell * (.30f + .58f * easeOutCubic(progress))
+            }
 
         glowPaint.color = withAlpha(color, (75f * fade).roundToInt())
         canvas.drawCircle(center.first, center.second, pulse * .86f, glowPaint)
@@ -133,22 +149,22 @@ internal class LudoPawsFxPainter(
                 drawImpact(canvas, center, color, cell, progress, particleCount)
 
             AnimationCue.SAFE ->
-                drawSafeShield(canvas, center, color, cell, progress)
+                drawSafeShield(canvas, center, color, cell, progress, reducedMotion)
 
             AnimationCue.HOME -> {
                 drawBurst(canvas, center, color, cell, particleCount, progress)
-                drawHomeStars(canvas, cell, progress)
+                drawHomeStars(canvas, cell, progress, reducedMotion)
             }
 
             AnimationCue.ANGRY ->
-                drawAngryBolts(canvas, center, cell, progress)
+                drawAngryBolts(canvas, center, cell, progress, reducedMotion)
 
             AnimationCue.NERVOUS ->
-                drawNervousOrbit(canvas, center, color, cell, progress)
+                drawNervousOrbit(canvas, center, color, cell, progress, reducedMotion)
 
             AnimationCue.SAD,
             AnimationCue.DEFEAT,
-            -> drawSadDrops(canvas, center, cell, progress, particleCount)
+            -> drawSadDrops(canvas, center, cell, progress, particleCount, reducedMotion)
 
             AnimationCue.VICTORY -> {
                 drawBurst(canvas, center, color, cell, particleCount / 2, progress)
@@ -158,7 +174,7 @@ internal class LudoPawsFxPainter(
             }
 
             AnimationCue.IDLE ->
-                drawIdleBreath(canvas, center, color, cell, progress)
+                drawIdleBreath(canvas, center, color, cell, progress, reducedMotion)
         }
     }
 
@@ -166,15 +182,16 @@ internal class LudoPawsFxPainter(
         canvas: Canvas,
         cell: Float,
         progress: Float,
+        reducedMotion: Boolean,
     ) {
-        val count = 10
+        val count = if (reducedMotion) 4 else 10
         repeat(count) { index ->
             val angle = index * 2.399963 + progress
             val radius = cell * (1f + (index % 3) * .7f)
             val cx = cell * 7.5f + cos(angle).toFloat() * radius
             val cy =
                 cell * 7.5f + sin(angle).toFloat() * radius -
-                    cell * progress * .7f
+                    if (reducedMotion) 0f else cell * progress * .7f
             drawStar(
                 canvas = canvas,
                 cx = cx,
@@ -255,9 +272,10 @@ internal class LudoPawsFxPainter(
         color: Int,
         cell: Float,
         progress: Float,
+        reducedMotion: Boolean,
     ) {
         val fade = (1f - progress).coerceIn(0f, 1f)
-        repeat(3) { index ->
+        repeat(if (reducedMotion) 1 else 3) { index ->
             ringPaint.color = withAlpha(color, (200f * fade / (index + 1)).roundToInt())
             ringPaint.strokeWidth = cell * .07f
             canvas.drawCircle(
@@ -274,6 +292,7 @@ internal class LudoPawsFxPainter(
         center: Pair<Float, Float>,
         cell: Float,
         progress: Float,
+        reducedMotion: Boolean,
     ) {
         linePaint.color =
             withAlpha(
@@ -281,7 +300,7 @@ internal class LudoPawsFxPainter(
                 ((1f - progress) * 245f).roundToInt(),
             )
         linePaint.strokeWidth = cell * .08f
-        repeat(4) { index ->
+        repeat(if (reducedMotion) 2 else 4) { index ->
             val side = if (index % 2 == 0) -1f else 1f
             val yOffset = (index / 2) * cell * .20f
             val path = Path().apply {
@@ -300,8 +319,9 @@ internal class LudoPawsFxPainter(
         color: Int,
         cell: Float,
         progress: Float,
+        reducedMotion: Boolean,
     ) {
-        val count = 5
+        val count = if (reducedMotion) 2 else 5
         repeat(count) { index ->
             val angle = 2.0 * PI * index / count + progress * 8f
             particlePaint.color = withAlpha(color, ((1f - progress) * 220f).roundToInt())
@@ -320,6 +340,7 @@ internal class LudoPawsFxPainter(
         cell: Float,
         progress: Float,
         particleCount: Int,
+        reducedMotion: Boolean,
     ) {
         val count = particleCount.coerceIn(2, 8)
         particlePaint.color =
@@ -331,7 +352,7 @@ internal class LudoPawsFxPainter(
             val offset = (index - count / 2f) * cell * .12f
             val y =
                 center.second +
-                    cell * (.30f + progress * .55f)
+                    cell * (.30f + progress * if (reducedMotion) .05f else .55f)
             canvas.drawOval(
                 center.first + offset - cell * .035f,
                 y - cell * .07f,
@@ -378,8 +399,9 @@ internal class LudoPawsFxPainter(
         color: Int,
         cell: Float,
         progress: Float,
+        reducedMotion: Boolean,
     ) {
-        val wave = sin(progress * PI).toFloat()
+        val wave = if (reducedMotion) 0f else sin(progress * PI).toFloat()
         ringPaint.color = withAlpha(color, ((1f - progress) * 120f).roundToInt())
         ringPaint.strokeWidth = cell * .045f
         canvas.drawCircle(
