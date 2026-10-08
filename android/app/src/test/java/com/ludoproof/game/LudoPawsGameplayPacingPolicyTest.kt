@@ -88,6 +88,25 @@ class LudoPawsGameplayPacingPolicyTest {
     }
 
     @Test
+    fun jumpScaleEnvelopeHasVisibleSquashAndSpring() {
+        assertEquals(
+            0.94f,
+            LudoPaws3DSceneRendererTestAccess
+                .movementScaleAt(elapsedMillis = 60L, totalDurationMillis = 620L)
+        )
+        assertEquals(
+            1.10f,
+            LudoPaws3DSceneRendererTestAccess
+                .movementScaleAt(elapsedMillis = 150L, totalDurationMillis = 620L)
+        )
+        assertEquals(
+            0.95f,
+            LudoPaws3DSceneRendererTestAccess
+                .movementScaleAt(elapsedMillis = 580L, totalDurationMillis = 620L)
+        )
+    }
+
+    @Test
     fun extraRollGetsLongerBreathingRoom() {
         val normal =
             LudoPawsGameplayPacingPolicy
