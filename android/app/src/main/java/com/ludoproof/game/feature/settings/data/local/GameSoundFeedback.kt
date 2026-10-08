@@ -23,6 +23,19 @@ object GameSoundFeedback {
             volume = .46f,
         )
 
+    /**
+     * Preloads the exact movement-step clip family used by the synchronized
+     * visual movement clock. This does not play anything and does not alter
+     * gameplay timing.
+     */
+    fun preloadMovementStep(context: Context) {
+        LudoPawsAudioAssetPlayer.preloadSfx(
+            context = context,
+            rawResourceNames = listOf("lp_sfx_move_paw"),
+            assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
+        )
+    }
+
     /** One short physical tick for exactly one visual pawn step. */
     fun moveStep(context: Context) =
         play(
