@@ -453,9 +453,14 @@ internal class LudoPaws3DSceneRenderer {
                 state.forwardDurationMillis > 0L &&
                 elapsed < state.forwardDurationMillis
             ) {
+                val travelDuration =
+                    (
+                        state.forwardDurationMillis -
+                            LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
+                    ).coerceAtLeast(1L)
                 val visualProgress =
                     elapsed.toFloat() /
-                        state.forwardDurationMillis.toFloat() *
+                        travelDuration.toFloat() *
                         forward.visualSteps.toFloat()
                 val stepFraction = visualProgress - floor(visualProgress)
                 return MotionFrame(
