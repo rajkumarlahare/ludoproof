@@ -14,13 +14,34 @@ data class LudoPawsFxPlan(
 /**
  * Pure presentation policy for Phase 10 animation and effects.
  *
- * Full-motion presentation policy for board reactions and effects.
+ * Reduced Motion deliberately removes spatial motion and dense particles while
+ * retaining short fades/highlights so important game feedback is not lost.
  */
 object LudoPawsFxPolicy {
     fun plan(
         cue: AnimationCue,
-    ): LudoPawsFxPlan =
-        when (cue) {
+        reducedMotion: Boolean,
+    ): LudoPawsFxPlan {
+        if (reducedMotion) {
+            return LudoPawsFxPlan(
+                durationMs = REDUCED_DURATION_MS,
+                particleCount =
+                    when (cue) {
+                        AnimationCue.VICTORY,
+                        AnimationCue.HOME,
+                        -> 4
+
+                        AnimationCue.IDLE -> 0
+                        else -> 2
+                    },
+                allowTranslation = false,
+                allowRotation = false,
+                allowShake = false,
+                allowConfetti = false,
+            )
+        }
+
+        return when (cue) {
             AnimationCue.IDLE ->
                 LudoPawsFxPlan(
                     durationMs = 900L,
@@ -130,4 +151,7 @@ object LudoPawsFxPolicy {
             allowRotation = true,
             allowShake = false,
             allowConfetti = false,
-        )}
+        )
+
+    private const val REDUCED_DURATION_MS = 220L
+}
