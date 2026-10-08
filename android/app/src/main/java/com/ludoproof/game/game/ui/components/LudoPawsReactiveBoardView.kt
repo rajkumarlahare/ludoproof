@@ -11,6 +11,7 @@ import com.ludoproof.game.feature.characters.data.audio.LudoPawsVoicePlayer
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsIdleReactionPolicy
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReactionEngine
+import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -30,6 +31,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
     private val legalPulse = LudoPaws3DLegalPulseView(context)
     private val gameFxOverlay = LudoPawsGameFxOverlayView(context)
     private val voicePlayer = LudoPawsVoicePlayer(context)
+    private val settingsStore = GameSettingsStore(context)
 
     private var previousSnapshot: MatchSnapshot? = null
     private var currentSnapshot: MatchSnapshot? = null
@@ -155,6 +157,11 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
                 previous = previous,
                 current = state,
             )
+        val reducedMotion =
+            settingsStore
+                .snapshot()
+                .reducedMotionEnabled
+
         board.bind(
             state = state,
             playerId = playerId,
@@ -176,12 +183,14 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
             previous = previous,
             current = state,
             perspectiveColor = perspectiveColor,
+            reducedMotion = reducedMotion,
         )
         previousSnapshot = state
 
         playReactions(
             reactions = reactions,
             characterIdsBySeat = characterIdsBySeat,
+            reducedMotion = reducedMotion,
         )
         scheduleIdleReaction(
             state = state,
@@ -351,12 +360,17 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         playReactions(
             reactions = reactions,
             characterIdsBySeat = currentCharacterIdsBySeat,
+            reducedMotion =
+                settingsStore
+                    .snapshot()
+                    .reducedMotionEnabled,
         )
     }
 
     private fun playReactions(
         reactions: List<LudoPawsReaction>,
         characterIdsBySeat: List<String>,
+        reducedMotion: Boolean,
     ) {
         if (reactions.isEmpty()) return
 
@@ -365,6 +379,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         pawn3DScene.playReactions(reactions)
         gameFxOverlay.play(
             reactions = reactions,
+            reducedMotion = reducedMotion,
         )
         voicePlayer.playHighestPriority(
             reactions = reactions,
