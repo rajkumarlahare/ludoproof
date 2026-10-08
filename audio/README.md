@@ -16,6 +16,30 @@ Optional future variants:
 
 The app tries these authored jump assets first. When none exists, it keeps using the existing movement SFX/procedural fallback, so the game remains playable before the first audio file is pushed.
 
+## Authored SFX scaffold
+
+The gameplay and UI folders are now present in Git so audio files can be dropped
+into the matching folder without creating new directories. Empty folders are
+kept with `.gitkeep`; do not replace these markers with fake or zero-byte WAVs.
+
+For the gameplay SFX wired in the Android facade, use these first filenames:
+
+- `lp_sfx_dice_roll_01.wav`
+- `lp_sfx_yard_exit_01.wav`
+- `lp_sfx_capture_01.wav`
+- `lp_sfx_safe_relief_01.wav`
+- `lp_sfx_home_lane_01.wav`
+- `lp_sfx_home_01.wav`
+- `lp_sfx_fail_01.wav`
+- `lp_sfx_third_six_01.wav`
+- `lp_sfx_victory_01.wav`
+- `lp_sfx_defeat_01.wav`
+- `lp_sfx_ui_click_01.wav`
+
+Optional `_02.wav` and `_03.wav` variants are supported. The first existing
+variant is selected at runtime; the existing raw/procedural sound remains the
+fallback until an authored asset is present.
+
 ## Planned structure
 
 ```

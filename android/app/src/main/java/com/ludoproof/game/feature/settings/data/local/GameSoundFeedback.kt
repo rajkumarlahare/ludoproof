@@ -21,6 +21,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_ui_click"),
             fallback = LudoPawsProceduralAudio.Sfx.CLICK,
             volume = .46f,
+            assetPaths = LudoPawsAudioCatalog.Sfx.UI_CLICK,
         )
 
     /**
@@ -89,6 +90,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_dice_roll"),
             fallback = LudoPawsProceduralAudio.Sfx.DICE_ROLL,
             volume = .50f,
+            assetPaths = LudoPawsAudioCatalog.Sfx.DICE_ROLL,
         )
 
     fun six(context: Context) =
@@ -105,6 +107,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_yard_exit"),
             fallback = LudoPawsProceduralAudio.Sfx.YARD_EXIT,
             volume = .43f,
+            assetPaths = LudoPawsAudioCatalog.Sfx.YARD_EXIT,
         )
 
     fun capture(context: Context) =
@@ -113,6 +116,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_capture_impact"),
             fallback = LudoPawsProceduralAudio.Sfx.CAPTURE_IMPACT,
             volume = .62f,
+            assetPaths = LudoPawsAudioCatalog.Sfx.CAPTURE,
         )
 
     fun safe(context: Context) =
@@ -121,6 +125,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_safe_shimmer"),
             fallback = LudoPawsProceduralAudio.Sfx.SAFE_SHIMMER,
             volume = .44f,
+            assetPaths = LudoPawsAudioCatalog.Sfx.SAFE_RELIEF,
         )
 
     fun homeLane(context: Context) =
@@ -129,6 +134,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_home_lane"),
             fallback = LudoPawsProceduralAudio.Sfx.HOME_LANE,
             volume = .45f,
+            assetPaths = LudoPawsAudioCatalog.Sfx.HOME_LANE,
         )
 
     fun home(context: Context) =
@@ -137,6 +143,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_home_sparkle"),
             fallback = LudoPawsProceduralAudio.Sfx.HOME_SPARKLE,
             volume = .56f,
+            assetPaths = LudoPawsAudioCatalog.Sfx.HOME,
         )
 
     fun frustrated(context: Context) =
@@ -145,6 +152,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_fail_soft"),
             fallback = LudoPawsProceduralAudio.Sfx.FAIL_SOFT,
             volume = .32f,
+            assetPaths = LudoPawsAudioCatalog.Sfx.FAIL,
         )
 
     fun thirdSix(context: Context) =
@@ -153,6 +161,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_third_six"),
             fallback = LudoPawsProceduralAudio.Sfx.THIRD_SIX,
             volume = .48f,
+            assetPaths = LudoPawsAudioCatalog.Sfx.THIRD_SIX,
         )
 
     fun victory(context: Context) =
@@ -161,6 +170,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_victory_sting"),
             fallback = LudoPawsProceduralAudio.Sfx.VICTORY,
             volume = .60f,
+            assetPaths = LudoPawsAudioCatalog.Sfx.VICTORY,
         )
 
     fun defeat(context: Context) =
@@ -169,6 +179,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_defeat_sting"),
             fallback = LudoPawsProceduralAudio.Sfx.DEFEAT,
             volume = .42f,
+            assetPaths = LudoPawsAudioCatalog.Sfx.DEFEAT,
         )
 
     /** Returns true when this batch emitted a dedicated physical/game SFX. */
