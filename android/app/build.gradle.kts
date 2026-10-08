@@ -127,7 +127,14 @@ android {
     }
 }
 
-sourceSets.getByName("main").assets.srcDir(generatedAudioAssetsDir)
+android {
+    sourceSets {
+        getByName("main") {
+            assets.srcDir(generatedAudioAssetsDir)
+        }
+    }
+}
+
 tasks.named("preBuild").configure {
     dependsOn(syncAuthoredAudioAssets)
 }
