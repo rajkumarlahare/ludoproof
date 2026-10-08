@@ -83,8 +83,7 @@ internal fun OfflineGameActivity.presentQuickReaction(
         (bubble.parent as? ViewGroup)?.removeView(bubble)
     }
 
-{
-        bubble.animate()
+    bubble.animate(
             .alpha(1f)
             .scaleX(1f)
             .scaleY(1f)
@@ -100,8 +99,6 @@ internal fun OfflineGameActivity.presentQuickReaction(
                     .start()
             }
             .start()
-
-
 
     return true
 }
