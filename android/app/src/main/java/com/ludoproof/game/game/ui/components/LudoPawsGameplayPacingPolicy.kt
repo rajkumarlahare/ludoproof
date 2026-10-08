@@ -35,6 +35,28 @@ object LudoPawsGameplayPacingPolicy {
             GameSpeed.FAST -> 1_050L
         }
 
+    /**
+     * One movement audio tick is emitted for every visual board step.
+     *
+     * The returned interval is derived from the actual forward animation
+     * duration, so audio remains locked to the same timing source even if the
+     * configured speed changes or a future presentation policy adjusts pacing.
+     */
+    fun movementAudioStepDurationMillis(
+        forwardDurationMillis: Long,
+        visualSteps: Int,
+    ): Long =
+        if (visualSteps <= 0) {
+            0L
+        } else {
+            (
+                forwardDurationMillis -
+                    LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
+            )
+                .coerceAtLeast(0L)
+                .div(visualSteps.toLong())
+        }
+
     fun postMoveBreathMillis(
         speed: GameSpeed,
         extraTurn: Boolean,
