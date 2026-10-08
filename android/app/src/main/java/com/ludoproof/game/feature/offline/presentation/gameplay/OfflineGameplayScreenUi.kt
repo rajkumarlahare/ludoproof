@@ -48,12 +48,12 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         } else {
             dp(horizontalPaddingDp)
         }
+    // BOARD WIDTH LOCK:
+    // Use the available gameplay width; the 1dp side inset is the only intentional gap.
+    // The board stage stays square, so increasing width increases height uniformly.
     val boardStageWidth =
-        minOf(
-            (contentWidth - sectionSideMargin * 2)
-                .coerceAtLeast(dp(260)),
-            dp(if (isCompactSetup()) 390 else 440),
-        )
+        (contentWidth - dp(2))
+            .coerceAtLeast(dp(1))
 
     val content =
         LinearLayout(this).apply {
