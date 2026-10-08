@@ -333,9 +333,9 @@ internal fun OfflineGameActivity.offlineResultPanel(): FrameLayout =
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 setShadowLayer(
-                    dp(5f),
+                    dp(5).toFloat(),
                     0f,
-                    dp(2f),
+                    dp(2).toFloat(),
                     0xB0000000.toInt(),
                 )
                 contentDescription = "Winner"
