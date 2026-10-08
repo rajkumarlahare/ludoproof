@@ -76,6 +76,8 @@ class DiceView @JvmOverloads constructor(
     private var scale = 1f
     private var translationYFraction = 0f
     private var borderPulse = 0f
+    private var attentionPulsing = false
+    private var attentionPhaseStartedAtMillis = 0L
 
     private val animationTicker =
         object : Runnable {
@@ -116,6 +118,17 @@ class DiceView @JvmOverloads constructor(
                         }
                     }
 
+                    attentionPulsing -> {
+                        val elapsed =
+                            (now - attentionPhaseStartedAtMillis)
+                                .coerceAtLeast(0L)
+                        applyFrame(
+                            DiceAttentionAnimationPolicy.frame(
+                                elapsedMillis = elapsed,
+                            ),
+                        )
+                    }
+
                     else -> return
                 }
 
@@ -126,8 +139,30 @@ class DiceView @JvmOverloads constructor(
             }
         }
 
+    fun setAttentionEnabled(enabled: Boolean) {
+        val shouldPulse =
+            enabled &&
+                !settingsStore.snapshot().reducedMotionEnabled &&
+                !rolling &&
+                !settling
+        if (shouldPulse == attentionPulsing) {
+            return
+        }
+
+        attentionPulsing = shouldPulse
+        if (shouldPulse) {
+            attentionPhaseStartedAtMillis = SystemClock.uptimeMillis()
+            postOnAnimation(animationTicker)
+        } else {
+            removeCallbacks(animationTicker)
+            resetTransform()
+            invalidate()
+        }
+    }
+
     fun startRolling() {
         if (rolling) return
+        attentionPulsing = false
         removeCallbacks(animationTicker)
         reducedMotion =
             settingsStore
@@ -148,6 +183,7 @@ class DiceView @JvmOverloads constructor(
     ) {
         if (outcome !in 1..6) return
 
+        attentionPulsing = false
         val wasRolling = rolling
         rolling = false
         removeCallbacks(animationTicker)
@@ -182,6 +218,7 @@ class DiceView @JvmOverloads constructor(
     fun stopRolling() {
         rolling = false
         settling = false
+        attentionPulsing = false
         removeCallbacks(animationTicker)
         resetTransform()
         contentDescription =
@@ -208,6 +245,7 @@ class DiceView @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         rolling = false
         settling = false
+        attentionPulsing = false
         removeCallbacks(animationTicker)
         resetTransform()
         super.onDetachedFromWindow()

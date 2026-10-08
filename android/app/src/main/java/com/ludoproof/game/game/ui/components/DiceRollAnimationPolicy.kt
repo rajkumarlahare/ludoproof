@@ -117,3 +117,40 @@ object DiceRollAnimationPolicy {
                 .toInt()
         ]
 }
+
+
+/**
+ * Pure presentation policy for the actionable dice attention cue.
+ * It never chooses or changes the authoritative outcome.
+ */
+object DiceAttentionAnimationPolicy {
+    private const val CYCLE_MILLIS = 900L
+
+    fun frame(elapsedMillis: Long): DiceRollAnimationPolicy.Frame {
+        val cycle =
+            (
+                elapsedMillis.coerceAtLeast(0L) %
+                    CYCLE_MILLIS
+            ).toFloat() /
+                CYCLE_MILLIS.toFloat()
+        val breath =
+            (
+                sin(
+                    cycle *
+                        PI.toFloat() *
+                        2f -
+                        (PI.toFloat() * .5f),
+                ) +
+                    1f
+                ) *
+                .5f
+
+        return DiceRollAnimationPolicy.Frame(
+            face = 1,
+            rotationDegrees = 0f,
+            scale = 1f + breath * .0975f,
+            translationYFraction = -breath * .042f,
+            borderPulse = .20f + breath * .675f,
+        )
+    }
+}

@@ -87,6 +87,17 @@ class OfflineFullMatchInstrumentedTest {
                 state.status,
             )
 
+            val finishedPlayers =
+                state.players.count {
+                    it.tokens.all { position ->
+                        position == LudoPathEncoding.HOME_POSITION
+                    }
+                }
+            assertTrue(
+                "$playerCount-player match must finish only after all but the last player are placed",
+                finishedPlayers >= playerCount - 1,
+            )
+
             val winnerId = state.winnerPlayerId
             assertNotNull(
                 "$playerCount-player finished match must expose a winner",
