@@ -323,62 +323,6 @@ internal object OnlineLudoPawsPresentation {
                 false
             }
 
-        if (
-            !dedicatedReactionSound &&
-            hasTokenMovement(
-                previous = previous,
-                current = current,
-            )
-        ) {
-            val eventIndex =
-                current.history.lastOrNull()?.eventIndex
-                    ?: current.randomEventIndex
-            if (
-                host.feedbackLedger.once(
-                    matchId = current.matchId,
-                    key = "MOVE:$eventIndex",
-                )
-            ) {
-                val seat = movementSeat(previous, current)
-                GameSoundFeedback.move(
-                    context = activity,
-                    characterId = seat?.let(characterIdsBySeat::getOrNull),
-                )
-            }
-        }
-    }
 
-    private fun hasTokenMovement(
-        previous: MatchSnapshot,
-        current: MatchSnapshot,
-    ): Boolean =
-        current.players.any { player ->
-            val before =
-                previous.players.firstOrNull {
-                    it.playerId == player.playerId
-                } ?: return@any false
-            before.tokens != player.tokens
-        }
 
-    private fun movementSeat(
-        previous: MatchSnapshot,
-        current: MatchSnapshot,
-    ): Int? =
-        current.players.firstOrNull { player ->
-            val before =
-                previous.players.firstOrNull {
-                    it.playerId == player.playerId
-                } ?: return@firstOrNull false
-            player.tokens.indices.any { index ->
-                val from = before.tokens.getOrNull(index) ?: -1
-                val to = player.tokens.getOrNull(index) ?: -1
-                to > from
-            }
-        }?.seat
-
-    private fun dp(
-        activity: MainActivity,
-        value: Int,
-    ): Int =
-        (value * activity.resources.displayMetrics.density).roundToInt()
 }
