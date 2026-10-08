@@ -9,7 +9,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OfflineLudoPawsFeedbackPolicyTest {
-    // Phase 11 compatibility marker: normal committed move uses move sound.
     @Test
     fun `normal committed move does not emit duplicate one shot sound`() {
         val decision =
@@ -40,7 +39,7 @@ class OfflineLudoPawsFeedbackPolicyTest {
     }
 
     @Test
-    fun `capture replaces generic move sound`() {
+    fun `capture sound is owned by visual contact clock`() {
         val capture =
             reaction(
                 type = GameMomentType.CAPTURE_MADE,
@@ -54,11 +53,11 @@ class OfflineLudoPawsFeedbackPolicyTest {
                 reactions = listOf(capture),
                 tokenMovementCommitted = true,
             )
-        assertEquals(OfflineFeedbackSound.CAPTURE, decision.sound)
+        assertEquals(OfflineFeedbackSound.NONE, decision.sound)
     }
 
     @Test
-    fun `victory wins over home feedback`() {
+    fun `victory remains result feedback instead of landing feedback`() {
         val home =
             reaction(
                 type = GameMomentType.HOME_REACHED,
@@ -120,7 +119,7 @@ class OfflineLudoPawsFeedbackPolicyTest {
     }
 
     @Test
-    fun `home lane and exact home miss have distinct sounds`() {
+    fun `home lane movement sound is owned by visual entry clock`() {
         val homeLane =
             reaction(
                 type = GameMomentType.HOME_LANE_ENTERED,
@@ -136,7 +135,7 @@ class OfflineLudoPawsFeedbackPolicyTest {
                 priority = 50,
             )
         assertEquals(
-            OfflineFeedbackSound.HOME_LANE,
+            OfflineFeedbackSound.NONE,
             OfflineLudoPawsFeedbackPolicy.decide(
                 OfflineFeedbackAction.MOVE,
                 listOf(homeLane),
