@@ -307,22 +307,16 @@ internal object OnlineLudoPawsPresentation {
                 ),
             )
 
-        val dedicatedReactionSound =
-            if (reactions.isNotEmpty()) {
-                GameSoundFeedback.reaction(
-                    context = activity,
-                    reactions = reactions,
-                    characterIdsBySeat = characterIdsBySeat,
-                ).also {
-                    LudoPawsHaptics.reaction(
-                        context = activity,
-                        reactions = reactions,
-                    )
-                }
-            } else {
-                false
-            }
-
-
-
+        if (reactions.isNotEmpty()) {
+            GameSoundFeedback.reaction(
+                context = activity,
+                reactions = reactions,
+                characterIdsBySeat = characterIdsBySeat,
+            )
+            LudoPawsHaptics.reaction(
+                context = activity,
+                reactions = reactions,
+            )
+        }
+    }
 }
