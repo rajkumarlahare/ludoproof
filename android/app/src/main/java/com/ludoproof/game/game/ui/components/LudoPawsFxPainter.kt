@@ -85,10 +85,6 @@ internal class LudoPawsFxPainter(
         progress: Float,
         emphasis: Float,
     ) {
-        if (reducedMotion) {
-            drawDestinationFlash(canvas, to, color, cell)
-            return
-        }
         val fade = (1f - progress).coerceIn(0f, 1f)
         if (fade <= 0f) {
             return
