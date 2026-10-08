@@ -572,3 +572,15 @@ internal fun settingsDp(
                 .density
         )
         .toInt()
+
+internal fun settingsDp(
+    context: Context,
+    value: Float,
+): Int =
+    (
+        value *
+            context.resources
+                .displayMetrics
+                .density
+        )
+        .toInt()
