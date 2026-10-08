@@ -41,8 +41,8 @@ export const LEGACY_TEAM_RULESET = Object.freeze({
 });
 
 /**
- * Ruleset v2 deliberately preserves v1 gameplay while making previously
- * implicit behavior explicit in the cryptographically hashed ruleset material.
+ * Ruleset v2 makes previously implicit gameplay behavior explicit in the
+ * cryptographically hashed ruleset material, including single-token capture.
  * Changing any value below therefore changes rulesetHash for newly-created
  * matches instead of silently changing gameplay under an existing proof ID.
  */
@@ -55,7 +55,7 @@ export const RULESET = Object.freeze({
   replacementRoundAfterTimeout: false,
   resetConsecutiveSixesOnTimeout: true,
   ownTokenStacking: "ALLOWED",
-  opponentStackCapture: "CAPTURE_ALL_ON_UNSAFE_CELL",
+  opponentStackCapture: "CAPTURE_SINGLE_TOKEN_ONLY",
   startingPlayerPolicy: "HOST_SEAT_ZERO",
   turnOrderPolicy: "SEQUENTIAL_SEAT_ORDER",
 });
