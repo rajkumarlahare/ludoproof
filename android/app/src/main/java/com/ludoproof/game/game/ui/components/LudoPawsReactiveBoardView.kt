@@ -357,7 +357,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
     private fun playReactions(
         reactions: List<LudoPawsReaction>,
         characterIdsBySeat: List<String>,
-    )
+    ) {
         if (reactions.isEmpty()) return
 
         // Body language is separate from overlay FX. The scene itself decides
