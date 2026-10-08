@@ -192,7 +192,41 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
     )
 
     setContentView(root)
-    renderGame(state)
+
+    // CENTER LOCK:
+    // Center the board in the real device viewport, not in the vertical flow between
+    // the player rails. This preserves the existing rail/dice spacing around the board.
+    host.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+        centerBoardInViewport()
+    }
+    boardView?.post {
+        centerBoardInViewport()
+        renderGame(state)
+    }
+}
+
+internal fun OfflineGameActivity.centerBoardInViewport() {
+    val boardStage =
+        boardView?.parent as? FrameLayout
+            ?: return
+    val content =
+        boardStage.parent as? LinearLayout
+            ?: return
+    val viewport =
+        content.parent as? FrameLayout
+            ?: return
+
+    if (viewport.height <= 0 || boardStage.height <= 0) {
+        return
+    }
+
+    val boardCenterY =
+        boardStage.top + boardStage.height / 2f
+    val viewportCenterY =
+        viewport.height / 2f
+
+    content.translationY =
+        viewportCenterY - boardCenterY
 }
 
 internal fun OfflineGameActivity.gameplayHud(): LinearLayout =
