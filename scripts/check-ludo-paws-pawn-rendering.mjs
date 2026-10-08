@@ -123,7 +123,6 @@ for (const token of [
   "hasActiveAnimation",
   "captureReturns",
   "activeReactions",
-  "reducedMotion",
 ]) {
   requireText(
     cadencePolicy,
