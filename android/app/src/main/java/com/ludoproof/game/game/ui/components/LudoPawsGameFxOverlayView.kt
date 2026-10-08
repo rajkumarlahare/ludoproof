@@ -278,8 +278,7 @@ internal class LudoPawsGameFxOverlayView(
         captureAnimator =
             ValueAnimator.ofFloat(0f, 1f).apply {
                 startDelay = captureContactDelayMillis
-                duration =
-                    captureDurationMillis.coerceAtLeast(1L)
+                duration = captureDurationMillis.coerceAtLeast(1L)
                 addUpdateListener {
                     captureProgress = it.animatedValue as Float
                     invalidate()
@@ -408,7 +407,7 @@ internal class LudoPawsGameFxOverlayView(
                     color = color,
                     cell = cell,
                     progress = progress,
-                    )
+                )
 
             transition.isHomeArrival ->
                 painter.drawPawTrail(
@@ -419,7 +418,7 @@ internal class LudoPawsGameFxOverlayView(
                     cell = cell,
                     progress = progress,
                     emphasis = 1f,
-                    )
+                )
 
             else ->
                 painter.drawPawTrail(
@@ -430,7 +429,7 @@ internal class LudoPawsGameFxOverlayView(
                     cell = cell,
                     progress = progress,
                     emphasis = .55f,
-                        )
+                )
         }
     }
 
