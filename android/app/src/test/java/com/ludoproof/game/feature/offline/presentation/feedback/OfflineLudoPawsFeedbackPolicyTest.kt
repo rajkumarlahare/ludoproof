@@ -58,7 +58,7 @@ class OfflineLudoPawsFeedbackPolicyTest {
     }
 
     @Test
-    fun `victory remains result feedback instead of landing feedback`() {
+    fun `victory wins over home feedback`() {
         val home =
             reaction(
                 type = GameMomentType.HOME_REACHED,
