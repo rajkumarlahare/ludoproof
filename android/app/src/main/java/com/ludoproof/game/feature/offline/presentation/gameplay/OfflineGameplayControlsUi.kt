@@ -262,15 +262,6 @@ internal fun OfflineGameActivity.renderGame(
         val winnerName = winner?.displayName ?: "Player"
         resultPanel.visibility = View.VISIBLE
         resultTitleText.text = "${winnerName.uppercase()} WINS"
-        resultSubtitleText.text =
-            if (
-                isComputerMode &&
-                winner?.playerId == engine.humanPlayerId()
-            ) {
-                "You brought all 4 paws home."
-            } else {
-                "All 4 paws reached home."
-            }
     } else {
         resultPanel.visibility = View.GONE
     }
