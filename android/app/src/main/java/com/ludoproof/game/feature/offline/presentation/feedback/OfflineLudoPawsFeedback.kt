@@ -174,7 +174,7 @@ object OfflineLudoPawsFeedbackDispatcher {
             current = current,
             action = action,
         )
-
+    }
 
     fun committed(
         context: Context,
