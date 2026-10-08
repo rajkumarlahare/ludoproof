@@ -104,16 +104,6 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         },
     )
 
-    content.addView(
-        gameplayHud(),
-        gameplaySectionParams(
-            if (isCompactSetup()) 4 else 6,
-        ).apply {
-            leftMargin = sectionSideMargin
-            rightMargin = sectionSideMargin
-        },
-    )
-
     boardView =
         LudoPawsReactiveBoardView(this).apply {
             elevation = dp(8).toFloat()
