@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ludoproof.game.feature.offline.domain.ai.LudoPawsComputerMovePolicy
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -12,6 +14,108 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class OfflineFullMatchInstrumentedTest {
+    @Test
+    fun opponentStacksAreNotCapturedAsAGroup() {
+        val context =
+            ApplicationProvider
+                .getApplicationContext<Context>()
+        val preferences =
+            context.getSharedPreferences(
+                "ludoproof_offline_game",
+                Context.MODE_PRIVATE,
+            )
+
+        for (stackSize in listOf(2, 3, 4)) {
+            val session =
+                LocalMatchSession(
+                    context = context,
+                    mode = GameMode.PASS_AND_PLAY,
+                )
+            session.clear()
+
+            try {
+                val rolled =
+                    session.start(
+                        playerCount = 2,
+                        preferredColor = "RED",
+                    ).let {
+                        session.roll()
+                    }
+                val outcome =
+                    requireNotNull(rolled.pendingRoll?.outcome)
+                val destination =
+                    requireNotNull(
+                        LudoPathEncoding.destinationForRoll(
+                            position = 1,
+                            roll = outcome,
+                        ),
+                    )
+                val targetGlobalCell = destination
+                require(targetGlobalCell in 0..50)
+                val opponentPosition =
+                    (targetGlobalCell - 13 + 52) % 52
+
+                val saved =
+                    JSONObject(
+                        requireNotNull(
+                            preferences.getString(
+                                "state",
+                                null,
+                            ),
+                        ),
+                    )
+                val players =
+                    saved.getJSONArray("players")
+                players
+                    .getJSONObject(0)
+                    .put(
+                        "tokens",
+                        JSONArray(listOf(1, -1, -1, -1)),
+                    )
+                players
+                    .getJSONObject(1)
+                    .put(
+                        "tokens",
+                        JSONArray(
+                            List(4) { index ->
+                                if (index < stackSize) {
+                                    opponentPosition
+                                } else {
+                                    -1
+                                }
+                            },
+                        ),
+                    )
+                preferences.edit()
+                    .putString("state", saved.toString())
+                    .commit()
+
+                val restored =
+                    OfflineGameEngine(
+                        context = context,
+                        mode = GameMode.PASS_AND_PLAY,
+                    )
+                val moved =
+                    restored.move(0)
+
+                assertEquals(
+                    destination,
+                    moved.players[0].tokens[0],
+                )
+                assertEquals(
+                    0,
+                    moved.history.last().captures,
+                )
+                assertEquals(
+                    List(stackSize) { opponentPosition },
+                    moved.players[1].tokens.take(stackSize),
+                )
+            } finally {
+                session.clear()
+            }
+        }
+    }
+
     @Test
     fun twoAndFourPlayerMatchesFinishThroughProductionEngineAndCpuPolicy() {
         val context =

@@ -159,6 +159,53 @@ test("capture returns opponent token to yard and grants extra turn", () => {
   assert.equal(moved.state.turnSeat, 0);
 });
 
+test("opponent stacks are never captured as a group", () => {
+  for (const stackSize of [2, 3, 4]) {
+    let state = activeMatch();
+    state.players[0].tokens[0] = 1;
+    state.players[1].tokens =
+      [41, 41, 41, 41].map((position, index) =>
+        index < stackSize ? position : -1,
+      );
+
+    state = reserveRoll(state, {
+      playerId: "p1",
+      clientCommitment: "c".repeat(64),
+      eventIndex: 0,
+      actorHash: "1".repeat(64),
+      previousStateHash: "2".repeat(64),
+      rulesetHash: "3".repeat(64),
+      now: 5,
+    });
+    state = attachRoundCommitment(state, {
+      roundId: "11111111-1111-4111-8111-111111111111",
+      serverCommitment: "4".repeat(64),
+      now: 6,
+    });
+    const resolved = registerResolvedRoll(state, {
+      outcome: 1,
+      proofDigest: "5".repeat(64),
+      now: 7,
+    });
+    const moved = applyMove(resolved.state, {
+      playerId: "p1",
+      tokenIndex: 0,
+      now: 8,
+    });
+
+    assert.equal(moved.state.players[0].tokens[0], 2);
+    assert.deepEqual(
+      moved.state.players[1].tokens,
+      [41, 41, 41, 41].map((position, index) =>
+        index < stackSize ? position : -1,
+      ),
+    );
+    assert.equal(moved.captures, 0);
+    assert.equal(moved.extraTurn, false);
+    assert.equal(moved.state.turnSeat, 1);
+  }
+});
+
 test("third consecutive six forfeits the roll and passes turn", () => {
   let state = activeMatch();
   state.players[0].tokens[0] = 0;

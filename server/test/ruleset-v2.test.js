@@ -170,7 +170,7 @@ test("v2 host starts and timeout policy matches the declared contract", () => {
   assert.equal(timedOut.timedOutRoll.replacementRoundAllowed, false);
 });
 
-test("v2 extra-turn, stacking, and stack-capture declarations match engine behavior", () => {
+test("v2 extra-turn and stacking declarations match engine behavior while capture protects stacks", () => {
   const home = applyMove(
     resolvedMoveState({
       moverTokens: [56, -1, -1, -1],
@@ -202,7 +202,7 @@ test("v2 extra-turn, stacking, and stack-capture declarations match engine behav
     }),
     { playerId: "host", tokenIndex: 0, now: 4_200 },
   );
-  assert.equal(capture.captures, 2);
-  assert.deepEqual(capture.state.players[1].tokens.slice(0, 2), [-1, -1]);
-  assert.equal(capture.state.turnSeat, 0);
+  assert.equal(capture.captures, 0);
+  assert.deepEqual(capture.state.players[1].tokens.slice(0, 2), [40, 40]);
+  assert.equal(capture.state.turnSeat, 1);
 });
