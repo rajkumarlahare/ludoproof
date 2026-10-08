@@ -42,6 +42,7 @@ data class GameSettings(
     val soundEnabled: Boolean = true,
     val animalVoicesEnabled: Boolean = true,
     val hapticsEnabled: Boolean = true,
+    val reducedMotionEnabled: Boolean = false,
     val quickChatEnabled: Boolean = true,
     val gameSpeed: GameSpeed = GameSpeed.NORMAL,
 )
@@ -77,6 +78,11 @@ class GameSettingsStore(
                 prefs.getBoolean(
                     KEY_HAPTICS,
                     true,
+                ),
+            reducedMotionEnabled =
+                prefs.getBoolean(
+                    KEY_REDUCED_MOTION,
+                    false,
                 ),
             quickChatEnabled =
                 prefs.getBoolean(
@@ -141,6 +147,17 @@ class GameSettingsStore(
             .apply()
     }
 
+    fun setReducedMotionEnabled(
+        enabled: Boolean,
+    ) {
+        prefs.edit()
+            .putBoolean(
+                KEY_REDUCED_MOTION,
+                enabled,
+            )
+            .apply()
+    }
+
     fun setQuickChatEnabled(
         enabled: Boolean,
     ) {
@@ -174,6 +191,8 @@ class GameSettingsStore(
             "animal_voices_enabled"
         const val KEY_HAPTICS =
             "haptics_enabled"
+        const val KEY_REDUCED_MOTION =
+            "reduced_motion_enabled"
         const val KEY_QUICK_CHAT =
             "quick_chat_enabled"
         const val KEY_GAME_SPEED =
