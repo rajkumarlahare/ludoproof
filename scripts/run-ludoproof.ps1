@@ -74,6 +74,10 @@ function Resolve-AndroidSdkRoot {
         $candidates += $env:LUDOPROOF_ANDROID_SDK
     }
 
+    # Prefer a stable shared SDK location so VS Code tasks do not depend on
+    # a project/backup checkout or a session-only environment variable.
+    $candidates += "C:\Android\Sdk"
+
     $repoDrive = [System.IO.Path]::GetPathRoot($repoRoot)
     if ($repoDrive) {
         $candidates += (Join-Path $repoDrive "Dev\finworkar-tools\android-sdk")
