@@ -46,7 +46,7 @@ internal class LudoPawsFxPainter(
         to: Pair<Float, Float>,
         color: Int,
         cell: Float,
-        progress: Float
+        progress: Float,
     ) {
         val eased = easeOutCubic(progress)
         val x = lerp(from.first, to.first, eased)
@@ -83,8 +83,12 @@ internal class LudoPawsFxPainter(
         color: Int,
         cell: Float,
         progress: Float,
-        emphasis: Float
+        emphasis: Float,
     ) {
+        if (reducedMotion) {
+            drawDestinationFlash(canvas, to, color, cell)
+            return
+        }
         val fade = (1f - progress).coerceIn(0f, 1f)
         if (fade <= 0f) {
             return
@@ -111,7 +115,7 @@ internal class LudoPawsFxPainter(
         cell: Float,
         progress: Float,
         particleCount: Int,
-        allowConfetti: Boolean
+        allowConfetti: Boolean,
     ) {
         val color = reactionColor(cue)
         val fade = (1f - progress).coerceIn(0f, 1f)
@@ -165,7 +169,7 @@ internal class LudoPawsFxPainter(
     fun drawHomeStars(
         canvas: Canvas,
         cell: Float,
-        progress: Float
+        progress: Float,
     ) {
         val count = 10
         repeat(count) { index ->
@@ -254,7 +258,7 @@ internal class LudoPawsFxPainter(
         center: Pair<Float, Float>,
         color: Int,
         cell: Float,
-        progress: Float
+        progress: Float,
     ) {
         val fade = (1f - progress).coerceIn(0f, 1f)
         repeat(3) { index ->
@@ -273,7 +277,7 @@ internal class LudoPawsFxPainter(
         canvas: Canvas,
         center: Pair<Float, Float>,
         cell: Float,
-        progress: Float
+        progress: Float,
     ) {
         linePaint.color =
             withAlpha(
@@ -299,7 +303,7 @@ internal class LudoPawsFxPainter(
         center: Pair<Float, Float>,
         color: Int,
         cell: Float,
-        progress: Float
+        progress: Float,
     ) {
         val count = 5
         repeat(count) { index ->
@@ -319,7 +323,7 @@ internal class LudoPawsFxPainter(
         center: Pair<Float, Float>,
         cell: Float,
         progress: Float,
-        particleCount: Int
+        particleCount: Int,
     ) {
         val count = particleCount.coerceIn(2, 8)
         particlePaint.color =
@@ -377,7 +381,7 @@ internal class LudoPawsFxPainter(
         center: Pair<Float, Float>,
         color: Int,
         cell: Float,
-        progress: Float
+        progress: Float,
     ) {
         val wave = sin(progress * PI).toFloat()
         ringPaint.color = withAlpha(color, ((1f - progress) * 120f).roundToInt())
