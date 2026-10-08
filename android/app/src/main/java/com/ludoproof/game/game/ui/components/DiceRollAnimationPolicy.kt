@@ -138,7 +138,8 @@ object DiceAttentionAnimationPolicy {
                 sin(
                     cycle *
                         PI.toFloat() *
-                        2f,
+                        2f -
+                        (PI.toFloat() * .5f),
                 ) +
                     1f
                 ) *
