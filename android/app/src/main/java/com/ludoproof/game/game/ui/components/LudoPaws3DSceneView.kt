@@ -41,7 +41,6 @@ internal data class LudoPaws3DSceneState(
     val forwardDurationMillis: Long = 0L,
     val captureReturns: Map<LudoPaws3DPawnKey, LudoPaws3DCaptureReturnState> = emptyMap(),
     val activeReactions: Map<LudoPaws3DPawnKey, LudoPaws3DActiveReaction> = emptyMap(),
-    val reducedMotion: Boolean = false,
 )
 
 /**
@@ -131,12 +130,8 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                         newForward.visualSteps.toLong() * settings.gameSpeed.moveStepMs,
                     )
                 travelDuration +
-                    if (settings.reducedMotionEnabled) {
-                        0L
-                    } else {
-                        LudoPaws3DRenderCadencePolicy
-                            .FORWARD_LANDING_SETTLE_MILLIS
-                    }
+                    LudoPaws3DRenderCadencePolicy
+                        .FORWARD_LANDING_SETTLE_MILLIS
             } else if (forward != null) {
                 previousState.forwardDurationMillis
             } else {
@@ -144,7 +139,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             }
 
         val retainedCaptureReturns =
-            if (sameMatch && !settings.reducedMotionEnabled) {
+            if (sameMatch) {
                 previousState.captureReturns.filterValues { capture ->
                     now < capture.startedAtMillis + capture.durationMillis
                 }
@@ -152,10 +147,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                 emptyMap()
             }
         val newCaptureReturns =
-            if (settings.reducedMotionEnabled) {
-                emptyMap()
-            } else {
-                motions
+            motions
                     .asSequence()
                     .filter {
                         it.kind == LudoPawsPawnMotionKind.CAPTURE_RETURN
@@ -185,9 +177,8 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                                         ),
                             )
                     }
-            }
         val retainedReactions =
-            if (sameMatch && !settings.reducedMotionEnabled) {
+            if (sameMatch) {
                 previousState.activeReactions.filterValues { reaction ->
                     now < reaction.startedAtMillis + reaction.durationMillis
                 }
@@ -209,7 +200,6 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                 forwardDurationMillis = forwardDurationMillis,
                 captureReturns = retainedCaptureReturns + newCaptureReturns,
                 activeReactions = retainedReactions,
-                reducedMotion = settings.reducedMotionEnabled,
             )
     }
 
@@ -226,7 +216,6 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         val now = SystemClock.uptimeMillis()
         val current = sceneState
         val snapshot = current.snapshot ?: return
-        if (current.reducedMotion) return
 
         val next =
             current.activeReactions
