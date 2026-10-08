@@ -174,10 +174,6 @@ class DiceView @JvmOverloads constructor(
         removeCallbacks(animationTicker)
         targetOutcome = outcome
         face = outcome
-        reducedMotion =
-            settingsStore
-                .snapshot()
-                .reducedMotionEnabled
         contentDescription =
             "Dice outcome $outcome."
 
