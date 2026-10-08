@@ -11,6 +11,10 @@ import androidx.annotation.RawRes
  * Samples are loaded lazily and a small first-play queue prevents a freshly
  * loaded clip from being silently lost. This object is presentation-only and
  * owns no gameplay or proof state.
+ *
+ * Authored audio can live in the repository-level /audio tree. Gradle mirrors
+ * that tree into APK assets and this class loads those clips through the same
+ * bounded SoundPool used by res/raw fallbacks.
  */
 object LudoPawsSoundPool {
     private data class Sample(
@@ -24,10 +28,10 @@ object LudoPawsSoundPool {
     )
 
     private var pool: SoundPool? = null
-    private val samplesByResource = mutableMapOf<Int, Sample>()
-    private val resourceBySoundId = mutableMapOf<Int, Int>()
+    private val samplesByKey = mutableMapOf<String, Sample>()
+    private val sourceKeyBySoundId = mutableMapOf<Int, String>()
     private val readySoundIds = mutableSetOf<Int>()
-    private val pendingByResource = mutableMapOf<Int, MutableList<PendingPlay>>()
+    private val pendingByKey = mutableMapOf<String, MutableList<PendingPlay>>()
 
     @Synchronized
     fun play(
@@ -35,18 +39,74 @@ object LudoPawsSoundPool {
         @RawRes resourceId: Int,
         volume: Float = 1f,
         rate: Float = 1f,
+    ): Boolean =
+        playSource(
+            context = context,
+            key = "res:$resourceId",
+            loader = { soundPool ->
+                soundPool.load(
+                    context.applicationContext,
+                    resourceId,
+                    1,
+                )
+            },
+            volume = volume,
+            rate = rate,
+        )
+
+    @Synchronized
+    fun playAsset(
+        context: Context,
+        assetPath: String,
+        volume: Float = 1f,
+        rate: Float = 1f,
+    ): Boolean =
+        playSource(
+            context = context,
+            key = "asset:$assetPath",
+            loader = { soundPool ->
+                context.applicationContext.assets
+                    .openFd(assetPath)
+                    .use { descriptor ->
+                        soundPool.load(
+                            descriptor,
+                            1,
+                        )
+                    }
+            },
+            volume = volume,
+            rate = rate,
+        )
+
+    @Synchronized
+    fun release() {
+        runCatching {
+            pool?.release()
+        }
+        pool = null
+        samplesByKey.clear()
+        sourceKeyBySoundId.clear()
+        readySoundIds.clear()
+        pendingByKey.clear()
+    }
+
+    private fun playSource(
+        context: Context,
+        key: String,
+        loader: (SoundPool) -> Int,
+        volume: Float,
+        rate: Float,
     ): Boolean {
         val soundPool =
             ensurePool()
                 ?: return false
         val sample =
-            samplesByResource[resourceId]
+            samplesByKey[key]
                 ?: load(
                     soundPool = soundPool,
-                    context = context.applicationContext,
-                    resourceId = resourceId,
-                )
-                ?: return false
+                    sourceKey = key,
+                    loader = loader,
+                ) ?: return false
 
         val safeVolume =
             volume.coerceIn(
@@ -71,8 +131,8 @@ object LudoPawsSoundPool {
                 rate = safeRate,
             )
         } else {
-            pendingByResource
-                .getOrPut(resourceId) {
+            pendingByKey
+                .getOrPut(key) {
                     mutableListOf()
                 }
                 .apply {
@@ -87,18 +147,6 @@ object LudoPawsSoundPool {
                 }
         }
         return true
-    }
-
-    @Synchronized
-    fun release() {
-        runCatching {
-            pool?.release()
-        }
-        pool = null
-        samplesByResource.clear()
-        resourceBySoundId.clear()
-        readySoundIds.clear()
-        pendingByResource.clear()
     }
 
     private fun ensurePool(): SoundPool? {
@@ -136,16 +184,16 @@ object LudoPawsSoundPool {
                     return@synchronized
                 }
                 readySoundIds += soundId
-                val resourceId =
-                    resourceBySoundId[soundId]
+                val sourceKey =
+                    sourceKeyBySoundId[soundId]
                         ?: return@synchronized
                 val sample =
-                    samplesByResource[resourceId]
+                    samplesByKey[sourceKey]
                         ?: return@synchronized
                 sample.ready = true
                 flushPending(
                     soundPool = soundPool,
-                    resourceId = resourceId,
+                    sourceKey = sourceKey,
                     sample = sample,
                 )
             }
@@ -157,16 +205,12 @@ object LudoPawsSoundPool {
 
     private fun load(
         soundPool: SoundPool,
-        context: Context,
-        @RawRes resourceId: Int,
+        sourceKey: String,
+        loader: (SoundPool) -> Int,
     ): Sample? {
         val soundId =
             runCatching {
-                soundPool.load(
-                    context,
-                    resourceId,
-                    1,
-                )
+                loader(soundPool)
             }
                 .getOrNull()
                 ?.takeIf {
@@ -177,15 +221,14 @@ object LudoPawsSoundPool {
         val sample =
             Sample(
                 soundId = soundId,
-                ready =
-                    soundId in readySoundIds,
+                ready = soundId in readySoundIds,
             )
-        samplesByResource[resourceId] = sample
-        resourceBySoundId[soundId] = resourceId
+        samplesByKey[sourceKey] = sample
+        sourceKeyBySoundId[soundId] = sourceKey
         if (sample.ready) {
             flushPending(
                 soundPool = soundPool,
-                resourceId = resourceId,
+                sourceKey = sourceKey,
                 sample = sample,
             )
         }
@@ -194,12 +237,12 @@ object LudoPawsSoundPool {
 
     private fun flushPending(
         soundPool: SoundPool,
-        @RawRes resourceId: Int,
+        sourceKey: String,
         sample: Sample,
     ) {
         val pending =
-            pendingByResource
-                .remove(resourceId)
+            pendingByKey
+                .remove(sourceKey)
                 .orEmpty()
         pending.forEach { play ->
             playNow(
