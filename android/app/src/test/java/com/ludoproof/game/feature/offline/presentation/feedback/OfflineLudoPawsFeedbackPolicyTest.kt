@@ -40,7 +40,7 @@ class OfflineLudoPawsFeedbackPolicyTest {
     }
 
     @Test
-    fun `capture sound is owned by visual contact clock`() {
+    fun `capture replaces generic move sound`() {
         val capture =
             reaction(
                 type = GameMomentType.CAPTURE_MADE,
@@ -120,7 +120,7 @@ class OfflineLudoPawsFeedbackPolicyTest {
     }
 
     @Test
-    fun `home lane movement sound is owned by visual entry clock`() {
+    fun `home lane and exact home miss have distinct sounds`() {
         val homeLane =
             reaction(
                 type = GameMomentType.HOME_LANE_ENTERED,
