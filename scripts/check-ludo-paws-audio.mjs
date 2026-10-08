@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 
 const requiredSources = [
+  'android/app/src/main/java/com/ludoproof/game/core/audio/LudoPawsAudioCatalog.kt',
   'android/app/src/main/java/com/ludoproof/game/core/audio/LudoPawsSoundPool.kt',
   'android/app/src/main/java/com/ludoproof/game/feature/settings/data/local/GameSoundFeedback.kt',
   'android/app/src/main/java/com/ludoproof/game/feature/settings/data/local/GameMusicController.kt',
@@ -34,20 +35,24 @@ if (fs.existsSync(deletedSpokenLines)) {
   throw new Error('Spoken character commentary file must stay removed.');
 }
 
-const soundPool = fs.readFileSync(requiredSources[0], 'utf8');
+const audioCatalog = fs.readFileSync(requiredSources[0], 'utf8');
+const soundPool = fs.readFileSync(requiredSources[1], 'utf8');
 const sfx = fs.readFileSync(requiredSources[1], 'utf8');
-const music = fs.readFileSync(requiredSources[2], 'utf8');
-const settings = fs.readFileSync(requiredSources[3], 'utf8');
-const haptics = fs.readFileSync(requiredSources[4], 'utf8');
-const voice = fs.readFileSync(requiredSources[5], 'utf8');
-const resolver = fs.readFileSync(requiredSources[6], 'utf8');
-const procedural = fs.readFileSync(requiredSources[7], 'utf8');
-const profile = fs.readFileSync(requiredSources[8], 'utf8');
-const settingsUi = fs.readFileSync(requiredSources[9], 'utf8');
-const manifest = fs.readFileSync(requiredSources[10], 'utf8');
+const music = fs.readFileSync(requiredSources[3], 'utf8');
+const settings = fs.readFileSync(requiredSources[4], 'utf8');
+const haptics = fs.readFileSync(requiredSources[5], 'utf8');
+const voice = fs.readFileSync(requiredSources[6], 'utf8');
+const resolver = fs.readFileSync(requiredSources[7], 'utf8');
+const procedural = fs.readFileSync(requiredSources[8], 'utf8');
+const profile = fs.readFileSync(requiredSources[9], 'utf8');
+const settingsUi = fs.readFileSync(requiredSources[10], 'utf8');
+const manifest = fs.readFileSync(requiredSources[11], 'utf8');
 const ledgerSource = fs.readFileSync(feedbackLedger, 'utf8');
 
-for (const marker of ['SoundPool', 'USAGE_GAME', 'CONTENT_TYPE_SONIFICATION', 'pendingByResource']) {
+for (const marker of ['MOVE_JUMP', 'audio/sfx/gameplay/movement/jump/lp_sfx_jump_01.wav']) {
+  if (!audioCatalog.includes(marker)) throw new Error(`Audio catalog is missing ${marker}`);
+}
+for (const marker of ['SoundPool', 'USAGE_GAME', 'CONTENT_TYPE_SONIFICATION', 'pendingByKey']) {
   if (!soundPool.includes(marker)) throw new Error(`SoundPool engine is missing ${marker}`);
 }
 for (const marker of [
@@ -151,13 +156,19 @@ if (!manifest.includes('android.permission.VIBRATE')) {
 }
 
 const forbiddenGameplayMarkers = ['OfflineGameEngine(', 'session.roll(', 'session.move(', 'EntroNexV4Local'];
-for (const file of [requiredSources[0], requiredSources[1], requiredSources[4], requiredSources[5], requiredSources[6], requiredSources[7], requiredSources[8]]) {
+for (const file of [requiredSources[1], requiredSources[2], requiredSources[5], requiredSources[6], requiredSources[7], requiredSources[8], requiredSources[9]]) {
   const source = fs.readFileSync(file, 'utf8');
   for (const marker of forbiddenGameplayMarkers) {
     if (source.includes(marker)) {
       throw new Error(`Audio presentation layer must not mutate gameplay/proof state: ${file} contains ${marker}`);
     }
   }
+}
+
+const authoredAudioReadme = 'audio/README.md';
+const jumpAudioReadme = 'audio/sfx/gameplay/movement/jump/README.md';
+for (const file of [authoredAudioReadme, jumpAudioReadme]) {
+  if (!fs.existsSync(file)) throw new Error(`Missing authored audio structure file: ${file}`);
 }
 
 console.log('Ludo Paws non-verbal replaceable audio gate passed.');
