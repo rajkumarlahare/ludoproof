@@ -20,28 +20,8 @@ data class LudoPawsFxPlan(
 object LudoPawsFxPolicy {
     fun plan(
         cue: AnimationCue,
-        reducedMotion: Boolean,
-    ): LudoPawsFxPlan {
-        if (reducedMotion) {
-            return LudoPawsFxPlan(
-                durationMs = REDUCED_DURATION_MS,
-                particleCount =
-                    when (cue) {
-                        AnimationCue.VICTORY,
-                        AnimationCue.HOME,
-                        -> 4
-
-                        AnimationCue.IDLE -> 0
-                        else -> 2
-                    },
-                allowTranslation = false,
-                allowRotation = false,
-                allowShake = false,
-                allowConfetti = false,
-            )
-        }
-
-        return when (cue) {
+    ): LudoPawsFxPlan =
+        when (cue) {
             AnimationCue.IDLE ->
                 LudoPawsFxPlan(
                     durationMs = 900L,
@@ -153,5 +133,4 @@ object LudoPawsFxPolicy {
             allowConfetti = false,
         )
 
-    private const val REDUCED_DURATION_MS = 220L
 }
