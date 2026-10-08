@@ -148,7 +148,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             }
         val newCaptureReturns =
             motions
-                .asSequence()
+                    .asSequence()
                     .filter {
                         it.kind == LudoPawsPawnMotionKind.CAPTURE_RETURN
                     }
@@ -177,7 +177,6 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                                         ),
                             )
                     }
-            }
         val retainedReactions =
             if (sameMatch) {
                 previousState.activeReactions.filterValues { reaction ->
