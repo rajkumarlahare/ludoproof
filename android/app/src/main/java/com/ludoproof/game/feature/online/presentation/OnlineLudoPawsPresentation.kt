@@ -318,7 +318,7 @@ internal object OnlineLudoPawsPresentation {
                 reactions = reactions,
             )
         }
-
+    }
 
     private fun hasTokenMovement(
         previous: MatchSnapshot,
