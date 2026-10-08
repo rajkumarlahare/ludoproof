@@ -85,14 +85,13 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
             .apply {
                 visibility = View.GONE
             }
-    content.addView(
+    host.addView(
         resultPanel,
-        gameplaySectionParams(
-            if (isCompactSetup()) 5 else 7,
-        ).apply {
-            leftMargin = sectionSideMargin
-            rightMargin = sectionSideMargin
-        },
+        FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            dp(if (isCompactSetup()) 188 else 220),
+            Gravity.CENTER,
+        ),
     )
 
     boardView =
@@ -303,95 +302,54 @@ internal fun OfflineGameActivity.gameplayHud(): LinearLayout =
 
 internal fun OfflineGameActivity.offlineResultPanel(): FrameLayout =
     FrameLayout(this).apply {
-        val height =
-            dp(
-                if (isCompactSetup()) {
-                    148
-                } else {
-                    166
-                },
-            )
+        clipChildren = false
+        clipToPadding = false
 
         addView(
             GameResultArtView(
                 this@offlineResultPanel,
             ).apply {
                 mode = GameResultArtView.Mode.OFFLINE
+                contentDescription = "Match celebration"
             },
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                height,
+                FrameLayout.LayoutParams.MATCH_PARENT,
             ),
         )
 
-        val copy =
-            LinearLayout(
+        resultTitleText =
+            TextView(
                 this@offlineResultPanel,
             ).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(
-                    dp(if (isCompactSetup()) 108 else 142),
-                    dp(12),
-                    dp(12),
-                    dp(12),
+                text = "PLAYER WINS"
+                LudoProofTheme.title(
+                    this,
+                    if (isCompactSetup()) 22f else 28f,
+                    gold = true,
                 )
-
-                addView(
-                    TextView(
-                        this@offlineResultPanel,
-                    ).apply {
-                        text =
-                            if (isComputerMode) {
-                                "MATCH COMPLETE"
-                            } else {
-                                "LOCAL MATCH COMPLETE"
-                            }
-                        LudoProofTheme.body(
-                            this,
-                            9.5f,
-                            bright = true,
-                        )
-                        setTextColor(0xFF68E8FF.toInt())
-                    },
+                gravity = Gravity.CENTER
+                includeFontPadding = false
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setShadowLayer(
+                    dp(5).toFloat(),
+                    0f,
+                    dp(2).toFloat(),
+                    0xB0000000.toInt(),
                 )
-
-                resultTitleText =
-                    TextView(
-                        this@offlineResultPanel,
-                    ).apply {
-                        text = "WINNER"
-                        LudoProofTheme.title(
-                            this,
-                            if (isCompactSetup()) 20f else 23f,
-                            gold = true,
-                        )
-                        gravity = Gravity.START or Gravity.CENTER_VERTICAL
-                        setPadding(0, dp(3), 0, 0)
-                    }
-                addView(resultTitleText)
-
-                resultSubtitleText =
-                    TextView(
-                        this@offlineResultPanel,
-                    ).apply {
-                        text = "All paws are home"
-                        LudoProofTheme.body(
-                            this,
-                            if (isCompactSetup()) 10f else 11f,
-                            bright = true,
-                        )
-                        gravity = Gravity.START
-                        setPadding(0, dp(3), 0, 0)
-                    }
-                addView(resultSubtitleText)
+                contentDescription = "Winner"
             }
 
         addView(
-            copy,
+            resultTitleText,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                height,
-            ),
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER,
+            ).apply {
+                leftMargin = dp(18)
+                rightMargin = dp(18)
+            },
         )
     }

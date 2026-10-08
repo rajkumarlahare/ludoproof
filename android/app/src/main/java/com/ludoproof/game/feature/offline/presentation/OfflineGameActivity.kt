@@ -117,7 +117,6 @@ class OfflineGameActivity : ComponentActivity() {
     internal var quickReactionLastShownAtMs: Long? = null
     internal lateinit var resultPanel: FrameLayout
     internal lateinit var resultTitleText: TextView
-    internal lateinit var resultSubtitleText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
