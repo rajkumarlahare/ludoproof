@@ -63,6 +63,31 @@ class LudoPawsGameplayPacingPolicyTest {
     }
 
     @Test
+    fun movementAudioUsesOneTickPerVisualStepAtEverySpeed() {
+        assertEquals(
+            360L,
+            LudoPawsGameplayPacingPolicy.movementAudioStepDurationMillis(
+                forwardDurationMillis = 3 * 360L + LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS,
+                visualSteps = 3,
+            ),
+        )
+        assertEquals(
+            280L,
+            LudoPawsGameplayPacingPolicy.movementAudioStepDurationMillis(
+                forwardDurationMillis = 6 * 280L + LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS,
+                visualSteps = 6,
+            ),
+        )
+        assertEquals(
+            210L,
+            LudoPawsGameplayPacingPolicy.movementAudioStepDurationMillis(
+                forwardDurationMillis = 6 * 210L + LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS,
+                visualSteps = 6,
+            ),
+        )
+    }
+
+    @Test
     fun extraRollGetsLongerBreathingRoom() {
         val normal =
             LudoPawsGameplayPacingPolicy
