@@ -1279,7 +1279,7 @@ internal class LudoPaws3DSceneRenderer {
                     1f
                 ) *
                 .5f
-        return 1f + breath * .065f
+        return 1f + breath * .0975f
     }
 
     private data class RenderPawn(
