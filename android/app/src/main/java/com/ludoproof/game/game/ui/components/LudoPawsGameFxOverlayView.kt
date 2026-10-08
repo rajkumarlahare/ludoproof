@@ -114,7 +114,6 @@ internal class LudoPawsGameFxOverlayView(
 
     fun play(
         reactions: List<LudoPawsReaction>,
-        reducedMotion: Boolean,
     ) {
         reactionAnimator?.cancel()
         this.reactions = reactions.take(MAX_SIMULTANEOUS_REACTIONS)
