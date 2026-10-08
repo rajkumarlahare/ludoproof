@@ -1,6 +1,7 @@
 package com.ludoproof.game.feature.settings.data.local
 
 import android.content.Context
+import com.ludoproof.game.core.audio.LudoPawsAudioCatalog
 import com.ludoproof.game.feature.characters.data.audio.LudoPawsAudioAssetPlayer
 import com.ludoproof.game.feature.characters.data.audio.LudoPawsProceduralAudio
 import com.ludoproof.game.feature.characters.domain.reaction.GameMomentType
@@ -9,10 +10,9 @@ import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 /**
  * Short game/UI sound facade.
  *
- * Every sound resolves one stable preferred res/raw name and otherwise uses the
- * distinct built-in generated default. Legacy placeholder WAV aliases are not
- * consulted because several historical files contained identical audio and
- * would mask the situation-specific defaults.
+ * Every sound resolves one stable preferred authored asset family and otherwise
+ * uses the existing res/raw/generated fallback. Legacy placeholder WAV aliases
+ * are not consulted because several historical files contained identical audio.
  */
 object GameSoundFeedback {
     fun click(context: Context) =
@@ -53,6 +53,7 @@ object GameSoundFeedback {
             names = movement.first,
             fallback = movement.second,
             volume = movement.third,
+            assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
         )
     }
 
@@ -199,6 +200,7 @@ object GameSoundFeedback {
         fallback: LudoPawsProceduralAudio.Sfx,
         volume: Float,
         playbackRate: Float = 1f,
+        assetPaths: List<String> = emptyList(),
     ) {
         if (
             !GameSettingsStore(context)
@@ -213,6 +215,7 @@ object GameSoundFeedback {
             fallback = fallback,
             volume = volume,
             playbackRate = playbackRate,
+            assetPaths = assetPaths,
         )
     }
 }
