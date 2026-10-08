@@ -94,38 +94,33 @@ class LudoPawsMovementSoundPolicyTest {
     }
 
     @Test
-    fun everyConfiguredSafeGlobalCellIsRecognized() {
-        val expectedByColor =
+    fun configuredSafeCellsExceptColorStartGetRelief() {
+        val safeGlobalCells = setOf(0, 8, 13, 21, 26, 34, 39, 47)
+        val starts =
             mapOf(
-                "RED" to setOf(0, 8, 13, 21, 26, 34, 39, 47),
-                "GREEN" to setOf(0, 8, 13, 21, 26, 34, 39, 47),
-                "YELLOW" to setOf(0, 8, 13, 21, 26, 34, 39, 47),
-                "BLUE" to setOf(0, 8, 13, 21, 26, 34, 39, 47),
+                "RED" to 0,
+                "GREEN" to 13,
+                "YELLOW" to 26,
+                "BLUE" to 39,
             )
 
-        expectedByColor.forEach { (color, globalSafeCells) ->
-            val start =
-                when (color) {
-                    "RED" -> 0
-                    "GREEN" -> 13
-                    "YELLOW" -> 26
-                    "BLUE" -> 39
-                    else -> error("unknown color")
+        starts.forEach { (color, start) ->
+            safeGlobalCells
+                .filter { it != start }
+                .forEach { global ->
+                    val position = (global - start + 52) % 52
+                    assertEquals(
+                        listOf(
+                            LudoPawsMovementSoundCue.STEP,
+                            LudoPawsMovementSoundCue.SAFE_RELIEF,
+                        ),
+                        LudoPawsMovementSoundPolicy.cuesForVisualStep(
+                            color = color,
+                            fromPosition = position - 1,
+                            step = 1,
+                        ),
+                    )
                 }
-            globalSafeCells.forEach { global ->
-                val position = (global - start + 52) % 52
-                assertEquals(
-                    listOf(
-                        LudoPawsMovementSoundCue.STEP,
-                        LudoPawsMovementSoundCue.SAFE_RELIEF,
-                    ),
-                    LudoPawsMovementSoundPolicy.cuesForVisualStep(
-                        color = color,
-                        fromPosition = position - 1,
-                        step = 1,
-                    ),
-                )
-            }
         }
     }
 }
