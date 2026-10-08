@@ -131,7 +131,6 @@ class DiceView @JvmOverloads constructor(
     fun setAttentionEnabled(enabled: Boolean) {
         val shouldPulse =
             enabled &&
-                !settingsStore.snapshot().reducedMotionEnabled &&
                 !rolling &&
                 !settling
         if (shouldPulse == attentionPulsing) {
