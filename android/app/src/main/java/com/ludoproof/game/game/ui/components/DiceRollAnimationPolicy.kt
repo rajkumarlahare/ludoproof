@@ -148,9 +148,9 @@ object DiceAttentionAnimationPolicy {
         return DiceRollAnimationPolicy.Frame(
             face = 1,
             rotationDegrees = 0f,
-            scale = 1f + breath * .065f,
-            translationYFraction = -breath * .028f,
-            borderPulse = .20f + breath * .45f,
+            scale = 1f + breath * .0975f,
+            translationYFraction = -breath * .042f,
+            borderPulse = .20f + breath * .675f,
         )
     }
 }
