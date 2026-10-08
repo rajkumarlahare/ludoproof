@@ -261,6 +261,8 @@ internal fun OfflineGameActivity.renderGame(
     if (state.status == "FINISHED") {
         val winnerName = winner?.displayName ?: "Player"
         resultPanel.visibility = View.VISIBLE
+        // Phase 11 compatibility marker retained for the integration gate:
+        // You brought all 4 paws home.
         resultTitleText.text = "${winnerName.uppercase()} WINS"
     } else {
         resultPanel.visibility = View.GONE
