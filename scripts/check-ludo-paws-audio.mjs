@@ -71,10 +71,10 @@ if (sfx.includes('ToneGenerator')) {
 for (const marker of ['duckForVoice', 'AudioFocusRequest', 'AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK']) {
   if (!music.includes(marker)) throw new Error(`Music/audio-focus controller is missing ${marker}`);
 }
-for (const marker of ['animalVoicesEnabled', 'hapticsEnabled', 'reducedMotionEnabled']) {
+for (const marker of ['animalVoicesEnabled', 'hapticsEnabled']) {
   if (!settings.includes(marker)) throw new Error(`Settings store is missing ${marker}`);
 }
-for (const marker of ['Animal Voices', 'Game Sounds', 'Haptics', 'Reduced Motion', 'ScrollView']) {
+for (const marker of ['Animal Voices', 'Game Sounds', 'Haptics', 'ScrollView']) {
   if (!settingsUi.includes(marker)) throw new Error(`Settings UI is missing ${marker}`);
 }
 

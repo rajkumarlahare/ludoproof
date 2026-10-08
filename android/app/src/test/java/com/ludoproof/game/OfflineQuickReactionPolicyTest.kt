@@ -15,7 +15,6 @@ class OfflineQuickReactionPolicyTest {
                 emoji = "👏",
                 nowMs = 2_000L,
                 lastShownAtMs = null,
-                reducedMotion = false,
             )
 
         assertEquals("p2", reaction?.playerId)
@@ -32,25 +31,8 @@ class OfflineQuickReactionPolicyTest {
                 emoji = "👍",
                 nowMs = 1_500L,
                 lastShownAtMs = 1_000L,
-                reducedMotion = false,
             ),
         )
-    }
-
-    @Test
-    fun reducedMotionRemovesTravelAndShortensPresentation() {
-        val reaction =
-            OfflineQuickReactionPolicy.resolve(
-                state = snapshot(turnSeat = 0),
-                emoji = "😄",
-                nowMs = 2_000L,
-                lastShownAtMs = null,
-                reducedMotion = true,
-            )
-
-        assertTrue(reaction?.reducedMotion == true)
-        assertEquals(0, reaction?.riseDp)
-        assertEquals(700L, reaction?.durationMs)
     }
 
     @Test
@@ -61,7 +43,6 @@ class OfflineQuickReactionPolicyTest {
                 emoji = "👍",
                 nowMs = 2_000L,
                 lastShownAtMs = null,
-                reducedMotion = false,
             ),
         )
         assertNull(
@@ -70,7 +51,6 @@ class OfflineQuickReactionPolicyTest {
                 emoji = "🔥",
                 nowMs = 2_000L,
                 lastShownAtMs = null,
-                reducedMotion = false,
             ),
         )
     }

@@ -256,35 +256,6 @@ internal fun showSettingsDialog(
         ),
     )
 
-    val reducedMotionControl =
-        SettingsBooleanControl(
-            context = context,
-            initialValue =
-                settings.reducedMotionEnabled,
-        ) { enabled ->
-            settingsStore
-                .setReducedMotionEnabled(
-                    enabled,
-                )
-            settings =
-                settingsStore
-                    .snapshot()
-            GameSoundFeedback.click(
-                context,
-            )
-            notifyChanged()
-        }
-    panel.addView(
-        settingsDivider(context),
-    )
-    panel.addView(
-        settingsCompactRow(
-            context = context,
-            label = "Reduced Motion",
-            control = reducedMotionControl,
-        ),
-    )
-
     val speedField =
         settingsDropdownField(
             context,

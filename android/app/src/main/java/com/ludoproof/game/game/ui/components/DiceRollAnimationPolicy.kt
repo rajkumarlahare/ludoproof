@@ -109,13 +109,6 @@ object DiceRollAnimationPolicy {
         )
     }
 
-    fun reducedMotionRollingFace(
-        elapsedMillis: Long,
-    ): Int =
-        rollingFaces[
-            ((elapsedMillis.coerceAtLeast(0L) / 110L) % rollingFaces.size)
-                .toInt()
-        ]
 }
 
 

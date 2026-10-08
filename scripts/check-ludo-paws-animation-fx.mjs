@@ -31,7 +31,6 @@ requireText(
     "pawn3DScene.bind",
     "pawn3DScene.playReactions(reactions)",
     "board.setClassicPawnFallbackVisible(false)",
-    "reducedMotionEnabled",
     "previous = previous",
   ],
 );
@@ -55,7 +54,6 @@ requireText(
     "reaction.priority >= previous.priority",
     "LudoPaws3DReactionMotion.durationMillis",
     "settings.gameSpeed.moveStepMs",
-    "reducedMotion",
   ],
 );
 forbidText(
@@ -173,7 +171,6 @@ requireText(
     "SETTLE_DURATION_MILLIS",
     "rollingFrame(",
     "settleFrame(",
-    "reducedMotionRollingFace(",
     "dice outcome must be 1..6",
   ],
 );
@@ -185,7 +182,6 @@ requireText(
     "DiceAttentionAnimationPolicy",
     ".rollingFrame(",
     ".settleFrame(",
-    "reducedMotionEnabled",
     "setAttentionEnabled(",
     "attentionPulsing",
     "fun showOutcome(",
@@ -201,7 +197,6 @@ requireText(
     "rollingFrameHasPhysicalTransform",
     "settleKeepsVerifiedOutcomeAndEndsAtIdentity",
     "attentionPulseBreathesWithoutChangingTheFace",
-    "reducedMotionStillCyclesReadableFaces",
   ],
 );
 
@@ -241,21 +236,20 @@ requireText(
 requireText(
   "android/app/src/main/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsFxPolicy.kt",
   [
-    "reducedMotion",
     "allowTranslation",
     "allowConfetti",
-    "REDUCED_DURATION_MS",
   ],
 );
 
 requireText(
   "android/app/src/test/java/com/ludoproof/game/feature/characters/domain/reaction/LudoPawsFxPolicyTest.kt",
   [
-    "reduced motion removes translation",
-    "victory enables dense confetti",
-    "captured reaction supports return movement",
+    "victory enables dense confetti in full motion",
+    "captured reaction supports full return movement",
+    "every animation cue has a positive production duration",
   ],
 );
+
 
 for (const retired of [
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsCaptureReturnOverlayView.kt",
@@ -265,5 +259,5 @@ for (const retired of [
 }
 
 console.log(
-  "Ludo Paws production animation/FX gate passed: species-specific 3D body language, shared hop/home motion, visible captured-animal return, physical dice settle, circle-free pawn presentation, game FX and reduced-motion handling are locked.",
+  "Ludo Paws production animation/FX gate passed: species-specific 3D body language, shared hop/home motion, visible captured-animal return, physical dice settle, circle-free pawn presentation and full-motion game FX are locked.",
 );

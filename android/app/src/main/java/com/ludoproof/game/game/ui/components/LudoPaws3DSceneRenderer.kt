@@ -408,7 +408,6 @@ internal class LudoPaws3DSceneRenderer {
         state: LudoPaws3DSceneState,
         nowMillis: Long,
     ): LudoPaws3DReactionPose {
-        if (state.reducedMotion) return LudoPaws3DReactionPose()
         val active =
             state.activeReactions[pawn.key]
                 ?: return LudoPaws3DReactionPose()
@@ -427,13 +426,6 @@ internal class LudoPaws3DSceneRenderer {
         state: LudoPaws3DSceneState,
         nowMillis: Long,
     ): MotionFrame {
-        if (state.reducedMotion) {
-            return MotionFrame(
-                kind = SceneMotion.IDLE,
-                progress = 0f,
-            )
-        }
-
         val capture = state.captureReturns[pawn.key]
         if (
             capture != null &&
@@ -636,7 +628,6 @@ internal class LudoPaws3DSceneRenderer {
         val eased = fraction * fraction * (3f - 2f * fraction)
         val linearX = from.first + (to.first - from.first) * eased
         val linearY = from.second + (to.second - from.second) * eased
-        if (state.reducedMotion) return linearX to linearY
 
         val hop =
             sin(PI * fraction.toDouble())
@@ -661,9 +652,6 @@ internal class LudoPaws3DSceneRenderer {
         cell: Float,
         turns: Int,
     ): Float {
-        if (state.reducedMotion) {
-            return LudoPawsPawnFacingPolicy.FRONT_YAW_DEGREES
-        }
         val motion =
             state.forwardMotion
                 ?.takeIf {
@@ -1250,7 +1238,6 @@ internal class LudoPaws3DSceneRenderer {
         key: LudoPaws3DPawnKey,
         nowMillis: Long,
     ): Float {
-        if (state.reducedMotion) return 1f
         val snapshot = state.snapshot ?: return 1f
         val pending = snapshot.pendingRoll ?: return 1f
         if (pending.status != "RESOLVED") return 1f
