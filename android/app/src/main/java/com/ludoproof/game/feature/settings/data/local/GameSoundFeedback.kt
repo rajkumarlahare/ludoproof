@@ -23,6 +23,16 @@ object GameSoundFeedback {
             volume = .46f,
         )
 
+    /** One short physical tick for exactly one visual pawn step. */
+    fun moveStep(context: Context) =
+        play(
+            context = context,
+            names = listOf("lp_sfx_move_paw"),
+            fallback = LudoPawsProceduralAudio.Sfx.MOVE_PAW,
+            volume = .38f,
+            assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
+        )
+
     fun move(
         context: Context,
         characterId: String? = null,
