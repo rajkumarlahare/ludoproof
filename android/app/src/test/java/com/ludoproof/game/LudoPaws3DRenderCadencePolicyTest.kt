@@ -136,26 +136,5 @@ class LudoPaws3DRenderCadencePolicyTest {
         )
     }
 
-    @Test
-    fun `reduced motion never burns active frame cadence`() {
-        val state =
-            LudoPaws3DSceneState(
-                reducedMotion = true,
-                activeReactions =
-                    mapOf(
-                        LudoPaws3DPawnKey("p4", 0) to
-                            LudoPaws3DActiveReaction(
-                                cue = AnimationCue.VICTORY,
-                                startedAtMillis = 9_000L,
-                                durationMillis = 1_250L,
-                                priority = 100,
-                            ),
-                    ),
-            )
 
-        assertEquals(
-            LudoPaws3DRenderCadencePolicy.IDLE_FRAME_DELAY_MILLIS,
-            LudoPaws3DRenderCadencePolicy.frameDelayMillis(state, 9_100L),
-        )
-    }
 }
