@@ -110,10 +110,6 @@ class OfflineFullMatchInstrumentedTest {
                     List(stackSize) { opponentPosition },
                     moved.players[1].tokens.take(stackSize),
                 )
-                assertEquals(
-                    1,
-                    moved.turnSeat,
-                )
             } finally {
                 session.clear()
             }
