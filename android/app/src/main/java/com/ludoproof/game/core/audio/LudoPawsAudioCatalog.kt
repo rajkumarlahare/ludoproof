@@ -11,85 +11,87 @@ package com.ludoproof.game.core.audio
 object LudoPawsAudioCatalog {
     object Sfx {
         val MOVE_JUMP =
-            family(
-                "audio/sfx/gameplay/movement/jump",
-                "lp_sfx_jump",
+            listOf(
+                "audio/sfx/gameplay/movement/jump/lp_sfx_jump_01.wav",
+                "audio/sfx/gameplay/movement/jump/lp_sfx_jump_02.wav",
+                "audio/sfx/gameplay/movement/jump/lp_sfx_jump_03.wav",
             )
 
         val UI_CLICK =
-            family(
-                "audio/sfx/ui/click",
-                "lp_sfx_ui_click",
+            listOf(
+                "audio/sfx/ui/click/lp_sfx_ui_click_01.wav",
+                "audio/sfx/ui/click/lp_sfx_ui_click_02.wav",
+                "audio/sfx/ui/click/lp_sfx_ui_click_03.wav",
             )
 
         val DICE_ROLL =
-            family(
-                "audio/sfx/gameplay/dice",
-                "lp_sfx_dice_roll",
+            listOf(
+                "audio/sfx/gameplay/dice/lp_sfx_dice_roll_01.wav",
+                "audio/sfx/gameplay/dice/lp_sfx_dice_roll_02.wav",
+                "audio/sfx/gameplay/dice/lp_sfx_dice_roll_03.wav",
             )
 
         val YARD_EXIT =
-            family(
-                "audio/sfx/gameplay/yard_exit",
-                "lp_sfx_yard_exit",
+            listOf(
+                "audio/sfx/gameplay/yard_exit/lp_sfx_yard_exit_01.wav",
+                "audio/sfx/gameplay/yard_exit/lp_sfx_yard_exit_02.wav",
+                "audio/sfx/gameplay/yard_exit/lp_sfx_yard_exit_03.wav",
             )
 
         val CAPTURE =
-            family(
-                "audio/sfx/gameplay/capture",
-                "lp_sfx_capture",
+            listOf(
+                "audio/sfx/gameplay/capture/lp_sfx_capture_01.wav",
+                "audio/sfx/gameplay/capture/lp_sfx_capture_02.wav",
+                "audio/sfx/gameplay/capture/lp_sfx_capture_03.wav",
             )
 
         val SAFE_RELIEF =
-            family(
-                "audio/sfx/gameplay/safe",
-                "lp_sfx_safe_relief",
+            listOf(
+                "audio/sfx/gameplay/safe/lp_sfx_safe_relief_01.wav",
+                "audio/sfx/gameplay/safe/lp_sfx_safe_relief_02.wav",
+                "audio/sfx/gameplay/safe/lp_sfx_safe_relief_03.wav",
             )
 
         val HOME_LANE =
-            family(
-                "audio/sfx/gameplay/home_lane",
-                "lp_sfx_home_lane",
+            listOf(
+                "audio/sfx/gameplay/home_lane/lp_sfx_home_lane_01.wav",
+                "audio/sfx/gameplay/home_lane/lp_sfx_home_lane_02.wav",
+                "audio/sfx/gameplay/home_lane/lp_sfx_home_lane_03.wav",
             )
 
         val HOME =
-            family(
-                "audio/sfx/gameplay/home",
-                "lp_sfx_home",
+            listOf(
+                "audio/sfx/gameplay/home/lp_sfx_home_01.wav",
+                "audio/sfx/gameplay/home/lp_sfx_home_02.wav",
+                "audio/sfx/gameplay/home/lp_sfx_home_03.wav",
             )
 
         val FAIL =
-            family(
-                "audio/sfx/gameplay/fail",
-                "lp_sfx_fail",
+            listOf(
+                "audio/sfx/gameplay/fail/lp_sfx_fail_01.wav",
+                "audio/sfx/gameplay/fail/lp_sfx_fail_02.wav",
+                "audio/sfx/gameplay/fail/lp_sfx_fail_03.wav",
             )
 
         val THIRD_SIX =
-            family(
-                "audio/sfx/gameplay/third_six",
-                "lp_sfx_third_six",
+            listOf(
+                "audio/sfx/gameplay/third_six/lp_sfx_third_six_01.wav",
+                "audio/sfx/gameplay/third_six/lp_sfx_third_six_02.wav",
+                "audio/sfx/gameplay/third_six/lp_sfx_third_six_03.wav",
             )
 
         val VICTORY =
-            family(
-                "audio/sfx/gameplay/victory",
-                "lp_sfx_victory",
+            listOf(
+                "audio/sfx/gameplay/victory/lp_sfx_victory_01.wav",
+                "audio/sfx/gameplay/victory/lp_sfx_victory_02.wav",
+                "audio/sfx/gameplay/victory/lp_sfx_victory_03.wav",
             )
 
         val DEFEAT =
-            family(
-                "audio/sfx/gameplay/defeat",
-                "lp_sfx_defeat",
-            )
-
-        private fun family(
-            directory: String,
-            basename: String,
-        ): List<String> =
             listOf(
-                "$directory/$basename" + "_01.wav",
-                "$directory/$basename" + "_02.wav",
-                "$directory/$basename" + "_03.wav",
+                "audio/sfx/gameplay/defeat/lp_sfx_defeat_01.wav",
+                "audio/sfx/gameplay/defeat/lp_sfx_defeat_02.wav",
+                "audio/sfx/gameplay/defeat/lp_sfx_defeat_03.wav",
             )
     }
 }
