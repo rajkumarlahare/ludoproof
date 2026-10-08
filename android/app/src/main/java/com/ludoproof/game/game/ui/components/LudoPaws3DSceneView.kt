@@ -159,7 +159,10 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                         val contactAtMillis =
                             now +
                                 if (newForward != null) {
-                                    forwardDurationMillis
+                                    LudoPaws3DRenderCadencePolicy
+                                        .captureContactDelayMillis(
+                                            forwardDurationMillis,
+                                        )
                                 } else {
                                     0L
                                 }
@@ -272,7 +275,10 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                                 current.forwardMotion?.tokenIndex == key.tokenIndex
                             ) {
                                 current.forwardStartedAtMillis +
-                                    current.forwardDurationMillis
+                                    LudoPaws3DRenderCadencePolicy
+                                        .captureContactDelayMillis(
+                                            current.forwardDurationMillis,
+                                        )
                             } else {
                                 null
                             }
