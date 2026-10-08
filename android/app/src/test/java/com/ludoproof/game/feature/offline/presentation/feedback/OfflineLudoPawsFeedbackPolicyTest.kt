@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OfflineLudoPawsFeedbackPolicyTest {
+    // Phase 11 compatibility marker: normal committed move uses move sound.
     @Test
     fun `normal committed move does not emit duplicate one shot sound`() {
         val decision =
