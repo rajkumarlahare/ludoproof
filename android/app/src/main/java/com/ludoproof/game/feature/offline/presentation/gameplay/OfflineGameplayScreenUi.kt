@@ -9,6 +9,7 @@ import com.ludoproof.game.*
 import com.ludoproof.game.feature.offline.*
 import com.ludoproof.game.feature.offline.presentation.feedback.OfflineFeedbackAction
 import com.ludoproof.game.feature.offline.presentation.feedback.OfflineLudoPawsFeedbackDispatcher
+import com.ludoproof.game.ui.game.addGameTopActions
 import com.ludoproof.game.ui.offline.common.*
 import com.ludoproof.game.ui.offline.setup.*
 
@@ -76,17 +77,6 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
             FrameLayout.LayoutParams.MATCH_PARENT,
             Gravity.TOP or Gravity.CENTER_HORIZONTAL,
         ),
-    )
-
-    content.addView(
-        backHeader(null),
-        LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-        ).apply {
-            leftMargin = sectionSideMargin
-            rightMargin = sectionSideMargin
-        },
     )
 
     resultPanel =
@@ -188,6 +178,24 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
         ).apply {
             leftMargin = sectionSideMargin
             rightMargin = sectionSideMargin
+        },
+    )
+
+    addGameTopActions(
+        host = host,
+        context = this,
+        onBack = { requestOfflineExit() },
+        onSettings = {
+            showSettingsDialog(
+                this,
+            ) {
+                val current = engine.snapshot()
+                if (current != null) {
+                    showGame(current)
+                } else {
+                    showSetup()
+                }
+            }
         },
     )
 
