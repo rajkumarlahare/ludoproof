@@ -136,5 +136,20 @@ class LudoPaws3DRenderCadencePolicyTest {
         )
     }
 
+    @Test
+    fun `capture contact begins when attacker reaches the target before landing settle tail`() {
+        assertEquals(
+            510L,
+            LudoPaws3DRenderCadencePolicy.captureContactDelayMillis(600L),
+        )
+        assertEquals(
+            0L,
+            LudoPaws3DRenderCadencePolicy.captureContactDelayMillis(90L),
+        )
+        assertEquals(
+            0L,
+            LudoPaws3DRenderCadencePolicy.captureContactDelayMillis(20L),
+        )
+    }
 
 }
