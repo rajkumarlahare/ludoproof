@@ -8,7 +8,6 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import com.ludoproof.game.LudoProofTheme
 import com.ludoproof.game.OfflineGameActivity
-import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.ui.offline.common.*
 
@@ -20,14 +19,12 @@ internal fun OfflineGameActivity.presentQuickReaction(
     emoji: String,
 ): Boolean {
     val now = SystemClock.elapsedRealtime()
-    val settings = GameSettingsStore(this).snapshot()
     val presentation =
         OfflineQuickReactionPolicy.resolve(
             state = session.snapshot(),
             emoji = emoji,
             nowMs = now,
             lastShownAtMs = quickReactionLastShownAtMs,
-            reducedMotion = settings.reducedMotionEnabled,
         ) ?: return false
     val board = boardView ?: return false
 
@@ -58,10 +55,10 @@ internal fun OfflineGameActivity.presentQuickReaction(
             isClickable = false
             isFocusable = false
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            alpha = if (presentation.reducedMotion) 1f else 0f
-            scaleX = if (presentation.reducedMotion) 1f else 0.84f
-            scaleY = if (presentation.reducedMotion) 1f else 0.84f
-            translationY = if (presentation.reducedMotion) 0f else dp(12).toFloat()
+            alpha = 0f
+            scaleX = 0.84f
+            scaleY = 0.84f
+            translationY = dp(12).toFloat()
         }
 
     board.addView(
@@ -86,14 +83,7 @@ internal fun OfflineGameActivity.presentQuickReaction(
         (bubble.parent as? ViewGroup)?.removeView(bubble)
     }
 
-    if (presentation.reducedMotion) {
-        bubble.animate()
-            .alpha(0f)
-            .setStartDelay(300L)
-            .setDuration((presentation.durationMs - 300L).coerceAtLeast(200L))
-            .withEndAction(::removeBubble)
-            .start()
-    } else {
+{
         bubble.animate()
             .alpha(1f)
             .scaleX(1f)
@@ -110,7 +100,8 @@ internal fun OfflineGameActivity.presentQuickReaction(
                     .start()
             }
             .start()
-    }
+
+
 
     return true
 }
