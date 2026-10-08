@@ -37,7 +37,7 @@ if (fs.existsSync(deletedSpokenLines)) {
 
 const audioCatalog = fs.readFileSync(requiredSources[0], 'utf8');
 const soundPool = fs.readFileSync(requiredSources[1], 'utf8');
-const sfx = fs.readFileSync(requiredSources[1], 'utf8');
+const sfx = fs.readFileSync(requiredSources[2], 'utf8');
 const music = fs.readFileSync(requiredSources[3], 'utf8');
 const settings = fs.readFileSync(requiredSources[4], 'utf8');
 const haptics = fs.readFileSync(requiredSources[5], 'utf8');
