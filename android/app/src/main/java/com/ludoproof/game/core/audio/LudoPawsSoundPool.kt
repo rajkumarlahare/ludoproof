@@ -137,6 +137,26 @@ object LudoPawsSoundPool {
         pendingByKey.clear()
     }
 
+    private fun preloadSource(
+        context: Context,
+        key: String,
+        loader: (SoundPool) -> Int,
+    ): Boolean {
+        val soundPool =
+            ensurePool()
+                ?: return false
+
+        if (samplesByKey.containsKey(key)) {
+            return true
+        }
+
+        return load(
+            soundPool = soundPool,
+            sourceKey = key,
+            loader = loader,
+        ) != null
+    }
+
     private fun playSource(
         context: Context,
         key: String,
