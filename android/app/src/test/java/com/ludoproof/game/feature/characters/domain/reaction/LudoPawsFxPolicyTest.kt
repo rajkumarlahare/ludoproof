@@ -7,54 +7,65 @@ import org.junit.Test
 
 class LudoPawsFxPolicyTest {
     @Test
-    fun `victory enables dense confetti in full motion`() {
-        val plan =
-            LudoPawsFxPolicy.plan(
-                cue = AnimationCue.VICTORY,
-            )
-
-        assertTrue(plan.allowConfetti)
-        assertTrue(plan.allowTranslation)
-        assertTrue(plan.allowRotation)
-        assertTrue(plan.particleCount >= 32)
-    }
-
-    @Test
-    fun `captured reaction supports full return movement`() {
-        val plan =
-            LudoPawsFxPolicy.plan(
-                cue = AnimationCue.CAPTURED,
-            )
-
-        assertTrue(plan.allowTranslation)
-        assertTrue(plan.allowRotation)
-        assertTrue(plan.allowShake)
-        assertFalse(plan.allowConfetti)
-        assertTrue(plan.durationMs >= 900L)
-    }
-
-    @Test
-    fun `idle stays intentionally subtle`() {
-        val plan =
-            LudoPawsFxPolicy.plan(
-                cue = AnimationCue.IDLE,
-            )
-
-        assertFalse(plan.allowTranslation)
-        assertFalse(plan.allowShake)
-        assertFalse(plan.allowConfetti)
-        assertTrue(plan.particleCount == 0)
-    }
-
-    @Test
-    fun `every animation cue has a positive production duration`() {
+    fun `reduced motion removes translation rotation shake and confetti`() {
         AnimationCue.entries.forEach { cue ->
             val plan =
                 LudoPawsFxPolicy.plan(
                     cue = cue,
+                    reducedMotion = true,
                 )
-            assertTrue(plan.durationMs > 0L)
-            assertTrue(plan.particleCount >= 0)
+
+            assertFalse(plan.allowTranslation)
+            assertFalse(plan.allowRotation)
+            assertFalse(plan.allowShake)
+            assertFalse(plan.allowConfetti)
+            assertTrue(plan.durationMs <= 250L)
+            assertTrue(plan.particleCount <= 4)
         }
+    }
+
+    @Test
+    fun `victory enables dense confetti only in full motion`() {
+        val full =
+            LudoPawsFxPolicy.plan(
+                cue = AnimationCue.VICTORY,
+                reducedMotion = false,
+            )
+        val reduced =
+            LudoPawsFxPolicy.plan(
+                cue = AnimationCue.VICTORY,
+                reducedMotion = true,
+            )
+
+        assertTrue(full.allowConfetti)
+        assertTrue(full.particleCount > reduced.particleCount)
+        assertFalse(reduced.allowConfetti)
+    }
+
+    @Test
+    fun `captured reaction supports return movement in full motion`() {
+        val captured =
+            LudoPawsFxPolicy.plan(
+                cue = AnimationCue.CAPTURED,
+                reducedMotion = false,
+            )
+
+        assertTrue(captured.allowTranslation)
+        assertTrue(captured.allowShake)
+        assertTrue(captured.durationMs >= 900L)
+    }
+
+    @Test
+    fun `idle stays intentionally subtle`() {
+        val idle =
+            LudoPawsFxPolicy.plan(
+                cue = AnimationCue.IDLE,
+                reducedMotion = false,
+            )
+
+        assertFalse(idle.allowTranslation)
+        assertFalse(idle.allowShake)
+        assertFalse(idle.allowConfetti)
+        assertTrue(idle.particleCount == 0)
     }
 }
