@@ -442,31 +442,31 @@ internal class LudoPaws3DSceneRenderer {
                     LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
             ).coerceAtLeast(1L)
 
-        // Noticeable but controlled squash/stretch:
-        // 94% anticipation -> 110% spring -> 102% travel -> 95% landing.
+        // Deliberately exaggerated for a clear, playful jump silhouette:
+        // 88% anticipation -> 124% takeoff pop -> 106% airborne -> 91% landing.
         val anticipationMillis =
             min(
-                70L,
+                80L,
                 max(
-                    45L,
-                    travelDuration / 8L,
+                    55L,
+                    travelDuration / 7L,
                 ),
             )
         val takeoffMillis =
             min(
-                125L,
+                150L,
                 max(
-                    85L,
-                    travelDuration / 5L,
+                    105L,
+                    travelDuration / 4L,
                 ),
             )
         val landingMillis =
             min(
-                85L,
+                95L,
                 max(
-                    55L,
+                    65L,
                     LudoPaws3DRenderCadencePolicy
-                        .FORWARD_LANDING_SETTLE_MILLIS / 4L,
+                        .FORWARD_LANDING_SETTLE_MILLIS / 3L,
                 ),
             )
 
@@ -480,8 +480,12 @@ internal class LudoPaws3DSceneRenderer {
                         elapsed.toFloat() /
                             anticipationMillis.toFloat(),
                     )
-                scale = lerp(1f, 0.94f, t)
-                liftY = 0f
+                scale = lerp(1f, 0.88f, t)
+                // A tiny pre-load keeps the takeoff readable instead of looking flat.
+                liftY =
+                    pawn.radius *
+                        0.06f *
+                        smoothStep(t)
             }
 
             elapsed < anticipationMillis + takeoffMillis -> {
@@ -492,8 +496,14 @@ internal class LudoPaws3DSceneRenderer {
                         ).toFloat() /
                             takeoffMillis.toFloat(),
                     )
-                scale = lerp(0.94f, 1.10f, t)
-                liftY = lerp(0f, pawn.radius * 0.34f, t)
+                scale = lerp(0.88f, 1.24f, t)
+                // Strong vertical takeoff: clearly rises before the path hop begins.
+                liftY =
+                    lerp(
+                        pawn.radius * 0.06f,
+                        pawn.radius * 0.78f,
+                        t,
+                    )
             }
 
             elapsed < travelDuration -> {
@@ -510,13 +520,19 @@ internal class LudoPaws3DSceneRenderer {
                         travelElapsed.toFloat() /
                             travelWindow.toFloat()
                     ).coerceIn(0f, 1f)
-                scale = lerp(1.10f, 1.02f, smoothStep(t))
-                liftY = lerp(pawn.radius * 0.34f, 0f, smoothStep(t))
+                val eased = smoothStep(t)
+                scale = lerp(1.24f, 1.06f, eased)
+                liftY =
+                    lerp(
+                        pawn.radius * 0.78f,
+                        pawn.radius * 0.16f,
+                        eased,
+                    )
             }
 
             elapsed < totalDuration - landingMillis -> {
-                scale = 1.02f
-                liftY = 0f
+                scale = 1.06f
+                liftY = pawn.radius * 0.16f
             }
 
             else -> {
@@ -534,18 +550,23 @@ internal class LudoPaws3DSceneRenderer {
                 scale =
                     when {
                         t < 0.5f ->
-                            lerp(1.02f, 0.95f, smoothStep(landingT))
+                            lerp(1.06f, 0.91f, smoothStep(landingT))
 
                         else ->
                             lerp(
-                                0.95f,
+                                0.91f,
                                 1f,
                                 smoothStep(
                                     (t - 0.5f) * 2f,
                                 ),
                             )
                     }
-                liftY = 0f
+                liftY =
+                    lerp(
+                        pawn.radius * 0.16f,
+                        0f,
+                        t,
+                    )
             }
         }
 
@@ -800,7 +821,9 @@ internal class LudoPaws3DSceneRenderer {
         val dy = boardCenter - linearY
         val distance = sqrt(dx * dx + dy * dy)
         if (distance <= 0.001f) return linearX to linearY
-        val arc = cell * 0.22f * hop
+        // Increase the vertical hop arc so the pawn visibly clears the board
+        // instead of reading as a mostly-flat glide between adjacent cells.
+        val arc = cell * 0.48f * hop
         return (linearX + dx / distance * arc) to
             (linearY + dy / distance * arc)
     }
