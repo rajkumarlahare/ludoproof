@@ -678,10 +678,6 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         }
     }
 
-    private companion object {
-        const val MAX_CAPTURE_AUDIO_KEYS = 64
-    }
-
     private class EglWindow(
         surfaceTexture: SurfaceTexture,
     ) {
@@ -793,5 +789,6 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
     private companion object {
         const val TAG = "LudoPaws3D"
         const val RENDER_THREAD_JOIN_MILLIS = 250L
+        const val MAX_CAPTURE_AUDIO_KEYS = 64
     }
 }
