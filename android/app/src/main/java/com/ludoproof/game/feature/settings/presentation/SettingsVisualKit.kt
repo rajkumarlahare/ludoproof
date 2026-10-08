@@ -17,31 +17,21 @@ internal fun settingsCompactPanel(
     dialog: Dialog,
 ): LinearLayout =
     LinearLayout(context).apply {
-        orientation =
-            LinearLayout.VERTICAL
+        orientation = LinearLayout.VERTICAL
         setPadding(
-            settingsDp(context, 16),
-            settingsDp(context, 14),
-            settingsDp(context, 16),
-            settingsDp(context, 16),
+            settingsDp(context, 10),
+            settingsDp(context, 10),
+            settingsDp(context, 10),
+            settingsDp(context, 10),
         )
+        // Reuse the exact Home glass language used by the game top Back/Settings
+        // controls. This keeps the settings surface translucent and consistent.
         background =
-            GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(
-                    0xFF08378F.toInt(),
-                    0xFF06296F.toInt(),
-                    0xFF031B50.toInt(),
-                ),
-            ).apply {
-                cornerRadius =
-                    settingsDp(context, 18)
-                        .toFloat()
-                setStroke(
-                    settingsDp(context, 3),
-                    0xFFFFC735.toInt(),
-                )
-            }
+            homeGlassBackground(
+                context = context,
+                shape = HomeGlassShape.TILE,
+                tone = HomeGlassTone.GLASS,
+            )
 
         addView(
             settingsHeader(
@@ -52,7 +42,7 @@ internal fun settingsCompactPanel(
         addView(
             settingsDivider(
                 context,
-                topBottomMarginDp = 8,
+                topBottomMarginDp = 4,
             ),
         )
     }
@@ -71,9 +61,9 @@ private fun settingsHeader(
                             .configuration
                             .screenWidthDp < 380
                     ) {
-                        22f
+                        20f
                     } else {
-                        25f
+                        23f
                     }
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextColor(0xFFFFD34E.toInt())
@@ -90,7 +80,7 @@ private fun settingsHeader(
             title,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                settingsDp(context, 50),
+                settingsDp(context, 44),
                 Gravity.CENTER,
             ).apply {
                 leftMargin = settingsDp(context, 48)
@@ -131,8 +121,8 @@ private fun settingsHeader(
         addView(
             close,
             FrameLayout.LayoutParams(
-                settingsDp(context, 42),
-                settingsDp(context, 42),
+                settingsDp(context, 40),
+                settingsDp(context, 40),
                 Gravity.END or Gravity.CENTER_VERTICAL,
             ),
         )
@@ -146,12 +136,12 @@ internal fun settingsCompactRow(
     LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        minimumHeight = settingsDp(context, 66)
+        minimumHeight = settingsDp(context, 54)
         setPadding(
-            settingsDp(context, 8),
-            settingsDp(context, 7),
+            settingsDp(context, 6),
             settingsDp(context, 4),
-            settingsDp(context, 7),
+            settingsDp(context, 2),
+            settingsDp(context, 4),
         )
 
         addView(
@@ -163,9 +153,9 @@ internal fun settingsCompactRow(
                             .configuration
                             .screenWidthDp < 380
                     ) {
-                        16f
+                        15f
                     } else {
-                        18f
+                        17f
                     }
                 setTypeface(Typeface.DEFAULT_BOLD)
                 setTextColor(Color.WHITE)
@@ -225,7 +215,7 @@ internal fun settingsDropdownField(
             settingsDp(context, 12),
             0,
         )
-        minHeight = settingsDp(context, 48)
+        minHeight = settingsDp(context, 44)
         isClickable = true
         isFocusable = true
         background =
@@ -248,12 +238,12 @@ internal fun settingsDropdownField(
                             .configuration
                             .screenWidthDp < 380
                     ) {
-                        184
+                        176
                     } else {
-                        220
+                        202
                     },
                 ),
-                settingsDp(context, 48),
+                settingsDp(context, 44),
             )
     }
 
@@ -293,8 +283,8 @@ internal class SettingsBooleanControl(
         )
         layoutParams =
             LinearLayout.LayoutParams(
-                settingsDp(context, 132),
-                settingsDp(context, 46),
+                settingsDp(context, 118),
+                settingsDp(context, 42),
             )
 
         addView(
@@ -328,7 +318,7 @@ internal class SettingsBooleanControl(
     ): TextView =
         TextView(context).apply {
             text = label
-            textSize = 14f
+            textSize = 13f
             setTypeface(Typeface.DEFAULT_BOLD)
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
@@ -399,8 +389,7 @@ internal fun settingsPrivacyLink(
 ): TextView =
     TextView(context).apply {
         text = "Privacy Policy"
-        textSize = 15f
-        setTypeface(
+        textSize = 14f        setTypeface(
             Typeface.DEFAULT,
             Typeface.ITALIC,
         )
