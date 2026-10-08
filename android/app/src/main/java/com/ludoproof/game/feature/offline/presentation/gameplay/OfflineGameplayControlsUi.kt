@@ -235,6 +235,12 @@ internal fun OfflineGameActivity.renderGame(
     }
     ensureOfflineResultActions(state)
 
+    // State-driven visibility changes can alter the surrounding vertical flow.
+    // Keep the board itself centered after those changes, without resizing it.
+    boardView?.post {
+        centerBoardInViewport()
+    }
+
     val activePlayerId = active?.playerId
     val interactionPlayerId =
         if (
