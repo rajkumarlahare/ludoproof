@@ -54,7 +54,7 @@ class OfflineLudoPawsFeedbackPolicyTest {
                 reactions = listOf(capture),
                 tokenMovementCommitted = true,
             )
-        assertEquals(OfflineFeedbackSound.CAPTURE, decision.sound)
+        assertEquals(OfflineFeedbackSound.NONE, decision.sound)
     }
 
     @Test
@@ -136,7 +136,7 @@ class OfflineLudoPawsFeedbackPolicyTest {
                 priority = 50,
             )
         assertEquals(
-            OfflineFeedbackSound.HOME_LANE,
+            OfflineFeedbackSound.NONE,
             OfflineLudoPawsFeedbackPolicy.decide(
                 OfflineFeedbackAction.MOVE,
                 listOf(homeLane),

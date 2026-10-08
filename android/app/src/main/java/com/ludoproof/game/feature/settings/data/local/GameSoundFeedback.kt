@@ -30,11 +30,35 @@ object GameSoundFeedback {
      * gameplay timing.
      */
     fun preloadMovementStep(context: Context) {
-        LudoPawsAudioAssetPlayer.preloadSfx(
+        preload(
             context = context,
             rawResourceNames = listOf("lp_sfx_move_paw"),
             assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
         )
+    }
+
+    /**
+     * Preloads only the SFX that can occur during pawn travel. These are kept
+     * hot before the first move so the visual step clock never has to wait for
+     * an authored clip to finish loading.
+     */
+    fun preloadMovementEventSfx(context: Context) {
+        val sounds =
+            listOf(
+                listOf("lp_sfx_move_paw") to LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
+                listOf("lp_sfx_yard_exit") to LudoPawsAudioCatalog.Sfx.YARD_EXIT,
+                listOf("lp_sfx_capture_impact") to LudoPawsAudioCatalog.Sfx.CAPTURE,
+                listOf("lp_sfx_safe_shimmer") to LudoPawsAudioCatalog.Sfx.SAFE_RELIEF,
+                listOf("lp_sfx_home_lane") to LudoPawsAudioCatalog.Sfx.HOME_LANE,
+                listOf("lp_sfx_home_sparkle") to LudoPawsAudioCatalog.Sfx.HOME,
+            )
+        sounds.forEach { (rawResourceNames, assetPaths) ->
+            preload(
+                context = context,
+                rawResourceNames = rawResourceNames,
+                assetPaths = assetPaths,
+            )
+        }
     }
 
     /** One short physical tick for exactly one visual pawn step. */
@@ -195,17 +219,21 @@ object GameSoundFeedback {
 
         return when (highest.momentType) {
             GameMomentType.SIX_ROLLED -> played { six(context) }
-            GameMomentType.TOKEN_LEFT_YARD -> played { yardExit(context) }
+            // Yard exit is emitted by the movement step clock when the pawn
+            // actually arrives on its first road cell.
+            GameMomentType.TOKEN_LEFT_YARD -> false
             // Per-cell movement ticks are emitted by the synchronized 3D movement
             // clock. Playing the legacy one-shot move cue here would double-fire
             // the sound for every move.
             GameMomentType.ONLY_LEGAL_MOVE -> false
+            // Physical movement events are emitted by the shared 3D movement
+            // clock at their actual visual contact/arrival time.
             GameMomentType.CAPTURE_MADE,
             GameMomentType.TOKEN_CAPTURED,
-            -> played { capture(context) }
-            GameMomentType.SAFE_REACHED -> played { safe(context) }
-            GameMomentType.HOME_LANE_ENTERED -> played { homeLane(context) }
-            GameMomentType.HOME_REACHED -> played { home(context) }
+            GameMomentType.SAFE_REACHED,
+            GameMomentType.HOME_LANE_ENTERED,
+            GameMomentType.HOME_REACHED,
+            -> false
             GameMomentType.POOR_ROLL_STREAK,
             GameMomentType.EXACT_HOME_MISS,
             GameMomentType.NO_LEGAL_MOVE,
@@ -232,6 +260,25 @@ object GameSoundFeedback {
     private inline fun played(block: () -> Unit): Boolean {
         block()
         return true
+    }
+
+    private fun preload(
+        context: Context,
+        rawResourceNames: List<String>,
+        assetPaths: List<String>,
+    ) {
+        if (
+            !GameSettingsStore(context)
+                .snapshot()
+                .soundEnabled
+        ) {
+            return
+        }
+        LudoPawsAudioAssetPlayer.preloadSfx(
+            context = context,
+            rawResourceNames = rawResourceNames,
+            assetPaths = assetPaths,
+        )
     }
 
     private fun play(

@@ -58,6 +58,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
     private val settingsStore = GameSettingsStore(context)
     private var movementAudioMotionKey: String? = null
     private var movementAudioNextStep: Int = 1
+    private val emittedCaptureAudioKeys = LinkedHashSet<String>()
 
     @Volatile
     private var sceneState = LudoPaws3DSceneState()
@@ -75,9 +76,9 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         isClickable = false
         isFocusable = false
 
-        // Prewarm the first movement tick while the board is being created so
-        // the first audible step is not held behind SoundPool's async load.
-        GameSoundFeedback.preloadMovementStep(context)
+        // Prewarm every SFX that can occur during pawn travel so the render-time
+        // audio clock does not incur a first-play SoundPool load delay.
+        GameSoundFeedback.preloadMovementEventSfx(context)
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
         surfaceTextureListener = this
     }
@@ -95,6 +96,9 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             previousSnapshot != null &&
                 state != null &&
                 previousSnapshot.matchId == state.matchId
+        if (!sameMatch) {
+            emittedCaptureAudioKeys.clear()
+        }
         val settings = settingsStore.snapshot()
         val motions =
             LudoPawsPawnAnimationPolicy.plans(
@@ -486,8 +490,18 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             state: LudoPaws3DSceneState,
             nowMillis: Long,
         ) {
-            val forward = state.forwardMotion ?: return
-            if (state.forwardDurationMillis <= 0L) return
+            val forward = state.forwardMotion
+            val travelDuration =
+                state.forwardDurationMillis -
+                    LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
+            if (
+                forward == null ||
+                travelDuration <= 0L ||
+                forward.visualSteps <= 0
+            ) {
+                emitCaptureImpactSounds(state, nowMillis)
+                return
+            }
 
             val motionKey =
                 "${state.snapshot?.matchId}:${forward.playerId}:${forward.tokenIndex}:${forward.fromPosition}:${forward.toPosition}"
@@ -501,19 +515,88 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                     forwardDurationMillis = state.forwardDurationMillis,
                     visualSteps = forward.visualSteps,
                 )
-            if (stepDuration <= 0L) return
+            if (stepDuration <= 0L) {
+                emitCaptureImpactSounds(state, nowMillis)
+                return
+            }
 
             val elapsed =
                 (nowMillis - state.forwardStartedAtMillis)
                     .coerceAtLeast(0L)
+            val playerColor =
+                state.snapshot
+                    ?.players
+                    ?.firstOrNull {
+                        it.playerId == forward.playerId
+                    }
+                    ?.color
+
             while (
                 movementAudioNextStep <= forward.visualSteps &&
                 elapsed >= movementAudioNextStep.toLong() * stepDuration
             ) {
-                com.ludoproof.game.feature.settings.data.local.GameSoundFeedback.moveStep(
+                val step =
+                    movementAudioNextStep
+                val cues =
+                    LudoPawsMovementSoundPolicy.cuesForVisualStep(
+                        color = playerColor,
+                        fromPosition = forward.fromPosition,
+                        step = step,
+                    )
+                cues.forEach { cue ->
+                    when (cue) {
+                        LudoPawsMovementSoundCue.STEP ->
+                            GameSoundFeedback.moveStep(
+                                context = context,
+                            )
+                        LudoPawsMovementSoundCue.YARD_EXIT ->
+                            GameSoundFeedback.yardExit(
+                                context = context,
+                            )
+                        LudoPawsMovementSoundCue.SAFE_RELIEF ->
+                            GameSoundFeedback.safe(
+                                context = context,
+                            )
+                        LudoPawsMovementSoundCue.HOME_LANE ->
+                            GameSoundFeedback.homeLane(
+                                context = context,
+                            )
+                        LudoPawsMovementSoundCue.HOME ->
+                            GameSoundFeedback.home(
+                                context = context,
+                            )
+                    }
+                }
+                movementAudioNextStep += 1
+            }
+
+            emitCaptureImpactSounds(state, nowMillis)
+        }
+
+        private fun emitCaptureImpactSounds(
+            state: LudoPaws3DSceneState,
+            nowMillis: Long,
+        ) {
+            val matchId = state.snapshot?.matchId ?: return
+            state.captureReturns.values.forEach { capture ->
+                if (nowMillis < capture.startedAtMillis) return@forEach
+
+                val motion = capture.motion
+                val key =
+                    "$matchId:${motion.playerId}:${motion.tokenIndex}:" +
+                        "${motion.fromPosition}:${motion.toPosition}"
+                if (!emittedCaptureAudioKeys.add(key)) return@forEach
+
+                GameSoundFeedback.capture(
                     context = context,
                 )
-                movementAudioNextStep += 1
+            }
+
+            while (emittedCaptureAudioKeys.size > MAX_CAPTURE_AUDIO_KEYS) {
+                val iterator = emittedCaptureAudioKeys.iterator()
+                if (!iterator.hasNext()) break
+                iterator.next()
+                iterator.remove()
             }
         }
 
@@ -706,5 +789,6 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
     private companion object {
         const val TAG = "LudoPaws3D"
         const val RENDER_THREAD_JOIN_MILLIS = 250L
+        const val MAX_CAPTURE_AUDIO_KEYS = 64
     }
 }

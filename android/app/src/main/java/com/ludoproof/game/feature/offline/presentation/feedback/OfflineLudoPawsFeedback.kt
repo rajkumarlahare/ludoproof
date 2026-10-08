@@ -68,16 +68,16 @@ object OfflineLudoPawsFeedbackPolicy {
         val dedicatedSound =
             when (highest?.momentType) {
                 GameMomentType.SIX_ROLLED -> OfflineFeedbackSound.SIX
-                GameMomentType.TOKEN_LEFT_YARD -> OfflineFeedbackSound.YARD_EXIT
-                // Movement ticks are owned by the synchronized 3D step clock.
-                // Never emit a second generic move sound from reaction feedback.
-                GameMomentType.ONLY_LEGAL_MOVE -> OfflineFeedbackSound.NONE
+                // All physical pawn-arrival sounds are emitted by the shared
+                // 3D movement clock, never immediately at snapshot commit.
+                GameMomentType.TOKEN_LEFT_YARD,
                 GameMomentType.CAPTURE_MADE,
                 GameMomentType.TOKEN_CAPTURED,
-                -> OfflineFeedbackSound.CAPTURE
-                GameMomentType.SAFE_REACHED -> OfflineFeedbackSound.SAFE
-                GameMomentType.HOME_LANE_ENTERED -> OfflineFeedbackSound.HOME_LANE
-                GameMomentType.HOME_REACHED -> OfflineFeedbackSound.HOME
+                GameMomentType.SAFE_REACHED,
+                GameMomentType.HOME_LANE_ENTERED,
+                GameMomentType.HOME_REACHED,
+                GameMomentType.ONLY_LEGAL_MOVE,
+                -> OfflineFeedbackSound.NONE
                 GameMomentType.POOR_ROLL_STREAK,
                 GameMomentType.EXACT_HOME_MISS,
                 GameMomentType.NO_LEGAL_MOVE,
