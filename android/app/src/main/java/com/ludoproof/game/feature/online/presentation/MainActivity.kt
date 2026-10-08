@@ -572,10 +572,8 @@ class MainActivity : Activity() {
             onlineSectionParams(
                 if (isCompactOnline()) 12 else 14,
             ).apply {
-                leftMargin =
-                    sectionSideMargin
-                rightMargin =
-                    sectionSideMargin
+                leftMargin = dp(1)
+                rightMargin = dp(1)
             },
         )
 
