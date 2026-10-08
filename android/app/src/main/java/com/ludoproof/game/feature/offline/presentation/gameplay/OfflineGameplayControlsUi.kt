@@ -22,20 +22,6 @@ internal fun OfflineGameActivity.gameplayActionPanel(): LinearLayout =
         gravity = Gravity.CENTER
         setPadding(dp(4), 0, dp(4), 0)
 
-        statusText =
-            TextView(this@gameplayActionPanel).apply {
-                text = "Tap the dice."
-                LudoProofTheme.body(
-                    this,
-                    if (isCompactSetup()) 9.5f else 10.5f,
-                    centered = true,
-                    bright = true,
-                )
-                maxLines = 1
-                setPadding(dp(4), dp(2), dp(4), dp(3))
-            }
-        addView(requireNotNull(statusText))
-
         if (
             GameSettingsStore(this@gameplayActionPanel)
                 .snapshot()
