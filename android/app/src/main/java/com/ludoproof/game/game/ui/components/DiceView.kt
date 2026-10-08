@@ -9,6 +9,7 @@ import android.graphics.Shader
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.View
+import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
 import com.ludoproof.game.feature.store.domain.model.CosmeticCategory
 
@@ -16,6 +17,7 @@ class DiceView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : View(context, attrs) {
+    private val settingsStore = GameSettingsStore(context)
 
     init {
         importantForAccessibility =
@@ -65,6 +67,7 @@ class DiceView @JvmOverloads constructor(
     private var face = 1
     private var rolling = false
     private var settling = false
+    private var reducedMotion = false
     private var rollStartedAtMillis = 0L
     private var settleStartedAtMillis = 0L
     private var settleStartRotationDegrees = 18f
@@ -84,10 +87,18 @@ class DiceView @JvmOverloads constructor(
                     rolling -> {
                         val elapsed =
                             now - rollStartedAtMillis
-                        applyFrame(
-                            DiceRollAnimationPolicy
-                                .rollingFrame(elapsed),
-                        )
+                        if (reducedMotion) {
+                            face =
+                                DiceRollAnimationPolicy
+                                    .reducedMotionRollingFace(elapsed)
+                            resetTransform()
+                            borderPulse = .55f
+                        } else {
+                            applyFrame(
+                                DiceRollAnimationPolicy
+                                    .rollingFrame(elapsed),
+                            )
+                        }
                     }
 
                     settling -> {
@@ -131,6 +142,7 @@ class DiceView @JvmOverloads constructor(
     fun setAttentionEnabled(enabled: Boolean) {
         val shouldPulse =
             enabled &&
+                !settingsStore.snapshot().reducedMotionEnabled &&
                 !rolling &&
                 !settling
         if (shouldPulse == attentionPulsing) {
@@ -152,6 +164,10 @@ class DiceView @JvmOverloads constructor(
         if (rolling) return
         attentionPulsing = false
         removeCallbacks(animationTicker)
+        reducedMotion =
+            settingsStore
+                .snapshot()
+                .reducedMotionEnabled
         rolling = true
         settling = false
         rollStartedAtMillis =
@@ -173,10 +189,14 @@ class DiceView @JvmOverloads constructor(
         removeCallbacks(animationTicker)
         targetOutcome = outcome
         face = outcome
+        reducedMotion =
+            settingsStore
+                .snapshot()
+                .reducedMotionEnabled
         contentDescription =
             "Dice outcome $outcome."
 
-        if (!animate) {
+        if (!animate || reducedMotion) {
             settling = false
             resetTransform()
             invalidate()
