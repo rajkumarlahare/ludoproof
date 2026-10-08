@@ -625,14 +625,21 @@ function captureOpponents(state, movingSeat, destination) {
   state.players.forEach((opponent, seat) => {
     if (seat === movingSeat) return;
     if (isTeamUp(state) && teamIdForSeat(state, seat) === movingTeam) return;
-    opponent.tokens = opponent.tokens.map((position) => {
-      const opponentCell = globalCellFor(opponent.color, position);
-      if (opponentCell === cell) {
-        captures += 1;
-        return -1;
-      }
-      return position;
-    });
+
+    const matchingTokenIndexes = opponent.tokens.reduce(
+      (indexes, position, index) => {
+        if (globalCellFor(opponent.color, position) === cell) {
+          indexes.push(index);
+        }
+        return indexes;
+      },
+      [],
+    );
+
+    if (matchingTokenIndexes.length !== 1) return;
+
+    opponent.tokens[matchingTokenIndexes[0]] = -1;
+    captures += 1;
   });
   return captures;
 }
