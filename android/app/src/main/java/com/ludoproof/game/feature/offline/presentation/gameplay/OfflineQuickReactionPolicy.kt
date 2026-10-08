@@ -7,7 +7,6 @@ data class OfflineQuickReactionPresentation(
     val displayName: String,
     val seat: Int,
     val emoji: String,
-    val reducedMotion: Boolean,
     val durationMs: Long,
     val riseDp: Int,
 )
@@ -21,7 +20,6 @@ object OfflineQuickReactionPolicy {
         emoji: String,
         nowMs: Long,
         lastShownAtMs: Long?,
-        reducedMotion: Boolean,
     ): OfflineQuickReactionPresentation? {
         state ?: return null
         if (state.status != "ACTIVE") return null
@@ -34,9 +32,8 @@ object OfflineQuickReactionPolicy {
             displayName = active.displayName,
             seat = active.seat,
             emoji = emoji,
-            reducedMotion = reducedMotion,
-            durationMs = if (reducedMotion) 700L else 1250L,
-            riseDp = if (reducedMotion) 0 else 52,
+            durationMs = 1250L,
+            riseDp = 52,
         )
     }
 }
