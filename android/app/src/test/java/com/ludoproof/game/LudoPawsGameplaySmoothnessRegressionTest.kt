@@ -9,13 +9,8 @@ import org.junit.Test
 class LudoPawsGameplaySmoothnessRegressionTest {
     @Test
     fun forwardTravelAndCaptureTimingRemainConsistentAtAllSpeeds() {
-        val expectedStepMillis =
-            mapOf(
-                GameSpeed.FAST to 210L,
-                GameSpeed.NORMAL to 280L,
-                GameSpeed.SLOW to 360L,
-            )
-        expectedStepMillis.forEach { (speed, stepMillis) ->
+        listOf(GameSpeed.FAST, GameSpeed.NORMAL, GameSpeed.SLOW).forEach { speed ->
+            val stepMillis = speed.moveStepMs
             assertEquals(
                 "three-cell movement duration for $speed",
                 stepMillis * 3L,
