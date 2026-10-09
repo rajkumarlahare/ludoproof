@@ -661,29 +661,33 @@ internal class LudoPaws3DSceneRenderer {
                         LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
                 ).coerceAtLeast(1L)
             if (state.forwardDurationMillis > 0L && elapsed < travelDuration) {
-                // Keep the last settle frames stable rather than restarting a hop.
+                // Hold a stable landing pose through the settle tail rather than
+                // restarting the next hop cycle after reaching the destination.
                 val visualProgress =
                     elapsed.toFloat() /
                         travelDuration.toFloat() *
-                        forward.visualSteps.coerceAtLeast(1).toFloat()
-                val stepFraction =
-                    (visualProgress - floor(visualProgress)).coerceIn(0f, 1f)
-                return MotionFrame(SceneMotion.HOP, stepFraction)
+                        forward.visualSteps.toFloat()
+                val stepFraction = visualProgress - floor(visualProgress)
+                return MotionFrame(
+                    kind = SceneMotion.HOP,
+                    progress = stepFraction.coerceIn(0f, 1f),
+                )
             }
 
             if (
                 elapsed < state.forwardDurationMillis ||
                 forward.toPosition != LudoPathEncoding.HOME_POSITION
             ) {
-                return MotionFrame(SceneMotion.IDLE, 0f)
+                return MotionFrame(kind = SceneMotion.IDLE, progress = 0f)
             }
 
             val celebrationElapsed = elapsed - state.forwardDurationMillis
             val homeDuration = homeDurationMillis(pawn.species)
             if (celebrationElapsed in 0 until homeDuration) {
                 return MotionFrame(
-                    SceneMotion.HOME,
-                    celebrationElapsed.toFloat() / homeDuration.toFloat(),
+                    kind = SceneMotion.HOME,
+                    progress =
+                        celebrationElapsed.toFloat() / homeDuration.toFloat(),
                 )
             }
         }
