@@ -506,9 +506,14 @@ class LudoBoardView @JvmOverloads constructor(
         // red/green/blue/yellow surface receives the rough finish.
         canvas.drawRect(yardRect, yardTexturePaint)
 
-        // The four inner token bays stay pure white across board skins; theme
-        // variation is confined to the outer yard surface.
-        fillPaint.color = Color.WHITE
+        // Ludo Paws keeps the four token bays white for readable footprints.
+        // Classic boards retain their existing theme-specific neutral fill.
+        fillPaint.color =
+            if (ludoPawsYardFootprintsEnabled) {
+                Color.WHITE
+            } else {
+                neutralCellColor()
+            }
         canvas.drawRoundRect(
             whiteRect,
             cell * 0.35f,
