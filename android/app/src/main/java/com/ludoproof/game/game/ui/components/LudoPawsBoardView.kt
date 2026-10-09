@@ -137,6 +137,10 @@ class LudoPawsBoardView @JvmOverloads constructor(
                 ?.let(OfflinePlayerLayout::rotationQuarterTurns)
                 ?: 0
         boardChrome.rotation = chromeQuarterTurns * 90f
+        // Board copies invalidate themselves on bind, but sibling invalidation does
+        // not redraw this topmost layer. Refresh it on every authoritative snapshot
+        // so footprints appear/disappear on the same committed move.
+        boardChrome.invalidate()
     }
 
     /**
