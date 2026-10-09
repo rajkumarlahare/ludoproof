@@ -155,10 +155,10 @@ object LudoPaws3DReactionMotion {
             AnimationCue.CAPTURE -> LudoPaws3DReactionPose(liftY = .12f * arc, bodyYawDegrees = 14f * wave, headTiltDegrees = -7f * arc, primaryAppendageDegrees = 8f * arc, secondaryAppendageDegrees = 39f * fast, scale = 1f + .035f * arc)
             AnimationCue.CAPTURED -> LudoPaws3DReactionPose(liftY = .10f * arc, bodyYawDegrees = 12f * fast * (1f - p), headTiltDegrees = 11f * wave, primaryAppendageDegrees = -9f * arc, secondaryAppendageDegrees = 14f * fast, scale = 1f - .04f * arc)
             AnimationCue.SAD, AnimationCue.DEFEAT -> LudoPaws3DReactionPose(liftY = -.04f * arc, headTiltDegrees = 9f * arc, primaryAppendageDegrees = -7f * arc, secondaryAppendageDegrees = 13f * wave, scale = 1f - .025f * arc)
-            AnimationCue.ANGRY -> LudoPaws3DReactionPose(bodyYawDegrees = 5f * fast * (1f - p), headTiltDegrees = -6f * arc, primaryAppendageDegrees = -8f * fast, secondaryAppendageDegrees = 26f * fast)
+            AnimationCue.ANGRY -> LudoPaws3DReactionPose(bodyYawDegrees = 5f * fast * (1f - p), headTiltDegrees = -6f * arc, primaryAppendageDegrees = -8f * arc, secondaryAppendageDegrees = 26f * fast)
             AnimationCue.NERVOUS -> LudoPaws3DReactionPose(bodyYawDegrees = 4f * fast * (1f - p), headTiltDegrees = 7f * wave, primaryAppendageDegrees = 7f * fast, secondaryAppendageDegrees = 18f * fast)
             AnimationCue.HOME -> LudoPaws3DReactionPose(liftY = .12f * bounce, headTiltDegrees = 7f * wave, primaryAppendageDegrees = 8f * fast, secondaryAppendageDegrees = 38f * fast, scale = 1f + .025f * arc)
-            // Use a full 360-degree turn so completion returns to the same facing.
-            // A 300-degree turn left a visible 60-degree snap when the reaction ended.
+            // Complete a full turn so the final frame matches the starting heading.
             AnimationCue.VICTORY -> LudoPaws3DReactionPose(liftY = .17f * bounce, bodyYawDegrees = 360f * p, headTiltDegrees = 7f * wave, primaryAppendageDegrees = 10f * fast, secondaryAppendageDegrees = 48f * fast, scale = 1f + .035f * arc)
         }
+}
