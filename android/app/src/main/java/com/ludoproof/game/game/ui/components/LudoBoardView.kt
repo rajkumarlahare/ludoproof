@@ -71,7 +71,9 @@ class LudoBoardView @JvmOverloads constructor(
     private var snapshot: MatchSnapshot? = null
     private var localPlayerId: String? = null
     private var perspectiveColor: String? = null
-    private var ludoPawsTeamSigilsEnabled = false
+    private var characterIdsBySeat: List<String> = emptyList()
+    private var ludoPawsYardFootprintsEnabled = false
+    private var classicTokenDrawingEnabled = true
     private var moveAnimator: ValueAnimator? = null
     private var moveAnimation: TokenMoveAnimation? = null
     private val tokenHits = mutableListOf<TokenHit>()
@@ -109,21 +111,62 @@ class LudoBoardView @JvmOverloads constructor(
             textAlign = Paint.Align.CENTER
             isFakeBoldText = true
         }
-    private val teamSigilFillPaint =
+    private val pawPrintFillPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.FILL
         }
-    private val teamSigilStrokePaint =
+    private val pawPrintGlowPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
         }
-    private val teamSigilPath = Path()
+    private val pawPrintEdgePaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+    private val pawPrintDetailPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
 
+    private data class PawPrintArtwork(
+        val pads: List<Path>,
+        val details: List<Path> = emptyList(),
+    )
+
+    /**
+     * Enables animal-specific footprints on the Ludo Paws presentation board.
+     * The legacy setter remains as a compatibility bridge for older callers.
+     */
+    fun setLudoPawsYardFootprintsEnabled(enabled: Boolean) {
+        if (ludoPawsYardFootprintsEnabled == enabled) return
+        ludoPawsYardFootprintsEnabled = enabled
+        invalidate()
+    }
+
+    @Deprecated("Use setLudoPawsYardFootprintsEnabled")
     fun setLudoPawsTeamSigilsEnabled(enabled: Boolean) {
-        if (ludoPawsTeamSigilsEnabled == enabled) return
-        ludoPawsTeamSigilsEnabled = enabled
+        setLudoPawsYardFootprintsEnabled(enabled)
+    }
+
+    /**
+     * Allows the production board surface to retain authoritative state for
+     * footprints without drawing legacy circular pawns below the 3D animals.
+     */
+    fun setClassicTokenDrawingEnabled(enabled: Boolean) {
+        if (classicTokenDrawingEnabled == enabled) return
+        classicTokenDrawingEnabled = enabled
+        if (!enabled) {
+            moveAnimator?.cancel()
+            moveAnimator = null
+            moveAnimation = null
+            tokenHits.clear()
+        }
         invalidate()
     }
 
@@ -131,6 +174,7 @@ class LudoBoardView @JvmOverloads constructor(
         state: MatchSnapshot?,
         playerId: String?,
         perspectiveColor: String? = null,
+        characterIdsBySeat: List<String> = emptyList(),
     ) {
         val previous =
             snapshot
@@ -142,6 +186,7 @@ class LudoBoardView @JvmOverloads constructor(
                     it in
                         OfflinePlayerLayout.COLORS
                 }
+        this.characterIdsBySeat = characterIdsBySeat.take(4).toList()
 
         val localPlayer =
             state?.players?.find {
@@ -170,12 +215,16 @@ class LudoBoardView @JvmOverloads constructor(
                     "Ludo board. No legal token is currently selectable."
             }
 
-        startMoveAnimationIfNeeded(
-            previous =
-                previous,
-            current =
-                state,
-        )
+        if (classicTokenDrawingEnabled) {
+            startMoveAnimationIfNeeded(
+                previous = previous,
+                current = state,
+            )
+        } else {
+            moveAnimator?.cancel()
+            moveAnimator = null
+            moveAnimation = null
+        }
         invalidate()
     }
 
@@ -259,13 +308,17 @@ class LudoBoardView @JvmOverloads constructor(
         }
 
         drawYards(canvas, cell)
-        if (ludoPawsTeamSigilsEnabled) {
-            drawYardTeamSigils(canvas, cell)
+        if (ludoPawsYardFootprintsEnabled) {
+            drawYardPawPrints(canvas, cell)
         }
         drawTrack(canvas, cell)
         drawHomeLanes(canvas, cell)
         drawCenter(canvas, cell)
-        drawTokens(canvas, cell)
+        if (classicTokenDrawingEnabled) {
+            if (classicTokenDrawingEnabled) {
+            drawTokens(canvas, cell)
+        }
+        }
 
         if (
             turns !=
@@ -453,7 +506,9 @@ class LudoBoardView @JvmOverloads constructor(
         // red/green/blue/yellow surface receives the rough finish.
         canvas.drawRect(yardRect, yardTexturePaint)
 
-        fillPaint.color = neutralCellColor()
+        // The four inner token bays stay pure white across board skins; theme
+        // variation is confined to the outer yard surface.
+        fillPaint.color = Color.WHITE
         canvas.drawRoundRect(
             whiteRect,
             cell * 0.35f,
@@ -800,139 +855,208 @@ class LudoBoardView @JvmOverloads constructor(
 
 
     /**
-     * Owner marks are presentation-only watermarks in the four home slots.
-     * They are opt-in for Ludo Paws so the classic board stays pixel-identical.
-     * Pawns are drawn after this pass and naturally cover a mark while occupying
-     * the slot; no marker follows or animates with a pawn.
+     * Draw a species-specific pressed footprint at every starting slot whose
+     * token is currently outside its yard. Positions and species both come from
+     * the authoritative state/seat assignment, never from a visual animation.
      */
-    private fun drawYardTeamSigils(
+    private fun drawYardPawPrints(
         canvas: Canvas,
         cell: Float,
     ) {
-        for (team in LudoPawsTeamColor.entries) {
-            for (tokenIndex in 0..3) {
-                val center =
-                    yardTokenCenter(
-                        color = team.wireName,
-                        tokenIndex = tokenIndex,
-                        cell = cell,
-                    ) ?: continue
-                drawTeamSigil(
-                    canvas = canvas,
-                    team = team,
-                    x = center.first,
-                    y = center.second,
-                    radius = cell * 0.15f,
-                )
-            }
+        val state = snapshot ?: return
+        val footprints =
+            LudoPawsYardFootprintPolicy.footprints(
+                snapshot = state,
+                characterIdsBySeat = characterIdsBySeat,
+            )
+        for (footprint in footprints) {
+            val center =
+                yardTokenCenter(
+                    color = footprint.teamColor,
+                    tokenIndex = footprint.tokenIndex,
+                    cell = cell,
+                ) ?: continue
+            drawYardPawPrint(
+                canvas = canvas,
+                x = center.first,
+                y = center.second,
+                cell = cell,
+                species = footprint.species,
+                teamColor = colorFor(footprint.teamColor),
+            )
         }
     }
 
-    private fun drawTeamSigil(
+    private fun drawYardPawPrint(
         canvas: Canvas,
-        team: LudoPawsTeamColor,
         x: Float,
         y: Float,
-        radius: Float,
+        cell: Float,
+        species: LudoPaws3DSpecies,
+        teamColor: Int,
     ) {
-        val rgb = team.sigilArgb
-        teamSigilFillPaint.color =
-            Color.argb(
-                38,
-                Color.red(rgb),
-                Color.green(rgb),
-                Color.blue(rgb),
-            )
-        teamSigilStrokePaint.color =
-            Color.argb(
-                190,
-                Color.red(rgb),
-                Color.green(rgb),
-                Color.blue(rgb),
-            )
-        teamSigilStrokePaint.strokeWidth =
-            maxOf(density(1.05f), radius * 0.12f)
+        val artwork = PAW_PRINT_ARTWORK[species] ?: return
+        // Print width is just under half a logical cell. Four prints therefore
+        // remain separate and do not encroach on neighboring starting slots.
+        val scale = (cell * 0.29f).coerceAtLeast(density(0.1f))
+        val red = Color.red(teamColor)
+        val green = Color.green(teamColor)
+        val blue = Color.blue(teamColor)
 
-        when (team.sigil) {
-            LudoPawsTeamSigil.DIAMOND -> {
-                teamSigilPath.reset()
-                teamSigilPath.moveTo(x, y - radius)
-                teamSigilPath.lineTo(x + radius * 0.78f, y)
-                teamSigilPath.lineTo(x, y + radius)
-                teamSigilPath.lineTo(x - radius * 0.78f, y)
-                teamSigilPath.close()
-                canvas.drawPath(teamSigilPath, teamSigilFillPaint)
-                canvas.drawPath(teamSigilPath, teamSigilStrokePaint)
-            }
+        pawPrintFillPaint.color = Color.argb(43, 47, 55, 65)
+        pawPrintGlowPaint.color = Color.argb(76, red, green, blue)
+        pawPrintEdgePaint.color = Color.argb(232, red, green, blue)
+        pawPrintDetailPaint.color = Color.argb(118, 255, 255, 255)
+        // Canvas scaling also scales stroke widths, so normalize them to retain
+        // stable dp-sized highlights on phones, tablets and high-density screens.
+        pawPrintGlowPaint.strokeWidth = density(3.5f) / scale
+        pawPrintEdgePaint.strokeWidth = density(1.35f) / scale
+        pawPrintDetailPaint.strokeWidth = density(0.8f) / scale
 
-            LudoPawsTeamSigil.LEAF -> {
-                teamSigilPath.reset()
-                teamSigilPath.moveTo(x, y + radius)
-                teamSigilPath.cubicTo(
-                    x - radius * 1.35f, y + radius * 0.15f,
-                    x - radius * 0.85f, y - radius * 1.05f,
-                    x, y - radius,
-                )
-                teamSigilPath.cubicTo(
-                    x + radius * 1.15f, y - radius * 0.65f,
-                    x + radius * 1.25f, y + radius * 0.30f,
-                    x, y + radius,
-                )
-                teamSigilPath.close()
-                canvas.drawPath(teamSigilPath, teamSigilFillPaint)
-                canvas.drawPath(teamSigilPath, teamSigilStrokePaint)
-                teamSigilPath.reset()
-                teamSigilPath.moveTo(x - radius * 0.55f, y + radius * 0.65f)
-                teamSigilPath.quadTo(
-                    x - radius * 0.05f, y + radius * 0.1f,
-                    x + radius * 0.58f, y - radius * 0.58f,
-                )
-                canvas.drawPath(teamSigilPath, teamSigilStrokePaint)
-            }
-
-            LudoPawsTeamSigil.WAVE -> {
-                teamSigilPath.reset()
-                teamSigilPath.moveTo(x - radius, y - radius * 0.25f)
-                teamSigilPath.quadTo(
-                    x - radius * 0.5f, y - radius * 0.95f,
-                    x, y - radius * 0.25f,
-                )
-                teamSigilPath.quadTo(
-                    x + radius * 0.5f, y + radius * 0.45f,
-                    x + radius, y - radius * 0.25f,
-                )
-                canvas.drawPath(teamSigilPath, teamSigilStrokePaint)
-                teamSigilPath.reset()
-                teamSigilPath.moveTo(x - radius, y + radius * 0.48f)
-                teamSigilPath.quadTo(
-                    x - radius * 0.5f, y - radius * 0.20f,
-                    x, y + radius * 0.48f,
-                )
-                teamSigilPath.quadTo(
-                    x + radius * 0.5f, y + radius * 1.1f,
-                    x + radius, y + radius * 0.48f,
-                )
-                canvas.drawPath(teamSigilPath, teamSigilStrokePaint)
-            }
-
-            LudoPawsTeamSigil.SUN -> {
-                canvas.drawCircle(x, y, radius * 0.36f, teamSigilFillPaint)
-                canvas.drawCircle(x, y, radius * 0.36f, teamSigilStrokePaint)
-                for (step in 0 until 8) {
-                    val angle = step * (Math.PI.toFloat() / 4f)
-                    val inner = radius * 0.58f
-                    val outer = radius
-                    canvas.drawLine(
-                        x + cos(angle) * inner,
-                        y + sin(angle) * inner,
-                        x + cos(angle) * outer,
-                        y + sin(angle) * outer,
-                        teamSigilStrokePaint,
-                    )
-                }
-            }
+        canvas.save()
+        canvas.translate(x, y)
+        canvas.scale(scale, scale)
+        artwork.pads.forEach { pad ->
+            canvas.drawPath(pad, pawPrintFillPaint)
+            canvas.drawPath(pad, pawPrintGlowPaint)
+            canvas.drawPath(pad, pawPrintEdgePaint)
         }
+        artwork.details.forEach { detail ->
+            canvas.drawPath(detail, pawPrintDetailPaint)
+        }
+        canvas.restore()
     }
+
+    private fun createPawPrintArtwork(): Map<LudoPaws3DSpecies, PawPrintArtwork> {
+        fun oval(
+            left: Float,
+            top: Float,
+            right: Float,
+            bottom: Float,
+        ) = Path().apply {
+            addOval(
+                RectF(left, top, right, bottom),
+                Path.Direction.CW,
+            )
+        }
+
+        fun path(block: Path.() -> Unit) = Path().apply(block)
+
+        val catCenter =
+            path {
+                moveTo(-0.43f, 0.08f)
+                cubicTo(-0.55f, -0.14f, -0.40f, -0.36f, -0.21f, -0.30f)
+                cubicTo(-0.09f, -0.25f, -0.06f, -0.12f, 0f, -0.12f)
+                cubicTo(0.06f, -0.12f, 0.09f, -0.25f, 0.21f, -0.30f)
+                cubicTo(0.40f, -0.36f, 0.55f, -0.14f, 0.43f, 0.08f)
+                cubicTo(0.35f, 0.34f, 0.19f, 0.48f, 0f, 0.42f)
+                cubicTo(-0.19f, 0.48f, -0.35f, 0.34f, -0.43f, 0.08f)
+                close()
+            }
+        val dogCenter =
+            path {
+                moveTo(-0.48f, 0.04f)
+                cubicTo(-0.56f, -0.17f, -0.38f, -0.34f, -0.21f, -0.27f)
+                cubicTo(-0.10f, -0.23f, -0.07f, -0.12f, 0f, -0.12f)
+                cubicTo(0.07f, -0.12f, 0.10f, -0.23f, 0.21f, -0.27f)
+                cubicTo(0.38f, -0.34f, 0.56f, -0.17f, 0.48f, 0.04f)
+                cubicTo(0.41f, 0.36f, 0.23f, 0.55f, 0f, 0.52f)
+                cubicTo(-0.23f, 0.55f, -0.41f, 0.36f, -0.48f, 0.04f)
+                close()
+            }
+        val duckWeb =
+            path {
+                moveTo(-0.60f, 0.38f)
+                cubicTo(-0.77f, 0.15f, -1.02f, -0.14f, -0.96f, -0.43f)
+                cubicTo(-0.92f, -0.66f, -0.76f, -0.70f, -0.67f, -0.45f)
+                cubicTo(-0.59f, -0.25f, -0.48f, -0.09f, -0.35f, 0.04f)
+                cubicTo(-0.39f, -0.20f, -0.47f, -0.51f, -0.32f, -0.78f)
+                cubicTo(-0.20f, -0.97f, -0.04f, -0.86f, -0.02f, -0.62f)
+                cubicTo(0.00f, -0.42f, 0.00f, -0.15f, 0.03f, 0.03f)
+                cubicTo(0.20f, -0.14f, 0.36f, -0.38f, 0.54f, -0.57f)
+                cubicTo(0.72f, -0.75f, 0.89f, -0.58f, 0.80f, -0.35f)
+                cubicTo(0.70f, -0.09f, 0.51f, 0.21f, 0.43f, 0.39f)
+                cubicTo(0.22f, 0.61f, -0.39f, 0.60f, -0.60f, 0.38f)
+                close()
+            }
+        val goatLeft =
+            path {
+                moveTo(-0.52f, 0.39f)
+                cubicTo(-0.62f, 0.20f, -0.47f, -0.18f, -0.34f, -0.45f)
+                cubicTo(-0.27f, -0.58f, -0.09f, -0.55f, -0.05f, -0.38f)
+                cubicTo(0.00f, -0.12f, -0.02f, 0.21f, -0.12f, 0.42f)
+                cubicTo(-0.23f, 0.57f, -0.44f, 0.55f, -0.52f, 0.39f)
+                close()
+            }
+        val goatRight =
+            Path(goatLeft).apply {
+                transform(
+                    android.graphics.Matrix().apply {
+                        setScale(-1f, 1f)
+                    },
+                )
+            }
+        val duckCreaseLeft =
+            path {
+                moveTo(-0.48f, -0.07f)
+                quadTo(-0.34f, 0.17f, -0.26f, 0.34f)
+            }
+        val duckCreaseCenter =
+            path {
+                moveTo(-0.02f, -0.08f)
+                quadTo(0.00f, 0.18f, 0.00f, 0.39f)
+            }
+        val duckCreaseRight =
+            path {
+                moveTo(0.40f, -0.05f)
+                quadTo(0.30f, 0.19f, 0.22f, 0.36f)
+            }
+        val goatSplit =
+            path {
+                moveTo(0f, -0.34f)
+                cubicTo(-0.04f, -0.08f, -0.02f, 0.22f, 0f, 0.38f)
+            }
+
+        return mapOf(
+            LudoPaws3DSpecies.CAT to
+                PawPrintArtwork(
+                    pads = listOf(
+                        oval(-0.76f, -0.72f, -0.43f, -0.32f),
+                        oval(-0.38f, -0.88f, -0.08f, -0.49f),
+                        oval(0.08f, -0.88f, 0.38f, -0.49f),
+                        oval(0.43f, -0.72f, 0.76f, -0.32f),
+                        catCenter,
+                    ),
+                ),
+            LudoPaws3DSpecies.DOG to
+                PawPrintArtwork(
+                    pads = listOf(
+                        oval(-0.78f, -0.68f, -0.42f, -0.28f),
+                        oval(-0.40f, -0.84f, -0.04f, -0.43f),
+                        oval(0.04f, -0.84f, 0.40f, -0.43f),
+                        oval(0.42f, -0.68f, 0.78f, -0.28f),
+                        dogCenter,
+                    ),
+                ),
+            LudoPaws3DSpecies.DUCK to
+                PawPrintArtwork(
+                    pads = listOf(duckWeb),
+                    details = listOf(
+                        duckCreaseLeft,
+                        duckCreaseCenter,
+                        duckCreaseRight,
+                    ),
+                ),
+            LudoPaws3DSpecies.GOAT to
+                PawPrintArtwork(
+                    pads = listOf(goatLeft, goatRight),
+                    details = listOf(goatSplit),
+                ),
+        )
+    }
+
+    // Artwork paths are normalized once, not recreated during gameplay redraws.
+    private val pawPrintArtwork by lazy { createPawPrintArtwork() }
 
     private fun startMoveAnimationIfNeeded(
         previous: MatchSnapshot?,
