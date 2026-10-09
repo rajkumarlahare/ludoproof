@@ -177,6 +177,11 @@ requireText(
   "boardChrome.setFootprintSource(if (visible) baseBoard else boardSurface)",
   "Footprint drawing must follow the currently visible board copy across 3D fallback transitions.",
 );
+requireText(
+  board,
+  "boardChrome.invalidate()",
+  "Top-layer footprints must redraw whenever authoritative match state changes.",
+);
 
 for (const token of [
   "LudoPaws3DCharacterPolicy.speciesForSeat",
