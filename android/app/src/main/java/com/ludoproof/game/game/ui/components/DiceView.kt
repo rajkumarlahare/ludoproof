@@ -122,7 +122,10 @@ class DiceView @JvmOverloads constructor(
                 }
 
                 invalidate()
-                if (rolling || settling) {
+                // The attention cue is a real animation, not a one-shot callback.
+                // Keep scheduling its frames while enabled, just like rolling and
+                // settling, and let every phase share this single ticker.
+                if (rolling || settling || attentionPulsing) {
                     postOnAnimation(this)
                 }
             }
