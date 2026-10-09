@@ -3,6 +3,8 @@ package com.ludoproof.game
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.Outline
 import android.graphics.Color
 import android.graphics.Paint
@@ -21,6 +23,7 @@ import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
+import java.util.Random
 
 /**
  * BOARD GEOMETRY LOCK (approved final layout).
@@ -77,6 +80,11 @@ class LudoBoardView @JvmOverloads constructor(
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.FILL
         }
+
+    // A cached transparent grain tile makes only the four colored home yards
+    // feel matte/rough. It is deliberately separate from fillPaint so road cells,
+    // white token homes, pawn colors and hit-testing remain untouched.
+    private val yardTexturePaint = createYardTexturePaint()
     private val strokePaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
@@ -434,11 +442,16 @@ class LudoBoardView @JvmOverloads constructor(
                 yardRect.bottom - cell * 0.5f,
             )
 
+        fillPaint.shader = null
         fillPaint.color = color
         canvas.drawRect(
             yardRect,
             fillPaint,
         )
+        // Overlay a stable grain pattern before drawing the clean inner home.
+        // The existing whiteRect masks the texture automatically, so only the
+        // red/green/blue/yellow surface receives the rough finish.
+        canvas.drawRect(yardRect, yardTexturePaint)
 
         fillPaint.color = neutralCellColor()
         canvas.drawRoundRect(
@@ -463,6 +476,86 @@ class LudoBoardView @JvmOverloads constructor(
         )
         strokePaint.strokeWidth = density(1f)
         strokePaint.color = Color.rgb(70, 70, 70)
+    }
+
+    /**
+     * Builds a deterministic, transparent grain tile once per board view.
+     * A fixed seed prevents the texture from crawling or flickering on redraw.
+     */
+    private fun createYardTexturePaint(): Paint {
+        val tileSize = density(64f).toInt().coerceAtLeast(32)
+        val textureBitmap =
+            Bitmap.createBitmap(
+                tileSize,
+                tileSize,
+                Bitmap.Config.ARGB_8888,
+            )
+        val textureCanvas = Canvas(textureBitmap)
+        val random = Random(0x4C55444FL)
+        val grainPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+        }
+
+        // Fine flecks provide an overall rough matte surface; larger, darker
+        // grains add tactile variation without changing the base team color.
+        repeat(950) {
+            val x = random.nextFloat() * tileSize
+            val y = random.nextFloat() * tileSize
+            val fineGrain = random.nextFloat() < 0.65f
+            val alpha =
+                if (fineGrain) {
+                    10 + random.nextInt(23)
+                } else {
+                    22 + random.nextInt(51)
+                }
+            val highlight = random.nextFloat() < 0.28f
+            grainPaint.color =
+                if (highlight) {
+                    Color.argb((alpha * 0.62f).toInt(), 255, 255, 255)
+                } else {
+                    Color.argb(alpha, 12, 16, 22)
+                }
+            val radius =
+                density(
+                    if (fineGrain) {
+                        0.12f + random.nextFloat() * 0.23f
+                    } else {
+                        0.22f + random.nextFloat() * 0.48f
+                    },
+                )
+            textureCanvas.drawCircle(x, y, radius, grainPaint)
+        }
+
+        // Short, irregular micro-scratches make the texture read as rough paint,
+        // not as a smooth gradient or a flat transparency overlay.
+        grainPaint.style = Paint.Style.STROKE
+        repeat(90) {
+            val x = random.nextFloat() * tileSize
+            val y = random.nextFloat() * tileSize
+            val length = density(0.55f + random.nextFloat() * 1.55f)
+            val angle = random.nextFloat() * (Math.PI.toFloat() * 2f)
+            val endX = (x + cos(angle) * length).coerceIn(0f, tileSize - 1f)
+            val endY = (y + sin(angle) * length).coerceIn(0f, tileSize - 1f)
+            val alpha = 18 + random.nextInt(35)
+            grainPaint.color =
+                if (random.nextBoolean()) {
+                    Color.argb(alpha, 10, 14, 20)
+                } else {
+                    Color.argb((alpha * 0.58f).toInt(), 255, 255, 255)
+                }
+            grainPaint.strokeWidth = density(0.16f + random.nextFloat() * 0.28f)
+            textureCanvas.drawLine(x, y, endX, endY, grainPaint)
+        }
+
+        return Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            style = Paint.Style.FILL
+            shader =
+                BitmapShader(
+                    textureBitmap,
+                    Shader.TileMode.REPEAT,
+                    Shader.TileMode.REPEAT,
+                )
+        }
     }
 
     // ROAD/TRACK LOCK: draw the approved 52-square movement path exactly from TRACK.
