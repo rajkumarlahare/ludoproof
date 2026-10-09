@@ -45,8 +45,8 @@ internal enum class LudoPawsTeamColor(
         argb = 0xFFFFD81B.toInt(),
         sigilArgb = 0xFF9A7410.toInt(),
         glColor = floatArrayOf(1f, 216f / 255f, 27f / 255f, 1f),
-        // Deeper amber keeps the yellow-team patch visible on the naturally yellow duck.
-        bellyGlColor = floatArrayOf(0.84f, 0.49f, 0.015f, 1f),
+        // Keep the Yellow team belly aligned with the board palette; only this team changes.
+        bellyGlColor = floatArrayOf(1f, 216f / 255f, 27f / 255f, 1f),
         sigil = LudoPawsTeamSigil.SUN,
     ),
     BLUE(
