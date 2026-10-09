@@ -16,6 +16,8 @@ const boardPath =
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsBoardView.kt";
 const canonicalBoardPath =
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoBoardView.kt";
+const boardChromePath =
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsBoardChromeView.kt";
 const footprintPolicyPath =
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsYardFootprintPolicy.kt";
 const footprintTestsPath =
@@ -49,6 +51,7 @@ const cadenceTestsPath =
 
 const board = read(boardPath);
 const canonicalBoard = read(canonicalBoardPath);
+const boardChrome = read(boardChromePath);
 const footprintPolicy = read(footprintPolicyPath);
 const footprintTests = read(footprintTestsPath);
 const reactiveBoard = read(reactiveBoardPath);
@@ -143,7 +146,7 @@ for (const token of [
 }
 
 for (const token of [
-  "drawYardPawPrints(canvas, cell)",
+  "drawYardPawPrintsOverlay(canvas, cell)",
   "pawPrintArtwork",
   "pawPrintGlowPaint",
   "pawPrintEdgePaint",
@@ -155,6 +158,24 @@ for (const token of [
     `Canonical board is missing safe footprint rendering marker: ${token}`,
   );
 }
+
+for (const token of [
+  "footprintSource?.drawYardPawPrintsOverlay(canvas, cell)",
+  "fun setFootprintSource(source: LudoBoardView)",
+  "Ludo Paws requires clean white token bays",
+  "fillPaint.color = Color.WHITE",
+]) {
+  requireText(
+    boardChrome,
+    token,
+    `Topmost board chrome must expose white token bays and visible footprints: ${token}`,
+  );
+}
+requireText(
+  board,
+  "boardChrome.setFootprintSource(if (visible) baseBoard else boardSurface)",
+  "Footprint drawing must follow the currently visible board copy across 3D fallback transitions.",
+);
 
 for (const token of [
   "LudoPaws3DCharacterPolicy.speciesForSeat",
