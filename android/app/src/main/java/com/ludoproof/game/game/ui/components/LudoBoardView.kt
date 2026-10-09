@@ -308,9 +308,8 @@ class LudoBoardView @JvmOverloads constructor(
         }
 
         drawYards(canvas, cell)
-        if (ludoPawsYardFootprintsEnabled) {
-            drawYardPawPrints(canvas, cell)
-        }
+        // Ludo Paws footprints are composed by the topmost board-chrome layer;
+        // drawing them here would be hidden by that opaque layer.
         drawTrack(canvas, cell)
         drawHomeLanes(canvas, cell)
         drawCenter(canvas, cell)
@@ -856,6 +855,19 @@ class LudoBoardView @JvmOverloads constructor(
         }
     }
 
+
+    /**
+     * Top-layer entry point used by LudoPawsBoardChromeView after all opaque board
+     * chrome has been composed. Uses this board copy's current authoritative state
+     * and identity assignment, so fallback transitions do not leave stale prints.
+     */
+    internal fun drawYardPawPrintsOverlay(
+        canvas: Canvas,
+        cell: Float,
+    ) {
+        if (!ludoPawsYardFootprintsEnabled || snapshot == null) return
+        drawYardPawPrints(canvas, cell)
+    }
 
     /**
      * Draw a species-specific pressed footprint at every starting slot whose
