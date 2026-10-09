@@ -287,7 +287,7 @@ internal object LudoPawsAudioAssetPlayer {
     }
 
     private fun duplicateFilenameIndex(fileName: String): Int =
-        Regex(""" \\((\\d+)\\)(?=\\.[^.]+$)""")
+        Regex(""" \((\d+)\)(?=\.[^.]+$)""")
             .find(fileName)
             ?.groupValues
             ?.getOrNull(1)
