@@ -24,6 +24,8 @@ internal object LudoPawsProceduralAudio {
             }
         }
 
+    private val generatedSamples = mutableMapOf<String, ShortArray>()
+
     enum class Sfx {
         CLICK,
         DICE_ROLL,
@@ -45,29 +47,29 @@ internal object LudoPawsProceduralAudio {
         DEFEAT,
     }
 
+    @Synchronized
     fun playVocal(
         preset: LudoPawsProceduralVocal,
         volume: Float,
         playbackRate: Float,
     ) {
-        val samples =
-            vocalSamples(
-                preset = preset,
-                rate = playbackRate.coerceIn(.65f, 1.45f),
-            )
+        val rate = playbackRate.coerceIn(.65f, 1.45f)
+        val samples = generatedSamples.getOrPut("vocal:$preset:$rate") {
+            vocalSamples(preset = preset, rate = rate)
+        }
         play(samples, volume)
     }
 
+    @Synchronized
     fun playSfx(
         preset: Sfx,
         volume: Float,
         playbackRate: Float = 1f,
     ) {
-        val samples =
-            sfxSamples(
-                preset = preset,
-                rate = playbackRate.coerceIn(.65f, 1.45f),
-            )
+        val rate = playbackRate.coerceIn(.65f, 1.45f)
+        val samples = generatedSamples.getOrPut("sfx:$preset:$rate") {
+            sfxSamples(preset = preset, rate = rate)
+        }
         play(samples, volume)
     }
 
