@@ -88,9 +88,9 @@ internal class LudoPawsGameFxOverlayView(
         val movementDurationMillis =
             forwardMotion
                 ?.let { motion ->
-                    max(
-                        settings.gameSpeed.moveStepMs,
-                        motion.visualSteps.toLong() * settings.gameSpeed.moveStepMs,
+                    LudoPawsGameplayPacingPolicy.forwardTravelDurationMillis(
+                        speed = settings.gameSpeed,
+                        visualSteps = motion.visualSteps,
                     )
                 }
                 ?: 0L
@@ -107,7 +107,11 @@ internal class LudoPawsGameFxOverlayView(
                 0L
             }
 
-        startTransitionAnimationIfNeeded()
+        startTransitionAnimationIfNeeded(
+            durationMillis = movementDurationMillis
+                .takeIf { forwardMotion != null }
+                ?: TRANSITION_DURATION_MS,
+        )
         startCaptureAnimationIfNeeded()
         invalidate()
     }
@@ -231,7 +235,7 @@ internal class LudoPawsGameFxOverlayView(
         }
     }
 
-    private fun startTransitionAnimationIfNeeded() {
+    private fun startTransitionAnimationIfNeeded(durationMillis: Long) {
         transitionAnimator?.cancel()
         if (transitions.isEmpty()) {
             transitionProgress = 1f
@@ -242,7 +246,7 @@ internal class LudoPawsGameFxOverlayView(
         transitionProgress = 0f
         transitionAnimator =
             ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = TRANSITION_DURATION_MS
+                duration = durationMillis.coerceAtLeast(1L)
                 addUpdateListener {
                     transitionProgress = it.animatedValue as Float
                     invalidate()
