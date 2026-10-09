@@ -146,7 +146,8 @@ for (const token of [
 }
 
 for (const token of [
-  "drawYardPawPrintsOverlay(canvas, cell)",
+  "internal fun drawYardPawPrintsOverlay(",
+  "drawYardPawPrints(canvas, cell)",
   "pawPrintArtwork",
   "pawPrintGlowPaint",
   "pawPrintEdgePaint",
