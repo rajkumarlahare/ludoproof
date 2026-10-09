@@ -257,7 +257,7 @@ internal object LudoPawsAudioAssetPlayer {
         val directory = expectedPath.substringBeforeLast('/', "")
         val fileName = expectedPath.substringAfterLast('/')
         val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
-        if (extension.isBlank()) {
+        return if (extension.isBlank()) {
             emptyList()
         } else {
             val stem = fileName.removeSuffix(".$extension")
