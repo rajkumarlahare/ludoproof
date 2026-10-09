@@ -1,6 +1,8 @@
 package com.ludoproof.game
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
@@ -8,6 +10,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
 import android.view.View
+import java.util.Random
 import kotlin.math.min
 
 /**
@@ -34,6 +37,19 @@ internal class LudoPawsBoardChromeView(
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.FILL
             color = 0x50000000
+        }
+    // One deterministic, low-contrast bitmap is reused for every surface and frame.
+    // Transparent pixels preserve the team's exact base colors; tiny black/white
+    // fibers only break up the overly smooth, glossy finish.
+    private val grainPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            shader =
+                BitmapShader(
+                    createGrainBitmap(),
+                    Shader.TileMode.REPEAT,
+                    Shader.TileMode.REPEAT,
+                )
         }
 
     init {
@@ -79,8 +95,8 @@ internal class LudoPawsBoardChromeView(
                 axisBoundary(row + 6, cell),
             )
 
-        // Keep the large quadrant glossy, but let the pawn platform itself carry
-        // the molded depth. No hard outline is used around the platform.
+        // Matte quadrant treatment: keep the color vivid but lower the broad
+        // white reflection that made the corner feel like polished plastic.
         fillPaint.shader =
             LinearGradient(
                 yard.left,
@@ -88,15 +104,16 @@ internal class LudoPawsBoardChromeView(
                 yard.right,
                 yard.bottom,
                 intArrayOf(
-                    0x48FFFFFF,
+                    0x24FFFFFF,
                     0x08FFFFFF,
-                    0x30000000,
+                    0x1C000000,
                 ),
                 floatArrayOf(0f, 0.46f, 1f),
                 Shader.TileMode.CLAMP,
             )
         canvas.drawRect(yard, fillPaint)
         fillPaint.shader = null
+        drawGrain(canvas, yard)
 
         val platform =
             RectF(
@@ -216,10 +233,10 @@ internal class LudoPawsBoardChromeView(
                 face.right,
                 face.bottom,
                 intArrayOf(
-                    brighten(color, 1.18f),
-                    brighten(color, 1.07f),
+                    brighten(color, 1.08f),
+                    brighten(color, 1.03f),
                     color,
-                    darken(color, 0.84f),
+                    darken(color, 0.92f),
                 ),
                 floatArrayOf(0f, 0.28f, 0.70f, 1f),
                 Shader.TileMode.CLAMP,
@@ -247,8 +264,8 @@ internal class LudoPawsBoardChromeView(
                 sheen.left,
                 sheen.bottom,
                 intArrayOf(
-                    0x55FFFFFF,
-                    0x18FFFFFF,
+                    0x20FFFFFF,
+                    0x08FFFFFF,
                     Color.TRANSPARENT,
                 ),
                 floatArrayOf(0f, 0.52f, 1f),
@@ -261,6 +278,8 @@ internal class LudoPawsBoardChromeView(
             fillPaint,
         )
         fillPaint.shader = null
+        // Apply grain last so the colored pawn platform reads as tactile matte material.
+        drawGrain(canvas, face, faceRadius)
     }
 
     private fun drawCrossTileDepth(
@@ -341,10 +360,10 @@ internal class LudoPawsBoardChromeView(
                 face.left,
                 face.bottom,
                 intArrayOf(
-                    0x70FFFFFF,
-                    0x34FFFFFF,
-                    0x12FFFFFF,
-                    0x0E000000,
+                    0x28FFFFFF,
+                    0x18FFFFFF,
+                    0x0AFFFFFF,
+                    0x08000000,
                 ),
                 floatArrayOf(0f, 0.25f, 0.70f, 1f),
                 Shader.TileMode.CLAMP,
@@ -374,8 +393,8 @@ internal class LudoPawsBoardChromeView(
                 sheen.left,
                 sheen.bottom,
                 intArrayOf(
-                    0x78FFFFFF,
-                    0x30FFFFFF,
+                    0x28FFFFFF,
+                    0x10FFFFFF,
                     Color.TRANSPARENT,
                 ),
                 floatArrayOf(0f, 0.46f, 1f),
@@ -406,7 +425,7 @@ internal class LudoPawsBoardChromeView(
                 lowerPolish.bottom,
                 intArrayOf(
                     Color.TRANSPARENT,
-                    0x14FFFFFF,
+                    0x0CFFFFFF,
                 ),
                 floatArrayOf(0f, 1f),
                 Shader.TileMode.CLAMP,
@@ -418,6 +437,7 @@ internal class LudoPawsBoardChromeView(
             fillPaint,
         )
         fillPaint.shader = null
+        drawGrain(canvas, face, radius)
     }
 
     private fun drawCenterDepth(
@@ -438,15 +458,16 @@ internal class LudoPawsBoardChromeView(
                 center.right,
                 center.bottom,
                 intArrayOf(
-                    0x42FFFFFF,
-                    0x08FFFFFF,
-                    0x26000000,
+                    0x20FFFFFF,
+                    0x05FFFFFF,
+                    0x14000000,
                 ),
                 floatArrayOf(0f, 0.48f, 1f),
                 Shader.TileMode.CLAMP,
             )
         canvas.drawRect(center, fillPaint)
         fillPaint.shader = null
+        drawGrain(canvas, center)
 
         strokePaint.strokeWidth = dp(1.3f)
         strokePaint.color = 0x8EFFFFFF.toInt()
@@ -464,6 +485,18 @@ internal class LudoPawsBoardChromeView(
             center.bottom - dp(1f),
             strokePaint,
         )
+    }
+
+    private fun drawGrain(
+        canvas: Canvas,
+        rect: RectF,
+        radius: Float = 0f,
+    ) {
+        if (radius > 0f) {
+            canvas.drawRoundRect(rect, radius, radius, grainPaint)
+        } else {
+            canvas.drawRect(rect, grainPaint)
+        }
     }
 
     /** Mirrors the released LudoBoardView visual boundaries without changing them. */
@@ -511,5 +544,49 @@ internal class LudoPawsBoardChromeView(
         val GREEN = Color.rgb(0, 169, 80)
         val YELLOW = Color.rgb(255, 216, 27)
         val BLUE = Color.rgb(48, 151, 215)
+
+        private fun createGrainBitmap(): Bitmap {
+            val size = 128
+            val bitmap =
+                Bitmap.createBitmap(
+                    size,
+                    size,
+                    Bitmap.Config.ARGB_8888,
+                )
+            val textureCanvas = Canvas(bitmap)
+            val random = Random(0x4C55444FL)
+            val speckPaint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.FILL
+                }
+
+            // Sparse low-alpha flecks: enough to interrupt flat color without
+            // making the board look dirty or changing its recognizable palette.
+            repeat(620) {
+                val tone = if (random.nextBoolean()) 0 else 255
+                val alpha = 7 + random.nextInt(14)
+                speckPaint.color = Color.argb(alpha, tone, tone, tone)
+                val x = random.nextFloat() * size
+                val y = random.nextFloat() * size
+                val radius = if (random.nextInt(7) == 0) 0.85f else 0.38f
+                textureCanvas.drawCircle(x, y, radius, speckPaint)
+            }
+
+            // Short, irregular fibers give a fine paper/graphed-board grain,
+            // not a repeated fabric pattern or large speckled stone texture.
+            repeat(48) {
+                val tone = if (random.nextBoolean()) 0 else 255
+                val alpha = 6 + random.nextInt(10)
+                speckPaint.color = Color.argb(alpha, tone, tone, tone)
+                speckPaint.strokeWidth = 0.45f + random.nextFloat() * 0.45f
+                val x = random.nextFloat() * size
+                val y = random.nextFloat() * size
+                val length = 2f + random.nextFloat() * 6f
+                val drift = (random.nextFloat() - 0.5f) * 1.4f
+                textureCanvas.drawLine(x, y, x + length, y + drift, speckPaint)
+            }
+
+            return bitmap
+        }
     }
 }
