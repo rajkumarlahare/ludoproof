@@ -4,7 +4,6 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LudoPawsTeamIdentityPolicyTest {
@@ -59,7 +58,7 @@ class LudoPawsTeamIdentityPolicyTest {
 
 
     @Test
-    fun `belly patches use a vivid independent team shade for every color`() {
+    fun `yellow belly uses the classic board yellow while other team belly colors stay unchanged`() {
         assertArrayEquals(
             floatArrayOf(0.98f, 0.08f, 0.11f, 1f),
             requireNotNull(LudoPawsTeamIdentityPolicy.resolve("RED")).bellyGlColor,
@@ -78,12 +77,11 @@ class LudoPawsTeamIdentityPolicyTest {
 
         val yellow = requireNotNull(LudoPawsTeamIdentityPolicy.resolve("YELLOW"))
         assertArrayEquals(
-            floatArrayOf(0.84f, 0.49f, 0.015f, 1f),
+            floatArrayOf(1f, 216f / 255f, 27f / 255f, 1f),
             yellow.bellyGlColor,
             0.001f,
         )
-        assertTrue(yellow.bellyGlColor[0] < yellow.glColor[0])
-        assertTrue(yellow.bellyGlColor[1] < yellow.glColor[1])
+        assertArrayEquals(yellow.glColor, yellow.bellyGlColor, 0.001f)
     }
 
     @Test
