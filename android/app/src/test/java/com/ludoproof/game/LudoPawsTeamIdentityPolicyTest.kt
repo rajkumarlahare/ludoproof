@@ -1,8 +1,10 @@
 package com.ludoproof.game
 
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LudoPawsTeamIdentityPolicyTest {
@@ -53,6 +55,35 @@ class LudoPawsTeamIdentityPolicyTest {
             LudoPawsTeamIdentityPolicy.resolve("RED")?.sigil,
             LudoPawsTeamIdentityPolicy.resolve("GREEN")?.sigil,
         )
+    }
+
+
+    @Test
+    fun `belly patches use a vivid independent team shade for every color`() {
+        assertArrayEquals(
+            floatArrayOf(0.98f, 0.08f, 0.11f, 1f),
+            requireNotNull(LudoPawsTeamIdentityPolicy.resolve("RED")).bellyGlColor,
+            0.001f,
+        )
+        assertArrayEquals(
+            floatArrayOf(0.03f, 0.78f, 0.30f, 1f),
+            requireNotNull(LudoPawsTeamIdentityPolicy.resolve("GREEN")).bellyGlColor,
+            0.001f,
+        )
+        assertArrayEquals(
+            floatArrayOf(0.12f, 0.62f, 0.98f, 1f),
+            requireNotNull(LudoPawsTeamIdentityPolicy.resolve("BLUE")).bellyGlColor,
+            0.001f,
+        )
+
+        val yellow = requireNotNull(LudoPawsTeamIdentityPolicy.resolve("YELLOW"))
+        assertArrayEquals(
+            floatArrayOf(0.84f, 0.49f, 0.015f, 1f),
+            yellow.bellyGlColor,
+            0.001f,
+        )
+        assertTrue(yellow.bellyGlColor[0] < yellow.glColor[0])
+        assertTrue(yellow.bellyGlColor[1] < yellow.glColor[1])
     }
 
     @Test
