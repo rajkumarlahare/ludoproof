@@ -231,7 +231,7 @@ internal object LudoPawsAudioAssetPlayer {
         val stem = fileName.removeSuffix(".$extension")
         val filenamePattern =
             Regex(
-                Regex.escape(stem) + "(?: \\(\\d+\\))?\\." + Regex.escape(extension) + "$",
+                Regex.escape(stem) + """(?: \(\d+\))?\.""" + Regex.escape(extension) + "$",
                 RegexOption.IGNORE_CASE,
             )
         return runCatching {
@@ -251,7 +251,7 @@ internal object LudoPawsAudioAssetPlayer {
     }
 
     private fun duplicateFilenameIndex(fileName: String): Int =
-        Regex(""" \\((\\d+)\\)(?=\\.[^.]+$)""")
+        Regex(""" \((\d+)\)(?=\.[^.]+$)""")
             .find(fileName)
             ?.groupValues
             ?.getOrNull(1)
@@ -261,7 +261,7 @@ internal object LudoPawsAudioAssetPlayer {
     private fun assetFamilyKey(assetPaths: List<String>): String =
         assetPaths.firstOrNull()
             .orEmpty()
-            .replace(Regex("""_\\d{2}\\.(wav|ogg)$"""), "_variant.$1")
+            .replace(Regex("""_\d{2}\.(wav|ogg)$"""), "_variant.$1")
 
     private val SUPPORTED_VOCAL_CHARACTERS =
         setOf("dog", "goat", "duck", "cat")
