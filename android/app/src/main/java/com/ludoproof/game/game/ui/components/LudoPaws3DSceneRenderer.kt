@@ -42,11 +42,14 @@ internal class LudoPaws3DSceneRenderer {
     private var uMvpLocation = -1
     private var uColorLocation = -1
     private var uLightDirectionLocation = -1
+    private var uNormalMatrixLocation = -1
     private lateinit var sphere: SphereMesh
 
     private val projection = FloatArray(16)
     private val root = FloatArray(16)
     private val model = FloatArray(16)
+    private val inverseModel = FloatArray(16)
+    private val normalMatrix = FloatArray(9)
     private val mvp = FloatArray(16)
 
     fun onSurfaceCreated() {
@@ -66,7 +69,8 @@ internal class LudoPaws3DSceneRenderer {
         uMvpLocation = GLES30.glGetUniformLocation(program, "uMvp")
         uColorLocation = GLES30.glGetUniformLocation(program, "uColor")
         uLightDirectionLocation = GLES30.glGetUniformLocation(program, "uLightDirection")
-        check(uModelLocation >= 0 && uMvpLocation >= 0 && uColorLocation >= 0 && uLightDirectionLocation >= 0) {
+        uNormalMatrixLocation = GLES30.glGetUniformLocation(program, "uNormalMatrix")
+        check(uModelLocation >= 0 && uMvpLocation >= 0 && uColorLocation >= 0 && uLightDirectionLocation >= 0 && uNormalMatrixLocation >= 0) {
             "3D pawn shader is missing a required uniform"
         }
         sphere =
@@ -77,6 +81,7 @@ internal class LudoPaws3DSceneRenderer {
                 uMvpLocation = uMvpLocation,
                 uColorLocation = uColorLocation,
                 uLightDirectionLocation = uLightDirectionLocation,
+                uNormalMatrixLocation = uNormalMatrixLocation,
             )
     }
 
@@ -1304,8 +1309,23 @@ internal class LudoPaws3DSceneRenderer {
             model,
             0,
         )
+        // Preserve correct inverse-transpose lighting normals, but calculate
+        // this matrix once per ellipsoid instead of once per rendered vertex.
+        check(Matrix.invertM(inverseModel, 0, model, 0)) {
+            "3D pawn model matrix is not invertible"
+        }
+        normalMatrix[0] = inverseModel[0]
+        normalMatrix[1] = inverseModel[4]
+        normalMatrix[2] = inverseModel[8]
+        normalMatrix[3] = inverseModel[1]
+        normalMatrix[4] = inverseModel[5]
+        normalMatrix[5] = inverseModel[9]
+        normalMatrix[6] = inverseModel[2]
+        normalMatrix[7] = inverseModel[6]
+        normalMatrix[8] = inverseModel[10]
         sphere.draw(
             model = model,
+            normalMatrix = normalMatrix,
             mvp = mvp,
             color = color,
         )
@@ -1469,6 +1489,7 @@ internal class LudoPaws3DSceneRenderer {
         private val uMvpLocation: Int,
         private val uColorLocation: Int,
         private val uLightDirectionLocation: Int,
+        private val uNormalMatrixLocation: Int,
     ) {
         private val vertexBuffer: FloatBuffer
         private val indexBuffer: ShortBuffer
@@ -1535,6 +1556,7 @@ internal class LudoPaws3DSceneRenderer {
 
         fun draw(
             model: FloatArray,
+            normalMatrix: FloatArray,
             mvp: FloatArray,
             color: FloatArray,
         ) {
@@ -1550,6 +1572,13 @@ internal class LudoPaws3DSceneRenderer {
                 1,
                 false,
                 mvp,
+                0,
+            )
+            GLES30.glUniformMatrix3fv(
+                uNormalMatrixLocation,
+                1,
+                false,
+                normalMatrix,
                 0,
             )
             GLES30.glUniform4fv(
@@ -1644,9 +1673,10 @@ internal class LudoPaws3DSceneRenderer {
             layout(location = 1) in vec3 aNormal;
             uniform mat4 uModel;
             uniform mat4 uMvp;
+            uniform mat3 uNormalMatrix;
             out vec3 vNormal;
             void main() {
-                vNormal = normalize(mat3(uModel) * aNormal);
+                vNormal = normalize(uNormalMatrix * aNormal);
                 gl_Position = uMvp * vec4(aPosition, 1.0);
             }
         """
