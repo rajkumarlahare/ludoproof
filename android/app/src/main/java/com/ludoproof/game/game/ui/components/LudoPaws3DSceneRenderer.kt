@@ -38,6 +38,10 @@ internal class LudoPaws3DSceneRenderer {
     private var width = 1
     private var height = 1
     private var program = 0
+    private var uModelLocation = -1
+    private var uMvpLocation = -1
+    private var uColorLocation = -1
+    private var uLightDirectionLocation = -1
     private lateinit var sphere: SphereMesh
 
     private val projection = FloatArray(16)
@@ -58,10 +62,21 @@ internal class LudoPaws3DSceneRenderer {
                 VERTEX_SHADER,
                 FRAGMENT_SHADER,
             )
+        uModelLocation = GLES30.glGetUniformLocation(program, "uModel")
+        uMvpLocation = GLES30.glGetUniformLocation(program, "uMvp")
+        uColorLocation = GLES30.glGetUniformLocation(program, "uColor")
+        uLightDirectionLocation = GLES30.glGetUniformLocation(program, "uLightDirection")
+        check(uModelLocation >= 0 && uMvpLocation >= 0 && uColorLocation >= 0 && uLightDirectionLocation >= 0) {
+            "3D pawn shader is missing a required uniform"
+        }
         sphere =
             SphereMesh(
                 latitudeSegments = 12,
                 longitudeSegments = 18,
+                uModelLocation = uModelLocation,
+                uMvpLocation = uMvpLocation,
+                uColorLocation = uColorLocation,
+                uLightDirectionLocation = uLightDirectionLocation,
             )
     }
 
@@ -349,6 +364,7 @@ internal class LudoPaws3DSceneRenderer {
                     base.copy(
                         liftY = base.liftY + reaction.liftY,
                         bodyYawDegrees = pawn.facingYawDegrees + base.bodyYawDegrees + reaction.bodyYawDegrees,
+                        headTiltDegrees = base.headTiltDegrees + reaction.headTiltDegrees,
                         earFlickDegrees = base.earFlickDegrees + reaction.primaryAppendageDegrees,
                         beardSwingDegrees = base.beardSwingDegrees + reaction.secondaryAppendageDegrees,
                         tailFlickDegrees = base.tailFlickDegrees + reaction.tertiaryAppendageDegrees,
@@ -630,37 +646,39 @@ internal class LudoPaws3DSceneRenderer {
             val elapsed =
                 (nowMillis - state.forwardStartedAtMillis)
                     .coerceAtLeast(0L)
-            if (
-                state.forwardDurationMillis > 0L &&
-                elapsed < state.forwardDurationMillis
-            ) {
-                val travelDuration =
-                    (
-                        state.forwardDurationMillis -
-                            LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
-                    ).coerceAtLeast(1L)
+            val travelDuration =
+                (
+                    state.forwardDurationMillis -
+                        LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
+                ).coerceAtLeast(1L)
+            if (state.forwardDurationMillis > 0L && elapsed < travelDuration) {
+                // The last few settle frames are a stable landing pose, not a new hop.
                 val visualProgress =
                     elapsed.toFloat() /
                         travelDuration.toFloat() *
-                        forward.visualSteps.toFloat()
-                val stepFraction = visualProgress - floor(visualProgress)
+                        forward.visualSteps.coerceAtLeast(1).toFloat()
+                val stepFraction =
+                    (visualProgress - floor(visualProgress)).coerceIn(0f, 1f)
                 return MotionFrame(
                     kind = SceneMotion.HOP,
-                    progress = stepFraction.coerceIn(0f, 1f),
+                    progress = stepFraction,
                 )
             }
 
-            if (forward.toPosition == LudoPathEncoding.HOME_POSITION) {
-                val celebrationElapsed = elapsed - state.forwardDurationMillis
-                val homeDuration = homeDurationMillis(pawn.species)
-                if (celebrationElapsed in 0 until homeDuration) {
-                    return MotionFrame(
-                        kind = SceneMotion.HOME,
-                        progress =
-                            celebrationElapsed.toFloat() /
-                                homeDuration.toFloat(),
-                    )
-                }
+            if (
+                elapsed < state.forwardDurationMillis ||
+                forward.toPosition != LudoPathEncoding.HOME_POSITION
+            ) {
+                return MotionFrame(kind = SceneMotion.IDLE, progress = 0f)
+            }
+
+            val celebrationElapsed = elapsed - state.forwardDurationMillis
+            val homeDuration = homeDurationMillis(pawn.species)
+            if (celebrationElapsed in 0 until homeDuration) {
+                return MotionFrame(
+                    kind = SceneMotion.HOME,
+                    progress = celebrationElapsed.toFloat() / homeDuration.toFloat(),
+                )
             }
         }
 
@@ -1103,26 +1121,21 @@ internal class LudoPaws3DSceneRenderer {
         drawPart(parent, 0.25f, -0.61f, 0.18f, 0.23f, 0.095f, 0.30f, DUCK_ORANGE, rotateY = 8f)
         drawPart(parent, 0f, -0.04f, 0f, 0.68f, 0.78f, 0.58f, DUCK_YELLOW)
         drawPart(parent, 0f, -0.14f, 0.47f, 0.40f, 0.48f, 0.12f, teamColor.bellyGlColor)
-        // Duck uses a small chest band because its silhouette has no distinct collar gap.
-        // It is drawn in character-root space, so it follows every movement and pose.
-        drawPart(parent, 0f, 0.28f, 0.48f, 0.43f, 0.075f, 0.065f, teamColor.glColor)
-        drawPart(parent, 0f, 0.19f, 0.545f, 0.095f, 0.11f, 0.045f, TAG_GOLD)
-        drawPart(parent, -0.61f, 0.03f, -0.02f, 0.22f, 0.47f, 0.31f, DUCK_YELLOW, rotateZ = -20f - pose.wingFlapDegrees)
-        drawPart(parent, 0.61f, 0.03f, -0.02f, 0.22f, 0.47f, 0.31f, DUCK_YELLOW, rotateZ = 20f + pose.wingFlapDegrees)
-        drawPart(parent, 0f, 0.87f, 0.02f, 0.54f, 0.53f, 0.52f, DUCK_YELLOW, rotateZ = pose.headTiltDegrees)
-        drawPart(parent, 0f, 0.77f, 0.50f, 0.44f, 0.15f, 0.31f, DUCK_ORANGE)
-        drawDuckEye(parent, -0.20f)
-        drawDuckEye(parent, 0.20f)
-        drawPart(parent, -0.10f, 1.37f, -0.01f, 0.10f, 0.22f, 0.09f, DUCK_YELLOW, rotateZ = -18f)
-        drawPart(parent, 0.07f, 1.39f, -0.02f, 0.09f, 0.20f, 0.08f, DUCK_YELLOW, rotateZ = 15f)
+        drawDuckEye(parent, -0.23f)
+        drawDuckEye(parent, 0.23f)
+        drawPart(parent, 0f, -0.31f, 0.63f, 0.22f, 0.12f, 0.14f, DUCK_ORANGE)
+        drawPart(parent, -0.45f, -0.07f, 0.02f, 0.13f, 0.13f, 0.20f, DUCK_YELLOW, rotateZ = -pose.wingFlapDegrees)
+        drawPart(parent, 0.45f, -0.07f, 0.02f, 0.13f, 0.13f, 0.20f, DUCK_YELLOW, rotateZ = pose.wingFlapDegrees)
+        drawPart(parent, -0.25f, 0.68f, 0.06f, 0.16f, 0.17f, 0.14f, DUCK_ORANGE)
+        drawPart(parent, 0.25f, 0.68f, 0.06f, 0.16f, 0.17f, 0.14f, DUCK_ORANGE)
     }
 
     private fun drawDuckEye(
         parent: FloatArray,
         x: Float,
     ) {
-        drawPart(parent, x, 1.00f, 0.46f, 0.115f, 0.145f, 0.075f, EYE_DARK)
-        drawPart(parent, x - 0.027f, 1.047f, 0.525f, 0.027f, 0.035f, 0.020f, WHITE)
+        drawPart(parent, x, 0.22f, 0.52f, 0.075f, 0.11f, 0.055f, WHITE)
+        drawPart(parent, x, 0.22f, 0.575f, 0.028f, 0.055f, 0.025f, EYE_DARK)
     }
 
     private fun drawDog(
@@ -1130,46 +1143,32 @@ internal class LudoPaws3DSceneRenderer {
         pose: Dog3DPose,
         teamColor: LudoPawsTeamColor,
     ) {
-        drawPart(parent, -0.40f, -0.30f, -0.10f, 0.43f, 0.52f, 0.50f, DOG_TAN)
-        drawPart(parent, 0.40f, -0.30f, -0.10f, 0.43f, 0.52f, 0.50f, DOG_TAN)
-        drawPart(parent, 0f, -0.08f, 0f, 0.72f, 0.78f, 0.60f, DOG_TAN)
-        drawPart(parent, 0f, -0.13f, 0.50f, 0.38f, 0.46f, 0.12f, teamColor.bellyGlColor)
-        drawDogLeg(parent, -0.40f, -0.54f, 0.20f, -7f)
-        drawDogLeg(parent, 0.40f, -0.54f, 0.20f, 7f)
-        drawDogLeg(parent, -0.22f, -0.61f, 0.46f, -3f)
-        drawDogLeg(parent, 0.22f, -0.61f, 0.46f, 3f)
-        drawPart(parent, 0f, 0.43f, 0.02f, 0.52f, 0.10f, 0.48f, teamColor.glColor)
-        drawPart(parent, 0f, 0.34f, 0.49f, 0.10f, 0.13f, 0.07f, TAG_GOLD)
-        drawPart(parent, 0f, 0.88f, 0.02f, 0.60f, 0.56f, 0.54f, DOG_TAN, rotateZ = pose.headTiltDegrees)
-        drawPart(parent, -0.19f, 0.78f, 0.46f, 0.27f, 0.23f, 0.22f, DOG_CREAM)
-        drawPart(parent, 0.19f, 0.78f, 0.46f, 0.27f, 0.23f, 0.22f, DOG_CREAM)
-        drawPart(parent, 0f, 0.82f, 0.63f, 0.16f, 0.12f, 0.13f, NOSE_DARK)
-        drawPart(parent, 0f, 0.63f, 0.61f, 0.11f, 0.15f, 0.06f, TONGUE_PINK)
-        drawDogEye(parent, -0.22f)
-        drawDogEye(parent, 0.22f)
-        drawPart(parent, -0.50f, 0.98f, -0.02f, 0.25f, 0.44f, 0.23f, DOG_EAR_BROWN, rotateZ = -24f - pose.earBounceDegrees)
-        drawPart(parent, 0.50f, 0.98f, -0.02f, 0.25f, 0.44f, 0.23f, DOG_EAR_BROWN, rotateZ = 24f + pose.earBounceDegrees)
-        drawPart(parent, 0.69f, -0.10f, -0.31f, 0.17f, 0.46f, 0.16f, DOG_TAN, rotateZ = -48f + pose.tailWagDegrees)
-        drawPart(parent, 0.93f, 0.16f, -0.32f, 0.13f, 0.28f, 0.13f, DOG_CREAM, rotateZ = -58f + pose.tailWagDegrees)
+        drawPart(parent, 0f, 0.03f, -0.08f, 0.62f, 0.67f, 0.53f, DOG_TAN)
+        drawPart(parent, 0f, 0.32f, 0.34f, 0.43f, 0.42f, 0.36f, DOG_CREAM)
+        drawPart(parent, 0f, 0.49f, 0.59f, 0.21f, 0.14f, 0.13f, NOSE_DARK)
+        drawPart(parent, -0.31f, 0.57f, 0.37f, 0.13f, 0.24f, 0.13f, DOG_EAR_BROWN, rotateZ = -pose.earBounceDegrees - pose.headTiltDegrees)
+        drawPart(parent, 0.31f, 0.57f, 0.37f, 0.13f, 0.24f, 0.13f, DOG_EAR_BROWN, rotateZ = pose.earBounceDegrees - pose.headTiltDegrees)
+        drawPart(parent, -0.22f, -0.48f, 0.35f, 0.16f, 0.10f, 0.26f, DOG_TAN, rotateX = -pose.bodyYawDegrees * 0.1f)
+        drawPart(parent, 0.22f, -0.48f, 0.35f, 0.16f, 0.10f, 0.26f, DOG_TAN, rotateX = pose.bodyYawDegrees * 0.1f)
+        drawDogLeg(parent, -0.38f, -0.62f)
+        drawDogLeg(parent, 0.38f, -0.62f)
+        drawPart(parent, 0f, 0.13f, -0.49f, 0.13f, 0.14f, 0.45f, DOG_TAN, rotateX = pose.tailWagDegrees)
+        drawPart(parent, 0f, -0.22f, 0.55f, 0.18f, 0.10f, 0.08f, TONGUE_PINK)
+        drawPart(parent, -0.19f, 0.38f, 0.66f, 0.035f, 0.060f, 0.030f, EYE_DARK)
+        drawPart(parent, 0.19f, 0.38f, 0.66f, 0.035f, 0.060f, 0.030f, EYE_DARK)
     }
 
-    private fun drawDogLeg(
-        parent: FloatArray,
-        x: Float,
-        y: Float,
-        z: Float,
-        rotateZ: Float,
-    ) {
-        drawPart(parent, x, y, z, 0.19f, 0.30f, 0.19f, DOG_TAN, rotateZ = rotateZ)
-        drawPart(parent, x, y - 0.25f, z + 0.05f, 0.23f, 0.12f, 0.27f, DOG_CREAM)
+    private fun drawDogLeg(parent: FloatArray, x: Float, y: Float) {
+        drawPart(parent, x, y, 0.05f, 0.13f, 0.28f, 0.13f, DOG_TAN)
+        drawPart(parent, x, y - 0.17f, 0.17f, 0.15f, 0.09f, 0.18f, DOG_CREAM)
     }
 
     private fun drawDogEye(
         parent: FloatArray,
         x: Float,
     ) {
-        drawPart(parent, x, 0.98f, 0.47f, 0.115f, 0.145f, 0.075f, EYE_DARK)
-        drawPart(parent, x - 0.028f, 1.025f, 0.535f, 0.026f, 0.034f, 0.020f, WHITE)
+        drawPart(parent, x, 0.22f, 0.52f, 0.075f, 0.11f, 0.055f, WHITE)
+        drawPart(parent, x, 0.22f, 0.575f, 0.028f, 0.055f, 0.025f, EYE_DARK)
     }
 
     private fun drawGoat(
@@ -1177,56 +1176,41 @@ internal class LudoPaws3DSceneRenderer {
         pose: Goat3DPose,
         teamColor: LudoPawsTeamColor,
     ) {
-        drawPart(parent, -0.38f, -0.18f, -0.10f, 0.42f, 0.48f, 0.48f, GOAT_WARM_GRAY)
-        drawPart(parent, 0.38f, -0.18f, -0.10f, 0.42f, 0.48f, 0.48f, GOAT_WARM_GRAY)
-        drawPart(parent, 0f, -0.02f, 0f, 0.70f, 0.72f, 0.58f, GOAT_IVORY)
-        drawPart(parent, 0f, -0.04f, 0.49f, 0.38f, 0.43f, 0.12f, teamColor.bellyGlColor)
-        drawGoatLeg(parent, -0.39f, -0.52f, 0.13f, -4f)
-        drawGoatLeg(parent, 0.39f, -0.52f, 0.13f, 4f)
-        drawGoatLeg(parent, -0.21f, -0.57f, 0.42f, -2f)
-        drawGoatLeg(parent, 0.21f, -0.57f, 0.42f, 2f)
-        drawPart(parent, 0f, 0.42f, 0.02f, 0.49f, 0.095f, 0.45f, teamColor.glColor)
-        drawPart(parent, 0f, 0.33f, 0.47f, 0.095f, 0.12f, 0.065f, TAG_GOLD)
-        drawPart(parent, 0f, 0.51f, -0.02f, 0.42f, 0.42f, 0.39f, GOAT_IVORY)
-        drawPart(parent, 0f, 0.93f, 0.02f, 0.56f, 0.52f, 0.50f, GOAT_IVORY, rotateZ = pose.headTiltDegrees)
-        drawPart(parent, 0f, 1.04f, 0.40f, 0.20f, 0.26f, 0.10f, GOAT_WARM_GRAY)
-        drawPart(parent, 0f, 0.79f, 0.49f, 0.36f, 0.24f, 0.25f, GOAT_MUZZLE)
-        drawPart(parent, 0f, 0.79f, 0.68f, 0.13f, 0.08f, 0.09f, NOSE_DARK)
-        drawGoatEye(parent, -0.20f)
-        drawGoatEye(parent, 0.20f)
-        drawPart(parent, -0.52f, 1.00f, -0.01f, 0.28f, 0.18f, 0.15f, GOAT_EAR_TAN, rotateZ = -16f - pose.earFlickDegrees)
-        drawPart(parent, 0.52f, 1.00f, -0.01f, 0.28f, 0.18f, 0.15f, GOAT_EAR_TAN, rotateZ = 16f + pose.earFlickDegrees)
-        drawGoatHorn(parent, -1f)
-        drawGoatHorn(parent, 1f)
-        drawPart(parent, 0f, 0.55f, 0.48f, 0.13f, 0.28f, 0.11f, GOAT_BEARD, rotateZ = pose.beardSwingDegrees)
-        drawPart(parent, 0.63f, 0.06f, -0.37f, 0.14f, 0.34f, 0.14f, GOAT_IVORY, rotateZ = -34f + pose.tailFlickDegrees)
+        drawPart(parent, 0f, 0.02f, -0.06f, 0.59f, 0.65f, 0.50f, GOAT_IVORY)
+        drawPart(parent, 0f, 0.34f, 0.33f, 0.43f, 0.42f, 0.35f, GOAT_CREAM)
+        drawPart(parent, 0f, 0.49f, 0.57f, 0.18f, 0.16f, 0.12f, GOAT_MUZZLE)
+        drawPart(parent, -0.24f, 0.60f, 0.30f, 0.09f, 0.23f, 0.09f, GOAT_HORN, rotateZ = -15f)
+        drawPart(parent, 0.24f, 0.60f, 0.30f, 0.09f, 0.23f, 0.09f, GOAT_HORN, rotateZ = 15f)
+        drawPart(parent, -0.38f, 0.43f, 0.20f, 0.20f, 0.12f, 0.10f, GOAT_EAR_TAN, rotateZ = -pose.earFlickDegrees)
+        drawPart(parent, 0.38f, 0.43f, 0.20f, 0.20f, 0.12f, 0.10f, GOAT_EAR_TAN, rotateZ = pose.earFlickDegrees)
+        drawPart(parent, 0f, 0.14f, 0.53f, 0.12f, 0.20f, 0.08f, GOAT_BEARD, rotateX = pose.beardSwingDegrees)
+        drawPart(parent, -0.22f, -0.49f, 0.34f, 0.12f, 0.09f, 0.18f, GOAT_HOOF_DARK)
+        drawPart(parent, 0.22f, -0.49f, 0.34f, 0.12f, 0.09f, 0.18f, GOAT_HOOF_DARK)
+        drawPart(parent, -0.18f, -0.35f, 0.60f, 0.03f, 0.05f, 0.03f, EYE_DARK)
+        drawPart(parent, 0.18f, -0.35f, 0.60f, 0.03f, 0.05f, 0.03f, EYE_DARK)
+        drawPart(parent, 0f, 0.03f, -0.48f, 0.10f, 0.12f, 0.30f, GOAT_WARM_GRAY, rotateX = pose.tailFlickDegrees)
     }
 
-    private fun drawGoatLeg(
-        parent: FloatArray,
-        x: Float,
-        y: Float,
-        z: Float,
-        rotateZ: Float,
-    ) {
-        drawPart(parent, x, y, z, 0.16f, 0.34f, 0.16f, GOAT_IVORY, rotateZ = rotateZ)
-        drawPart(parent, x, y - 0.28f, z + 0.03f, 0.18f, 0.105f, 0.22f, GOAT_HOOF_DARK)
+    private fun drawGoatLeg(parent: FloatArray, x: Float, y: Float) {
+        drawPart(parent, x, y, 0.02f, 0.11f, 0.26f, 0.11f, GOAT_IVORY)
+        drawPart(parent, x, y - 0.16f, 0.12f, 0.12f, 0.08f, 0.14f, GOAT_HOOF_DARK)
     }
 
     private fun drawGoatHorn(
         parent: FloatArray,
-        side: Float,
+        x: Float,
+        direction: Float,
     ) {
-        drawPart(parent, 0.27f * side, 1.35f, -0.06f, 0.10f, 0.28f, 0.10f, GOAT_HORN, rotateX = -12f, rotateZ = 18f * side)
-        drawPart(parent, 0.37f * side, 1.56f, -0.13f, 0.085f, 0.22f, 0.085f, GOAT_HORN_TIP, rotateX = -18f, rotateZ = 30f * side)
+        drawPart(parent, x, 0.62f, 0.28f, 0.075f, 0.18f, 0.075f, GOAT_HORN, rotateZ = 18f * direction)
+        drawPart(parent, x + 0.04f * direction, 0.76f, 0.30f, 0.055f, 0.09f, 0.055f, GOAT_HORN_TIP)
     }
 
     private fun drawGoatEye(
         parent: FloatArray,
         x: Float,
     ) {
-        drawPart(parent, x, 1.02f, 0.43f, 0.105f, 0.125f, 0.070f, EYE_DARK)
-        drawPart(parent, x - 0.025f, 1.055f, 0.492f, 0.024f, 0.030f, 0.018f, WHITE)
+        drawPart(parent, x, 0.22f, 0.52f, 0.075f, 0.11f, 0.055f, WHITE)
+        drawPart(parent, x, 0.22f, 0.575f, 0.028f, 0.055f, 0.025f, EYE_DARK)
     }
 
     private fun drawCat(
@@ -1234,61 +1218,43 @@ internal class LudoPaws3DSceneRenderer {
         pose: Cat3DPose,
         teamColor: LudoPawsTeamColor,
     ) {
-        drawPart(parent, -0.34f, -0.28f, -0.13f, 0.40f, 0.50f, 0.48f, CAT_SILVER)
-        drawPart(parent, 0.34f, -0.28f, -0.13f, 0.40f, 0.50f, 0.48f, CAT_SILVER)
-        drawPart(parent, 0f, -0.02f, 0f, 0.68f, 0.75f, 0.56f, CAT_SILVER)
-        drawPart(parent, 0f, -0.12f, 0.48f, 0.34f, 0.44f, 0.11f, teamColor.bellyGlColor)
-        drawCatLeg(parent, -0.36f, -0.53f, 0.19f, -5f)
-        drawCatLeg(parent, 0.36f, -0.53f, 0.19f, 5f)
-        drawCatLeg(parent, -0.20f, -0.60f, 0.44f, -2f)
-        drawCatLeg(parent, 0.20f, -0.60f, 0.44f, 2f)
-        drawPart(parent, 0f, 0.42f, 0.02f, 0.49f, 0.09f, 0.46f, teamColor.glColor)
-        drawPart(parent, 0f, 0.34f, 0.47f, 0.085f, 0.11f, 0.06f, TAG_GOLD)
-        drawPart(parent, 0f, 0.90f, 0.02f, 0.58f, 0.55f, 0.53f, CAT_SILVER, rotateZ = pose.headTiltDegrees)
-        drawPart(parent, -0.17f, 0.79f, 0.47f, 0.24f, 0.20f, 0.19f, CAT_CREAM)
-        drawPart(parent, 0.17f, 0.79f, 0.47f, 0.24f, 0.20f, 0.19f, CAT_CREAM)
-        drawPart(parent, 0f, 0.80f, 0.63f, 0.11f, 0.085f, 0.085f, CAT_NOSE_PINK)
-        drawPart(parent, 0f, 0.65f, 0.58f, 0.10f, 0.08f, 0.06f, CAT_CREAM)
-        drawCatEye(parent, -0.21f)
-        drawCatEye(parent, 0.21f)
-        drawCatEar(parent, -0.39f, -18f - pose.earTwitchDegrees)
-        drawCatEar(parent, 0.39f, 18f + pose.earTwitchDegrees)
-        drawPart(parent, -0.17f, 1.19f, 0.43f, 0.045f, 0.18f, 0.035f, CAT_STRIPE_DARK, rotateZ = -13f)
-        drawPart(parent, 0f, 1.23f, 0.45f, 0.042f, 0.18f, 0.035f, CAT_STRIPE_DARK)
-        drawPart(parent, 0.17f, 1.19f, 0.43f, 0.045f, 0.18f, 0.035f, CAT_STRIPE_DARK, rotateZ = 13f)
-        drawCatWhiskers(parent, -1f)
-        drawCatWhiskers(parent, 1f)
-        drawPart(parent, 0.67f, -0.12f, -0.31f, 0.15f, 0.48f, 0.14f, CAT_SILVER, rotateZ = -50f + pose.tailSwayDegrees)
-        drawPart(parent, 0.94f, 0.18f, -0.31f, 0.12f, 0.32f, 0.12f, CAT_STRIPE_DARK, rotateZ = -62f + pose.tailSwayDegrees)
+        drawPart(parent, 0f, 0.03f, -0.07f, 0.60f, 0.66f, 0.50f, CAT_SILVER)
+        drawPart(parent, 0f, 0.34f, 0.33f, 0.42f, 0.40f, 0.35f, CAT_CREAM)
+        drawPart(parent, 0f, 0.49f, 0.57f, 0.16f, 0.15f, 0.12f, CAT_NOSE_PINK)
+        drawCatEar(parent, -0.27f, -1f, pose.earTwitchDegrees, pose.headTiltDegrees)
+        drawCatEar(parent, 0.27f, 1f, pose.earTwitchDegrees, pose.headTiltDegrees)
+        drawPart(parent, -0.22f, -0.49f, 0.34f, 0.12f, 0.09f, 0.18f, CAT_SILVER)
+        drawPart(parent, 0.22f, -0.49f, 0.34f, 0.12f, 0.09f, 0.18f, CAT_SILVER)
+        drawPart(parent, 0f, 0.14f, -0.52f, 0.12f, 0.12f, 0.34f, CAT_SILVER, rotateX = pose.tailSwayDegrees)
+        drawCatEye(parent, -0.18f)
+        drawCatEye(parent, 0.18f)
+        drawPart(parent, -0.08f, 0.12f, 0.69f, 0.018f, 0.31f, 0.018f, CAT_WHISKER, rotateZ = -66f)
+        drawPart(parent, 0.08f, 0.12f, 0.69f, 0.018f, 0.31f, 0.018f, CAT_WHISKER, rotateZ = 66f)
     }
 
-    private fun drawCatLeg(
-        parent: FloatArray,
-        x: Float,
-        y: Float,
-        z: Float,
-        rotateZ: Float,
-    ) {
-        drawPart(parent, x, y, z, 0.17f, 0.30f, 0.17f, CAT_SILVER, rotateZ = rotateZ)
-        drawPart(parent, x, y - 0.25f, z + 0.055f, 0.21f, 0.115f, 0.25f, CAT_CREAM)
+    private fun drawCatLeg(parent: FloatArray, x: Float, y: Float) {
+        drawPart(parent, x, y, 0.02f, 0.12f, 0.28f, 0.12f, CAT_SILVER)
+        drawPart(parent, x, y - 0.17f, 0.14f, 0.14f, 0.08f, 0.15f, CAT_CREAM)
     }
 
     private fun drawCatEye(
         parent: FloatArray,
         x: Float,
     ) {
-        drawPart(parent, x, 1.00f, 0.47f, 0.12f, 0.15f, 0.075f, CAT_EYE_GREEN)
-        drawPart(parent, x, 1.00f, 0.535f, 0.036f, 0.105f, 0.018f, CAT_PUPIL_DARK)
-        drawPart(parent, x - 0.028f, 1.055f, 0.55f, 0.022f, 0.026f, 0.015f, WHITE)
+        drawPart(parent, x, 0.22f, 0.52f, 0.075f, 0.11f, 0.055f, WHITE)
+        drawPart(parent, x, 0.22f, 0.575f, 0.028f, 0.055f, 0.025f, CAT_PUPIL_DARK)
     }
 
     private fun drawCatEar(
         parent: FloatArray,
         x: Float,
-        rotateZ: Float,
+        side: Float,
+        earTwitchDegrees: Float,
+        headTiltDegrees: Float,
     ) {
-        drawPart(parent, x, 1.29f, -0.02f, 0.22f, 0.42f, 0.20f, CAT_SILVER, rotateZ = rotateZ)
-        drawPart(parent, x * 1.01f, 1.30f, 0.11f, 0.11f, 0.27f, 0.07f, CAT_EAR_PINK, rotateZ = rotateZ)
+        val angle = 16f * side + earTwitchDegrees * side - headTiltDegrees * 0.35f
+        drawPart(parent, x, 0.73f, 0.28f, 0.13f, 0.22f, 0.08f, CAT_SILVER, rotateZ = angle)
+        drawPart(parent, x, 0.74f, 0.345f, 0.07f, 0.15f, 0.025f, CAT_EAR_PINK, rotateZ = angle)
     }
 
     private fun drawCatWhiskers(
@@ -1296,8 +1262,7 @@ internal class LudoPaws3DSceneRenderer {
         side: Float,
     ) {
         val x = 0.34f * side
-        drawPart(parent, x, 0.79f, 0.57f, 0.018f, 0.34f, 0.018f, CAT_WHISKER, rotateZ = 78f * side)
-        drawPart(parent, x, 0.70f, 0.56f, 0.018f, 0.31f, 0.018f, CAT_WHISKER, rotateZ = 66f * side)
+        drawPart(parent, x, 0.12f, 0.68f, 0.018f, 0.31f, 0.018f, CAT_WHISKER, rotateZ = 66f * side)
     }
 
     private fun drawPart(
@@ -1340,7 +1305,6 @@ internal class LudoPaws3DSceneRenderer {
             0,
         )
         sphere.draw(
-            program = program,
             model = model,
             mvp = mvp,
             color = color,
@@ -1459,14 +1423,13 @@ internal class LudoPaws3DSceneRenderer {
         val breath =
             (
                 sin(
-                    phase *
-                        PI.toFloat() *
-                        2f,
+                    phase * PI.toFloat() * 2f -
+                        PI.toFloat() * 0.5f,
                 ) +
                     1f
                 ) *
-                .5f
-        return 1f + breath * .0975f
+                0.5f
+        return 1f + breath * 0.065f
     }
 
     private data class RenderPawn(
@@ -1502,6 +1465,10 @@ internal class LudoPaws3DSceneRenderer {
     private class SphereMesh(
         latitudeSegments: Int,
         longitudeSegments: Int,
+        private val uModelLocation: Int,
+        private val uMvpLocation: Int,
+        private val uColorLocation: Int,
+        private val uLightDirectionLocation: Int,
     ) {
         private val vertexBuffer: FloatBuffer
         private val indexBuffer: ShortBuffer
@@ -1567,33 +1534,32 @@ internal class LudoPaws3DSceneRenderer {
         }
 
         fun draw(
-            program: Int,
             model: FloatArray,
             mvp: FloatArray,
             color: FloatArray,
         ) {
             GLES30.glUniformMatrix4fv(
-                GLES30.glGetUniformLocation(program, "uModel"),
+                uModelLocation,
                 1,
                 false,
                 model,
                 0,
             )
             GLES30.glUniformMatrix4fv(
-                GLES30.glGetUniformLocation(program, "uMvp"),
+                uMvpLocation,
                 1,
                 false,
                 mvp,
                 0,
             )
             GLES30.glUniform4fv(
-                GLES30.glGetUniformLocation(program, "uColor"),
+                uColorLocation,
                 1,
                 color,
                 0,
             )
             GLES30.glUniform3f(
-                GLES30.glGetUniformLocation(program, "uLightDirection"),
+                uLightDirectionLocation,
                 0.40f,
                 -1.0f,
                 -0.65f,
@@ -1680,7 +1646,7 @@ internal class LudoPaws3DSceneRenderer {
             uniform mat4 uMvp;
             out vec3 vNormal;
             void main() {
-                vNormal = mat3(transpose(inverse(uModel))) * aNormal;
+                vNormal = normalize(mat3(uModel) * aNormal);
                 gl_Position = uMvp * vec4(aPosition, 1.0);
             }
         """
