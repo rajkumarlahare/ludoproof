@@ -14,6 +14,12 @@ const requireAbsent = (path, message) => {
 
 const boardPath =
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsBoardView.kt";
+const canonicalBoardPath =
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoBoardView.kt";
+const footprintPolicyPath =
+  "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsYardFootprintPolicy.kt";
+const footprintTestsPath =
+  "android/app/src/test/java/com/ludoproof/game/LudoPawsYardFootprintPolicyTest.kt";
 const reactiveBoardPath =
   "android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsReactiveBoardView.kt";
 const scenePath =
@@ -42,6 +48,9 @@ const cadenceTestsPath =
   "android/app/src/test/java/com/ludoproof/game/LudoPaws3DRenderCadencePolicyTest.kt";
 
 const board = read(boardPath);
+const canonicalBoard = read(canonicalBoardPath);
+const footprintPolicy = read(footprintPolicyPath);
+const footprintTests = read(footprintTestsPath);
 const reactiveBoard = read(reactiveBoardPath);
 const scene = read(scenePath);
 const renderer = read(rendererPath);
@@ -65,6 +74,9 @@ for (const [token, message] of [
 }
 
 for (const token of [
+  "setClassicTokenDrawingEnabled(false)",
+  "setLudoPawsYardFootprintsEnabled(true)",
+  "characterIdsBySeat = characterIdsBySeat",
   "LudoPaws3DSceneView",
   "LudoPawsGameFxOverlayView",
   "pawn3DScene.bind(",
@@ -114,6 +126,46 @@ for (const token of [
     scene,
     token,
     `Shared 3D scene runtime is missing required marker: ${token}`,
+  );
+}
+
+for (const token of [
+  "drawYardPawPrints(canvas, cell)",
+  "PAW_PRINT_ARTWORK",
+  "pawPrintGlowPaint",
+  "pawPrintEdgePaint",
+  "classicTokenDrawingEnabled",
+]) {
+  requireText(
+    canonicalBoard,
+    token,
+    `Canonical board is missing safe footprint rendering marker: ${token}`,
+  );
+}
+
+for (const token of [
+  "LudoPaws3DCharacterPolicy.speciesForSeat",
+  "LudoPathEncoding.normalizeLegacyEntry(rawPosition)",
+  "position == -1",
+]) {
+  requireText(
+    footprintPolicy,
+    token,
+    `Yard footprint policy is missing state/identity marker: ${token}`,
+  );
+}
+
+for (const token of [
+  "footprints appear only for tokens no longer in their yard slots",
+  "selected character identity wins over team default species",
+  "missing character assignments use deterministic existing team fallbacks",
+  "a token returned to its yard no longer leaves a visible footprint",
+  "null match state produces no stale footprints",
+]) {
+  requireText(
+    footprintTests,
+    token,
+    `Yard footprint regression coverage is missing: ${token}`,
   );
 }
 
