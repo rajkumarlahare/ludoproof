@@ -35,6 +35,36 @@ object LudoPawsGameplayPacingPolicy {
             GameSpeed.FAST -> 1_050L
         }
 
+    /** Travel time to the final cell, excluding the landing-settle tail. */
+    fun forwardTravelDurationMillis(
+        speed: GameSpeed,
+        visualSteps: Int,
+    ): Long =
+        max(
+            speed.moveStepMs,
+            visualSteps.coerceAtLeast(1).toLong() * speed.moveStepMs,
+        )
+
+    /** Full movement animation time including its final landing settle. */
+    fun forwardAnimationDurationMillis(
+        speed: GameSpeed,
+        visualSteps: Int,
+    ): Long =
+        forwardTravelDurationMillis(speed, visualSteps) +
+            LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
+
+    /**
+     * Physical capture impact and both comic vocals are aligned to the final
+     * contact frame of the same forward animation.
+     */
+    fun captureContactDelayMillis(
+        speed: GameSpeed,
+        visualSteps: Int,
+    ): Long =
+        LudoPaws3DRenderCadencePolicy.captureContactDelayMillis(
+            forwardAnimationDurationMillis(speed, visualSteps),
+        )
+
     /**
      * One movement audio tick is emitted for every visual board step.
      *
@@ -103,9 +133,9 @@ object LudoPawsGameplayPacingPolicy {
         val forwardDuration =
             forward
                 ?.let {
-                    max(
-                        speed.moveStepMs,
-                        it.visualSteps.toLong() * speed.moveStepMs,
+                    forwardTravelDurationMillis(
+                        speed = speed,
+                        visualSteps = it.visualSteps,
                     )
                 }
                 ?: 0L

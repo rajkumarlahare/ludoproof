@@ -18,6 +18,9 @@ import com.ludoproof.game.feature.characters.domain.audio.LudoPawsProceduralVoca
  * followed by the generated situation-specific fallback.
  */
 internal object LudoPawsAudioAssetPlayer {
+    private val authoredAssetAvailability = mutableMapOf<String, Boolean>()
+    private val nextSfxVariantByFamily = mutableMapOf<String, Int>()
+
     fun playVocal(
         context: Context,
         rawResourceNames: List<String>,
@@ -25,12 +28,45 @@ internal object LudoPawsAudioAssetPlayer {
         fallback: LudoPawsProceduralVocal,
         volume: Float,
         playbackRate: Float,
+        priority: Int = 5,
     ) {
         val orderedNames =
             rotate(
                 values = rawResourceNames,
                 startIndex = variantIndex,
             )
+        // Prefer character-specific audio placed in the repository audio tree.
+        // The named raw resources remain the compatibility fallback.
+        val vocalAssetPaths =
+            orderedNames.flatMap { resourceName ->
+                val characterId =
+                    resourceName
+                        .removePrefix("lp_vocal_")
+                        .substringBefore('_')
+                if (characterId !in SUPPORTED_VOCAL_CHARACTERS) {
+                    emptyList()
+                } else {
+                    listOf(
+                        "audio/sfx/voices/$characterId/$resourceName.wav",
+                        "audio/sfx/voices/$characterId/$resourceName.ogg",
+                    )
+                }
+            }
+        val authoredVocalPath =
+            availableAssetPaths(context, vocalAssetPaths).firstOrNull()
+        if (
+            authoredVocalPath != null &&
+            LudoPawsSoundPool.playAsset(
+                context = context,
+                assetPath = authoredVocalPath,
+                volume = volume,
+                rate = playbackRate,
+                priority = priority,
+            )
+        ) {
+            return
+        }
+
         val packagedFallback =
             packagedFallbackResourceName(fallback)
         val resourceId =
@@ -50,6 +86,7 @@ internal object LudoPawsAudioAssetPlayer {
                 resourceId = resourceId,
                 volume = volume,
                 rate = playbackRate,
+                priority = priority,
             )
             return
         }
@@ -64,24 +101,29 @@ internal object LudoPawsAudioAssetPlayer {
     /**
      * Prewarms the same authored/raw SFX resolution chain used by playSfx.
      *
-     * Only the first available authored asset is loaded, avoiding unnecessary
-     * SoundPool memory use when future numbered variants are added.
+     * All existing numbered takes are preloaded so variant rotation stays
+     * low-latency during movement and other short presentation events.
      */
+    @Synchronized
     fun preloadSfx(
         context: Context,
         rawResourceNames: List<String>,
         assetPaths: List<String> = emptyList(),
     ) {
-        for (assetPath in assetPaths) {
+        var loadedAuthoredAsset = false
+        for (assetPath in availableAssetPaths(context, assetPaths)) {
             if (
                 LudoPawsSoundPool.preloadAsset(
                     context = context,
                     assetPath = assetPath,
                 )
             ) {
-                return
+                loadedAuthoredAsset = true
             }
         }
+        // Preload every available numbered take so deterministic rotation never
+        // introduces a first-play load delay on a later step or event.
+        if (loadedAuthoredAsset) return
 
         val resourceId =
             rawResourceNames
@@ -102,25 +144,56 @@ internal object LudoPawsAudioAssetPlayer {
         }
     }
 
+    @Synchronized
+    fun playAuthoredSfx(
+        context: Context,
+        assetPaths: List<String>,
+        volume: Float,
+        playbackRate: Float = 1f,
+        priority: Int = 1,
+    ): Boolean {
+        val available = availableAssetPaths(context, assetPaths)
+        if (available.isEmpty()) return false
+
+        val familyKey = assetFamilyKey(assetPaths)
+        val startIndex = (nextSfxVariantByFamily[familyKey] ?: 0).mod(available.size)
+        for (offset in available.indices) {
+            val index = (startIndex + offset) % available.size
+            if (
+                LudoPawsSoundPool.playAsset(
+                    context = context,
+                    assetPath = available[index],
+                    volume = volume,
+                    rate = playbackRate,
+                    priority = priority,
+                )
+            ) {
+                nextSfxVariantByFamily[familyKey] = (index + 1) % available.size
+                return true
+            }
+        }
+        return false
+    }
+
     fun playSfx(
         context: Context,
         rawResourceNames: List<String>,
         fallback: LudoPawsProceduralAudio.Sfx,
         volume: Float,
         playbackRate: Float = 1f,
+        priority: Int = 1,
         assetPaths: List<String> = emptyList(),
     ) {
-        for (assetPath in assetPaths) {
-            if (
-                LudoPawsSoundPool.playAsset(
-                    context = context,
-                    assetPath = assetPath,
-                    volume = volume,
-                    rate = playbackRate,
-                )
-            ) {
-                return
-            }
+        if (
+            playAuthoredSfx(
+                context = context,
+                assetPaths = assetPaths,
+                volume = volume,
+                playbackRate = playbackRate,
+                priority = priority,
+            )
+        ) {
+            return
         }
 
         val resourceId =
@@ -140,6 +213,7 @@ internal object LudoPawsAudioAssetPlayer {
                 resourceId = resourceId,
                 volume = volume,
                 rate = playbackRate,
+                priority = priority,
             )
             return
         }
@@ -150,6 +224,31 @@ internal object LudoPawsAudioAssetPlayer {
             playbackRate = playbackRate,
         )
     }
+
+    @Synchronized
+    private fun availableAssetPaths(
+        context: Context,
+        assetPaths: List<String>,
+    ): List<String> =
+        assetPaths
+            .distinct()
+            .filter { assetPath ->
+                authoredAssetAvailability.getOrPut(assetPath) {
+                    runCatching {
+                        context.applicationContext.assets
+                            .openFd(assetPath)
+                            .use { }
+                    }.isSuccess
+                }
+            }
+
+    private fun assetFamilyKey(assetPaths: List<String>): String =
+        assetPaths.firstOrNull()
+            .orEmpty()
+            .replace(Regex("_\\d{2}\\.(wav|ogg)$"), "_variant.$1")
+
+    private val SUPPORTED_VOCAL_CHARACTERS =
+        setOf("dog", "goat", "duck", "cat")
 
     internal fun packagedFallbackResourceName(
         preset: LudoPawsProceduralVocal,

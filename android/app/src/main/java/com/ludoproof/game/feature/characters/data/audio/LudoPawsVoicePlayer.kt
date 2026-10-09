@@ -28,6 +28,7 @@ class LudoPawsVoicePlayer(
     fun playHighestPriority(
         reactions: List<LudoPawsReaction>,
         characterIdsBySeat: List<String>,
+        captureContactDelayMillis: Long = 0L,
     ) {
         if (closed || reactions.isEmpty()) return
         if (
@@ -80,8 +81,17 @@ class LudoPawsVoicePlayer(
                         reactionKey = reactionKey,
                         variantCount = plan.rawResourceNames.size,
                     )
+            val captureDelay =
+                if (
+                    reaction.momentType == GameMomentType.CAPTURE_MADE ||
+                    reaction.momentType == GameMomentType.TOKEN_CAPTURED
+                ) {
+                    captureContactDelayMillis.coerceAtLeast(0L)
+                } else {
+                    0L
+                }
             schedule(
-                delayMillis = plan.delayMillis,
+                delayMillis = captureDelay + plan.delayMillis,
             ) {
                 if (closed) return@schedule
                 GameMusicController.duckForVoice(VOCAL_DUCK_MILLIS)
@@ -92,6 +102,7 @@ class LudoPawsVoicePlayer(
                     fallback = plan.fallback,
                     volume = plan.volume,
                     playbackRate = plan.playbackRate,
+                    priority = soundPriority(reaction),
                 )
             }
         }
@@ -147,6 +158,23 @@ class LudoPawsVoicePlayer(
         scheduled.forEach(mainHandler::removeCallbacks)
         scheduled.clear()
     }
+
+    private fun soundPriority(reaction: LudoPawsReaction): Int =
+        when (reaction.momentType) {
+            GameMomentType.MATCH_WIN,
+            GameMomentType.TEAM_WIN,
+            -> 10
+            GameMomentType.CAPTURE_MADE,
+            GameMomentType.TOKEN_CAPTURED,
+            GameMomentType.HOME_REACHED,
+            GameMomentType.THIRD_SIX_FORFEIT,
+            -> 9
+            GameMomentType.SIX_ROLLED,
+            GameMomentType.MATCH_LOSS,
+            GameMomentType.TEAM_LOSS,
+            -> 8
+            else -> 5
+        }
 
     private fun canonicalCharacterForSeat(seat: Int): String =
         when (seat) {

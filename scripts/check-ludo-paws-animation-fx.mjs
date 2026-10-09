@@ -53,7 +53,8 @@ requireText(
     "fun playReactions(",
     "reaction.priority >= previous.priority",
     "LudoPaws3DReactionMotion.durationMillis",
-    "settings.gameSpeed.moveStepMs",
+    "LudoPawsGameplayPacingPolicy",
+    ".forwardAnimationDurationMillis(",
   ],
 );
 forbidText(

@@ -3,13 +3,48 @@ package com.ludoproof.game.core.audio
 /**
  * Designer-facing paths for authored audio kept outside Android res/raw.
  *
- * The repository-level /audio tree is copied into the APK's assets at build
- * time. Each family lists up to three numbered variants; the first existing
- * file is used, while the existing raw-resource name remains the runtime
- * fallback.
+ * The repository-level /audio tree is copied into APK assets at build time.
+ * Each family lists up to three numbered takes. Runtime selection rotates
+ * deterministically through the takes that actually exist, then falls back to
+ * raw resources and finally to the generated sound.
  */
 object LudoPawsAudioCatalog {
     object Sfx {
+        val MOVE_STEP =
+            listOf(
+                "audio/sfx/gameplay/movement/step/lp_sfx_step_01.wav",
+                "audio/sfx/gameplay/movement/step/lp_sfx_step_02.wav",
+                "audio/sfx/gameplay/movement/step/lp_sfx_step_03.wav",
+            )
+
+        val MOVE_STEP_DOG =
+            listOf(
+                "audio/sfx/gameplay/movement/step/dog/lp_sfx_step_dog_01.wav",
+                "audio/sfx/gameplay/movement/step/dog/lp_sfx_step_dog_02.wav",
+                "audio/sfx/gameplay/movement/step/dog/lp_sfx_step_dog_03.wav",
+            )
+
+        val MOVE_STEP_GOAT =
+            listOf(
+                "audio/sfx/gameplay/movement/step/goat/lp_sfx_step_goat_01.wav",
+                "audio/sfx/gameplay/movement/step/goat/lp_sfx_step_goat_02.wav",
+                "audio/sfx/gameplay/movement/step/goat/lp_sfx_step_goat_03.wav",
+            )
+
+        val MOVE_STEP_DUCK =
+            listOf(
+                "audio/sfx/gameplay/movement/step/duck/lp_sfx_step_duck_01.wav",
+                "audio/sfx/gameplay/movement/step/duck/lp_sfx_step_duck_02.wav",
+                "audio/sfx/gameplay/movement/step/duck/lp_sfx_step_duck_03.wav",
+            )
+
+        val MOVE_STEP_CAT =
+            listOf(
+                "audio/sfx/gameplay/movement/step/cat/lp_sfx_step_cat_01.wav",
+                "audio/sfx/gameplay/movement/step/cat/lp_sfx_step_cat_02.wav",
+                "audio/sfx/gameplay/movement/step/cat/lp_sfx_step_cat_03.wav",
+            )
+
         val MOVE_JUMP =
             listOf(
                 "audio/sfx/gameplay/movement/jump/lp_sfx_jump_01.wav",
@@ -29,6 +64,20 @@ object LudoPawsAudioCatalog {
                 "audio/sfx/gameplay/dice/lp_sfx_dice_roll_01.wav",
                 "audio/sfx/gameplay/dice/lp_sfx_dice_roll_02.wav",
                 "audio/sfx/gameplay/dice/lp_sfx_dice_roll_03.wav",
+            )
+
+        val DICE_SETTLE =
+            listOf(
+                "audio/sfx/gameplay/dice/settle/lp_sfx_dice_settle_01.wav",
+                "audio/sfx/gameplay/dice/settle/lp_sfx_dice_settle_02.wav",
+                "audio/sfx/gameplay/dice/settle/lp_sfx_dice_settle_03.wav",
+            )
+
+        val SIX =
+            listOf(
+                "audio/sfx/gameplay/six/lp_sfx_six_01.wav",
+                "audio/sfx/gameplay/six/lp_sfx_six_02.wav",
+                "audio/sfx/gameplay/six/lp_sfx_six_03.wav",
             )
 
         val YARD_EXIT =
@@ -64,6 +113,13 @@ object LudoPawsAudioCatalog {
                 "audio/sfx/gameplay/home/lp_sfx_home_01.wav",
                 "audio/sfx/gameplay/home/lp_sfx_home_02.wav",
                 "audio/sfx/gameplay/home/lp_sfx_home_03.wav",
+            )
+
+        val EXACT_HOME_MISS =
+            listOf(
+                "audio/sfx/gameplay/exact_home_miss/lp_sfx_exact_home_miss_01.wav",
+                "audio/sfx/gameplay/exact_home_miss/lp_sfx_exact_home_miss_02.wav",
+                "audio/sfx/gameplay/exact_home_miss/lp_sfx_exact_home_miss_03.wav",
             )
 
         val FAIL =

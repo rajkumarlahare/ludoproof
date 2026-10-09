@@ -10,9 +10,11 @@ import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 /**
  * Short game/UI sound facade.
  *
- * Every sound resolves one stable preferred authored asset family and otherwise
- * uses the existing res/raw/generated fallback. Legacy placeholder WAV aliases
- * are not consulted because several historical files contained identical audio.
+ * Every sound resolves a preferred authored asset family and rotates through
+ * the numbered takes that exist. Missing authored assets fall back to stable
+ * res/raw names and then the situation-specific procedural sound. Legacy
+ * placeholder WAV aliases are not consulted because several historical files
+ * contained identical audio.
  */
 object GameSoundFeedback {
     fun click(context: Context) =
@@ -21,6 +23,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_ui_click"),
             fallback = LudoPawsProceduralAudio.Sfx.CLICK,
             volume = .46f,
+            priority = PRIORITY_UI,
             assetPaths = LudoPawsAudioCatalog.Sfx.UI_CLICK,
         )
 
@@ -33,6 +36,11 @@ object GameSoundFeedback {
         preload(
             context = context,
             rawResourceNames = listOf("lp_sfx_move_paw"),
+            assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_STEP,
+        )
+        preload(
+            context = context,
+            rawResourceNames = listOf("lp_sfx_jump"),
             assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
         )
     }
@@ -45,12 +53,25 @@ object GameSoundFeedback {
     fun preloadMovementEventSfx(context: Context) {
         val sounds =
             listOf(
-                listOf("lp_sfx_move_paw") to LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
+                listOf("lp_sfx_move_paw") to LudoPawsAudioCatalog.Sfx.MOVE_STEP_DOG,
+                listOf("lp_sfx_move_hoof") to LudoPawsAudioCatalog.Sfx.MOVE_STEP_GOAT,
+                listOf("lp_sfx_move_web") to LudoPawsAudioCatalog.Sfx.MOVE_STEP_DUCK,
+                listOf("lp_sfx_move_paw") to LudoPawsAudioCatalog.Sfx.MOVE_STEP_CAT,
+                listOf("lp_sfx_move_paw") to LudoPawsAudioCatalog.Sfx.MOVE_STEP,
+                listOf("lp_sfx_jump") to LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
                 listOf("lp_sfx_yard_exit") to LudoPawsAudioCatalog.Sfx.YARD_EXIT,
+                listOf("lp_sfx_dice_roll") to LudoPawsAudioCatalog.Sfx.DICE_ROLL,
+                listOf("lp_sfx_dice_settle") to LudoPawsAudioCatalog.Sfx.DICE_SETTLE,
+                listOf("lp_sfx_six") to LudoPawsAudioCatalog.Sfx.SIX,
                 listOf("lp_sfx_capture_impact") to LudoPawsAudioCatalog.Sfx.CAPTURE,
                 listOf("lp_sfx_safe_shimmer") to LudoPawsAudioCatalog.Sfx.SAFE_RELIEF,
                 listOf("lp_sfx_home_lane") to LudoPawsAudioCatalog.Sfx.HOME_LANE,
                 listOf("lp_sfx_home_sparkle") to LudoPawsAudioCatalog.Sfx.HOME,
+                listOf("lp_sfx_fail_soft") to LudoPawsAudioCatalog.Sfx.FAIL,
+                listOf("lp_sfx_exact_home_miss") to LudoPawsAudioCatalog.Sfx.EXACT_HOME_MISS,
+                listOf("lp_sfx_third_six") to LudoPawsAudioCatalog.Sfx.THIRD_SIX,
+                listOf("lp_sfx_victory_sting") to LudoPawsAudioCatalog.Sfx.VICTORY,
+                listOf("lp_sfx_defeat_sting") to LudoPawsAudioCatalog.Sfx.DEFEAT,
             )
         sounds.forEach { (rawResourceNames, assetPaths) ->
             preload(
@@ -61,52 +82,97 @@ object GameSoundFeedback {
         }
     }
 
-    /** One short physical tick for exactly one visual pawn step. */
-    fun moveStep(context: Context) =
-        play(
-            context = context,
-            names = listOf("lp_sfx_move_paw"),
-            fallback = LudoPawsProceduralAudio.Sfx.MOVE_PAW,
-            // SoundPool accepts a maximum per-channel volume of 1.0f.
-            // Use the maximum authored tick level so the pawn step is as prominent
-            // as Android's mixer allows without introducing clipping in the app layer.
-            volume = 1.0f,
-            assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
-        )
-
-    fun move(
+    /**
+     * Plays the soft landing/contact sound for one completed visual board step.
+     * Species-specific assets win first, then the shared step family, then the
+     * legacy raw/procedural fallback. The authored jump clip is never used as a
+     * normal footfall.
+     */
+    fun moveStep(
         context: Context,
         characterId: String? = null,
     ) {
+        if (!GameSettingsStore(context).snapshot().soundEnabled) return
+
         val movement =
             when (characterId) {
                 "goat" ->
                     Triple(
                         listOf("lp_sfx_move_hoof"),
                         LudoPawsProceduralAudio.Sfx.MOVE_HOOF,
-                        .40f,
+                        LudoPawsAudioCatalog.Sfx.MOVE_STEP_GOAT,
                     )
                 "duck" ->
                     Triple(
                         listOf("lp_sfx_move_web"),
                         LudoPawsProceduralAudio.Sfx.MOVE_WEB,
-                        .38f,
+                        LudoPawsAudioCatalog.Sfx.MOVE_STEP_DUCK,
+                    )
+                "cat" ->
+                    Triple(
+                        listOf("lp_sfx_move_paw"),
+                        LudoPawsProceduralAudio.Sfx.MOVE_PAW,
+                        LudoPawsAudioCatalog.Sfx.MOVE_STEP_CAT,
                     )
                 else ->
                     Triple(
                         listOf("lp_sfx_move_paw"),
                         LudoPawsProceduralAudio.Sfx.MOVE_PAW,
-                        .38f,
+                        LudoPawsAudioCatalog.Sfx.MOVE_STEP_DOG,
                     )
             }
-        play(
+        val volume =
+            when (characterId) {
+                "goat" -> .30f
+                "duck" -> .28f
+                else -> .30f
+            }
+        val priority = PRIORITY_MOVEMENT
+        if (
+            LudoPawsAudioAssetPlayer.playAuthoredSfx(
+                context = context,
+                assetPaths = movement.third,
+                volume = volume,
+                priority = priority,
+            )
+        ) {
+            return
+        }
+        if (
+            LudoPawsAudioAssetPlayer.playAuthoredSfx(
+                context = context,
+                assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_STEP,
+                volume = volume,
+                priority = priority,
+            )
+        ) {
+            return
+        }
+        LudoPawsAudioAssetPlayer.playSfx(
             context = context,
-            names = movement.first,
+            rawResourceNames = movement.first,
             fallback = movement.second,
-            volume = movement.third,
-            assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
+            volume = volume,
+            priority = priority,
         )
     }
+
+    /** Plays at hop take-off; the corresponding soft step lands on the visual cell. */
+    fun jump(context: Context) =
+        play(
+            context = context,
+            names = listOf("lp_sfx_jump"),
+            fallback = LudoPawsProceduralAudio.Sfx.JUMP,
+            volume = .30f,
+            priority = PRIORITY_JUMP,
+            assetPaths = LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
+        )
+
+    /** Legacy call site compatibility: this now means landing/step, not jump. */
+    fun move(
+        context: Context,
+        characterId: String? = null,
+    ) = moveStep(context, characterId)
 
     fun roll(context: Context) =
         play(
@@ -114,7 +180,19 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_dice_roll"),
             fallback = LudoPawsProceduralAudio.Sfx.DICE_ROLL,
             volume = .50f,
+            priority = PRIORITY_ROLL,
             assetPaths = LudoPawsAudioCatalog.Sfx.DICE_ROLL,
+        )
+
+    /** Short landing tick when the verified dice face is revealed. */
+    fun diceSettle(context: Context) =
+        play(
+            context = context,
+            names = listOf("lp_sfx_dice_settle"),
+            fallback = LudoPawsProceduralAudio.Sfx.DICE_SETTLE,
+            volume = .32f,
+            priority = PRIORITY_HIGH,
+            assetPaths = LudoPawsAudioCatalog.Sfx.DICE_SETTLE,
         )
 
     fun six(context: Context) =
@@ -123,6 +201,8 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_six"),
             fallback = LudoPawsProceduralAudio.Sfx.SIX_SPARK,
             volume = .45f,
+            priority = PRIORITY_HIGH,
+            assetPaths = LudoPawsAudioCatalog.Sfx.SIX,
         )
 
     fun yardExit(context: Context) =
@@ -131,6 +211,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_yard_exit"),
             fallback = LudoPawsProceduralAudio.Sfx.YARD_EXIT,
             volume = .43f,
+            priority = PRIORITY_EVENT,
             assetPaths = LudoPawsAudioCatalog.Sfx.YARD_EXIT,
         )
 
@@ -140,6 +221,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_capture_impact"),
             fallback = LudoPawsProceduralAudio.Sfx.CAPTURE_IMPACT,
             volume = .62f,
+            priority = PRIORITY_CRITICAL,
             assetPaths = LudoPawsAudioCatalog.Sfx.CAPTURE,
         )
 
@@ -149,6 +231,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_safe_shimmer"),
             fallback = LudoPawsProceduralAudio.Sfx.SAFE_SHIMMER,
             volume = .44f,
+            priority = PRIORITY_EVENT,
             assetPaths = LudoPawsAudioCatalog.Sfx.SAFE_RELIEF,
         )
 
@@ -158,6 +241,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_home_lane"),
             fallback = LudoPawsProceduralAudio.Sfx.HOME_LANE,
             volume = .45f,
+            priority = PRIORITY_EVENT,
             assetPaths = LudoPawsAudioCatalog.Sfx.HOME_LANE,
         )
 
@@ -167,6 +251,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_home_sparkle"),
             fallback = LudoPawsProceduralAudio.Sfx.HOME_SPARKLE,
             volume = .56f,
+            priority = PRIORITY_HIGH,
             assetPaths = LudoPawsAudioCatalog.Sfx.HOME,
         )
 
@@ -176,7 +261,19 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_fail_soft"),
             fallback = LudoPawsProceduralAudio.Sfx.FAIL_SOFT,
             volume = .32f,
+            priority = PRIORITY_SOFT_EVENT,
             assetPaths = LudoPawsAudioCatalog.Sfx.FAIL,
+        )
+
+    /** A distinct, gentle descending spring for a short exact-home roll. */
+    fun exactHomeMiss(context: Context) =
+        play(
+            context = context,
+            names = listOf("lp_sfx_exact_home_miss"),
+            fallback = LudoPawsProceduralAudio.Sfx.EXACT_HOME_MISS,
+            volume = .30f,
+            priority = PRIORITY_SOFT_EVENT,
+            assetPaths = LudoPawsAudioCatalog.Sfx.EXACT_HOME_MISS,
         )
 
     fun thirdSix(context: Context) =
@@ -185,6 +282,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_third_six"),
             fallback = LudoPawsProceduralAudio.Sfx.THIRD_SIX,
             volume = .48f,
+            priority = PRIORITY_CRITICAL,
             assetPaths = LudoPawsAudioCatalog.Sfx.THIRD_SIX,
         )
 
@@ -194,6 +292,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_victory_sting"),
             fallback = LudoPawsProceduralAudio.Sfx.VICTORY,
             volume = .60f,
+            priority = PRIORITY_CRITICAL,
             assetPaths = LudoPawsAudioCatalog.Sfx.VICTORY,
         )
 
@@ -203,6 +302,7 @@ object GameSoundFeedback {
             names = listOf("lp_sfx_defeat_sting"),
             fallback = LudoPawsProceduralAudio.Sfx.DEFEAT,
             volume = .42f,
+            priority = PRIORITY_HIGH,
             assetPaths = LudoPawsAudioCatalog.Sfx.DEFEAT,
         )
 
@@ -235,9 +335,9 @@ object GameSoundFeedback {
             GameMomentType.HOME_REACHED,
             -> false
             GameMomentType.POOR_ROLL_STREAK,
-            GameMomentType.EXACT_HOME_MISS,
             GameMomentType.NO_LEGAL_MOVE,
             -> played { frustrated(context) }
+            GameMomentType.EXACT_HOME_MISS -> played { exactHomeMiss(context) }
             GameMomentType.THIRD_SIX_FORFEIT -> played { thirdSix(context) }
             GameMomentType.MATCH_WIN,
             GameMomentType.TEAM_WIN,
@@ -287,6 +387,7 @@ object GameSoundFeedback {
         fallback: LudoPawsProceduralAudio.Sfx,
         volume: Float,
         playbackRate: Float = 1f,
+        priority: Int = PRIORITY_NORMAL,
         assetPaths: List<String> = emptyList(),
     ) {
         if (
@@ -302,7 +403,18 @@ object GameSoundFeedback {
             fallback = fallback,
             volume = volume,
             playbackRate = playbackRate,
+            priority = priority,
             assetPaths = assetPaths,
         )
     }
+
+    private const val PRIORITY_UI = 0
+    private const val PRIORITY_MOVEMENT = 1
+    private const val PRIORITY_JUMP = 2
+    private const val PRIORITY_SOFT_EVENT = 3
+    private const val PRIORITY_ROLL = 4
+    private const val PRIORITY_EVENT = 5
+    private const val PRIORITY_HIGH = 7
+    private const val PRIORITY_CRITICAL = 10
+    private const val PRIORITY_NORMAL = 1
 }

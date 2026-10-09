@@ -296,7 +296,7 @@ internal object OnlineLudoPawsPresentation {
                 key = "ROLL:${pending.eventIndex}",
             )
         ) {
-            GameSoundFeedback.roll(activity)
+            GameSoundFeedback.diceSettle(activity)
         }
 
         val reactions =

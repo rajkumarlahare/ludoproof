@@ -25,6 +25,7 @@ enum class OfflineFeedbackSound {
     HOME_LANE,
     HOME,
     FRUSTRATED,
+    EXACT_HOME_MISS,
     THIRD_SIX,
     VICTORY,
     DEFEAT,
@@ -79,9 +80,9 @@ object OfflineLudoPawsFeedbackPolicy {
                 GameMomentType.ONLY_LEGAL_MOVE,
                 -> OfflineFeedbackSound.NONE
                 GameMomentType.POOR_ROLL_STREAK,
-                GameMomentType.EXACT_HOME_MISS,
                 GameMomentType.NO_LEGAL_MOVE,
                 -> OfflineFeedbackSound.FRUSTRATED
+                GameMomentType.EXACT_HOME_MISS -> OfflineFeedbackSound.EXACT_HOME_MISS
                 GameMomentType.THIRD_SIX_FORFEIT -> OfflineFeedbackSound.THIRD_SIX
                 GameMomentType.MATCH_WIN,
                 GameMomentType.TEAM_WIN,
@@ -209,6 +210,11 @@ object OfflineLudoPawsFeedbackDispatcher {
                 current = safeCurrent,
                 action = action,
             )
+        // Online and offline both play rattle on roll start and a short contact
+        // tick once the committed/verified face has become available.
+        if (action == OfflineFeedbackAction.ROLL) {
+            GameSoundFeedback.diceSettle(context)
+        }
         when (decision.sound) {
             OfflineFeedbackSound.NONE -> Unit
             // Kept for enum compatibility; synchronized movement uses moveStep().
@@ -220,6 +226,7 @@ object OfflineLudoPawsFeedbackDispatcher {
             OfflineFeedbackSound.HOME_LANE -> GameSoundFeedback.homeLane(context)
             OfflineFeedbackSound.HOME -> GameSoundFeedback.home(context)
             OfflineFeedbackSound.FRUSTRATED -> GameSoundFeedback.frustrated(context)
+            OfflineFeedbackSound.EXACT_HOME_MISS -> GameSoundFeedback.exactHomeMiss(context)
             OfflineFeedbackSound.THIRD_SIX -> GameSoundFeedback.thirdSix(context)
             OfflineFeedbackSound.VICTORY -> GameSoundFeedback.victory(context)
             OfflineFeedbackSound.DEFEAT -> GameSoundFeedback.defeat(context)

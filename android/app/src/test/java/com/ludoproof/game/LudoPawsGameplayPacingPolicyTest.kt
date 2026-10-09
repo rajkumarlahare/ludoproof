@@ -88,6 +88,31 @@ class LudoPawsGameplayPacingPolicyTest {
     }
 
     @Test
+    fun captureContactDelayMatchesTheFinalVisibleStepAtEverySpeed() {
+        assertEquals(
+            2_160L,
+            LudoPawsGameplayPacingPolicy.captureContactDelayMillis(
+                speed = GameSpeed.SLOW,
+                visualSteps = 6,
+            ),
+        )
+        assertEquals(
+            1_680L,
+            LudoPawsGameplayPacingPolicy.captureContactDelayMillis(
+                speed = GameSpeed.NORMAL,
+                visualSteps = 6,
+            ),
+        )
+        assertEquals(
+            1_260L,
+            LudoPawsGameplayPacingPolicy.captureContactDelayMillis(
+                speed = GameSpeed.FAST,
+                visualSteps = 6,
+            ),
+        )
+    }
+
+    @Test
     fun extraRollGetsLongerBreathingRoom() {
         val normal =
             LudoPawsGameplayPacingPolicy
