@@ -173,6 +173,7 @@ for (const token of [
   "selected character identity wins over team default species",
   "missing character assignments use deterministic existing team fallbacks",
   "a token returned to its yard no longer leaves a visible footprint",
+  "legacy team color strings normalize before footprint placement",
   "null match state produces no stale footprints",
 ]) {
   requireText(
