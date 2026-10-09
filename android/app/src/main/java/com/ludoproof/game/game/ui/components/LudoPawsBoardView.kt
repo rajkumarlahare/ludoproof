@@ -49,10 +49,11 @@ class LudoPawsBoardView @JvmOverloads constructor(
         }
 
     init {
-        // Enable static owner sigils only on the Ludo Paws presentation board.
-        // Standalone LudoBoardView remains unchanged for the classic board.
-        boardSurface.setLudoPawsTeamSigilsEnabled(true)
-        baseBoard.setLudoPawsTeamSigilsEnabled(true)
+        // Footprints are drawn only by the Ludo Paws boards; standalone classic
+        // boards remain visually unchanged.
+        boardSurface.setLudoPawsYardFootprintsEnabled(true)
+        boardSurface.setClassicTokenDrawingEnabled(false)
+        baseBoard.setLudoPawsYardFootprintsEnabled(true)
         isFocusable = false
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
         outlineProvider =
@@ -101,11 +102,6 @@ class LudoPawsBoardView @JvmOverloads constructor(
         perspectiveColor: String? = null,
         characterIdsBySeat: List<String> = emptyList(),
     ) {
-        // characterIdsBySeat is intentionally retained in this public UI contract so
-        // callers do not need a gameplay-facing migration. Character visuals are 3D.
-        @Suppress("UNUSED_VARIABLE")
-        val retainedCharacterContract = characterIdsBySeat
-
         snapshot = state
         localPlayerId = playerId
         this.perspectiveColor =
@@ -114,17 +110,20 @@ class LudoPawsBoardView @JvmOverloads constructor(
                     it in OfflinePlayerLayout.COLORS
                 }
 
-        // A null snapshot keeps the exact approved board geometry/theme but prevents
-        // LudoBoardView from drawing any classic token on the 3D presentation layer.
+        // Keep the authoritative snapshot on the board-only surface so vacated-yard
+        // footprints can be derived reliably. Classic tokens are explicitly disabled
+        // there and remain available only on the true 3D failure fallback.
         boardSurface.bind(
-            state = null,
-            playerId = null,
+            state = state,
+            playerId = playerId,
             perspectiveColor = this.perspectiveColor,
+            characterIdsBySeat = characterIdsBySeat,
         )
         baseBoard.bind(
             state = state,
             playerId = playerId,
             perspectiveColor = this.perspectiveColor,
+            characterIdsBySeat = characterIdsBySeat,
         )
 
         // Keep presentation-only chrome aligned with the player's perspective.
