@@ -231,8 +231,7 @@ internal object LudoPawsAudioAssetPlayer {
         val stem = fileName.removeSuffix(".$extension")
         val filenamePattern =
             Regex(
-                "^" + Regex.escape(stem) +
-                    "(?: \\(\\d+\\))?\\." + Regex.escape(extension) + "$",
+                Regex.escape(stem) + "(?: \\(\\d+\\))?\\." + Regex.escape(extension) + "$",
                 RegexOption.IGNORE_CASE,
             )
         return runCatching {
