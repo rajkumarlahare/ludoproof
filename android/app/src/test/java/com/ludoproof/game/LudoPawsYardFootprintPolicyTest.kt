@@ -94,6 +94,34 @@ class LudoPawsYardFootprintPolicyTest {
     }
 
     @Test
+    fun `legacy team color strings normalize before footprint placement`() {
+        val base =
+            snapshot(
+                redTokens = listOf(0, -1, -1, -1),
+            )
+        val legacySnapshot =
+            base.copy(
+                players =
+                    base.players.map { player ->
+                        if (player.playerId == "red-player") {
+                            player.copy(color = " red ")
+                        } else {
+                            player
+                        }
+                    },
+            )
+
+        val prints =
+            LudoPawsYardFootprintPolicy.footprints(
+                snapshot = legacySnapshot,
+                characterIdsBySeat = emptyList(),
+            )
+
+        assertEquals(listOf("RED"), prints.map { it.teamColor })
+        assertEquals(LudoPaws3DSpecies.DOG, prints.single().species)
+    }
+
+    @Test
     fun `null match state produces no stale footprints`() {
         assertTrue(
             LudoPawsYardFootprintPolicy.footprints(
