@@ -315,9 +315,7 @@ class LudoBoardView @JvmOverloads constructor(
         drawHomeLanes(canvas, cell)
         drawCenter(canvas, cell)
         if (classicTokenDrawingEnabled) {
-            if (classicTokenDrawingEnabled) {
             drawTokens(canvas, cell)
-        }
         }
 
         if (
