@@ -70,9 +70,13 @@ internal class LudoPaws3DSceneRenderer {
         uColorLocation = GLES30.glGetUniformLocation(program, "uColor")
         uLightDirectionLocation = GLES30.glGetUniformLocation(program, "uLightDirection")
         uNormalMatrixLocation = GLES30.glGetUniformLocation(program, "uNormalMatrix")
-        check(uModelLocation >= 0 && uMvpLocation >= 0 && uColorLocation >= 0 && uLightDirectionLocation >= 0 && uNormalMatrixLocation >= 0) {
-            "3D pawn shader is missing a required uniform"
-        }
+        check(
+            uModelLocation >= 0 &&
+                uMvpLocation >= 0 &&
+                uColorLocation >= 0 &&
+                uLightDirectionLocation >= 0 &&
+                uNormalMatrixLocation >= 0,
+        ) { "3D pawn shader is missing a required uniform" }
         sphere =
             SphereMesh(
                 latitudeSegments = 12,
@@ -657,32 +661,29 @@ internal class LudoPaws3DSceneRenderer {
                         LudoPaws3DRenderCadencePolicy.FORWARD_LANDING_SETTLE_MILLIS
                 ).coerceAtLeast(1L)
             if (state.forwardDurationMillis > 0L && elapsed < travelDuration) {
-                // The last few settle frames are a stable landing pose, not a new hop.
+                // Keep the last settle frames stable rather than restarting a hop.
                 val visualProgress =
                     elapsed.toFloat() /
                         travelDuration.toFloat() *
                         forward.visualSteps.coerceAtLeast(1).toFloat()
                 val stepFraction =
                     (visualProgress - floor(visualProgress)).coerceIn(0f, 1f)
-                return MotionFrame(
-                    kind = SceneMotion.HOP,
-                    progress = stepFraction,
-                )
+                return MotionFrame(SceneMotion.HOP, stepFraction)
             }
 
             if (
                 elapsed < state.forwardDurationMillis ||
                 forward.toPosition != LudoPathEncoding.HOME_POSITION
             ) {
-                return MotionFrame(kind = SceneMotion.IDLE, progress = 0f)
+                return MotionFrame(SceneMotion.IDLE, 0f)
             }
 
             val celebrationElapsed = elapsed - state.forwardDurationMillis
             val homeDuration = homeDurationMillis(pawn.species)
             if (celebrationElapsed in 0 until homeDuration) {
                 return MotionFrame(
-                    kind = SceneMotion.HOME,
-                    progress = celebrationElapsed.toFloat() / homeDuration.toFloat(),
+                    SceneMotion.HOME,
+                    celebrationElapsed.toFloat() / homeDuration.toFloat(),
                 )
             }
         }
@@ -1309,8 +1310,6 @@ internal class LudoPaws3DSceneRenderer {
             model,
             0,
         )
-        // Preserve correct inverse-transpose lighting normals, but calculate
-        // this matrix once per ellipsoid instead of once per rendered vertex.
         check(Matrix.invertM(inverseModel, 0, model, 0)) {
             "3D pawn model matrix is not invertible"
         }
@@ -1443,13 +1442,14 @@ internal class LudoPaws3DSceneRenderer {
         val breath =
             (
                 sin(
-                    phase * PI.toFloat() * 2f -
-                        PI.toFloat() * 0.5f,
+                    phase *
+                        PI.toFloat() *
+                        2f,
                 ) +
                     1f
-                ) *
-                0.5f
-        return 1f + breath * 0.065f
+            ) *
+                .5f
+        return 1f + breath * .0975f
     }
 
     private data class RenderPawn(
