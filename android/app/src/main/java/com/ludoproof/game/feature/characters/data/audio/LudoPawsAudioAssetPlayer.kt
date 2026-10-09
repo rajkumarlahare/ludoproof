@@ -229,11 +229,12 @@ internal object LudoPawsAudioAssetPlayer {
         if (extension.isBlank()) return emptyList()
 
         val stem = fileName.removeSuffix(".$extension")
-        val filenamePattern =
-            Regex(
-                Regex.escape(stem) + """(?: \(\d+\))?\.""" + Regex.escape(extension) + "$",
-                RegexOption.IGNORE_CASE,
-            )
+        // Windows copy suffixes such as " (1)" are optional. Quote both
+        // authored stem and extension; only the suffix uses regex syntax.
+        val filenamePattern = Regex(
+            "^" + Regex.escape(stem) + "(?: \\(\\d+\\))?\\." + Regex.escape(extension) + "\$",
+            RegexOption.IGNORE_CASE,
+        )
         return runCatching {
             assets.list(directory)
                 .orEmpty()
