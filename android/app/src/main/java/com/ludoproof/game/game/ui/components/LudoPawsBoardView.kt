@@ -51,7 +51,9 @@ class LudoPawsBoardView @JvmOverloads constructor(
     init {
         // Footprints are drawn only by the Ludo Paws boards; standalone classic
         // boards remain visually unchanged.
-        boardSurface.setLudoPawsYardFootprintsEnabled(true)
+        // Exactly one of the two board copies draws footprints: the classic
+        // fallback while GL is unavailable, or the board-only surface during 3D play.
+        boardSurface.setLudoPawsYardFootprintsEnabled(false)
         boardSurface.setClassicTokenDrawingEnabled(false)
         baseBoard.setLudoPawsYardFootprintsEnabled(true)
         isFocusable = false
@@ -147,6 +149,11 @@ class LudoPawsBoardView @JvmOverloads constructor(
         classicPawnFallbackVisible = visible
         baseBoard.visibility =
             if (visible) View.VISIBLE else View.INVISIBLE
+
+        // Keep the paw-print pass on the topmost active board copy. This avoids
+        // double alpha/strokes during GL startup or safe fallback transitions.
+        boardSurface.setLudoPawsYardFootprintsEnabled(!visible)
+        baseBoard.setLudoPawsYardFootprintsEnabled(visible)
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
