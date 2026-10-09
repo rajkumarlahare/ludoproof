@@ -218,6 +218,7 @@ class LudoPawsFxBoardGeometryTest {
             }
         }
     }
+
     private fun finishCenter(
         color: String,
         cell: Float,
