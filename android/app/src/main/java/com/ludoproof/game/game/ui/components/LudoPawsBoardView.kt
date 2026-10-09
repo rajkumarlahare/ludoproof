@@ -96,6 +96,9 @@ class LudoPawsBoardView @JvmOverloads constructor(
                 LayoutParams.MATCH_PARENT,
             ),
         )
+        // The raised chrome is the top board-art layer, so route footprint drawing
+        // through it instead of leaving prints trapped under its opaque yard faces.
+        boardChrome.setFootprintSource(baseBoard)
     }
 
     fun bind(
@@ -154,6 +157,7 @@ class LudoPawsBoardView @JvmOverloads constructor(
         // double alpha/strokes during GL startup or safe fallback transitions.
         boardSurface.setLudoPawsYardFootprintsEnabled(!visible)
         baseBoard.setLudoPawsYardFootprintsEnabled(visible)
+        boardChrome.setFootprintSource(if (visible) baseBoard else boardSurface)
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
