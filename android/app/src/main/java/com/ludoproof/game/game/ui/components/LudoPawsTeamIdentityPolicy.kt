@@ -21,6 +21,7 @@ internal enum class LudoPawsTeamColor(
     val argb: Int,
     val sigilArgb: Int,
     val glColor: FloatArray,
+    val bellyGlColor: FloatArray,
     val sigil: LudoPawsTeamSigil,
 ) {
     RED(
@@ -28,6 +29,7 @@ internal enum class LudoPawsTeamColor(
         argb = 0xFFF1252F.toInt(),
         sigilArgb = 0xFFC91D27.toInt(),
         glColor = floatArrayOf(241f / 255f, 37f / 255f, 47f / 255f, 1f),
+        bellyGlColor = floatArrayOf(0.98f, 0.08f, 0.11f, 1f),
         sigil = LudoPawsTeamSigil.DIAMOND,
     ),
     GREEN(
@@ -35,6 +37,7 @@ internal enum class LudoPawsTeamColor(
         argb = 0xFF00A950.toInt(),
         sigilArgb = 0xFF007A3A.toInt(),
         glColor = floatArrayOf(0f, 169f / 255f, 80f / 255f, 1f),
+        bellyGlColor = floatArrayOf(0.03f, 0.78f, 0.30f, 1f),
         sigil = LudoPawsTeamSigil.LEAF,
     ),
     YELLOW(
@@ -42,6 +45,8 @@ internal enum class LudoPawsTeamColor(
         argb = 0xFFFFD81B.toInt(),
         sigilArgb = 0xFF9A7410.toInt(),
         glColor = floatArrayOf(1f, 216f / 255f, 27f / 255f, 1f),
+        // Deeper amber keeps the yellow-team patch visible on the naturally yellow duck.
+        bellyGlColor = floatArrayOf(0.84f, 0.49f, 0.015f, 1f),
         sigil = LudoPawsTeamSigil.SUN,
     ),
     BLUE(
@@ -49,6 +54,7 @@ internal enum class LudoPawsTeamColor(
         argb = 0xFF3097D7.toInt(),
         sigilArgb = 0xFF12689F.toInt(),
         glColor = floatArrayOf(48f / 255f, 151f / 255f, 215f / 255f, 1f),
+        bellyGlColor = floatArrayOf(0.12f, 0.62f, 0.98f, 1f),
         sigil = LudoPawsTeamSigil.WAVE,
     );
 
