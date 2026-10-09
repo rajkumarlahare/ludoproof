@@ -1451,7 +1451,7 @@ internal class LudoPaws3DSceneRenderer {
                         2f,
                 ) +
                     1f
-            ) *
+                ) *
                 .5f
         return 1f + breath * .0975f
     }
