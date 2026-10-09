@@ -158,6 +158,7 @@ object LudoPaws3DReactionMotion {
             AnimationCue.ANGRY -> LudoPaws3DReactionPose(bodyYawDegrees = 5f * fast * (1f - p), headTiltDegrees = -6f * arc, primaryAppendageDegrees = -8f * arc, secondaryAppendageDegrees = 26f * fast)
             AnimationCue.NERVOUS -> LudoPaws3DReactionPose(bodyYawDegrees = 4f * fast * (1f - p), headTiltDegrees = 7f * wave, primaryAppendageDegrees = 7f * fast, secondaryAppendageDegrees = 18f * fast)
             AnimationCue.HOME -> LudoPaws3DReactionPose(liftY = .12f * bounce, headTiltDegrees = 7f * wave, primaryAppendageDegrees = 8f * fast, secondaryAppendageDegrees = 38f * fast, scale = 1f + .025f * arc)
-            AnimationCue.VICTORY -> LudoPaws3DReactionPose(liftY = .17f * bounce, bodyYawDegrees = 300f * p, headTiltDegrees = 7f * wave, primaryAppendageDegrees = 10f * fast, secondaryAppendageDegrees = 48f * fast, scale = 1f + .035f * arc)
+            // Complete a full turn so the final frame matches the starting heading.
+            AnimationCue.VICTORY -> LudoPaws3DReactionPose(liftY = .17f * bounce, bodyYawDegrees = 360f * p, headTiltDegrees = 7f * wave, primaryAppendageDegrees = 10f * fast, secondaryAppendageDegrees = 48f * fast, scale = 1f + .035f * arc)
         }
 }

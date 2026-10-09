@@ -1,6 +1,7 @@
 package com.ludoproof.game.feature.characters.data.audio
 
 import android.content.Context
+import android.content.res.AssetManager
 import com.ludoproof.game.core.audio.LudoPawsSoundPool
 import com.ludoproof.game.feature.characters.domain.audio.LudoPawsProceduralVocal
 
@@ -19,6 +20,7 @@ import com.ludoproof.game.feature.characters.domain.audio.LudoPawsProceduralVoca
  */
 internal object LudoPawsAudioAssetPlayer {
     private val authoredAssetAvailability = mutableMapOf<String, Boolean>()
+    private val resolvedAssetsByExpectedPath = mutableMapOf<String, List<String>>()
     private val nextSfxVariantByFamily = mutableMapOf<String, Int>()
 
     fun playVocal(
@@ -240,41 +242,52 @@ internal object LudoPawsAudioAssetPlayer {
         return assetPaths
             .distinct()
             .flatMap { expectedPath ->
-                val directory = expectedPath.substringBeforeLast('/', "")
-                val fileName = expectedPath.substringAfterLast('/')
-                val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
-                if (extension.isBlank()) {
-                    emptyList()
-                } else {
-                    val stem = fileName.removeSuffix(".$extension")
-                    val filenamePattern =
-                        Regex(
-                            "^${Regex.escape(stem)}(?: \\(\\d+\\))?\\.${Regex.escape(extension)}$",
-                            RegexOption.IGNORE_CASE,
-                        )
-                    runCatching {
-                        assets.list(directory)
-                            .orEmpty()
-                            .filter(filenamePattern::matches)
-                            .sortedWith(
-                                compareBy<String>({ duplicateFilenameIndex(it) }, { it }),
-                            )
-                            .map { actualFileName ->
-                                if (directory.isBlank()) actualFileName else "$directory/$actualFileName"
-                            }
-                            .filter { actualPath ->
-                                authoredAssetAvailability.getOrPut(actualPath) {
-                                    runCatching { assets.openFd(actualPath).use { } }.isSuccess
-                                }
-                            }
-                    }.getOrDefault(emptyList())
-                }
+                resolvedAssetsByExpectedPath[expectedPath]
+                    ?: resolveAssetPaths(assets, expectedPath).also {
+                        resolvedAssetsByExpectedPath[expectedPath] = it
+                    }
             }
             .distinct()
     }
 
+    private fun resolveAssetPaths(
+        assets: AssetManager,
+        expectedPath: String,
+    ): List<String> {
+        val directory = expectedPath.substringBeforeLast('/', "")
+        val fileName = expectedPath.substringAfterLast('/')
+        val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
+        return if (extension.isBlank()) {
+            emptyList()
+        } else {
+            val stem = fileName.removeSuffix(".$extension")
+            val filenamePattern =
+                Regex(
+                    "^${Regex.escape(stem)}(?: \\(\\d+\\))?\\.${Regex.escape(extension)}$",
+                    RegexOption.IGNORE_CASE,
+                )
+            runCatching {
+                assets.list(directory)
+                    .orEmpty()
+                    .filter(filenamePattern::matches)
+                    .sortedWith(
+                        compareBy<String>({ duplicateFilenameIndex(it) }, { it }),
+                    )
+                    .map { actualFileName ->
+                        if (directory.isBlank()) actualFileName else "$directory/$actualFileName"
+                    }
+                    .filter { actualPath ->
+                        authoredAssetAvailability.getOrPut(actualPath) {
+                            runCatching { assets.openFd(actualPath).use { } }.isSuccess
+                        }
+                    }
+            }.getOrDefault(emptyList())
+        }
+
+    }
+
     private fun duplicateFilenameIndex(fileName: String): Int =
-        Regex(""" \\((\\d+)\\)(?=\\.[^.]+$)""")
+        Regex(""" \((\d+)\)(?=\.[^.]+$)""")
             .find(fileName)
             ?.groupValues
             ?.getOrNull(1)
