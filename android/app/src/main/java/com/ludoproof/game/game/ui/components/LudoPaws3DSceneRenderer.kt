@@ -25,7 +25,6 @@ import kotlin.math.min
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 /**
  * Shared production renderer for all code-generated animal pawns.
