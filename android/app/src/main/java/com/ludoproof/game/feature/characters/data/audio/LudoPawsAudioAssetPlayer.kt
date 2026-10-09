@@ -37,6 +37,8 @@ internal object LudoPawsAudioAssetPlayer {
                 values = rawResourceNames,
                 startIndex = variantIndex,
             )
+        // Prefer character-specific audio placed in the repository audio tree.
+        // The named raw resources remain the compatibility fallback.
         val vocalAssetPaths =
             orderedNames.flatMap { resourceName ->
                 val characterId =
@@ -67,11 +69,17 @@ internal object LudoPawsAudioAssetPlayer {
             return
         }
 
-        val packagedFallback = packagedFallbackResourceName(fallback)
+        val packagedFallback =
+            packagedFallbackResourceName(fallback)
         val resourceId =
             (orderedNames + packagedFallback)
                 .asSequence()
-                .map { rawResourceId(context, it) }
+                .map {
+                    rawResourceId(
+                        context = context,
+                        resourceName = it,
+                    )
+                }
                 .firstOrNull { it != 0 }
 
         if (resourceId != null) {
@@ -94,7 +102,9 @@ internal object LudoPawsAudioAssetPlayer {
 
     /**
      * Prewarms the same authored/raw SFX resolution chain used by playSfx.
-     * All available numbered takes are loaded before gameplay can request them.
+     *
+     * All existing numbered takes are preloaded so variant rotation stays
+     * low-latency during movement and other short presentation events.
      */
     @Synchronized
     fun preloadSfx(
@@ -104,20 +114,35 @@ internal object LudoPawsAudioAssetPlayer {
     ) {
         var loadedAuthoredAsset = false
         for (assetPath in availableAssetPaths(context, assetPaths)) {
-            if (LudoPawsSoundPool.preloadAsset(context, assetPath)) {
+            if (
+                LudoPawsSoundPool.preloadAsset(
+                    context = context,
+                    assetPath = assetPath,
+                )
+            ) {
                 loadedAuthoredAsset = true
             }
         }
+        // Preload every available numbered take so deterministic rotation never
+        // introduces a first-play load delay on a later step or event.
         if (loadedAuthoredAsset) return
 
         val resourceId =
             rawResourceNames
                 .asSequence()
-                .map { rawResourceId(context, it) }
+                .map {
+                    rawResourceId(
+                        context = context,
+                        resourceName = it,
+                    )
+                }
                 .firstOrNull { it != 0 }
 
         if (resourceId != null) {
-            LudoPawsSoundPool.preload(context, resourceId)
+            LudoPawsSoundPool.preload(
+                context = context,
+                resourceId = resourceId,
+            )
         }
     }
 
@@ -176,7 +201,12 @@ internal object LudoPawsAudioAssetPlayer {
         val resourceId =
             rawResourceNames
                 .asSequence()
-                .map { rawResourceId(context, it) }
+                .map {
+                    rawResourceId(
+                        context = context,
+                        resourceName = it,
+                    )
+                }
                 .firstOrNull { it != 0 }
 
         if (resourceId != null) {
@@ -198,9 +228,10 @@ internal object LudoPawsAudioAssetPlayer {
     }
 
     /**
-     * Resolves canonical asset names and Windows duplicate names such as
-     * `lp_sfx_capture_01 (1).wav`. Asset discovery is cached by expected path,
-     * avoiding directory scans and regex matching on each movement tick.
+     * Resolves both the canonical asset name and Windows copy names such as
+     * `lp_sfx_capture_01 (1).wav` without renaming the author's audio files.
+     * Android assets may contain spaces and parentheses; only res/raw is
+     * restricted to Android resource-safe names.
      */
     @Synchronized
     private fun availableAssetPaths(
@@ -226,33 +257,37 @@ internal object LudoPawsAudioAssetPlayer {
         val directory = expectedPath.substringBeforeLast('/', "")
         val fileName = expectedPath.substringAfterLast('/')
         val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
-        if (extension.isBlank()) return emptyList()
-
-        val stem = fileName.removeSuffix(".$extension")
-        // Windows copy suffixes such as " (1)" are optional. Quote both
-        // authored stem and extension; only the suffix uses regex syntax.
-        val filenamePattern = Regex(
-            "^" + Regex.escape(stem) + "(?: \\(\\d+\\))?\\." + Regex.escape(extension) + "\$",
-            RegexOption.IGNORE_CASE,
-        )
-        return runCatching {
-            assets.list(directory)
-                .orEmpty()
-                .filter(filenamePattern::matches)
-                .sortedWith(compareBy<String>({ duplicateFilenameIndex(it) }, { it }))
-                .map { actualFileName ->
-                    if (directory.isBlank()) actualFileName else "$directory/$actualFileName"
-                }
-                .filter { actualPath ->
-                    authoredAssetAvailability.getOrPut(actualPath) {
-                        runCatching { assets.openFd(actualPath).use { } }.isSuccess
+        if (extension.isBlank()) {
+            emptyList()
+        } else {
+            val stem = fileName.removeSuffix(".$extension")
+            val filenamePattern =
+                Regex(
+                    "^${Regex.escape(stem)}(?: \\(\\d+\\))?\\.${Regex.escape(extension)}$",
+                    RegexOption.IGNORE_CASE,
+                )
+            runCatching {
+                assets.list(directory)
+                    .orEmpty()
+                    .filter(filenamePattern::matches)
+                    .sortedWith(
+                        compareBy<String>({ duplicateFilenameIndex(it) }, { it }),
+                    )
+                    .map { actualFileName ->
+                        if (directory.isBlank()) actualFileName else "$directory/$actualFileName"
                     }
-                }
-        }.getOrDefault(emptyList())
+                    .filter { actualPath ->
+                        authoredAssetAvailability.getOrPut(actualPath) {
+                            runCatching { assets.openFd(actualPath).use { } }.isSuccess
+                        }
+                    }
+            }.getOrDefault(emptyList())
+        }
+
     }
 
     private fun duplicateFilenameIndex(fileName: String): Int =
-        Regex(""" \((\d+)\)(?=\.[^.]+$)""")
+        Regex(""" \\((\\d+)\\)(?=\\.[^.]+$)""")
             .find(fileName)
             ?.groupValues
             ?.getOrNull(1)
@@ -262,7 +297,7 @@ internal object LudoPawsAudioAssetPlayer {
     private fun assetFamilyKey(assetPaths: List<String>): String =
         assetPaths.firstOrNull()
             .orEmpty()
-            .replace(Regex("""_\d{2}\.(wav|ogg)$"""), "_variant.$1")
+            .replace(Regex("_\\d{2}\\.(wav|ogg)$"), "_variant.$1")
 
     private val SUPPORTED_VOCAL_CHARACTERS =
         setOf("dog", "goat", "duck", "cat")
@@ -295,7 +330,6 @@ internal object LudoPawsAudioAssetPlayer {
             context.packageName,
         )
 
-    @Synchronized
     private fun <T> rotate(
         values: List<T>,
         startIndex: Int,
