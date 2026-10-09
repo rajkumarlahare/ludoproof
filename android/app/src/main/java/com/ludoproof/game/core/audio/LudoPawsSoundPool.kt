@@ -25,6 +25,7 @@ object LudoPawsSoundPool {
     private data class PendingPlay(
         val volume: Float,
         val rate: Float,
+        val priority: Int,
     )
 
     private var pool: SoundPool? = null
@@ -39,6 +40,7 @@ object LudoPawsSoundPool {
         @RawRes resourceId: Int,
         volume: Float = 1f,
         rate: Float = 1f,
+        priority: Int = DEFAULT_PRIORITY,
     ): Boolean =
         playSource(
             context = context,
@@ -52,6 +54,7 @@ object LudoPawsSoundPool {
             },
             volume = volume,
             rate = rate,
+            priority = priority,
         )
 
     @Synchronized
@@ -60,6 +63,7 @@ object LudoPawsSoundPool {
         assetPath: String,
         volume: Float = 1f,
         rate: Float = 1f,
+        priority: Int = DEFAULT_PRIORITY,
     ): Boolean =
         playSource(
             context = context,
@@ -76,6 +80,7 @@ object LudoPawsSoundPool {
             },
             volume = volume,
             rate = rate,
+            priority = priority,
         )
 
     /**
@@ -163,6 +168,7 @@ object LudoPawsSoundPool {
         loader: (SoundPool) -> Int,
         volume: Float,
         rate: Float,
+        priority: Int,
     ): Boolean {
         val soundPool =
             ensurePool()
@@ -185,6 +191,11 @@ object LudoPawsSoundPool {
                 MIN_RATE,
                 MAX_RATE,
             )
+        val safePriority =
+            priority.coerceIn(
+                MIN_PRIORITY,
+                MAX_PRIORITY,
+            )
 
         if (
             sample.ready ||
@@ -196,22 +207,37 @@ object LudoPawsSoundPool {
                 soundId = sample.soundId,
                 volume = safeVolume,
                 rate = safeRate,
+                priority = safePriority,
             )
         } else {
-            pendingByKey
-                .getOrPut(key) {
+            val pending =
+                pendingByKey.getOrPut(key) {
                     mutableListOf()
                 }
-                .apply {
-                    if (size < MAX_PENDING_PER_SAMPLE) {
-                        add(
-                            PendingPlay(
-                                volume = safeVolume,
-                                rate = safeRate,
-                            ),
-                        )
-                    }
+            val request =
+                PendingPlay(
+                    volume = safeVolume,
+                    rate = safeRate,
+                    priority = safePriority,
+                )
+
+            // Don't replay a backlog of tiny footsteps after an asynchronous
+            // sample load. Critical events may displace lower-priority pending
+            // feedback when a particular sample has already reached its bound.
+            if (safePriority <= LOW_PRIORITY_COALESCE_THRESHOLD) {
+                if (pending.isEmpty()) pending += request
+            } else if (pending.size < MAX_PENDING_PER_SAMPLE) {
+                pending += request
+            } else {
+                val lowestIndex =
+                    pending.indices.minByOrNull { pending[it].priority }
+                if (
+                    lowestIndex != null &&
+                    pending[lowestIndex].priority < safePriority
+                ) {
+                    pending[lowestIndex] = request
                 }
+            }
         }
         return true
     }
@@ -311,14 +337,17 @@ object LudoPawsSoundPool {
             pendingByKey
                 .remove(sourceKey)
                 .orEmpty()
-        pending.forEach { play ->
-            playNow(
-                soundPool = soundPool,
-                soundId = sample.soundId,
-                volume = play.volume,
-                rate = play.rate,
-            )
-        }
+        pending
+            .sortedByDescending { it.priority }
+            .forEach { play ->
+                playNow(
+                    soundPool = soundPool,
+                    soundId = sample.soundId,
+                    volume = play.volume,
+                    rate = play.rate,
+                    priority = play.priority,
+                )
+            }
     }
 
     private fun playNow(
@@ -326,13 +355,14 @@ object LudoPawsSoundPool {
         soundId: Int,
         volume: Float,
         rate: Float,
+        priority: Int,
     ) {
         runCatching {
             soundPool.play(
                 soundId,
                 volume,
                 volume,
-                1,
+                priority,
                 0,
                 rate,
             )
@@ -341,6 +371,10 @@ object LudoPawsSoundPool {
 
     private const val MAX_STREAMS = 8
     private const val MAX_PENDING_PER_SAMPLE = 3
+    private const val LOW_PRIORITY_COALESCE_THRESHOLD = 2
+    private const val DEFAULT_PRIORITY = 1
+    private const val MIN_PRIORITY = 0
+    private const val MAX_PRIORITY = 10
     private const val MIN_RATE = .65f
     private const val MAX_RATE = 1.45f
 }

@@ -14,7 +14,7 @@ Ludo Paws now treats audio as three independent user-facing lanes:
 
 ## Low-latency short audio
 
-`LudoPawsSoundPool` owns a single bounded `SoundPool` with game audio attributes. Samples load lazily; the first requested play is queued until Android reports that the sample is ready. The pending list and maximum stream count are bounded.
+`LudoPawsSoundPool` owns a single bounded `SoundPool` with game audio attributes. Samples load lazily; the first requested play is queued until Android reports that the sample is ready. The pending list and maximum stream count are bounded. Playback priorities protect capture, home, six, third-six and end-of-match cues above UI clicks and movement. Low-priority movement requests are coalesced while a sample loads, avoiding bursts of delayed footfalls when rendering resumes.
 
 `GameSoundFeedback` no longer creates a `ToneGenerator` for every click or move. It uses reusable raw clips for click, move, roll, capture, safe, home, victory and defeat cues. Reaction batches emit at most one gameplay SFX based on the highest-priority reaction.
 
@@ -37,6 +37,12 @@ Animal playback calls `GameMusicController.duckForVoice(...)`. Music volume temp
 - `reducedMotionEnabled = false`
 
 The Settings dialog exposes Music, Game Sounds, Animal Voices, Haptics and Reduced Motion separately. The expanded panel is placed in a `ScrollView` so small phones can reach every control. Reduced Motion is persisted in Phase 9 and becomes an animation-policy input in Phase 10.
+
+## Movement / capture synchronization
+
+Jump take-off and normal cell landing are different sounds: the jump family is scheduled at visible hop take-off; footfall is scheduled at the cell-arrival tick. Character-specific step folders can override the shared step family without touching movement rules. If rendering resumes after a sound's timing window, missed hop / landing ticks are skipped instead of playing back as a burst.
+
+Capture vocals are scheduled against the attacking pawn's final contact time, derived from the same game-speed and visual-step pacing as the rendered animation. At contact the impact SFX plays; the attacker vocal follows by about 80 ms and the captured-character reaction by about 155 ms. These delays do not change game state or delay authoritative move commitment.
 
 ## Haptics
 

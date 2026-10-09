@@ -1,13 +1,10 @@
-# Pawn jump
+# Pawn jump / hop take-off SFX
 
-Put the authored pawn jump SFX in this folder.
+Put the authored take-off / hop sound in this folder.
 
-Primary file:
-`lp_sfx_jump_01.wav`
+Primary file: lp_sfx_jump_01.wav
+Optional variants: lp_sfx_jump_02.wav, lp_sfx_jump_03.wav
 
-Optional variants:
-`lp_sfx_jump_02.wav`
-`lp_sfx_jump_03.wav`
+This cue is played at the visible hop take-off. It is separate from the soft cell-landing sound under audio/sfx/gameplay/movement/step/. Do not use the jump sound as every ordinary footfall.
 
-The game will try the numbered authored assets in order and fall back to the
-existing movement sound when no authored jump asset is present.
+Preferred export: WAV PCM 16-bit mono, 44.1 or 48 kHz, roughly 90–160 ms, clean transient, controlled tail, no clipping. Keep the file dry enough to overlap with short movement animations without clutter.

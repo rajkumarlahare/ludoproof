@@ -30,6 +30,7 @@ internal object LudoPawsProceduralAudio {
         MOVE_PAW,
         MOVE_HOOF,
         MOVE_WEB,
+        JUMP,
         SIX_SPARK,
         YARD_EXIT,
         CAPTURE_IMPACT,
@@ -277,6 +278,8 @@ internal object LudoPawsProceduralAudio {
                 synth(82, rate, 520.0, 270.0, .18, .11)
             Sfx.MOVE_WEB ->
                 synth(86, rate, 310.0, 165.0, .10, .32)
+            Sfx.JUMP ->
+                synth(105, rate, 240.0, 650.0, .18, .16, tremoloHz = 9.0)
             Sfx.SIX_SPARK ->
                 synth(230, rate, 720.0, 1_180.0, .28, .015, doublePulse = true)
             Sfx.YARD_EXIT ->

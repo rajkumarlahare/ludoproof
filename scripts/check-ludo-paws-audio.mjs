@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 
 const requiredSources = [
   'android/app/src/main/java/com/ludoproof/game/core/audio/LudoPawsAudioCatalog.kt',
@@ -13,6 +14,9 @@ const requiredSources = [
   'android/app/src/main/java/com/ludoproof/game/feature/characters/domain/audio/LudoPawsReactionAudioProfile.kt',
   'android/app/src/main/java/com/ludoproof/game/feature/settings/presentation/SettingsDialogUi.kt',
   'android/app/src/main/AndroidManifest.xml',
+  'android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsMovementSoundPolicy.kt',
+  'android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPaws3DSceneView.kt',
+  'android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsGameplayPacingPolicy.kt',
 ];
 
 const reactionFeedbackOwners = [
@@ -48,8 +52,22 @@ const profile = fs.readFileSync(requiredSources[9], 'utf8');
 const settingsUi = fs.readFileSync(requiredSources[10], 'utf8');
 const manifest = fs.readFileSync(requiredSources[11], 'utf8');
 const ledgerSource = fs.readFileSync(feedbackLedger, 'utf8');
+const movementPolicy = fs.readFileSync(requiredSources[12], 'utf8');
+const movementScene = fs.readFileSync(requiredSources[13], 'utf8');
+const pacingPolicy = fs.readFileSync(requiredSources[14], 'utf8');
 
-for (const marker of ['MOVE_JUMP', 'audio/sfx/gameplay/movement/jump/lp_sfx_jump_01.wav']) {
+for (const marker of [
+  'MOVE_JUMP',
+  'audio/sfx/gameplay/movement/jump/lp_sfx_jump_01.wav',
+  'MOVE_STEP',
+  'audio/sfx/gameplay/movement/step/lp_sfx_step_01.wav',
+  'MOVE_STEP_DOG',
+  'MOVE_STEP_GOAT',
+  'MOVE_STEP_DUCK',
+  'MOVE_STEP_CAT',
+  'audio/sfx/gameplay/six/lp_sfx_six_01.wav',
+  'SIX',
+]) {
   if (!audioCatalog.includes(marker)) throw new Error(`Audio catalog is missing ${marker}`);
 }
 for (const marker of ['SoundPool', 'USAGE_GAME', 'CONTENT_TYPE_SONIFICATION', 'pendingByKey']) {
@@ -57,6 +75,9 @@ for (const marker of ['SoundPool', 'USAGE_GAME', 'CONTENT_TYPE_SONIFICATION', 'p
 }
 for (const marker of [
   'lp_sfx_dice_roll',
+  'fun moveStep(',
+  'fun jump(',
+  'PRIORITY_CRITICAL',
   'lp_sfx_move_paw',
   'lp_sfx_move_hoof',
   'lp_sfx_move_web',
@@ -107,8 +128,55 @@ for (const marker of [
   if (!voice.includes(marker)) throw new Error(`Animal vocal renderer is missing ${marker}`);
 }
 
-for (const marker of ['getIdentifier', 'LudoPawsSoundPool', 'playVocal', 'playSfx']) {
+for (const marker of [
+  'getIdentifier',
+  'LudoPawsSoundPool',
+  'playVocal',
+  'playSfx',
+  'playAuthoredSfx',
+  'availableAssetPaths',
+  'audio/sfx/voices/',
+  'nextSfxVariantByFamily',
+]) {
   if (!resolver.includes(marker)) throw new Error(`Audio resource resolver is missing ${marker}`);
+}
+
+const movementStepStart = sfx.indexOf('fun moveStep(');
+const jumpStart = sfx.indexOf('    /** Plays at hop take-off', movementStepStart);
+if (movementStepStart < 0 || jumpStart < 0) {
+  throw new Error('Movement SFX must define distinct step and jump entry points.');
+}
+if (sfx.slice(movementStepStart, jumpStart).includes('MOVE_JUMP')) {
+  throw new Error('Normal cell landing must never resolve the jump asset family.');
+}
+
+for (const marker of [
+  'movementAudioNextHop',
+  'GameSoundFeedback.jump(context)',
+  'GameSoundFeedback.moveStep(',
+  'MAX_HOP_AUDIO_LATENESS_MILLIS',
+  'MAX_LANDING_AUDIO_LATENESS_MILLIS',
+]) {
+  if (!movementScene.includes(marker)) {
+    throw new Error(`Movement audio clock is missing ${marker}`);
+  }
+}
+for (const marker of [
+  'captureContactDelayMillis',
+  'forwardAnimationDurationMillis',
+]) {
+  if (!pacingPolicy.includes(marker)) {
+    throw new Error(`Movement/capture pacing is missing ${marker}`);
+  }
+}
+const captureBoardSource = fs.readFileSync(reactiveBoard, 'utf8');
+for (const marker of [
+  'captureContactDelaysByEvent',
+  'captureContactDelayMillis = captureContactDelayFor(reactions)',
+]) {
+  if (!captureBoardSource.includes(marker)) {
+    throw new Error(`Capture voice timing is missing ${marker}`);
+  }
 }
 for (const marker of ['AudioTrack', 'ENCODING_PCM_16BIT', 'DOG_YIP', 'GOAT_BLEAT', 'DUCK_QUACK', 'CAT_CHIRP']) {
   if (!procedural.includes(marker)) throw new Error(`Procedural fallback is missing ${marker}`);
@@ -167,8 +235,50 @@ for (const file of [requiredSources[1], requiredSources[2], requiredSources[5], 
 
 const authoredAudioReadme = 'audio/README.md';
 const jumpAudioReadme = 'audio/sfx/gameplay/movement/jump/README.md';
-for (const file of [authoredAudioReadme, jumpAudioReadme]) {
-  if (!fs.existsSync(file)) throw new Error(`Missing authored audio structure file: ${file}`);
+const stepAudioReadme = 'audio/sfx/gameplay/movement/step/README.md';
+const authoredAudioSlots = [
+  authoredAudioReadme,
+  jumpAudioReadme,
+  stepAudioReadme,
+  'audio/sfx/gameplay/movement/step/dog/.gitkeep',
+  'audio/sfx/gameplay/movement/step/goat/.gitkeep',
+  'audio/sfx/gameplay/movement/step/duck/.gitkeep',
+  'audio/sfx/gameplay/movement/step/cat/.gitkeep',
+  'audio/sfx/gameplay/six/.gitkeep',
+];
+for (const file of authoredAudioSlots) {
+  if (!fs.existsSync(file)) throw new Error(`Missing authored audio folder/guide slot: ${file}`);
 }
 
-console.log('Ludo Paws non-verbal replaceable audio gate passed.');
+// Validate real authored audio on every CI run. .gitkeep and documentation are
+// ignored; bogus zero-byte WAVs and mislabeled OGGs should fail before packaging.
+function listAudioFiles(directory) {
+  if (!fs.existsSync(directory)) return [];
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return listAudioFiles(entryPath);
+    return /\.(wav|ogg)$/i.test(entry.name) ? [entryPath] : [];
+  });
+}
+
+const authoredAudioFiles = listAudioFiles('audio/sfx');
+for (const file of authoredAudioFiles) {
+  const bytes = fs.readFileSync(file);
+  const lower = file.toLowerCase();
+  if (lower.endsWith('.wav')) {
+    if (
+      bytes.length < 44 ||
+      bytes.toString('ascii', 0, 4) !== 'RIFF' ||
+      bytes.toString('ascii', 8, 12) !== 'WAVE'
+    ) {
+      throw new Error(`Invalid or truncated RIFF/WAVE asset: ${file}`);
+    }
+  } else if (
+    bytes.length < 4 ||
+    bytes.toString('ascii', 0, 4) !== 'OggS'
+  ) {
+    throw new Error(`Invalid or truncated OGG asset: ${file}`);
+  }
+}
+
+console.log(`Ludo Paws non-verbal replaceable audio gate passed; validated ${authoredAudioFiles.length} authored audio file(s).`);

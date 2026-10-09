@@ -8,9 +8,11 @@ import android.util.AttributeSet
 import android.view.View
 import android.widget.FrameLayout
 import com.ludoproof.game.feature.characters.data.audio.LudoPawsVoicePlayer
+import com.ludoproof.game.feature.characters.domain.reaction.GameMomentType
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsIdleReactionPolicy
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReactionEngine
+import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -34,6 +36,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
     private var previousSnapshot: MatchSnapshot? = null
     private var currentSnapshot: MatchSnapshot? = null
     private var currentCharacterIdsBySeat: List<String> = emptyList()
+    private val captureContactDelaysByEvent = LinkedHashMap<String, Long>()
     private var meaningfulStateKey: String? = null
     private var lastMeaningfulChangeAtMillis: Long = monotonicMillis()
     private var lastIdleReactionKey: String? = null
@@ -150,6 +153,19 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         currentCharacterIdsBySeat = characterIdsBySeat.take(4)
 
         val previous = previousSnapshot
+        if (previous?.matchId != state?.matchId) {
+            captureContactDelaysByEvent.clear()
+        }
+        val derivedReactions =
+            LudoPawsReactionEngine.derive(
+                previous = previous,
+                current = state,
+            )
+        recordCaptureContactDelays(
+            previous = previous,
+            current = state,
+            derivedReactions = derivedReactions,
+        )
         val reactions =
             LudoPawsReactionEngine.detect(
                 previous = previous,
@@ -182,6 +198,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         playReactions(
             reactions = reactions,
             characterIdsBySeat = characterIdsBySeat,
+            captureContactDelayMillis = captureContactDelayFor(reactions),
         )
         scheduleIdleReaction(
             state = state,
@@ -200,6 +217,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         previousSnapshot = null
         currentSnapshot = null
         currentCharacterIdsBySeat = emptyList()
+        captureContactDelaysByEvent.clear()
         meaningfulStateKey = null
         lastIdleReactionKey = null
         super.onDetachedFromWindow()
@@ -357,6 +375,7 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
     private fun playReactions(
         reactions: List<LudoPawsReaction>,
         characterIdsBySeat: List<String>,
+        captureContactDelayMillis: Long = 0L,
     ) {
         if (reactions.isEmpty()) return
 
@@ -369,7 +388,54 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         voicePlayer.playHighestPriority(
             reactions = reactions,
             characterIdsBySeat = characterIdsBySeat,
+            captureContactDelayMillis = captureContactDelayMillis,
         )
+    }
+
+    private fun recordCaptureContactDelays(
+        previous: MatchSnapshot?,
+        current: MatchSnapshot?,
+        derivedReactions: List<LudoPawsReaction>,
+    ) {
+        val capture =
+            derivedReactions.firstOrNull {
+                it.momentType == GameMomentType.CAPTURE_MADE
+            } ?: return
+        val motion =
+            LudoPawsPawnAnimationPolicy
+                .plans(
+                    previous = previous,
+                    current = current,
+                )
+                .firstOrNull {
+                    it.kind == LudoPawsPawnMotionKind.FORWARD &&
+                        it.playerId == capture.playerId &&
+                        it.tokenIndex == capture.tokenIndex
+                } ?: return
+        val speed = GameSettingsStore(context).snapshot().gameSpeed
+        val key = "${capture.matchId}:${capture.eventIndex}"
+        captureContactDelaysByEvent[key] =
+            LudoPawsGameplayPacingPolicy.captureContactDelayMillis(
+                speed = speed,
+                visualSteps = motion.visualSteps,
+            )
+        while (captureContactDelaysByEvent.size > MAX_CAPTURE_DELAY_EVENTS) {
+            val oldestKey = captureContactDelaysByEvent.keys.firstOrNull() ?: break
+            captureContactDelaysByEvent.remove(oldestKey)
+        }
+    }
+
+    private fun captureContactDelayFor(
+        reactions: List<LudoPawsReaction>,
+    ): Long {
+        val capture =
+            reactions.firstOrNull {
+                it.momentType == GameMomentType.CAPTURE_MADE ||
+                    it.momentType == GameMomentType.TOKEN_CAPTURED
+            } ?: return 0L
+        return captureContactDelaysByEvent[
+            "${capture.matchId}:${capture.eventIndex}"
+        ] ?: 0L
     }
 
     private fun monotonicMillis(): Long =
@@ -383,5 +449,6 @@ class LudoPawsReactiveBoardView @JvmOverloads constructor(
         // presentation space only; the approved square board remains unchanged.
         const val PAWN_TOP_OVERFLOW_FRACTION = 0.12f
         const val PAWN_BRIGHTNESS_SCALE = 1.10f
+        const val MAX_CAPTURE_DELAY_EVENTS = 24
     }
 }

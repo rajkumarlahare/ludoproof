@@ -57,6 +57,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
 ) : TextureView(context, attrs), TextureView.SurfaceTextureListener {
     private val settingsStore = GameSettingsStore(context)
     private var movementAudioMotionKey: String? = null
+    private var movementAudioNextHop: Int = 1
     private var movementAudioNextStep: Int = 1
     private val emittedCaptureAudioKeys = LinkedHashSet<String>()
 
@@ -113,6 +114,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         if (newForward != null) {
             movementAudioMotionKey =
                 "${state?.matchId}:${newForward.playerId}:${newForward.tokenIndex}:${newForward.fromPosition}:${newForward.toPosition}"
+            movementAudioNextHop = 1
             movementAudioNextStep = 1
         }
 
@@ -141,14 +143,11 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             }
         val forwardDurationMillis =
             if (newForward != null) {
-                val travelDuration =
-                    max(
-                        settings.gameSpeed.moveStepMs,
-                        newForward.visualSteps.toLong() * settings.gameSpeed.moveStepMs,
+                LudoPawsGameplayPacingPolicy
+                    .forwardAnimationDurationMillis(
+                        speed = settings.gameSpeed,
+                        visualSteps = newForward.visualSteps,
                     )
-                travelDuration +
-                    LudoPaws3DRenderCadencePolicy
-                        .FORWARD_LANDING_SETTLE_MILLIS
             } else if (forward != null) {
                 previousState.forwardDurationMillis
             } else {
@@ -507,6 +506,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
                 "${state.snapshot?.matchId}:${forward.playerId}:${forward.tokenIndex}:${forward.fromPosition}:${forward.toPosition}"
             if (motionKey != movementAudioMotionKey) {
                 movementAudioMotionKey = motionKey
+                movementAudioNextHop = 1
                 movementAudioNextStep = 1
             }
 
@@ -523,51 +523,95 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
             val elapsed =
                 (nowMillis - state.forwardStartedAtMillis)
                     .coerceAtLeast(0L)
-            val playerColor =
+            val movingPlayer =
                 state.snapshot
                     ?.players
                     ?.firstOrNull {
                         it.playerId == forward.playerId
                     }
-                    ?.color
+            val playerColor = movingPlayer?.color
+            val characterId =
+                movingPlayer
+                    ?.seat
+                    ?.let { state.characterIdsBySeat.getOrNull(it) }
 
-            while (
-                movementAudioNextStep <= forward.visualSteps &&
-                elapsed >= movementAudioNextStep.toLong() * stepDuration
-            ) {
-                val step =
-                    movementAudioNextStep
-                val cues =
-                    LudoPawsMovementSoundPolicy.cuesForVisualStep(
-                        color = playerColor,
-                        fromPosition = forward.fromPosition,
-                        step = step,
-                    )
-                cues.forEach { cue ->
-                    when (cue) {
-                        LudoPawsMovementSoundCue.STEP ->
-                            GameSoundFeedback.moveStep(
-                                context = context,
-                            )
-                        LudoPawsMovementSoundCue.YARD_EXIT ->
-                            GameSoundFeedback.yardExit(
-                                context = context,
-                            )
-                        LudoPawsMovementSoundCue.SAFE_RELIEF ->
-                            GameSoundFeedback.safe(
-                                context = context,
-                            )
-                        LudoPawsMovementSoundCue.HOME_LANE ->
-                            GameSoundFeedback.homeLane(
-                                context = context,
-                            )
-                        LudoPawsMovementSoundCue.HOME ->
-                            GameSoundFeedback.home(
-                                context = context,
-                            )
+            // A hop cue belongs at the beginning of the visible hop. The first
+            // yard launch already has a dedicated take-off / yard-exit sound.
+            val dueHop =
+                ((elapsed / stepDuration).toInt() + 1)
+                    .coerceIn(1, forward.visualSteps)
+            if (movementAudioNextHop <= dueHop) {
+                val currentHopWasDue =
+                    dueHop == movementAudioNextHop
+                val hopStartedAtMillis =
+                    (dueHop - 1L) * stepDuration
+                if (
+                    currentHopWasDue &&
+                    elapsed - hopStartedAtMillis <= MAX_HOP_AUDIO_LATENESS_MILLIS &&
+                    !(forward.fromPosition == -1 && dueHop == 1)
+                ) {
+                    GameSoundFeedback.jump(context)
+                }
+                // If rendering resumes late, skip missed take-offs instead of
+                // playing several hops in a burst.
+                movementAudioNextHop = dueHop + 1
+            }
+
+            val dueStep =
+                (elapsed / stepDuration)
+                    .toInt()
+                    .coerceIn(0, forward.visualSteps)
+            if (dueStep >= movementAudioNextStep) {
+                val firstPendingStep = movementAudioNextStep
+                for (step in firstPendingStep..dueStep) {
+                    val stepAgeMillis =
+                        (elapsed - step.toLong() * stepDuration)
+                            .coerceAtLeast(0L)
+                    val cues =
+                        LudoPawsMovementSoundPolicy.cuesForVisualStep(
+                            color = playerColor,
+                            fromPosition = forward.fromPosition,
+                            step = step,
+                        )
+                    cues.forEach { cue ->
+                        when (cue) {
+                            LudoPawsMovementSoundCue.STEP -> {
+                                if (
+                                    step == dueStep &&
+                                    stepAgeMillis <= MAX_LANDING_AUDIO_LATENESS_MILLIS
+                                ) {
+                                    GameSoundFeedback.moveStep(
+                                        context = context,
+                                        characterId = characterId,
+                                    )
+                                }
+                            }
+                            LudoPawsMovementSoundCue.YARD_EXIT -> {
+                                if (stepAgeMillis <= MAX_LANDING_AUDIO_LATENESS_MILLIS) {
+                                    GameSoundFeedback.yardExit(context)
+                                }
+                            }
+                            LudoPawsMovementSoundCue.SAFE_RELIEF -> {
+                                if (stepAgeMillis <= MAX_LANDING_AUDIO_LATENESS_MILLIS) {
+                                    GameSoundFeedback.safe(context)
+                                }
+                            }
+                            LudoPawsMovementSoundCue.HOME_LANE -> {
+                                if (stepAgeMillis <= MAX_LANDING_AUDIO_LATENESS_MILLIS) {
+                                    GameSoundFeedback.homeLane(context)
+                                }
+                            }
+                            LudoPawsMovementSoundCue.HOME -> {
+                                if (stepAgeMillis <= MAX_LANDING_AUDIO_LATENESS_MILLIS) {
+                                    GameSoundFeedback.home(context)
+                                }
+                            }
+                        }
                     }
                 }
-                movementAudioNextStep += 1
+                // Process all due steps so semantic landmarks aren't lost, but
+                // only play the most recent timely generic landing tick.
+                movementAudioNextStep = dueStep + 1
             }
 
             emitCaptureImpactSounds(state, nowMillis)
@@ -790,5 +834,7 @@ internal class LudoPaws3DSceneView @JvmOverloads constructor(
         const val TAG = "LudoPaws3D"
         const val RENDER_THREAD_JOIN_MILLIS = 250L
         const val MAX_CAPTURE_AUDIO_KEYS = 64
+        const val MAX_HOP_AUDIO_LATENESS_MILLIS = 70L
+        const val MAX_LANDING_AUDIO_LATENESS_MILLIS = 140L
     }
 }

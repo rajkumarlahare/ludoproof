@@ -1,87 +1,71 @@
 # Ludo Paws authored audio
 
-This folder is the **source-of-truth area for manually added production audio**.
-Do not put generated build output here.
+This folder is the source of truth for replaceable production audio. Drop real .wav or .ogg files into the matching folders below and commit them. Android Gradle mirrors these files into APK assets at build time; do not copy them manually into res/raw.
 
-## Current first asset
+Do not add fake, silent, or zero-byte WAVs. Empty folders use .gitkeep until an authored sound is ready.
 
-Place the first pawn-jump sound here:
+## Movement: keep jumps and footfalls separate
 
-`audio/sfx/gameplay/movement/jump/lp_sfx_jump_01.wav`
+### Jump / hop take-off
+Folder: audio/sfx/gameplay/movement/jump/
+- lp_sfx_jump_01.wav — already present; used at a real hop take-off.
+- lp_sfx_jump_02.wav
+- lp_sfx_jump_03.wav
 
-Optional future variants:
+### Cell landing / footfall
+Folder: audio/sfx/gameplay/movement/step/
+- lp_sfx_step_01.wav
+- lp_sfx_step_02.wav
+- lp_sfx_step_03.wav
 
-- `lp_sfx_jump_02.wav`
-- `lp_sfx_jump_03.wav`
+Optional character overrides:
+- audio/sfx/gameplay/movement/step/dog/lp_sfx_step_dog_01.wav
+- audio/sfx/gameplay/movement/step/goat/lp_sfx_step_goat_01.wav
+- audio/sfx/gameplay/movement/step/duck/lp_sfx_step_duck_01.wav
+- audio/sfx/gameplay/movement/step/cat/lp_sfx_step_cat_01.wav
 
-The app tries these authored jump assets first. When none exists, it keeps using the existing movement SFX/procedural fallback, so the game remains playable before the first audio file is pushed.
+For each character, _02.wav and _03.wav variants are supported. Character-specific footfalls are tried first, then the shared step family, then legacy raw/procedural fallbacks. A jump file is never used as an ordinary cell landing.
 
-## Authored SFX scaffold
+Sound direction: footfalls should be short and soft (roughly 40–75 ms); springy jump take-off should be distinct (roughly 90–160 ms). Avoid long tails that overlap between cells. These are mix/design targets, not strict file validators.
 
-The gameplay and UI folders are now present in Git so audio files can be dropped
-into the matching folder without creating new directories. Empty folders are
-kept with `.gitkeep`; do not replace these markers with fake or zero-byte WAVs.
+## Physical gameplay and UI effects
 
-For the gameplay SFX wired in the Android facade, use these first filenames:
+For each family, add the exact first filename shown. Optional _02.wav / _03.wav variants are supported and rotate when present.
 
-- `lp_sfx_dice_roll_01.wav`
-- `lp_sfx_yard_exit_01.wav`
-- `lp_sfx_capture_01.wav`
-- `lp_sfx_safe_relief_01.wav`
-- `lp_sfx_home_lane_01.wav`
-- `lp_sfx_home_01.wav`
-- `lp_sfx_fail_01.wav`
-- `lp_sfx_third_six_01.wav`
-- `lp_sfx_victory_01.wav`
-- `lp_sfx_defeat_01.wav`
-- `lp_sfx_ui_click_01.wav`
+| Folder | First filename | Use |
+| --- | --- | --- |
+| audio/sfx/ui/click/ | lp_sfx_ui_click_01.wav | UI click / tap |
+| audio/sfx/gameplay/dice/ | lp_sfx_dice_roll_01.wav | Dice rolling texture |
+| audio/sfx/gameplay/six/ | lp_sfx_six_01.wav | Six / bonus-turn sparkle |
+| audio/sfx/gameplay/yard_exit/ | lp_sfx_yard_exit_01.wav | Token launch from yard |
+| audio/sfx/gameplay/capture/ | lp_sfx_capture_01.wav | Capture contact impact |
+| audio/sfx/gameplay/safe/ | lp_sfx_safe_relief_01.wav | Safe-cell arrival accent |
+| audio/sfx/gameplay/home_lane/ | lp_sfx_home_lane_01.wav | First home-lane entry |
+| audio/sfx/gameplay/home/ | lp_sfx_home_01.wav | Home arrival |
+| audio/sfx/gameplay/fail/ | lp_sfx_fail_01.wav | Soft no-move / exact-home miss |
+| audio/sfx/gameplay/third_six/ | lp_sfx_third_six_01.wav | Third six forfeiture |
+| audio/sfx/gameplay/victory/ | lp_sfx_victory_01.wav | Match / team win |
+| audio/sfx/gameplay/defeat/ | lp_sfx_defeat_01.wav | Match / team loss |
 
-Optional `_02.wav` and `_03.wav` variants are supported. The first existing
-variant is selected at runtime; the existing raw/procedural sound remains the
-fallback until an authored asset is present.
+## Character animal voices
 
-## Planned structure
+Root-level authored character voices are supported under audio/sfx/voices/<character>/.
 
-```
-audio/
-└── sfx/
-    ├── ui/
-    │   └── click/
-    ├── gameplay/
-    │   ├── movement/
-    │   │   └── jump/
-    │   ├── dice/
-    │   ├── yard_exit/
-    │   ├── capture/
-    │   ├── safe/
-    │   ├── home_lane/
-    │   ├── home/
-    │   ├── fail/
-    │   ├── third_six/
-    │   ├── victory/
-    │   └── defeat/
-    └── voices/
-        ├── dog/
-        ├── goat/
-        ├── duck/
-        └── cat/
-```
+Use exact cue names and numbered variants, for example:
+- audio/sfx/voices/dog/lp_vocal_dog_capture_01.wav
+- audio/sfx/voices/cat/lp_vocal_cat_captured_01.ogg
+- audio/sfx/voices/duck/lp_vocal_duck_home_01.wav
+- audio/sfx/voices/goat/lp_vocal_goat_six_01.ogg
 
-Keep each behavior in its own folder. Use stable semantic filenames such as
-`lp_sfx_jump_01.wav`, never generic names such as `sound1.wav`.
+Supported character IDs: dog, goat, duck, cat. The reaction profile currently requests voice variants _01 and _02. Use short, non-verbal, original/licensed character takes. Normal movement and routine turn-start moments should remain vocally quiet; capture, home, third-six and final results may get a stronger reaction.
 
-## Jump audio format
+Existing Android res/raw voice names remain a compatibility fallback. If a matching root audio file exists, it is preferred.
 
-Preferred first upload:
+## Technical export targets
 
-- WAV
-- PCM 16-bit
-- mono
-- 44.1 kHz or 48 kHz
-- about 90–130 ms
-- no clipping
-- clean, short transient
-- no music or ambience
-
-Do not replace Kotlin code just to change the sound. Replace the file in this
-folder and rebuild the Android app.
+- WAV: PCM 16-bit, mono, 44.1 kHz or 48 kHz is the preferred source for physical effects.
+- OGG or WAV is accepted for animal voices.
+- Trim leading silence; use a clean transient and controlled tail.
+- No digital clipping or unnecessarily aggressive loudness normalization.
+- Keep physical SFX, animal vocals and background music as separate assets/lanes.
+- A filename in this guide is a slot, not a claim that the sound file already exists.
