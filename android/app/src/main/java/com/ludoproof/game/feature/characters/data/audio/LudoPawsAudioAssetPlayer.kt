@@ -225,22 +225,61 @@ internal object LudoPawsAudioAssetPlayer {
         )
     }
 
+    /**
+     * Resolves both the canonical asset name and Windows copy names such as
+     * `lp_sfx_capture_01 (1).wav` without renaming the author's audio files.
+     * Android assets may contain spaces and parentheses; only res/raw is
+     * restricted to Android resource-safe names.
+     */
     @Synchronized
     private fun availableAssetPaths(
         context: Context,
         assetPaths: List<String>,
-    ): List<String> =
-        assetPaths
+    ): List<String> {
+        val assets = context.applicationContext.assets
+        return assetPaths
             .distinct()
-            .filter { assetPath ->
-                authoredAssetAvailability.getOrPut(assetPath) {
+            .flatMap { expectedPath ->
+                val directory = expectedPath.substringBeforeLast('/', "")
+                val fileName = expectedPath.substringAfterLast('/')
+                val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
+                if (extension.isBlank()) {
+                    emptyList()
+                } else {
+                    val stem = fileName.removeSuffix(".$extension")
+                    val filenamePattern =
+                        Regex(
+                            "^${Regex.escape(stem)}(?: \\(\\d+\\))?\\.${Regex.escape(extension)}$",
+                            RegexOption.IGNORE_CASE,
+                        )
                     runCatching {
-                        context.applicationContext.assets
-                            .openFd(assetPath)
-                            .use { }
-                    }.isSuccess
+                        assets.list(directory)
+                            .orEmpty()
+                            .filter(filenamePattern::matches)
+                            .sortedWith(
+                                compareBy<String>({ duplicateFilenameIndex(it) }, { it }),
+                            )
+                            .map { actualFileName ->
+                                if (directory.isBlank()) actualFileName else "$directory/$actualFileName"
+                            }
+                            .filter { actualPath ->
+                                authoredAssetAvailability.getOrPut(actualPath) {
+                                    runCatching { assets.openFd(actualPath).use { } }.isSuccess
+                                }
+                            }
+                    }.getOrDefault(emptyList())
                 }
             }
+            .distinct()
+    }
+
+    private fun duplicateFilenameIndex(fileName: String): Int =
+        Regex(""" \\((\\d+)\\)(?=\\.[^.]+$)""")
+            .find(fileName)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.toIntOrNull()
+            ?: 0
 
     private fun assetFamilyKey(assetPaths: List<String>): String =
         assetPaths.firstOrNull()

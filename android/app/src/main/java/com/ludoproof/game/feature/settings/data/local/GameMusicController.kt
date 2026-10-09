@@ -183,11 +183,13 @@ object GameMusicController {
             return
         }
 
+        val authoredPlayer =
+            authoredBackgroundMusicPaths(context)
+                .firstNotNullOfOrNull { assetPath ->
+                    createAssetPlayer(context, assetPath)
+                }
         player =
-            MediaPlayer.create(
-                context,
-                R.raw.ludoproof_theme,
-            )
+            (authoredPlayer ?: MediaPlayer.create(context, R.raw.ludoproof_theme))
                 ?.apply {
                     isLooping = true
                     setVolume(
@@ -196,6 +198,73 @@ object GameMusicController {
                     )
                 }
     }
+
+    /**
+     * Reads authored BGM from APK assets so filenames can stay exactly as
+     * Windows saved them (for example, `ludoproof_theme (1).wav`). Android
+     * `res/raw` cannot contain spaces or parentheses in resource filenames.
+     */
+    private fun authoredBackgroundMusicPaths(context: Context): List<String> {
+        val appContext = context.applicationContext
+        val directory = "audio/music"
+        val filenamePattern =
+            Regex(
+                "^ludoproof_theme(?: \\(\\d+\\))?\\.(wav|ogg)$",
+                RegexOption.IGNORE_CASE,
+            )
+        return runCatching {
+            appContext.assets
+                .list(directory)
+                .orEmpty()
+                .filter(filenamePattern::matches)
+                .sortedWith(
+                    compareBy<String>({ duplicateMusicFilenameIndex(it) }, { it }),
+                )
+                .map { "$directory/$it" }
+                .filter { assetPath ->
+                    runCatching { appContext.assets.openFd(assetPath).use { } }.isSuccess
+                }
+        }.getOrDefault(emptyList())
+    }
+
+    private fun createAssetPlayer(
+        context: Context,
+        assetPath: String,
+    ): MediaPlayer? {
+        var candidate: MediaPlayer? = null
+        return runCatching {
+            context.applicationContext.assets.openFd(assetPath).use { descriptor ->
+                MediaPlayer().also { mediaPlayer ->
+                    candidate = mediaPlayer
+                    mediaPlayer.setAudioAttributes(
+                        AudioAttributes
+                            .Builder()
+                            .setUsage(AudioAttributes.USAGE_GAME)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build(),
+                    )
+                    mediaPlayer.setDataSource(
+                        descriptor.fileDescriptor,
+                        descriptor.startOffset,
+                        descriptor.length,
+                    )
+                    mediaPlayer.isLooping = true
+                    mediaPlayer.prepare()
+                }
+            }
+        }.getOrElse {
+            runCatching { candidate?.release() }
+            null
+        }
+    }
+
+    private fun duplicateMusicFilenameIndex(fileName: String): Int =
+        Regex(""" \\((\\d+)\\)(?=\\.[^.]+$)""")
+            .find(fileName)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.toIntOrNull()
+            ?: 0
 
     private fun requestFocus(
         context: Context,

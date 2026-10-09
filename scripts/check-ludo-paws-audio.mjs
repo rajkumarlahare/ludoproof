@@ -106,7 +106,7 @@ if (sfx.includes('ToneGenerator')) {
   throw new Error('Production SFX must not use one-ToneGenerator-per-event feedback.');
 }
 
-for (const marker of ['duckForVoice', 'AudioFocusRequest', 'AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK']) {
+for (const marker of ['duckForVoice', 'AudioFocusRequest', 'AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK', 'audio/music', 'ludoproof_theme', 'createAssetPlayer', 'duplicateMusicFilenameIndex']) {
   if (!music.includes(marker)) throw new Error(`Music/audio-focus controller is missing ${marker}`);
 }
 for (const marker of ['animalVoicesEnabled', 'hapticsEnabled']) {
@@ -149,6 +149,9 @@ for (const marker of [
   'availableAssetPaths',
   'audio/sfx/voices/',
   'nextSfxVariantByFamily',
+  'duplicateFilenameIndex',
+  'filenamePattern',
+  'assets.list(directory)',
 ]) {
   if (!resolver.includes(marker)) throw new Error(`Audio resource resolver is missing ${marker}`);
 }
@@ -289,7 +292,10 @@ function listAudioFiles(directory) {
   });
 }
 
-const authoredAudioFiles = listAudioFiles('audio/sfx');
+const authoredAudioFiles = [
+  ...listAudioFiles('audio/sfx'),
+  ...listAudioFiles('audio/music'),
+];
 for (const file of authoredAudioFiles) {
   const bytes = fs.readFileSync(file);
   const lower = file.toLowerCase();

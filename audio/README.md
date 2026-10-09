@@ -4,6 +4,18 @@ This folder is the source of truth for replaceable production audio. Drop real .
 
 Do not add fake, silent, or zero-byte WAVs. Empty folders use .gitkeep until an authored sound is ready.
 
+## Background music
+
+Folder: `audio/music/`.
+
+Put background-music files such as `ludoproof_theme (1).wav`, `ludoproof_theme (2).wav`, and so on directly in this folder. **Keep the names exactly as they are**—the Android asset loader recognizes the original base name with a Windows duplicate suffix (` (number)`) and uses the first matching file in numeric order as the looping BGM. It falls back to the legacy `res/raw/ludoproof_theme` resource if no authored asset is present.
+
+Important: do not leave filenames containing spaces or parentheses in `android/app/src/main/res/raw/`; Android resource filenames must be resource-safe. Move those BGM files into `audio/music/` without renaming them. Gradle packages this folder as APK assets automatically.
+
+## Windows duplicate suffixes are supported
+
+For SFX and animal voices, files such as `lp_sfx_capture_01 (1).wav` and `lp_vocal_dog_capture_01 (2).wav` are discovered automatically alongside their canonical filename slots. Keep the added suffixes; do not rename audio files just to remove `(1)`, `(2)`, etc. Put them in the matching folder under `audio/sfx/`.
+
 ## Movement: keep jumps and footfalls separate
 
 ### Jump / hop take-off
