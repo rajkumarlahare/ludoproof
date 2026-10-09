@@ -82,6 +82,25 @@ internal object LudoPawsFxBoardGeometry {
     }
 
     /**
+     * Interpolates a moving pawn between its authoritative board-plane cell centers.
+     *
+     * Keep this interpolation on the path itself. The approved board stretches three logical
+     * road rows/columns into five physical cell widths, so adding a board-center-directed X/Y
+     * jump arc can cross a neighboring road boundary (most visibly on the top/bottom roads).
+     * Jump height belongs to the character's 3D pose/lift; it must not bend the board-plane path.
+     */
+    fun interpolateMovementCenter(
+        from: Pair<Float, Float>,
+        to: Pair<Float, Float>,
+        progress: Float,
+    ): Pair<Float, Float> {
+        val t = progress.coerceIn(0f, 1f)
+        val eased = t * t * (3f - 2f * t)
+        return (from.first + (to.first - from.first) * eased) to
+            (from.second + (to.second - from.second) * eased)
+    }
+
+    /**
      * Center of the fixed physical yard. Character-reaction portraits use this instead of the
      * old logical 3/12-cell anchors so they stay centered after the road-stretch redesign.
      */

@@ -128,6 +128,97 @@ class LudoPawsFxBoardGeometryTest {
         )
     }
 
+    @Test
+    fun topRoadMovementRemainsCenteredInAllThreeWideCells() {
+        val cell = 60f
+        val centers =
+            (10..12).map { position ->
+                requireNotNull(
+                    LudoPawsFxBoardGeometry.tokenCenter(
+                        color = "RED",
+                        tokenIndex = 0,
+                        position = position,
+                        cell = cell,
+                    ),
+                )
+            }
+
+        // These top-row cells are 50 px tall on the locked stretched board.
+        // The pawn center must stay on the row center at every animation fraction.
+        centers.forEach { center ->
+            assertEquals(25f, center.second, EPSILON)
+        }
+        for (segment in 0 until centers.lastIndex) {
+            for (progress in listOf(0f, 0.25f, 0.5f, 0.75f, 1f)) {
+                val point =
+                    LudoPawsFxBoardGeometry.interpolateMovementCenter(
+                        from = centers[segment],
+                        to = centers[segment + 1],
+                        progress = progress,
+                    )
+                assertEquals(25f, point.second, EPSILON)
+            }
+        }
+    }
+
+    @Test
+    fun straightTrackInterpolationNeverDriftsOffItsRowOrColumnForAnyColor() {
+        val cell = 60f
+        val colors = listOf("RED", "GREEN", "YELLOW", "BLUE")
+        val samples = listOf(0f, 0.25f, 0.5f, 0.75f, 1f)
+
+        colors.forEach { color ->
+            for (position in 0 until LudoPathEncoding.LAST_TRACK_POSITION) {
+                val from =
+                    requireNotNull(
+                        LudoPawsFxBoardGeometry.tokenCenter(
+                            color = color,
+                            tokenIndex = 0,
+                            position = position,
+                            cell = cell,
+                        ),
+                    )
+                val to =
+                    requireNotNull(
+                        LudoPawsFxBoardGeometry.tokenCenter(
+                            color = color,
+                            tokenIndex = 0,
+                            position = position + 1,
+                            cell = cell,
+                        ),
+                    )
+                val staysOnSameRow = kotlin.math.abs(from.second - to.second) < EPSILON
+                val staysOnSameColumn = kotlin.math.abs(from.first - to.first) < EPSILON
+                if (!staysOnSameRow && !staysOnSameColumn) continue
+
+                samples.forEach { progress ->
+                    val point =
+                        LudoPawsFxBoardGeometry.interpolateMovementCenter(
+                            from = from,
+                            to = to,
+                            progress = progress,
+                        )
+                    if (staysOnSameRow) {
+                        assertEquals(
+                            "row drift for $color at track position $position, progress $progress",
+                            from.second,
+                            point.second,
+                            EPSILON,
+                        )
+                    }
+                    if (staysOnSameColumn) {
+                        assertEquals(
+                            "column drift for $color at track position $position, progress $progress",
+                            from.first,
+                            point.first,
+                            EPSILON,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     private fun finishCenter(
         color: String,
         cell: Float,

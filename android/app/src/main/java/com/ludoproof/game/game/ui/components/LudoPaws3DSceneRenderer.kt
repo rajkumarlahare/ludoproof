@@ -25,7 +25,6 @@ import kotlin.math.min
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 /**
  * Shared production renderer for all code-generated animal pawns.
@@ -808,24 +807,14 @@ internal class LudoPaws3DSceneRenderer {
                 cell = cell,
             ) ?: return from
 
-        val eased = fraction * fraction * (3f - 2f * fraction)
-        val linearX = from.first + (to.first - from.first) * eased
-        val linearY = from.second + (to.second - from.second) * eased
-
-        val hop =
-            sin(PI * fraction.toDouble())
-                .toFloat()
-                .coerceAtLeast(0f)
-        val boardCenter = cell * 7.5f
-        val dx = boardCenter - linearX
-        val dy = boardCenter - linearY
-        val distance = sqrt(dx * dx + dy * dy)
-        if (distance <= 0.001f) return linearX to linearY
-        // Increase the vertical hop arc so the pawn visibly clears the board
-        // instead of reading as a mostly-flat glide between adjacent cells.
-        val arc = cell * 0.48f * hop
-        return (linearX + dx / distance * arc) to
-            (linearY + dy / distance * arc)
+        // Keep the pawn's board-plane route on the cell-center path. A screen-space arc
+        // toward the board center changes X/Y and can push top/bottom-road pawns into the
+        // neighboring row. The existing 3D hop, scale, and pose animations remain untouched.
+        return LudoPawsFxBoardGeometry.interpolateMovementCenter(
+            from = from,
+            to = to,
+            progress = fraction,
+        )
     }
 
     private fun facingYawDegrees(
