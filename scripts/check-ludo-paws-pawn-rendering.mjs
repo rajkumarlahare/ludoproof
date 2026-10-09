@@ -76,6 +76,8 @@ for (const [token, message] of [
 for (const token of [
   "setClassicTokenDrawingEnabled(false)",
   "setLudoPawsYardFootprintsEnabled(true)",
+  "boardSurface.setLudoPawsYardFootprintsEnabled(!visible)",
+  "baseBoard.setLudoPawsYardFootprintsEnabled(visible)",
   "boardSurface.bind(",
   "state = state",
   "characterIdsBySeat = characterIdsBySeat",
