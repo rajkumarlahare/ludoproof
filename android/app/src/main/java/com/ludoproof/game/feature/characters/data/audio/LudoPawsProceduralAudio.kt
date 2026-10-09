@@ -27,6 +27,7 @@ internal object LudoPawsProceduralAudio {
     enum class Sfx {
         CLICK,
         DICE_ROLL,
+        DICE_SETTLE,
         MOVE_PAW,
         MOVE_HOOF,
         MOVE_WEB,
@@ -38,6 +39,7 @@ internal object LudoPawsProceduralAudio {
         HOME_LANE,
         HOME_SPARKLE,
         FAIL_SOFT,
+        EXACT_HOME_MISS,
         THIRD_SIX,
         VICTORY,
         DEFEAT,
@@ -272,6 +274,8 @@ internal object LudoPawsProceduralAudio {
                 synth(70, rate, 1_050.0, 620.0, .08, .03)
             Sfx.DICE_ROLL ->
                 synth(330, rate, 190.0, 125.0, .12, .50, tremoloHz = 24.0)
+            Sfx.DICE_SETTLE ->
+                synth(72, rate, 880.0, 490.0, .18, .08)
             Sfx.MOVE_PAW ->
                 synth(75, rate, 170.0, 105.0, .10, .22)
             Sfx.MOVE_HOOF ->
@@ -294,6 +298,8 @@ internal object LudoPawsProceduralAudio {
                 synth(520, rate, 540.0, 1_080.0, .34, .01, tremoloHz = 5.0, doublePulse = true)
             Sfx.FAIL_SOFT ->
                 synth(220, rate, 330.0, 165.0, .18, .04)
+            Sfx.EXACT_HOME_MISS ->
+                synth(260, rate, 460.0, 170.0, .23, .07, tremoloHz = 5.0)
             Sfx.THIRD_SIX ->
                 synth(320, rate, 360.0, 92.0, .38, .16, tremoloHz = 13.0)
             Sfx.VICTORY ->

@@ -58,6 +58,26 @@ class LudoPawsAudioCatalogTest {
     }
 
     @Test
+    fun diceSettleAndExactHomeMissHaveOwnAuthoredFamilies() {
+        assertEquals(
+            listOf(
+                "audio/sfx/gameplay/dice/settle/lp_sfx_dice_settle_01.wav",
+                "audio/sfx/gameplay/dice/settle/lp_sfx_dice_settle_02.wav",
+                "audio/sfx/gameplay/dice/settle/lp_sfx_dice_settle_03.wav",
+            ),
+            LudoPawsAudioCatalog.Sfx.DICE_SETTLE,
+        )
+        assertEquals(
+            listOf(
+                "audio/sfx/gameplay/exact_home_miss/lp_sfx_exact_home_miss_01.wav",
+                "audio/sfx/gameplay/exact_home_miss/lp_sfx_exact_home_miss_02.wav",
+                "audio/sfx/gameplay/exact_home_miss/lp_sfx_exact_home_miss_03.wav",
+            ),
+            LudoPawsAudioCatalog.Sfx.EXACT_HOME_MISS,
+        )
+    }
+
+    @Test
     fun allCatalogPathsUseSupportedUncompressedAudioFormats() {
         val families =
             listOf(
@@ -69,6 +89,7 @@ class LudoPawsAudioCatalogTest {
                 LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
                 LudoPawsAudioCatalog.Sfx.UI_CLICK,
                 LudoPawsAudioCatalog.Sfx.DICE_ROLL,
+                LudoPawsAudioCatalog.Sfx.DICE_SETTLE,
                 LudoPawsAudioCatalog.Sfx.SIX,
                 LudoPawsAudioCatalog.Sfx.YARD_EXIT,
                 LudoPawsAudioCatalog.Sfx.CAPTURE,
@@ -76,6 +97,7 @@ class LudoPawsAudioCatalogTest {
                 LudoPawsAudioCatalog.Sfx.HOME_LANE,
                 LudoPawsAudioCatalog.Sfx.HOME,
                 LudoPawsAudioCatalog.Sfx.FAIL,
+                LudoPawsAudioCatalog.Sfx.EXACT_HOME_MISS,
                 LudoPawsAudioCatalog.Sfx.THIRD_SIX,
                 LudoPawsAudioCatalog.Sfx.VICTORY,
                 LudoPawsAudioCatalog.Sfx.DEFEAT,

@@ -66,6 +66,13 @@ object LudoPawsAudioCatalog {
                 "audio/sfx/gameplay/dice/lp_sfx_dice_roll_03.wav",
             )
 
+        val DICE_SETTLE =
+            listOf(
+                "audio/sfx/gameplay/dice/settle/lp_sfx_dice_settle_01.wav",
+                "audio/sfx/gameplay/dice/settle/lp_sfx_dice_settle_02.wav",
+                "audio/sfx/gameplay/dice/settle/lp_sfx_dice_settle_03.wav",
+            )
+
         val SIX =
             listOf(
                 "audio/sfx/gameplay/six/lp_sfx_six_01.wav",
@@ -106,6 +113,13 @@ object LudoPawsAudioCatalog {
                 "audio/sfx/gameplay/home/lp_sfx_home_01.wav",
                 "audio/sfx/gameplay/home/lp_sfx_home_02.wav",
                 "audio/sfx/gameplay/home/lp_sfx_home_03.wav",
+            )
+
+        val EXACT_HOME_MISS =
+            listOf(
+                "audio/sfx/gameplay/exact_home_miss/lp_sfx_exact_home_miss_01.wav",
+                "audio/sfx/gameplay/exact_home_miss/lp_sfx_exact_home_miss_02.wav",
+                "audio/sfx/gameplay/exact_home_miss/lp_sfx_exact_home_miss_03.wav",
             )
 
         val FAIL =

@@ -22,6 +22,7 @@ import com.ludoproof.game.feature.leaderboard.data.local.LeaderboardCredential
 import com.ludoproof.game.feature.leaderboard.data.local.LeaderboardIdentityStore
 import com.ludoproof.game.feature.leaderboard.data.remote.LeaderboardApi
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
+import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 
 internal fun MainActivity.createMatch() {
     val displayName =
@@ -250,6 +251,7 @@ internal fun MainActivity.rollVerifiedDice() {
                     return@withSession
                 }
 
+        GameSoundFeedback.roll(this)
         diceView.startRolling()
         verificationText.text =
             if (decision.kind == OnlineRollActionKind.NEW_ROLL) {

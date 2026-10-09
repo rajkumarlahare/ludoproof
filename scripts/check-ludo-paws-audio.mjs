@@ -17,6 +17,9 @@ const requiredSources = [
   'android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsMovementSoundPolicy.kt',
   'android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPaws3DSceneView.kt',
   'android/app/src/main/java/com/ludoproof/game/game/ui/components/LudoPawsGameplayPacingPolicy.kt',
+  'android/app/src/main/java/com/ludoproof/game/feature/online/presentation/actions/OnlineMatchActions.kt',
+  'android/app/src/main/java/com/ludoproof/game/feature/online/presentation/OnlineLudoPawsPresentation.kt',
+  'android/app/src/main/java/com/ludoproof/game/feature/offline/presentation/feedback/OfflineLudoPawsFeedback.kt',
 ];
 
 const reactionFeedbackOwners = [
@@ -55,6 +58,9 @@ const ledgerSource = fs.readFileSync(feedbackLedger, 'utf8');
 const movementPolicy = fs.readFileSync(requiredSources[12], 'utf8');
 const movementScene = fs.readFileSync(requiredSources[13], 'utf8');
 const pacingPolicy = fs.readFileSync(requiredSources[14], 'utf8');
+const onlineActionsSource = fs.readFileSync(requiredSources[15], 'utf8');
+const onlinePresentationSource = fs.readFileSync(requiredSources[16], 'utf8');
+const offlineFeedbackSource = fs.readFileSync(requiredSources[17], 'utf8');
 
 for (const marker of [
   'MOVE_JUMP',
@@ -66,6 +72,10 @@ for (const marker of [
   'MOVE_STEP_DUCK',
   'MOVE_STEP_CAT',
   'audio/sfx/gameplay/six/lp_sfx_six_01.wav',
+  'audio/sfx/gameplay/dice/settle/lp_sfx_dice_settle_01.wav',
+  'audio/sfx/gameplay/exact_home_miss/lp_sfx_exact_home_miss_01.wav',
+  'DICE_SETTLE',
+  'EXACT_HOME_MISS',
   'SIX',
 ]) {
   if (!audioCatalog.includes(marker)) throw new Error(`Audio catalog is missing ${marker}`);
@@ -75,6 +85,8 @@ for (const marker of ['SoundPool', 'USAGE_GAME', 'CONTENT_TYPE_SONIFICATION', 'p
 }
 for (const marker of [
   'lp_sfx_dice_roll',
+  'lp_sfx_dice_settle',
+  'lp_sfx_exact_home_miss',
   'fun moveStep(',
   'fun jump(',
   'PRIORITY_CRITICAL',
@@ -178,7 +190,7 @@ for (const marker of [
     throw new Error(`Capture voice timing is missing ${marker}`);
   }
 }
-for (const marker of ['AudioTrack', 'ENCODING_PCM_16BIT', 'DOG_YIP', 'GOAT_BLEAT', 'DUCK_QUACK', 'CAT_CHIRP']) {
+for (const marker of ['AudioTrack', 'ENCODING_PCM_16BIT', 'DOG_YIP', 'GOAT_BLEAT', 'DUCK_QUACK', 'CAT_CHIRP', 'Sfx.DICE_SETTLE', 'Sfx.EXACT_HOME_MISS']) {
   if (!procedural.includes(marker)) throw new Error(`Procedural fallback is missing ${marker}`);
 }
 for (const marker of [
@@ -197,6 +209,20 @@ for (const marker of ['class LudoPawsFeedbackLedger', 'LinkedHashSet', 'fun once
   if (!ledgerSource.includes(marker)) throw new Error(`Exactly-once feedback ledger is missing ${marker}`);
 }
 
+if (!onlineActionsSource.includes('GameSoundFeedback.roll(this)') || !onlineActionsSource.includes('diceView.startRolling()')) {
+  throw new Error('Online roll-start audio must begin with the rolling animation.');
+}
+if (!onlinePresentationSource.includes('GameSoundFeedback.diceSettle(activity)')) {
+  throw new Error('Online committed roll must use the dice-settle cue, not restart the roll rattle.');
+}
+for (const marker of [
+  'GameSoundFeedback.diceSettle(context)',
+  'OfflineFeedbackSound.EXACT_HOME_MISS -> GameSoundFeedback.exactHomeMiss(context)',
+]) {
+  if (!offlineFeedbackSource.includes(marker)) {
+    throw new Error('Offline audio mapping is missing ' + marker);
+  }
+}
 const forbiddenSecondaryFeedbackCalls = ['GameSoundFeedback.reaction', 'LudoPawsHaptics.reaction'];
 for (const marker of forbiddenSecondaryFeedbackCalls) {
   if (voice.includes(marker)) {
@@ -245,6 +271,8 @@ const authoredAudioSlots = [
   'audio/sfx/gameplay/movement/step/duck/.gitkeep',
   'audio/sfx/gameplay/movement/step/cat/.gitkeep',
   'audio/sfx/gameplay/six/.gitkeep',
+  'audio/sfx/gameplay/dice/settle/.gitkeep',
+  'audio/sfx/gameplay/exact_home_miss/.gitkeep',
 ];
 for (const file of authoredAudioSlots) {
   if (!fs.existsSync(file)) throw new Error(`Missing authored audio folder/guide slot: ${file}`);

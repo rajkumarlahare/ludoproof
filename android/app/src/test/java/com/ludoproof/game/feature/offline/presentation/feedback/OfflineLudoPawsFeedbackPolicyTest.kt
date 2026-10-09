@@ -144,7 +144,7 @@ class OfflineLudoPawsFeedbackPolicyTest {
             ).sound,
         )
         assertEquals(
-            OfflineFeedbackSound.FRUSTRATED,
+            OfflineFeedbackSound.EXACT_HOME_MISS,
             OfflineLudoPawsFeedbackPolicy.decide(
                 OfflineFeedbackAction.ROLL,
                 listOf(exactMiss),

@@ -37,14 +37,16 @@ Character-specific folders support _02.wav and _03.wav variants. If the characte
 ## Other physical SFX folders
 
 - audio/sfx/ui/click/ — lp_sfx_ui_click_01.wav
-- audio/sfx/gameplay/dice/ — lp_sfx_dice_roll_01.wav
+- audio/sfx/gameplay/dice/ — lp_sfx_dice_roll_01.wav (roll-start rattle)
+- audio/sfx/gameplay/dice/settle/ — lp_sfx_dice_settle_01.wav (short landing tick when the verified result appears)
 - audio/sfx/gameplay/six/ — lp_sfx_six_01.wav
 - audio/sfx/gameplay/yard_exit/ — lp_sfx_yard_exit_01.wav
 - audio/sfx/gameplay/capture/ — lp_sfx_capture_01.wav
 - audio/sfx/gameplay/safe/ — lp_sfx_safe_relief_01.wav
 - audio/sfx/gameplay/home_lane/ — lp_sfx_home_lane_01.wav
 - audio/sfx/gameplay/home/ — lp_sfx_home_01.wav
-- audio/sfx/gameplay/fail/ — lp_sfx_fail_01.wav
+- audio/sfx/gameplay/fail/ — lp_sfx_fail_01.wav (generic no-legal-move / poor-roll accent)
+- audio/sfx/gameplay/exact_home_miss/ — lp_sfx_exact_home_miss_01.wav (separate downward spring when the roll is short of home)
 - audio/sfx/gameplay/third_six/ — lp_sfx_third_six_01.wav
 - audio/sfx/gameplay/victory/ — lp_sfx_victory_01.wav
 - audio/sfx/gameplay/defeat/ — lp_sfx_defeat_01.wav

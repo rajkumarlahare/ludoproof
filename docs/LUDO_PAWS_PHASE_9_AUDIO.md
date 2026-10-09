@@ -40,6 +40,8 @@ The Settings dialog exposes Music, Game Sounds, Animal Voices, Haptics and Reduc
 
 ## Movement / capture synchronization
 
+Dice rattle and dice settle are separate events: online and offline start the roll rattle when the player action begins, then play the short dice-settle cue when the authoritative / committed result is available. A six can add its own brighter bonus-turn sparkle.
+
 Jump take-off and normal cell landing are different sounds: the jump family is scheduled at visible hop take-off; footfall is scheduled at the cell-arrival tick. Character-specific step folders can override the shared step family without touching movement rules. If rendering resumes after a sound's timing window, missed hop / landing ticks are skipped instead of playing back as a burst.
 
 Capture vocals are scheduled against the attacking pawn's final contact time, derived from the same game-speed and visual-step pacing as the rendered animation. At contact the impact SFX plays; the attacker vocal follows by about 80 ms and the captured-character reaction by about 155 ms. These delays do not change game state or delay authoritative move commitment.

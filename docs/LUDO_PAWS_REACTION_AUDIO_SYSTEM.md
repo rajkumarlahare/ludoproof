@@ -75,9 +75,9 @@ Use the root audio folders and numbered names in `audio/README.md`. The key dist
 - Generic cell landing: `audio/sfx/gameplay/movement/step/lp_sfx_step_01.wav`
 - Optional species landing: `audio/sfx/gameplay/movement/step/<character>/lp_sfx_step_<character>_01.wav`
 
-The movement renderer triggers jump at hop take-off and footfall at the visual cell arrival. A late render frame does not cause missed landing sounds to fire in a burst. Character-specific footfalls resolve before the shared family and legacy raw/procedural fallback.
+The movement renderer triggers jump at hop take-off and footfall at the visual cell arrival. A late render frame does not cause missed landing sounds to fire in a burst. Character-specific footfalls resolve before the shared family and legacy raw/procedural fallback. Dice roll starts with a rattle and ends with an independent settle tick on the revealed verified face. Exact-home misses use their own soft downward spring instead of sharing the generic no-legal-move cue.
 
-Other families: `lp_sfx_ui_click`, `lp_sfx_dice_roll`, `lp_sfx_six`, `lp_sfx_yard_exit`, `lp_sfx_capture_impact`, `lp_sfx_safe_shimmer`, `lp_sfx_home_lane`, `lp_sfx_home_sparkle`, `lp_sfx_fail_soft`, `lp_sfx_third_six`, `lp_sfx_victory_sting` and `lp_sfx_defeat_sting`.
+Other families: `lp_sfx_ui_click`, `lp_sfx_dice_roll`, `lp_sfx_dice_settle`, `lp_sfx_exact_home_miss`, `lp_sfx_six`, `lp_sfx_yard_exit`, `lp_sfx_capture_impact`, `lp_sfx_safe_shimmer`, `lp_sfx_home_lane`, `lp_sfx_home_sparkle`, `lp_sfx_fail_soft`, `lp_sfx_third_six`, `lp_sfx_victory_sting` and `lp_sfx_defeat_sting`.
 
 Optional numbered physical SFX variants rotate when multiple actual assets exist. Catalog paths are slots; missing audio still uses the established fallback.
 

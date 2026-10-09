@@ -61,12 +61,14 @@ object GameSoundFeedback {
                 listOf("lp_sfx_jump") to LudoPawsAudioCatalog.Sfx.MOVE_JUMP,
                 listOf("lp_sfx_yard_exit") to LudoPawsAudioCatalog.Sfx.YARD_EXIT,
                 listOf("lp_sfx_dice_roll") to LudoPawsAudioCatalog.Sfx.DICE_ROLL,
+                listOf("lp_sfx_dice_settle") to LudoPawsAudioCatalog.Sfx.DICE_SETTLE,
                 listOf("lp_sfx_six") to LudoPawsAudioCatalog.Sfx.SIX,
                 listOf("lp_sfx_capture_impact") to LudoPawsAudioCatalog.Sfx.CAPTURE,
                 listOf("lp_sfx_safe_shimmer") to LudoPawsAudioCatalog.Sfx.SAFE_RELIEF,
                 listOf("lp_sfx_home_lane") to LudoPawsAudioCatalog.Sfx.HOME_LANE,
                 listOf("lp_sfx_home_sparkle") to LudoPawsAudioCatalog.Sfx.HOME,
                 listOf("lp_sfx_fail_soft") to LudoPawsAudioCatalog.Sfx.FAIL,
+                listOf("lp_sfx_exact_home_miss") to LudoPawsAudioCatalog.Sfx.EXACT_HOME_MISS,
                 listOf("lp_sfx_third_six") to LudoPawsAudioCatalog.Sfx.THIRD_SIX,
                 listOf("lp_sfx_victory_sting") to LudoPawsAudioCatalog.Sfx.VICTORY,
                 listOf("lp_sfx_defeat_sting") to LudoPawsAudioCatalog.Sfx.DEFEAT,
@@ -182,6 +184,17 @@ object GameSoundFeedback {
             assetPaths = LudoPawsAudioCatalog.Sfx.DICE_ROLL,
         )
 
+    /** Short landing tick when the verified dice face is revealed. */
+    fun diceSettle(context: Context) =
+        play(
+            context = context,
+            names = listOf("lp_sfx_dice_settle"),
+            fallback = LudoPawsProceduralAudio.Sfx.DICE_SETTLE,
+            volume = .32f,
+            priority = PRIORITY_HIGH,
+            assetPaths = LudoPawsAudioCatalog.Sfx.DICE_SETTLE,
+        )
+
     fun six(context: Context) =
         play(
             context = context,
@@ -252,6 +265,17 @@ object GameSoundFeedback {
             assetPaths = LudoPawsAudioCatalog.Sfx.FAIL,
         )
 
+    /** A distinct, gentle descending spring for a short exact-home roll. */
+    fun exactHomeMiss(context: Context) =
+        play(
+            context = context,
+            names = listOf("lp_sfx_exact_home_miss"),
+            fallback = LudoPawsProceduralAudio.Sfx.EXACT_HOME_MISS,
+            volume = .30f,
+            priority = PRIORITY_SOFT_EVENT,
+            assetPaths = LudoPawsAudioCatalog.Sfx.EXACT_HOME_MISS,
+        )
+
     fun thirdSix(context: Context) =
         play(
             context = context,
@@ -311,9 +335,9 @@ object GameSoundFeedback {
             GameMomentType.HOME_REACHED,
             -> false
             GameMomentType.POOR_ROLL_STREAK,
-            GameMomentType.EXACT_HOME_MISS,
             GameMomentType.NO_LEGAL_MOVE,
             -> played { frustrated(context) }
+            GameMomentType.EXACT_HOME_MISS -> played { exactHomeMiss(context) }
             GameMomentType.THIRD_SIX_FORFEIT -> played { thirdSix(context) }
             GameMomentType.MATCH_WIN,
             GameMomentType.TEAM_WIN,

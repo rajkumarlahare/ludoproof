@@ -26,7 +26,7 @@ Optional character overrides:
 
 For each character, _02.wav and _03.wav variants are supported. Character-specific footfalls are tried first, then the shared step family, then legacy raw/procedural fallbacks. A jump file is never used as an ordinary cell landing.
 
-Sound direction: footfalls should be short and soft (roughly 40–75 ms); springy jump take-off should be distinct (roughly 90–160 ms). Avoid long tails that overlap between cells. These are mix/design targets, not strict file validators.
+Sound direction: footfalls should be short and soft (roughly 40–75 ms); springy jump take-off should be distinct (roughly 90–160 ms). Dice rattle is the roll-start texture; dice settle is a brief tick when the committed/verified face appears. Keep the settle quieter than the rattle and avoid long tails that overlap with the six sparkle. These are mix/design targets, not strict file validators.
 
 ## Physical gameplay and UI effects
 
@@ -35,14 +35,16 @@ For each family, add the exact first filename shown. Optional _02.wav / _03.wav 
 | Folder | First filename | Use |
 | --- | --- | --- |
 | audio/sfx/ui/click/ | lp_sfx_ui_click_01.wav | UI click / tap |
-| audio/sfx/gameplay/dice/ | lp_sfx_dice_roll_01.wav | Dice rolling texture |
+| audio/sfx/gameplay/dice/ | lp_sfx_dice_roll_01.wav | Rolling rattle |
+| audio/sfx/gameplay/dice/settle/ | lp_sfx_dice_settle_01.wav | Short landing tick when the verified face appears |
 | audio/sfx/gameplay/six/ | lp_sfx_six_01.wav | Six / bonus-turn sparkle |
 | audio/sfx/gameplay/yard_exit/ | lp_sfx_yard_exit_01.wav | Token launch from yard |
 | audio/sfx/gameplay/capture/ | lp_sfx_capture_01.wav | Capture contact impact |
 | audio/sfx/gameplay/safe/ | lp_sfx_safe_relief_01.wav | Safe-cell arrival accent |
 | audio/sfx/gameplay/home_lane/ | lp_sfx_home_lane_01.wav | First home-lane entry |
 | audio/sfx/gameplay/home/ | lp_sfx_home_01.wav | Home arrival |
-| audio/sfx/gameplay/fail/ | lp_sfx_fail_01.wav | Soft no-move / exact-home miss |
+| audio/sfx/gameplay/fail/ | lp_sfx_fail_01.wav | Soft no-legal-move / poor-roll accent |
+| audio/sfx/gameplay/exact_home_miss/ | lp_sfx_exact_home_miss_01.wav | Separate gentle descending spring for a roll short of home |
 | audio/sfx/gameplay/third_six/ | lp_sfx_third_six_01.wav | Third six forfeiture |
 | audio/sfx/gameplay/victory/ | lp_sfx_victory_01.wav | Match / team win |
 | audio/sfx/gameplay/defeat/ | lp_sfx_defeat_01.wav | Match / team loss |
