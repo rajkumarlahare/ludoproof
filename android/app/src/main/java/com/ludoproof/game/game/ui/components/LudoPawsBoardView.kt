@@ -49,6 +49,10 @@ class LudoPawsBoardView @JvmOverloads constructor(
         }
 
     init {
+        // Enable static owner sigils only on the Ludo Paws presentation board.
+        // Standalone LudoBoardView remains unchanged for the classic board.
+        boardSurface.setLudoPawsTeamSigilsEnabled(true)
+        baseBoard.setLudoPawsTeamSigilsEnabled(true)
         isFocusable = false
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
         outlineProvider =

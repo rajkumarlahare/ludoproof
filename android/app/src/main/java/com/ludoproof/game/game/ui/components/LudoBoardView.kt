@@ -17,8 +17,10 @@ import android.view.View
 import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.store.data.local.CosmeticInventoryStore
 import com.ludoproof.game.feature.store.domain.model.CosmeticCategory
+import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
+import kotlin.math.sin
 
 /**
  * BOARD GEOMETRY LOCK (approved final layout).
@@ -66,6 +68,7 @@ class LudoBoardView @JvmOverloads constructor(
     private var snapshot: MatchSnapshot? = null
     private var localPlayerId: String? = null
     private var perspectiveColor: String? = null
+    private var ludoPawsTeamSigilsEnabled = false
     private var moveAnimator: ValueAnimator? = null
     private var moveAnimation: TokenMoveAnimation? = null
     private val tokenHits = mutableListOf<TokenHit>()
@@ -98,6 +101,23 @@ class LudoBoardView @JvmOverloads constructor(
             textAlign = Paint.Align.CENTER
             isFakeBoldText = true
         }
+    private val teamSigilFillPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+        }
+    private val teamSigilStrokePaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+    private val teamSigilPath = Path()
+
+    fun setLudoPawsTeamSigilsEnabled(enabled: Boolean) {
+        if (ludoPawsTeamSigilsEnabled == enabled) return
+        ludoPawsTeamSigilsEnabled = enabled
+        invalidate()
+    }
 
     fun bind(
         state: MatchSnapshot?,
@@ -231,6 +251,9 @@ class LudoBoardView @JvmOverloads constructor(
         }
 
         drawYards(canvas, cell)
+        if (ludoPawsTeamSigilsEnabled) {
+            drawYardTeamSigils(canvas, cell)
+        }
         drawTrack(canvas, cell)
         drawHomeLanes(canvas, cell)
         drawCenter(canvas, cell)
@@ -678,6 +701,142 @@ class LudoBoardView @JvmOverloads constructor(
                     radius,
                     colorFor(player.color),
                 )
+            }
+        }
+    }
+
+
+    /**
+     * Owner marks are presentation-only watermarks in the four home slots.
+     * They are opt-in for Ludo Paws so the classic board stays pixel-identical.
+     * Pawns are drawn after this pass and naturally cover a mark while occupying
+     * the slot; no marker follows or animates with a pawn.
+     */
+    private fun drawYardTeamSigils(
+        canvas: Canvas,
+        cell: Float,
+    ) {
+        for (team in LudoPawsTeamColor.entries) {
+            for (tokenIndex in 0..3) {
+                val center =
+                    yardTokenCenter(
+                        color = team.wireName,
+                        tokenIndex = tokenIndex,
+                        cell = cell,
+                    ) ?: continue
+                drawTeamSigil(
+                    canvas = canvas,
+                    team = team,
+                    x = center.first,
+                    y = center.second,
+                    radius = cell * 0.15f,
+                )
+            }
+        }
+    }
+
+    private fun drawTeamSigil(
+        canvas: Canvas,
+        team: LudoPawsTeamColor,
+        x: Float,
+        y: Float,
+        radius: Float,
+    ) {
+        val rgb = team.sigilArgb
+        teamSigilFillPaint.color =
+            Color.argb(
+                38,
+                Color.red(rgb),
+                Color.green(rgb),
+                Color.blue(rgb),
+            )
+        teamSigilStrokePaint.color =
+            Color.argb(
+                190,
+                Color.red(rgb),
+                Color.green(rgb),
+                Color.blue(rgb),
+            )
+        teamSigilStrokePaint.strokeWidth =
+            maxOf(density(1.05f), radius * 0.12f)
+
+        when (team.sigil) {
+            LudoPawsTeamSigil.DIAMOND -> {
+                teamSigilPath.reset()
+                teamSigilPath.moveTo(x, y - radius)
+                teamSigilPath.lineTo(x + radius * 0.78f, y)
+                teamSigilPath.lineTo(x, y + radius)
+                teamSigilPath.lineTo(x - radius * 0.78f, y)
+                teamSigilPath.close()
+                canvas.drawPath(teamSigilPath, teamSigilFillPaint)
+                canvas.drawPath(teamSigilPath, teamSigilStrokePaint)
+            }
+
+            LudoPawsTeamSigil.LEAF -> {
+                teamSigilPath.reset()
+                teamSigilPath.moveTo(x, y + radius)
+                teamSigilPath.cubicTo(
+                    x - radius * 1.35f, y + radius * 0.15f,
+                    x - radius * 0.85f, y - radius * 1.05f,
+                    x, y - radius,
+                )
+                teamSigilPath.cubicTo(
+                    x + radius * 1.15f, y - radius * 0.65f,
+                    x + radius * 1.25f, y + radius * 0.30f,
+                    x, y + radius,
+                )
+                teamSigilPath.close()
+                canvas.drawPath(teamSigilPath, teamSigilFillPaint)
+                canvas.drawPath(teamSigilPath, teamSigilStrokePaint)
+                teamSigilPath.reset()
+                teamSigilPath.moveTo(x - radius * 0.55f, y + radius * 0.65f)
+                teamSigilPath.quadTo(
+                    x - radius * 0.05f, y + radius * 0.1f,
+                    x + radius * 0.58f, y - radius * 0.58f,
+                )
+                canvas.drawPath(teamSigilPath, teamSigilStrokePaint)
+            }
+
+            LudoPawsTeamSigil.WAVE -> {
+                teamSigilPath.reset()
+                teamSigilPath.moveTo(x - radius, y - radius * 0.25f)
+                teamSigilPath.quadTo(
+                    x - radius * 0.5f, y - radius * 0.95f,
+                    x, y - radius * 0.25f,
+                )
+                teamSigilPath.quadTo(
+                    x + radius * 0.5f, y + radius * 0.45f,
+                    x + radius, y - radius * 0.25f,
+                )
+                canvas.drawPath(teamSigilPath, teamSigilStrokePaint)
+                teamSigilPath.reset()
+                teamSigilPath.moveTo(x - radius, y + radius * 0.48f)
+                teamSigilPath.quadTo(
+                    x - radius * 0.5f, y - radius * 0.20f,
+                    x, y + radius * 0.48f,
+                )
+                teamSigilPath.quadTo(
+                    x + radius * 0.5f, y + radius * 1.1f,
+                    x + radius, y + radius * 0.48f,
+                )
+                canvas.drawPath(teamSigilPath, teamSigilStrokePaint)
+            }
+
+            LudoPawsTeamSigil.SUN -> {
+                canvas.drawCircle(x, y, radius * 0.36f, teamSigilFillPaint)
+                canvas.drawCircle(x, y, radius * 0.36f, teamSigilStrokePaint)
+                for (step in 0 until 8) {
+                    val angle = step * (Math.PI.toFloat() / 4f)
+                    val inner = radius * 0.58f
+                    val outer = radius
+                    canvas.drawLine(
+                        x + cos(angle) * inner,
+                        y + sin(angle) * inner,
+                        x + cos(angle) * outer,
+                        y + sin(angle) * outer,
+                        teamSigilStrokePaint,
+                    )
+                }
             }
         }
     }
