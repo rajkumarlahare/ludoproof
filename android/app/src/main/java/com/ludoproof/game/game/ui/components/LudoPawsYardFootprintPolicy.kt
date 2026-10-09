@@ -29,14 +29,15 @@ internal object LudoPawsYardFootprintPolicy {
 
         return buildList {
             snapshot.players.forEach { player ->
-                if (LudoPawsTeamIdentityPolicy.resolve(player.color) == null) {
-                    return@forEach
-                }
+                val team =
+                    LudoPawsTeamIdentityPolicy.resolve(player.color)
+                        ?: return@forEach
+                val canonicalColor = team.wireName
                 val species =
                     LudoPaws3DCharacterPolicy.speciesForSeat(
                         characterIdsBySeat = characterIdsBySeat,
                         seat = player.seat,
-                        fallbackColor = player.color,
+                        fallbackColor = canonicalColor,
                     ) ?: return@forEach
 
                 player.tokens.forEachIndexed { tokenIndex, rawPosition ->
@@ -47,7 +48,7 @@ internal object LudoPawsYardFootprintPolicy {
                         LudoPawsYardFootprint(
                             playerId = player.playerId,
                             tokenIndex = tokenIndex,
-                            teamColor = player.color,
+                            teamColor = canonicalColor,
                             species = species,
                         ),
                     )
