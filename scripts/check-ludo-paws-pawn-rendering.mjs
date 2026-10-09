@@ -76,7 +76,18 @@ for (const [token, message] of [
 for (const token of [
   "setClassicTokenDrawingEnabled(false)",
   "setLudoPawsYardFootprintsEnabled(true)",
+  "boardSurface.bind(",
+  "state = state",
   "characterIdsBySeat = characterIdsBySeat",
+]) {
+  requireText(
+    board,
+    token,
+    `Production Ludo Paws board is missing footprint state wiring: ${token}`,
+  );
+}
+
+for (const token of [
   "LudoPaws3DSceneView",
   "LudoPawsGameFxOverlayView",
   "pawn3DScene.bind(",
@@ -131,7 +142,7 @@ for (const token of [
 
 for (const token of [
   "drawYardPawPrints(canvas, cell)",
-  "PAW_PRINT_ARTWORK",
+  "pawPrintArtwork",
   "pawPrintGlowPaint",
   "pawPrintEdgePaint",
   "classicTokenDrawingEnabled",
