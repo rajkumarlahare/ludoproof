@@ -24,6 +24,10 @@ import kotlin.math.min
 internal class LudoPawsBoardChromeView(
     context: Context,
 ) : View(context) {
+    // This view is above both board copies. Draw footprints here, after opaque
+    // chrome, otherwise the colored raised-home face masks the marks underneath.
+    private var footprintSource: LudoBoardView? = null
+
     private val fillPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.FILL
@@ -68,6 +72,15 @@ internal class LudoPawsBoardChromeView(
         drawYardDepth(canvas, cell)
         drawCrossTileDepth(canvas, cell)
         drawCenterDepth(canvas, cell)
+
+        // Compose prints last so they remain visible above the raised-yard finish.
+        footprintSource?.drawYardPawPrintsOverlay(canvas, cell)
+    }
+
+    fun setFootprintSource(source: LudoBoardView) {
+        if (footprintSource === source) return
+        footprintSource = source
+        invalidate()
     }
 
     private fun drawYardDepth(
@@ -225,29 +238,16 @@ internal class LudoPawsBoardChromeView(
             )
         val faceRadius = radius * 0.74f
 
-        // Inset face creates the curved sidewall without a visible white/black line.
-        fillPaint.shader =
-            LinearGradient(
-                face.left,
-                face.top,
-                face.right,
-                face.bottom,
-                intArrayOf(
-                    brighten(color, 1.08f),
-                    brighten(color, 1.03f),
-                    color,
-                    darken(color, 0.92f),
-                ),
-                floatArrayOf(0f, 0.28f, 0.70f, 1f),
-                Shader.TileMode.CLAMP,
-            )
+        // Ludo Paws requires clean white token bays. Keep the team-colored molded
+        // rim/depth around the bay, but never paint team color over the white face.
+        fillPaint.shader = null
+        fillPaint.color = Color.WHITE
         canvas.drawRoundRect(
             face,
             faceRadius,
             faceRadius,
             fillPaint,
         )
-        fillPaint.shader = null
 
         // Diffuse top sheen: a broad translucent fill, intentionally not a stroke.
         val sheen =
