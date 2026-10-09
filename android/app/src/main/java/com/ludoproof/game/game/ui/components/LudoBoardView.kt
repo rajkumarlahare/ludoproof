@@ -895,7 +895,7 @@ class LudoBoardView @JvmOverloads constructor(
         species: LudoPaws3DSpecies,
         teamColor: Int,
     ) {
-        val artwork = PAW_PRINT_ARTWORK[species] ?: return
+        val artwork = pawPrintArtwork[species] ?: return
         // Print width is just under half a logical cell. Four prints therefore
         // remain separate and do not encroach on neighboring starting slots.
         val scale = (cell * 0.29f).coerceAtLeast(density(0.1f))
