@@ -100,7 +100,7 @@ for (const token of [
   "characterIdsBySeat",
   "bindRenderAssignments",
   "LudoPawsGameplayPacingPolicy",
-  ".forwardAnimationDurationMillis(",,
+  ".forwardAnimationDurationMillis(",
   "LudoPaws3DRenderCadencePolicy",
   ".frameDelayMillis(",
   "onVisibilityChanged",
