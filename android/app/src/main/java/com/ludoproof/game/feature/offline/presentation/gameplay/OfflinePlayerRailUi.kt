@@ -243,7 +243,14 @@ private fun OfflineGameActivity.addPlayerSlot(
 
         if (!alignEnd && active) {
             host.addView(
-                activeDiceControl(player),
+                activeDiceControl(player).apply {
+                    // The profile column is taller when its Quick Chat button is shown.
+                    // Lift only the dice by half that extra height so its center aligns
+                    // with the player card, while the button remains inside its hit area.
+                    if (showQuickChat) {
+                        translationY = -((dp(36) + dp(1)) / 2f)
+                    }
+                },
             )
         }
     }

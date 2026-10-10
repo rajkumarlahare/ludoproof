@@ -165,14 +165,126 @@ class OfflineLudoPawsFeedbackPolicyTest {
         assertTrue(decision.reactions.isEmpty())
     }
 
+    @Test
+    fun `computer stays quiet on ordinary rolls and ordinary pawn steps`() {
+        val routineRoll = reaction(
+            type = GameMomentType.LOW_ROLL,
+            cue = VoiceCue.SILENT,
+            animation = AnimationCue.IDLE,
+            priority = 12,
+            playerId = "cpu",
+        )
+        val routineMove = reaction(
+            type = GameMomentType.TOKEN_MOVED,
+            cue = VoiceCue.SILENT,
+            animation = AnimationCue.IDLE,
+            priority = 12,
+            playerId = "cpu",
+        )
+        assertEquals(
+            null,
+            OfflineComputerQuickChatPolicy.resolve(
+                OfflineFeedbackAction.ROLL,
+                listOf(routineRoll),
+                setOf("cpu"),
+            ),
+        )
+        assertEquals(
+            null,
+            OfflineComputerQuickChatPolicy.resolve(
+                OfflineFeedbackAction.MOVE,
+                listOf(routineMove),
+                setOf("cpu"),
+            ),
+        )
+    }
+
+    @Test
+    fun `computer only reacts to its own meaningful event and emits one reaction`() {
+        val routine = reaction(
+            type = GameMomentType.TOKEN_MOVED,
+            cue = VoiceCue.SILENT,
+            animation = AnimationCue.IDLE,
+            priority = 12,
+            playerId = "cpu",
+        )
+        val capture = reaction(
+            type = GameMomentType.CAPTURE_MADE,
+            cue = VoiceCue.CAPTURE,
+            animation = AnimationCue.CAPTURE,
+            priority = 88,
+            playerId = "cpu",
+        )
+        val humanVictory = reaction(
+            type = GameMomentType.MATCH_WIN,
+            cue = VoiceCue.VICTORY,
+            animation = AnimationCue.VICTORY,
+            priority = 100,
+            playerId = "human",
+        )
+        val result = OfflineComputerQuickChatPolicy.resolve(
+            action = OfflineFeedbackAction.MOVE,
+            reactions = listOf(routine, capture, humanVictory),
+            computerPlayerIds = setOf("cpu"),
+        )
+        assertEquals("cpu", result?.playerId)
+        assertEquals("😈", result?.emoji)
+        assertEquals(GameMomentType.CAPTURE_MADE, result?.momentType)
+    }
+
+    @Test
+    fun `computer can react when its pawn is captured but does not react on every turn`() {
+        val captured = reaction(
+            type = GameMomentType.TOKEN_CAPTURED,
+            cue = VoiceCue.CAPTURED,
+            animation = AnimationCue.CAPTURED,
+            priority = 86,
+            playerId = "cpu",
+        )
+        val result = OfflineComputerQuickChatPolicy.resolve(
+            action = OfflineFeedbackAction.MOVE,
+            reactions = listOf(captured),
+            computerPlayerIds = setOf("cpu"),
+        )
+        assertEquals("😭", result?.emoji)
+    }
+
+    @Test
+    fun `computer roll reaction requires a meaningful roll moment`() {
+        val six = reaction(
+            type = GameMomentType.SIX_ROLLED,
+            cue = VoiceCue.SIX,
+            animation = AnimationCue.EXCITED,
+            priority = 66,
+            playerId = "cpu",
+        )
+        assertEquals(
+            "🥳",
+            OfflineComputerQuickChatPolicy.resolve(
+                OfflineFeedbackAction.ROLL,
+                listOf(six),
+                setOf("cpu"),
+            )?.emoji,
+        )
+        assertEquals(
+            null,
+            OfflineComputerQuickChatPolicy.resolve(
+                OfflineFeedbackAction.MOVE,
+                listOf(six),
+                setOf("cpu"),
+            ),
+        )
+    }
+
     private fun reaction(
         type: GameMomentType,
         cue: VoiceCue,
         animation: AnimationCue,
         priority: Int,
+        playerId: String = "p1",
     ): LudoPawsReaction =
         LudoPawsReaction(
-            playerId = "p1",
+            playerId = playerId,
             seat = 0,
             voiceCue = cue,
             animationCue = animation,
