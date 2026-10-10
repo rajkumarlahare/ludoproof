@@ -295,6 +295,17 @@ class MainActivity : Activity() {
                     updateConnectionLabel()
                 }
             },
+            onQuickChat = { senderPlayerId, displayName, emoji ->
+                mainHandler.post {
+                    if (!canRenderUi()) return@post
+                    OnlineLudoPawsPresentation.presentRemoteQuickChat(
+                        activity = this,
+                        senderPlayerId = senderPlayerId,
+                        displayName = displayName,
+                        emoji = emoji,
+                    )
+                }
+            },
         )
     }
 

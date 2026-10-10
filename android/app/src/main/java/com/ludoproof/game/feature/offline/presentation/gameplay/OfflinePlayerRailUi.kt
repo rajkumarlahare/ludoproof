@@ -175,15 +175,27 @@ private fun OfflineGameActivity.addPlayerSlot(
             }
         val quickChatEnabled =
             GameSettingsStore(this).snapshot().quickChatEnabled
+        val hasComputerOpponent =
+            state.players.any { engine.isComputerPlayer(it.playerId) }
+        val humanPlayerCount =
+            state.players.count { !engine.isComputerPlayer(it.playerId) }
+        // Quick Chat is a local human-vs-computer affordance, never a Pass & Play control.
+        val showQuickChat =
+            isComputerMode &&
+                hasComputerOpponent &&
+                humanPlayerCount == 1 &&
+                !computerPlayer &&
+                quickChatEnabled
         val quickChatButton =
             QuickChatButtonView(this).apply {
-                visibility = if (quickChatEnabled) View.VISIBLE else View.GONE
-                isEnabled = state.status == "ACTIVE" && !computerPlayer
+                visibility = if (showQuickChat) View.VISIBLE else View.GONE
+                isEnabled = showQuickChat && state.status == "ACTIVE"
                 alpha = if (isEnabled) 1f else .58f
                 contentDescription = "Quick Chat for ${player.displayName}"
                 setOnClickListener {
                     if (
                         state.status != "ACTIVE" ||
+                        !showQuickChat ||
                         computerPlayer ||
                         !GameSettingsStore(this@addPlayerSlot).snapshot().quickChatEnabled
                     ) {

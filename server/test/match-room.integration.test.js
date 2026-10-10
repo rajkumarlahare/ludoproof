@@ -2073,3 +2073,71 @@ test(
     );
   },
 );
+
+
+test("Quick Chat broadcasts only allowlisted emojis to other authenticated active-match sockets", async () => {
+  const { ctx, room, host } = await setupActiveMatch(2);
+  const state = await ctx.storage.get("match-state");
+  const guest = state.players.find((player) => player.playerId !== host.playerId);
+  assert.ok(guest);
+
+  const sender = {
+    messages: [],
+    send(message) { this.messages.push(message); return true; },
+    close() {},
+  };
+  const receiver = {
+    messages: [],
+    send(message) { this.messages.push(message); return true; },
+    close() {},
+  };
+  ctx.getTags = (socket) =>
+    socket === sender
+      ? ["player:" + host.playerId]
+      : ["player:" + guest.playerId];
+  ctx.getWebSockets = () => [sender, receiver];
+
+  await room.webSocketMessage(
+    sender,
+    JSON.stringify({ type: "QUICK_CHAT_SEND", emoji: "👏" }),
+  );
+  assert.equal(receiver.messages.length, 0, "unsupported emojis must be rejected");
+
+  await room.webSocketMessage(
+    sender,
+    JSON.stringify({ type: "QUICK_CHAT_SEND", emoji: "😂", playerId: guest.playerId }),
+  );
+  assert.equal(sender.messages.length, 0, "sender must not receive its own event twice");
+  assert.equal(receiver.messages.length, 1);
+  const delivered = JSON.parse(receiver.messages[0]);
+  assert.equal(delivered.type, "QUICK_CHAT");
+  assert.equal(delivered.playerId, host.playerId, "sender identity must come from authenticated socket tags");
+  assert.equal(delivered.displayName, state.players.find((player) => player.playerId === host.playerId).displayName);
+  assert.equal(delivered.emoji, "😂");
+
+  await room.webSocketMessage(
+    sender,
+    JSON.stringify({ type: "QUICK_CHAT_SEND", emoji: "😂" }),
+  );
+  await room.webSocketMessage(
+    sender,
+    JSON.stringify({ type: "QUICK_CHAT_SEND", emoji: "👏" }),
+  );
+  assert.equal(receiver.messages.length, 1, "cooldown and allowlist must reject subsequent sends");
+});
+
+test("Quick Chat rejects messages without a server-authenticated player tag", async () => {
+  const { ctx, room, host } = await setupActiveMatch(2);
+  const socket = {
+    messages: [],
+    send(message) { this.messages.push(message); return true; },
+    close() {},
+  };
+  ctx.getTags = () => [];
+  ctx.getWebSockets = () => [socket];
+  await room.webSocketMessage(
+    socket,
+    JSON.stringify({ type: "QUICK_CHAT_SEND", emoji: "👍", playerId: host.playerId }),
+  );
+  assert.equal(socket.messages.length, 0);
+});

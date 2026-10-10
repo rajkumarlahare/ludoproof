@@ -61,6 +61,13 @@ const WORLD = Object.freeze({
   epochCount: 8,
   probeCount: 3,
 });
+const QUICK_CHAT_EMOJIS = new Set([
+  "👍", "😂", "😮", "😭", "😠", "🥳",
+  "😅", "😛", "😎", "🤔", "😘", "🤭",
+  "🤦", "😈", "🔥", "💪", "🤡", "👑",
+  "😵‍💫", "😞", "🤣", "😆", "😤", "😡",
+]);
+const QUICK_CHAT_COOLDOWN_MS = 700;
 
 export class MatchRoom {
   constructor(ctx, env) {
@@ -1422,28 +1429,82 @@ export class MatchRoom {
     socket,
     message,
   ) {
-    if (
-      typeof message !==
-      "string"
-    ) {
+    if (typeof message !== "string") return;
+
+    if (message === "ping") {
+      try {
+        socket.send(JSON.stringify({ type: "PONG", at: Date.now() }));
+      } catch {
+        // Hibernated socket may already be closing.
+      }
       return;
     }
 
+    if (message.length > 512) return;
+    let payload;
+    try {
+      payload = JSON.parse(message);
+    } catch {
+      return;
+    }
+    if (payload?.type !== "QUICK_CHAT_SEND") return;
+
+    await this.#mutate(() => this.#handleQuickChat(socket, payload));
+  }
+
+  async #handleQuickChat(socket, payload) {
+    const emoji = payload?.emoji;
+    if (typeof emoji !== "string" || !QUICK_CHAT_EMOJIS.has(emoji)) return;
+
+    // Player identity comes only from the authenticated WebSocket's server-side tag.
+    const tags =
+      typeof this.ctx.getTags === "function"
+        ? this.ctx.getTags(socket)
+        : [];
+    const playerTag =
+      Array.isArray(tags)
+        ? tags.find((tag) => typeof tag === "string" && tag.startsWith("player:"))
+        : null;
+    if (!playerTag) return;
+    const playerId = playerTag.slice("player:".length);
+    if (!playerId) return;
+
+    const state = await this.ctx.storage.get(STATE_KEY);
+    if (!state || state.status !== "ACTIVE" || !Array.isArray(state.players)) return;
+    const player = state.players.find((candidate) => candidate?.playerId === playerId);
+    if (!player || Number.isSafeInteger(player.forfeitedAt)) return;
+
+    const now = Date.now();
+    const cooldownKey = "quick-chat:last:" + playerId;
+    const lastSentAt = await this.ctx.storage.get(cooldownKey);
     if (
-      message ===
-      "ping"
+      Number.isSafeInteger(lastSentAt) &&
+      now - lastSentAt < QUICK_CHAT_COOLDOWN_MS
     ) {
+      return;
+    }
+    await this.ctx.storage.put(cooldownKey, now);
+
+    const outgoing = JSON.stringify({
+      type: "QUICK_CHAT",
+      matchId: state.matchId,
+      playerId: player.playerId,
+      displayName: player.displayName,
+      emoji,
+      sentAt: now,
+    });
+    if (typeof this.ctx.getWebSockets !== "function") return;
+    for (const target of this.ctx.getWebSockets()) {
+      // Sender already presents the reaction locally after the WebSocket accepts the send.
+      if (target === socket) continue;
       try {
-        socket.send(
-          JSON.stringify({
-            type:
-              "PONG",
-            at:
-              Date.now(),
-          }),
-        );
+        target.send(outgoing);
       } catch {
-        // Hibernated socket may already be closing.
+        try {
+          target.close(1011, "quick chat delivery failed");
+        } catch {
+          // Socket is already closing.
+        }
       }
     }
   }
