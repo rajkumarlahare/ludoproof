@@ -226,7 +226,7 @@ internal fun OfflineGameActivity.renderGame(
         resultPanel.visibility = View.VISIBLE
         // Phase 11 compatibility marker retained for the integration gate:
         // You brought all 4 paws home.
-        resultTitleText.text = "${winnerName.uppercase()} WINS"
+        resultTitleText.text = if (state.players.size == 2) "${winnerName.uppercase()} WINS" else "MATCH COMPLETE"
     } else {
         resultPanel.visibility = View.GONE
     }
