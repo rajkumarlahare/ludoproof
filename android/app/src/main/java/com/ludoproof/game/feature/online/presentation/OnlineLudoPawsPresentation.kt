@@ -175,6 +175,7 @@ internal object OnlineLudoPawsPresentation {
 
         addPlayerSlot(
             activity = activity,
+            quickChatHost = host,
             rail = host.topRail,
             state = state,
             slot = OfflinePlayerLayout.Slot.TOP_LEFT,
@@ -185,6 +186,7 @@ internal object OnlineLudoPawsPresentation {
         )
         addPlayerSlot(
             activity = activity,
+            quickChatHost = host,
             rail = host.topRail,
             state = state,
             slot = OfflinePlayerLayout.Slot.TOP_RIGHT,
@@ -195,6 +197,7 @@ internal object OnlineLudoPawsPresentation {
         )
         addPlayerSlot(
             activity = activity,
+            quickChatHost = host,
             rail = host.bottomRail,
             state = state,
             slot = OfflinePlayerLayout.Slot.BOTTOM_LEFT,
@@ -205,6 +208,7 @@ internal object OnlineLudoPawsPresentation {
         )
         addPlayerSlot(
             activity = activity,
+            quickChatHost = host,
             rail = host.bottomRail,
             state = state,
             slot = OfflinePlayerLayout.Slot.BOTTOM_RIGHT,
@@ -217,6 +221,7 @@ internal object OnlineLudoPawsPresentation {
 
     private fun addPlayerSlot(
         activity: MainActivity,
+        quickChatHost: Host,
         rail: LinearLayout,
         state: MatchSnapshot,
         slot: OfflinePlayerLayout.Slot,
@@ -285,16 +290,16 @@ internal object OnlineLudoPawsPresentation {
                             } ?: return@showQuickChatPopup
                             val now = SystemClock.elapsedRealtime()
                             if (
-                                host.lastQuickChatAtMs != 0L &&
-                                now - host.lastQuickChatAtMs < 700L
+                                quickChatHost.lastQuickChatAtMs != 0L &&
+                                now - quickChatHost.lastQuickChatAtMs < 700L
                             ) {
                                 return@showQuickChatPopup
                             }
-                            host.lastQuickChatAtMs = now
-                            host.quickChatReactionView =
+                            quickChatHost.lastQuickChatAtMs = now
+                            quickChatHost.quickChatReactionView =
                                 animateQuickChatReaction(
-                                    parent = host.board,
-                                    previous = host.quickChatReactionView,
+                                    parent = quickChatHost.board,
+                                    previous = quickChatHost.quickChatReactionView,
                                     emoji = emoji,
                                     displayName = sender.displayName,
                                 )
