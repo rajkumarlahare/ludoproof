@@ -112,7 +112,9 @@ for (const marker of ['duckForVoice', 'AudioFocusRequest', 'AUDIOFOCUS_LOSS_TRAN
 for (const marker of ['animalVoicesEnabled', 'hapticsEnabled']) {
   if (!settings.includes(marker)) throw new Error(`Settings store is missing ${marker}`);
 }
-for (const marker of ['Animal Voices', 'Game Sounds', 'Haptics', 'ScrollView']) {
+// The compact Settings design intentionally consolidates audio preferences into
+// one user-facing Sound row; the underlying voice/haptics preferences remain stored.
+for (const marker of ['Music', 'Sound', 'Quick chat', 'Game Speed', 'Boards', 'Dice', 'setAnimalVoicesEnabled', 'ScrollView']) {
   if (!settingsUi.includes(marker)) throw new Error(`Settings UI is missing ${marker}`);
 }
 
