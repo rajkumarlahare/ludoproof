@@ -6,6 +6,7 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
+import java.util.Locale
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.View
@@ -59,20 +60,20 @@ class DiceView @JvmOverloads constructor(
                 0x446B7280,
             )
         }
-    // The actionable-turn cue gets a warm gold edge instead of the idle grey.
-    // Both strokes are drawn inward enough to stay complete during the breathing zoom.
+    // Attention strokes inherit the owning player's team color. The glow is
+    // drawn inside the dice bounds, so the pulse stays unclipped while breathing.
     private val attentionPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = dp(2.8f)
-            color = 0xFFFFD54F.toInt()
+            color = 0xFF8A8A8A.toInt()
             strokeJoin = Paint.Join.ROUND
         }
     private val attentionGlowPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = dp(5f)
-            color = 0xFFFFC107.toInt()
+            color = 0xFF8A8A8A.toInt()
             strokeJoin = Paint.Join.ROUND
         }
 
@@ -89,6 +90,7 @@ class DiceView @JvmOverloads constructor(
     private var scale = 1f
     private var translationYFraction = 0f
     private var borderPulse = 0f
+    private var playerTeamColor: Int? = null
     private var attentionPulsing = false
     private var attentionPhaseStartedAtMillis = 0L
 
@@ -146,6 +148,22 @@ class DiceView @JvmOverloads constructor(
                 }
             }
         }
+
+    /**
+     * Binds this dice's outline to the owning player's stable team color.
+     * The same color is used by idle, attention-pulse, and rolling strokes.
+     */
+    fun setPlayerTeamColor(colorName: String?) {
+        playerTeamColor =
+            when (colorName?.trim()?.uppercase(Locale.ROOT)) {
+                "RED" -> 0xFFF1252F.toInt()
+                "GREEN" -> 0xFF00A950.toInt()
+                "YELLOW" -> 0xFFFFD81B.toInt()
+                "BLUE" -> 0xFF3097D7.toInt()
+                else -> null
+            }
+        invalidate()
+    }
 
     fun setAttentionEnabled(enabled: Boolean) {
         val shouldPulse =
@@ -376,11 +394,17 @@ class DiceView @JvmOverloads constructor(
             palette.borderColor
         pipPaint.color =
             palette.pipColor
+        rollingPaint.color =
+            palette.borderColor
+        val attentionColor =
+            palette.borderColor
+        attentionPaint.color = attentionColor
+        attentionGlowPaint.color = attentionColor
         rollingPaint.alpha =
             (145f + borderPulse.coerceIn(0f, 1f) * 110f)
                 .toInt()
         if (attentionPulsing) {
-            // Keep the soft gold halo on the inside of the same rounded outline.
+            // Keep the soft team-colored halo on the inside of the same rounded outline.
             // An external shadow would be clipped by this View's own drawing bounds.
             val glowInset = dp(2.6f)
             val glowRect =
@@ -510,7 +534,7 @@ class DiceView @JvmOverloads constructor(
                 0xFFF4F4F4.toInt(),
                 0xFFF4F4F4.toInt(),
             ),
-            0xFF8A8A8A.toInt(),
+            playerTeamColor ?: 0xFF8A8A8A.toInt(),
             0xFF3A3A3A.toInt(),
         )
     }
