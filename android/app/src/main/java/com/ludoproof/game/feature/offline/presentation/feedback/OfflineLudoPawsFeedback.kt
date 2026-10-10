@@ -257,59 +257,88 @@ private fun presentComputerQuickChat(
     if (!activity.isComputerMode) return
     if (!GameSettingsStore(context).snapshot().quickChatEnabled) return
 
-    val event =
-        if (action == OfflineFeedbackAction.MOVE) {
-            current.history.lastOrNull { it.moveTokenIndex != null }
-        } else {
-            current.history.lastOrNull()
-        } ?: return
-    val actor =
-        current.players.firstOrNull { it.playerId == event.playerId } ?: return
-    if (!activity.engine.isComputerPlayer(actor.playerId)) return
+    val computerPlayerIds =
+        current.players
+            .asSequence()
+            .filter { activity.engine.isComputerPlayer(it.playerId) }
+            .map { it.playerId }
+            .toSet()
+    val reaction =
+        OfflineComputerQuickChatPolicy.resolve(
+            action = action,
+            reactions = reactions,
+            computerPlayerIds = computerPlayerIds,
+        ) ?: return
 
-    val moment =
+    // No fallback emoji: if the current event is ordinary, the bot stays quiet.
+    activity.presentQuickReaction(
+        emoji = reaction.emoji,
+        senderPlayerId = reaction.playerId,
+    )
+}
+
+/**
+ * Converts classified moments into a single, sparse CPU chat reaction. Routine
+ * turn starts, ordinary rolls, and ordinary token steps deliberately stay silent.
+ */
+internal object OfflineComputerQuickChatPolicy {
+    internal data class Reaction(
+        val playerId: String,
+        val emoji: String,
+        val momentType: GameMomentType,
+        val priority: Int,
+    )
+
+    fun resolve(
+        action: OfflineFeedbackAction,
+        reactions: List<LudoPawsReaction>,
+        computerPlayerIds: Set<String>,
+    ): Reaction? =
         reactions
             .asSequence()
-            .filter { it.playerId == actor.playerId }
-            .maxByOrNull(LudoPawsReaction::priority)
-            ?.momentType
-    val emoji =
-        when (moment) {
-            GameMomentType.SIX_ROLLED -> "🥳"
-            GameMomentType.TOKEN_LEFT_YARD -> "💪"
-            GameMomentType.THIRD_SIX_FORFEIT,
-            GameMomentType.EXACT_HOME_MISS -> "😤"
-            GameMomentType.CAPTURE_MADE -> "😈"
-            GameMomentType.TOKEN_CAPTURED -> "😭"
-            GameMomentType.SAFE_REACHED,
-            GameMomentType.PLAYER_LEADING -> "😎"
-            GameMomentType.HOME_LANE_ENTERED -> "🔥"
-            GameMomentType.HOME_REACHED,
-            GameMomentType.MATCH_WIN,
-            GameMomentType.TEAM_WIN -> "👑"
-            GameMomentType.MATCH_LOSS,
-            GameMomentType.TEAM_LOSS,
-            GameMomentType.POOR_ROLL_STREAK,
-            GameMomentType.NO_LEGAL_MOVE -> "😞"
-            GameMomentType.TOKEN_THREATENED -> "😮"
-            GameMomentType.TURN_STARTED,
-            GameMomentType.ONLY_LEGAL_MOVE -> "👍"
-            GameMomentType.IDLE_WAITING -> "🤔"
-            GameMomentType.LOW_ROLL -> "😅"
-            GameMomentType.ROLL_STARTED,
-            GameMomentType.TOKEN_MOVED,
-            null ->
-                when {
-                    action == OfflineFeedbackAction.MOVE && event.captures > 0 -> "😈"
-                    action == OfflineFeedbackAction.MOVE && actor.tokens.all { it == 57 } -> "👑"
-                    action == OfflineFeedbackAction.MOVE -> "👍"
-                    event.outcome == 6 -> "🥳"
-                    event.outcome != null && event.outcome <= 2 -> "😅"
-                    else -> "🤔"
+            .filter { it.playerId in computerPlayerIds }
+            .mapNotNull { reaction ->
+                val moment = reaction.momentType ?: return@mapNotNull null
+                val emoji = emojiFor(action, moment) ?: return@mapNotNull null
+                Reaction(
+                    playerId = reaction.playerId,
+                    emoji = emoji,
+                    momentType = moment,
+                    priority = reaction.priority,
+                )
+            }
+            .maxByOrNull(Reaction::priority)
+
+    private fun emojiFor(
+        action: OfflineFeedbackAction,
+        moment: GameMomentType,
+    ): String? =
+        when (action) {
+            OfflineFeedbackAction.ROLL ->
+                when (moment) {
+                    GameMomentType.SIX_ROLLED -> "🥳"
+                    GameMomentType.THIRD_SIX_FORFEIT -> "😤"
+                    GameMomentType.POOR_ROLL_STREAK,
+                    GameMomentType.NO_LEGAL_MOVE,
+                    GameMomentType.EXACT_HOME_MISS -> "😞"
+                    else -> null
+                }
+
+            OfflineFeedbackAction.MOVE ->
+                when (moment) {
+                    GameMomentType.TOKEN_LEFT_YARD -> "💪"
+                    GameMomentType.CAPTURE_MADE -> "😈"
+                    GameMomentType.TOKEN_CAPTURED -> "😭"
+                    GameMomentType.SAFE_REACHED,
+                    GameMomentType.PLAYER_LEADING -> "😎"
+                    GameMomentType.HOME_LANE_ENTERED -> "🔥"
+                    GameMomentType.HOME_REACHED,
+                    GameMomentType.MATCH_WIN,
+                    GameMomentType.TEAM_WIN -> "👑"
+                    GameMomentType.MATCH_LOSS,
+                    GameMomentType.TEAM_LOSS -> "😞"
+                    GameMomentType.TOKEN_THREATENED -> "😮"
+                    else -> null
                 }
         }
-    activity.presentQuickReaction(
-        emoji = emoji,
-        senderPlayerId = actor.playerId,
-    )
 }
