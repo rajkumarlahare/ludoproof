@@ -133,6 +133,7 @@ class LudoBoardView @JvmOverloads constructor(
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
         }
+    private val pawPrintTexturePaint = createPawPrintTexturePaint()
 
     private data class PawPrintArtwork(
         val pads: List<Path>,
@@ -911,17 +912,21 @@ class LudoBoardView @JvmOverloads constructor(
         teamColor: Int,
     ) {
         val artwork = pawPrintArtwork[species] ?: return
-        // Print width is just under half a logical cell. Four prints therefore
-        // remain separate and do not encroach on neighboring starting slots.
-        val scale = (cell * 0.29f).coerceAtLeast(density(0.1f))
+        // Slightly enlarge the impression while keeping all four starting slots
+        // visually separate. The team's outer edge/glow colours remain unchanged.
+        val scale = (cell * 0.34f).coerceAtLeast(density(0.1f))
         val red = Color.red(teamColor)
         val green = Color.green(teamColor)
         val blue = Color.blue(teamColor)
 
-        pawPrintFillPaint.color = Color.argb(43, 47, 55, 65)
+        // Warm, compressed-dirt pigment instead of a cold, flat grey stamp.
+        pawPrintFillPaint.shader = null
+        pawPrintFillPaint.color = Color.argb(54, 59, 51, 43)
         pawPrintGlowPaint.color = Color.argb(76, red, green, blue)
         pawPrintEdgePaint.color = Color.argb(232, red, green, blue)
-        pawPrintDetailPaint.color = Color.argb(118, 255, 255, 255)
+        // Creases read as shallow grooves inside the print, not white decorative
+        // lines. Fine grain adds small irregularity without changing the outline.
+        pawPrintDetailPaint.color = Color.argb(66, 38, 33, 29)
         // Canvas scaling also scales stroke widths, so normalize them to retain
         // stable dp-sized highlights on phones, tablets and high-density screens.
         pawPrintGlowPaint.strokeWidth = density(3.5f) / scale
@@ -933,6 +938,12 @@ class LudoBoardView @JvmOverloads constructor(
         canvas.scale(scale, scale)
         artwork.pads.forEach { pad ->
             canvas.drawPath(pad, pawPrintFillPaint)
+            // Clip the dirt grain to each pad. That gives the stamp a lightly
+            // pressed, uneven surface while preserving each animal's silhouette.
+            canvas.save()
+            canvas.clipPath(pad)
+            canvas.drawRect(-1.2f, -1.2f, 1.2f, 1.2f, pawPrintTexturePaint)
+            canvas.restore()
             canvas.drawPath(pad, pawPrintGlowPaint)
             canvas.drawPath(pad, pawPrintEdgePaint)
         }
@@ -943,63 +954,93 @@ class LudoBoardView @JvmOverloads constructor(
     }
 
     private fun createPawPrintArtwork(): Map<LudoPaws3DSpecies, PawPrintArtwork> {
-        fun oval(
+        fun path(block: Path.() -> Unit) = Path().apply(block)
+
+        // Toe pads are deliberately asymmetric: each has a soft tapered end and a
+        // fuller pressure pad, avoiding the identical oval beads that read as a flower.
+        fun toePad(
             left: Float,
             top: Float,
             right: Float,
             bottom: Float,
-        ) = Path().apply {
-            addOval(
-                RectF(left, top, right, bottom),
-                Path.Direction.CW,
+            lean: Float = 0f,
+        ) = path {
+            val w = right - left
+            val h = bottom - top
+            val cx = (left + right) / 2f + lean
+            moveTo(cx, top)
+            cubicTo(
+                cx + w * 0.34f, top - h * 0.02f,
+                right + w * 0.04f, top + h * 0.18f,
+                right - w * 0.04f, top + h * 0.48f,
             )
+            cubicTo(
+                right - w * 0.10f, bottom - h * 0.10f,
+                cx + w * 0.23f, bottom + h * 0.035f,
+                cx - w * 0.02f, bottom,
+            )
+            cubicTo(
+                left + w * 0.19f, bottom + h * 0.01f,
+                left - w * 0.04f, top + h * 0.63f,
+                left + w * 0.05f, top + h * 0.28f,
+            )
+            cubicTo(
+                left + w * 0.15f, top + h * 0.02f,
+                cx - w * 0.29f, top - h * 0.025f,
+                cx, top,
+            )
+            close()
         }
 
-        fun path(block: Path.() -> Unit) = Path().apply(block)
-
+        // Broad central pads have a shallow upper cleft and a rounded heel. They
+        // sit visibly below the toes, so the whole stamp reads as a walking paw.
         val catCenter =
             path {
-                moveTo(-0.43f, 0.08f)
-                cubicTo(-0.55f, -0.14f, -0.40f, -0.36f, -0.21f, -0.30f)
-                cubicTo(-0.09f, -0.25f, -0.06f, -0.12f, 0f, -0.12f)
-                cubicTo(0.06f, -0.12f, 0.09f, -0.25f, 0.21f, -0.30f)
-                cubicTo(0.40f, -0.36f, 0.55f, -0.14f, 0.43f, 0.08f)
-                cubicTo(0.35f, 0.34f, 0.19f, 0.48f, 0f, 0.42f)
-                cubicTo(-0.19f, 0.48f, -0.35f, 0.34f, -0.43f, 0.08f)
+                moveTo(-0.40f, 0.00f)
+                cubicTo(-0.52f, -0.17f, -0.36f, -0.34f, -0.18f, -0.28f)
+                cubicTo(-0.07f, -0.24f, -0.07f, -0.13f, 0f, -0.13f)
+                cubicTo(0.07f, -0.13f, 0.07f, -0.24f, 0.18f, -0.28f)
+                cubicTo(0.36f, -0.34f, 0.52f, -0.17f, 0.40f, 0.00f)
+                cubicTo(0.31f, 0.25f, 0.18f, 0.45f, 0f, 0.47f)
+                cubicTo(-0.18f, 0.45f, -0.31f, 0.25f, -0.40f, 0.00f)
                 close()
             }
         val dogCenter =
             path {
-                moveTo(-0.48f, 0.04f)
-                cubicTo(-0.56f, -0.17f, -0.38f, -0.34f, -0.21f, -0.27f)
-                cubicTo(-0.10f, -0.23f, -0.07f, -0.12f, 0f, -0.12f)
-                cubicTo(0.07f, -0.12f, 0.10f, -0.23f, 0.21f, -0.27f)
-                cubicTo(0.38f, -0.34f, 0.56f, -0.17f, 0.48f, 0.04f)
-                cubicTo(0.41f, 0.36f, 0.23f, 0.55f, 0f, 0.52f)
-                cubicTo(-0.23f, 0.55f, -0.41f, 0.36f, -0.48f, 0.04f)
+                moveTo(-0.43f, 0.02f)
+                cubicTo(-0.55f, -0.16f, -0.36f, -0.35f, -0.16f, -0.30f)
+                cubicTo(-0.06f, -0.28f, -0.04f, -0.22f, 0f, -0.22f)
+                cubicTo(0.04f, -0.22f, 0.06f, -0.28f, 0.16f, -0.30f)
+                cubicTo(0.36f, -0.35f, 0.55f, -0.16f, 0.43f, 0.02f)
+                cubicTo(0.36f, 0.30f, 0.21f, 0.53f, 0f, 0.56f)
+                cubicTo(-0.21f, 0.53f, -0.36f, 0.30f, -0.43f, 0.02f)
                 close()
             }
+
+        // Duck prints retain a connected webbed three-toe silhouette, but the
+        // outer toe ends and heel are intentionally uneven like a real wet print.
         val duckWeb =
             path {
-                moveTo(-0.60f, 0.38f)
-                cubicTo(-0.77f, 0.15f, -1.02f, -0.14f, -0.96f, -0.43f)
-                cubicTo(-0.92f, -0.66f, -0.76f, -0.70f, -0.67f, -0.45f)
-                cubicTo(-0.59f, -0.25f, -0.48f, -0.09f, -0.35f, 0.04f)
-                cubicTo(-0.39f, -0.20f, -0.47f, -0.51f, -0.32f, -0.78f)
-                cubicTo(-0.20f, -0.97f, -0.04f, -0.86f, -0.02f, -0.62f)
-                cubicTo(0.00f, -0.42f, 0.00f, -0.15f, 0.03f, 0.03f)
-                cubicTo(0.20f, -0.14f, 0.36f, -0.38f, 0.54f, -0.57f)
-                cubicTo(0.72f, -0.75f, 0.89f, -0.58f, 0.80f, -0.35f)
-                cubicTo(0.70f, -0.09f, 0.51f, 0.21f, 0.43f, 0.39f)
-                cubicTo(0.22f, 0.61f, -0.39f, 0.60f, -0.60f, 0.38f)
+                moveTo(-0.58f, 0.40f)
+                cubicTo(-0.75f, 0.18f, -1.01f, -0.12f, -0.95f, -0.42f)
+                cubicTo(-0.91f, -0.65f, -0.76f, -0.70f, -0.66f, -0.46f)
+                cubicTo(-0.57f, -0.26f, -0.47f, -0.08f, -0.34f, 0.04f)
+                cubicTo(-0.39f, -0.22f, -0.46f, -0.52f, -0.31f, -0.77f)
+                cubicTo(-0.19f, -0.96f, -0.04f, -0.86f, -0.02f, -0.61f)
+                cubicTo(0.00f, -0.40f, 0.00f, -0.15f, 0.03f, 0.04f)
+                cubicTo(0.20f, -0.14f, 0.37f, -0.39f, 0.55f, -0.57f)
+                cubicTo(0.72f, -0.75f, 0.90f, -0.57f, 0.80f, -0.34f)
+                cubicTo(0.70f, -0.08f, 0.51f, 0.22f, 0.42f, 0.40f)
+                cubicTo(0.20f, 0.62f, -0.39f, 0.62f, -0.58f, 0.40f)
                 close()
             }
+
         val goatLeft =
             path {
                 moveTo(-0.52f, 0.39f)
-                cubicTo(-0.62f, 0.20f, -0.47f, -0.18f, -0.34f, -0.45f)
-                cubicTo(-0.27f, -0.58f, -0.09f, -0.55f, -0.05f, -0.38f)
-                cubicTo(0.00f, -0.12f, -0.02f, 0.21f, -0.12f, 0.42f)
+                cubicTo(-0.63f, 0.20f, -0.48f, -0.18f, -0.35f, -0.43f)
+                cubicTo(-0.28f, -0.58f, -0.09f, -0.56f, -0.05f, -0.37f)
+                cubicTo(0.00f, -0.10f, -0.02f, 0.21f, -0.12f, 0.42f)
                 cubicTo(-0.23f, 0.57f, -0.44f, 0.55f, -0.52f, 0.39f)
                 close()
             }
@@ -1031,27 +1072,39 @@ class LudoBoardView @JvmOverloads constructor(
                 moveTo(0f, -0.34f)
                 cubicTo(-0.04f, -0.08f, -0.02f, 0.22f, 0f, 0.38f)
             }
+        val catPadCrease =
+            path {
+                moveTo(-0.18f, 0.25f)
+                quadTo(0f, 0.35f, 0.18f, 0.25f)
+            }
+        val dogPadCrease =
+            path {
+                moveTo(-0.21f, 0.27f)
+                quadTo(0f, 0.42f, 0.21f, 0.27f)
+            }
 
         return mapOf(
             LudoPaws3DSpecies.CAT to
                 PawPrintArtwork(
                     pads = listOf(
-                        oval(-0.76f, -0.72f, -0.43f, -0.32f),
-                        oval(-0.38f, -0.88f, -0.08f, -0.49f),
-                        oval(0.08f, -0.88f, 0.38f, -0.49f),
-                        oval(0.43f, -0.72f, 0.76f, -0.32f),
+                        toePad(-0.76f, -0.80f, -0.45f, -0.42f, lean = -0.035f),
+                        toePad(-0.39f, -0.91f, -0.08f, -0.53f, lean = -0.015f),
+                        toePad(0.08f, -0.91f, 0.39f, -0.53f, lean = 0.018f),
+                        toePad(0.45f, -0.80f, 0.76f, -0.42f, lean = 0.035f),
                         catCenter,
                     ),
+                    details = listOf(catPadCrease),
                 ),
             LudoPaws3DSpecies.DOG to
                 PawPrintArtwork(
                     pads = listOf(
-                        oval(-0.78f, -0.68f, -0.42f, -0.28f),
-                        oval(-0.40f, -0.84f, -0.04f, -0.43f),
-                        oval(0.04f, -0.84f, 0.40f, -0.43f),
-                        oval(0.42f, -0.68f, 0.78f, -0.28f),
+                        toePad(-0.79f, -0.72f, -0.44f, -0.34f, lean = -0.04f),
+                        toePad(-0.41f, -0.89f, -0.04f, -0.49f, lean = -0.018f),
+                        toePad(0.04f, -0.89f, 0.41f, -0.49f, lean = 0.02f),
+                        toePad(0.44f, -0.72f, 0.79f, -0.34f, lean = 0.04f),
                         dogCenter,
                     ),
+                    details = listOf(dogPadCrease),
                 ),
             LudoPaws3DSpecies.DUCK to
                 PawPrintArtwork(
@@ -1068,6 +1121,74 @@ class LudoBoardView @JvmOverloads constructor(
                     details = listOf(goatSplit),
                 ),
         )
+    }
+
+    /**
+     * Transparent organic flecks are clipped to each print pad. A small local shader
+     * tile keeps the grain subtle and consistent without allocating anything per frame.
+     */
+    private fun createPawPrintTexturePaint(): Paint {
+        val size = 64
+        val bitmap =
+            Bitmap.createBitmap(
+                size,
+                size,
+                Bitmap.Config.ARGB_8888,
+            )
+        val textureCanvas = Canvas(bitmap)
+        val random = Random(0x5052494E54L)
+        val grainPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+        }
+
+        repeat(100) {
+            grainPaint.color =
+                if (random.nextInt(4) == 0) {
+                    Color.argb(17 + random.nextInt(13), 235, 221, 199)
+                } else {
+                    Color.argb(15 + random.nextInt(19), 35, 29, 24)
+                }
+            val x = random.nextFloat() * size
+            val y = random.nextFloat() * size
+            val radius =
+                if (random.nextInt(5) == 0) {
+                    1.2f + random.nextFloat() * 1.4f
+                } else {
+                    0.45f + random.nextFloat() * 0.9f
+                }
+            textureCanvas.drawCircle(x, y, radius, grainPaint)
+        }
+
+        grainPaint.style = Paint.Style.STROKE
+        repeat(18) {
+            grainPaint.color = Color.argb(12 + random.nextInt(13), 35, 29, 24)
+            grainPaint.strokeWidth = 0.4f + random.nextFloat() * 0.7f
+            val x = random.nextFloat() * size
+            val y = random.nextFloat() * size
+            textureCanvas.drawLine(
+                x,
+                y,
+                (x + 1.5f + random.nextFloat() * 4f).coerceAtMost(size - 1f),
+                (y + (random.nextFloat() - 0.5f) * 2.5f).coerceIn(0f, size - 1f),
+                grainPaint,
+            )
+        }
+
+        val shader =
+            BitmapShader(
+                bitmap,
+                Shader.TileMode.REPEAT,
+                Shader.TileMode.REPEAT,
+            )
+        shader.setLocalMatrix(
+            android.graphics.Matrix().apply {
+                setScale(1f / size, 1f / size)
+            },
+        )
+        return Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            style = Paint.Style.FILL
+            this.shader = shader
+        }
     }
 
     // Artwork paths are normalized once, not recreated during gameplay redraws.
