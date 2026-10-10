@@ -6,7 +6,6 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
-import java.util.Locale
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.View
@@ -155,13 +154,9 @@ class DiceView @JvmOverloads constructor(
      */
     fun setPlayerTeamColor(colorName: String?) {
         playerTeamColor =
-            when (colorName?.trim()?.uppercase(Locale.ROOT)) {
-                "RED" -> 0xFFF1252F.toInt()
-                "GREEN" -> 0xFF00A950.toInt()
-                "YELLOW" -> 0xFFFFD81B.toInt()
-                "BLUE" -> 0xFF3097D7.toInt()
-                else -> null
-            }
+            LudoPawsTeamIdentityPolicy
+                .resolve(colorName)
+                ?.argb
         invalidate()
     }
 
@@ -516,11 +511,10 @@ class DiceView @JvmOverloads constructor(
     }
 
     /**
-     * Gameplay dice intentionally use one high-contrast neutral palette.
+     * Gameplay dice keep a high-contrast neutral face and a team-colored outline.
      *
      * The selected cosmetic id is still retained by the inventory/store contract,
-     * but the in-match face stays white/light-gray so it remains clearly visible
-     * against the dark gameplay HUD in every state.
+     * while the white/light-gray face remains legible against the gameplay HUD.
      */
     private fun dicePalette():
         DicePalette {
