@@ -67,6 +67,8 @@ data class MatchSnapshot(
     val actingSeat: Int? = null,
     val teamAssignments: List<String> = emptyList(),
     val winnerTeamId: String? = null,
+    // Ordered player IDs from a trusted finish-order source, when available.
+    val finishOrderPlayerIds: List<String> = emptyList(),
 )
 
 data class GameEnvelope(
@@ -153,6 +155,7 @@ object GameJson {
             winnerTeamId =
                 value.optString("winnerTeamId")
                     .takeIf { it == "A" || it == "B" },
+            finishOrderPlayerIds = value.optJSONArray("finishOrderPlayerIds").toStringList(),
         )
     }
 
@@ -273,6 +276,17 @@ object GameJson {
         val winnerTeamId = value.optionalString("winnerTeamId")
         if (winnerPlayerId != null) {
             schema(winnerPlayerId in playerIds, "winnerPlayerId is not a seated player")
+        }
+        if (value.has("finishOrderPlayerIds") && !value.isNull("finishOrderPlayerIds")) {
+            val finishOrder = value.requireArray("finishOrderPlayerIds")
+            val finishIds = List(finishOrder.length()) { index ->
+                finishOrder.requireString(index, "finishOrderPlayerIds")
+            }
+            schema(finishIds.distinct().size == finishIds.size, "finish order contains duplicate player IDs")
+            schema(finishIds.all { it in playerIds }, "finish order contains an unknown player")
+            if (winnerPlayerId != null && finishIds.isNotEmpty()) {
+                schema(finishIds.first() == winnerPlayerId, "finish order winner does not match winnerPlayerId")
+            }
         }
         if (winnerTeamId != null) {
             schema(winnerTeamId == "A" || winnerTeamId == "B", "invalid winnerTeamId")

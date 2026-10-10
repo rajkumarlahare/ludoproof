@@ -75,6 +75,7 @@ internal class LudoPawsBoardChromeView(
 
         // Compose prints last so they remain visible above the raised-yard finish.
         footprintSource?.drawYardPawPrintsOverlay(canvas, cell)
+        footprintSource?.drawFinishRanksOverlay(canvas, cell)
     }
 
     fun setFootprintSource(source: LudoBoardView) {

@@ -90,7 +90,7 @@ class OfflineGameEngine(
                         displayName =
                             when {
                                 seat == 0 -> humanName
-                                isCpu -> "CPU $seat"
+                                isCpu -> "Robot $seat"
                                 else -> "Player ${seat + 1}"
                             },
                         color = colorOrder[seat],
@@ -599,7 +599,18 @@ class OfflineGameEngine(
                         add(
                             LocalPlayer(
                                 playerId = value.getString("playerId"),
-                                displayName = value.getString("displayName"),
+                                displayName =
+                                    value.getString("displayName").let { savedName ->
+                                        val cpuNumber = Regex("^CPU\\s+(\\d+)$")
+                                            .matchEntire(savedName.trim())
+                                            ?.groupValues
+                                            ?.getOrNull(1)
+                                        if (computerMode && value.getString("playerId").startsWith("cpu-player-") && cpuNumber != null) {
+                                            "Robot $cpuNumber"
+                                        } else {
+                                            savedName
+                                        }
+                                    },
                                 color = value.getString("color"),
                                 tokens = tokens,
                             ),
@@ -926,6 +937,7 @@ class OfflineGameEngine(
             winnerPlayerId = winnerPlayerId,
             rulesetId = OfflineLudoV3Binding.RULESET_ID,
             history = history.map { it.toSnapshot() },
+            finishOrderPlayerIds = finishedPlayerIds.toList(),
         )
 
     private data class LocalPlayer(

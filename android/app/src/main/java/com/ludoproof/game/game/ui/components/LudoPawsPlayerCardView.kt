@@ -126,7 +126,7 @@ class LudoPawsPlayerCardView(
             highlighted = active,
         )
 
-        nameText.text = player.displayName
+        nameText.text = displayPlayerName(player.displayName, computer)
         nameText.textSize =
             if (compact) 10.5f else 11.5f
 
@@ -199,6 +199,21 @@ class LudoPawsPlayerCardView(
             }
         importantForAccessibility =
             View.IMPORTANT_FOR_ACCESSIBILITY_YES
+    }
+
+    private fun displayPlayerName(
+        displayName: String,
+        computer: Boolean,
+    ): String {
+        if (!computer) return displayName
+        // Rename only the AI presentation label; identity and all non-AI names
+        // remain exactly as supplied by the match state.
+        val cpuNumber = Regex("^CPU\\s+(\\d+)$", RegexOption.IGNORE_CASE)
+            .matchEntire(displayName.trim())
+            ?.groupValues
+            ?.getOrNull(1)
+            ?: return displayName
+        return "Robot $cpuNumber"
     }
 
     private fun cardBackground(
