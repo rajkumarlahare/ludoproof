@@ -599,7 +599,18 @@ class OfflineGameEngine(
                         add(
                             LocalPlayer(
                                 playerId = value.getString("playerId"),
-                                displayName = value.getString("displayName"),
+                                displayName =
+                                    value.getString("displayName").let { savedName ->
+                                        val cpuNumber = Regex("^CPU\\s+(\\d+)$")
+                                            .matchEntire(savedName.trim())
+                                            ?.groupValues
+                                            ?.getOrNull(1)
+                                        if (computerMode && value.getString("playerId").startsWith("cpu-player-") && cpuNumber != null) {
+                                            "Robot $cpuNumber"
+                                        } else {
+                                            savedName
+                                        }
+                                    },
                                 color = value.getString("color"),
                                 tokens = tokens,
                             ),
