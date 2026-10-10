@@ -8,6 +8,7 @@ import android.graphics.BitmapShader
 import android.graphics.Outline
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Typeface
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.RadialGradient
@@ -868,6 +869,41 @@ class LudoBoardView @JvmOverloads constructor(
     ) {
         if (!ludoPawsYardFootprintsEnabled || snapshot == null) return
         drawYardPawPrints(canvas, cell)
+    }
+
+    internal fun drawFinishRanksOverlay(canvas: Canvas, cell: Float) {
+        val state = snapshot ?: return
+        if (state.players.size != 4 || state.status == "WAITING") return
+        val rankedIds = state.finishOrderPlayerIds.take(4).toMutableList()
+        if (state.status == "FINISHED" && rankedIds.size < state.players.size) {
+            state.players.firstOrNull { it.playerId !in rankedIds }?.let { rankedIds += it.playerId }
+        }
+        if (rankedIds.isEmpty()) return
+        val labels = listOf("First", "Second", "Third", "Fourth")
+        val labelsByPlayerId = rankedIds.take(4).mapIndexed { rank, id -> id to labels[rank] }.toMap()
+        val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(34, 43, 58)
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textSize = (cell * 0.34f).coerceIn(density(7f), density(12f))
+        }
+        state.players.forEach { player ->
+            val label = labelsByPlayerId[player.playerId] ?: return@forEach
+            val origin = when (player.color) {
+                "RED" -> 0 to 0
+                "GREEN" -> 0 to 9
+                "YELLOW" -> 9 to 9
+                "BLUE" -> 9 to 0
+                else -> return@forEach
+            }
+            val left = axisBoundary(origin.second, cell) + cell * 0.5f
+            val top = axisBoundary(origin.first, cell) + cell * 0.5f
+            val whiteSize = cell * 4f
+            val centerX = left + whiteSize * 0.5f
+            val centerY = top + whiteSize * 0.5f
+            val baseline = centerY - (labelPaint.ascent() + labelPaint.descent()) * 0.5f
+            canvas.drawText(label, centerX, baseline, labelPaint)
+        }
     }
 
     /**
