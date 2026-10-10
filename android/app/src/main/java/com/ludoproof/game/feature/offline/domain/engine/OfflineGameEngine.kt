@@ -926,6 +926,7 @@ class OfflineGameEngine(
             winnerPlayerId = winnerPlayerId,
             rulesetId = OfflineLudoV3Binding.RULESET_ID,
             history = history.map { it.toSnapshot() },
+            finishOrderPlayerIds = finishedPlayerIds.toList(),
         )
 
     private data class LocalPlayer(
