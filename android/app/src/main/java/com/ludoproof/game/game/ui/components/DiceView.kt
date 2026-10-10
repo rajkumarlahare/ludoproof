@@ -59,6 +59,22 @@ class DiceView @JvmOverloads constructor(
                 0x446B7280,
             )
         }
+    // The actionable-turn cue gets a warm gold edge instead of the idle grey.
+    // Both strokes are drawn inward enough to stay complete during the breathing zoom.
+    private val attentionPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = dp(2.8f)
+            color = 0xFFFFD54F.toInt()
+            strokeJoin = Paint.Join.ROUND
+        }
+    private val attentionGlowPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = dp(5f)
+            color = 0xFFFFC107.toInt()
+            strokeJoin = Paint.Join.ROUND
+        }
 
     private var diceStyleId =
         "dice_classic"
@@ -363,15 +379,41 @@ class DiceView @JvmOverloads constructor(
         rollingPaint.alpha =
             (145f + borderPulse.coerceIn(0f, 1f) * 110f)
                 .toInt()
+        if (attentionPulsing) {
+            // Keep the soft gold halo on the inside of the same rounded outline.
+            // An external shadow would be clipped by this View's own drawing bounds.
+            val glowInset = dp(2.6f)
+            val glowRect =
+                RectF(
+                    rect.left + glowInset,
+                    rect.top + glowInset,
+                    rect.right - glowInset,
+                    rect.bottom - glowInset,
+                )
+            attentionGlowPaint.alpha =
+                (34f + borderPulse.coerceIn(0f, 1f) * 42f)
+                    .toInt()
+            canvas.drawRoundRect(
+                glowRect,
+                (size * .17f - glowInset).coerceAtLeast(0f),
+                (size * .17f - glowInset).coerceAtLeast(0f),
+                attentionGlowPaint,
+            )
+            attentionPaint.alpha =
+                (190f + borderPulse.coerceIn(0f, 1f) * 65f)
+                    .toInt()
+        }
+        val outlinePaint =
+            when {
+                rolling || settling -> rollingPaint
+                attentionPulsing -> attentionPaint
+                else -> borderPaint
+            }
         canvas.drawRoundRect(
             rect,
             size * .17f,
             size * .17f,
-            if (rolling || settling) {
-                rollingPaint
-            } else {
-                borderPaint
-            },
+            outlinePaint,
         )
 
         val left = size * .31f
