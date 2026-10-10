@@ -233,7 +233,7 @@ internal object OnlineLudoPawsPresentation {
                 ) == slot
             }
 
-        val host =
+        val slotHost =
             LinearLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity =
@@ -326,7 +326,7 @@ internal object OnlineLudoPawsPresentation {
                         },
                     )
                 }
-            host.addView(
+            slotHost.addView(
                 profileColumn,
                 LinearLayout.LayoutParams(
                     playerWidth,
@@ -336,7 +336,7 @@ internal object OnlineLudoPawsPresentation {
         }
 
         rail.addView(
-            host,
+            slotHost,
             LinearLayout.LayoutParams(
                 0,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
