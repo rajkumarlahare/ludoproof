@@ -1,5 +1,6 @@
 package com.ludoproof.game.feature.online
 
+import android.os.SystemClock
 import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
@@ -13,8 +14,12 @@ import com.ludoproof.game.PlayerSnapshot
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsFeedbackLedger
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReactionEngine
 import com.ludoproof.game.feature.online.domain.OnlineLudoPawsCharacterPolicy
+import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.feature.settings.data.local.LudoPawsHaptics
+import com.ludoproof.game.ui.quickchat.QuickChatButtonView
+import com.ludoproof.game.ui.quickchat.animateQuickChatReaction
+import com.ludoproof.game.ui.quickchat.showQuickChatPopup
 import kotlin.math.roundToInt
 
 /** Presentation bridge for the shared online Ludo Paws board. */
@@ -24,6 +29,8 @@ internal object OnlineLudoPawsPresentation {
         val topRail: LinearLayout,
         val bottomRail: LinearLayout,
         val feedbackLedger: LudoPawsFeedbackLedger = LudoPawsFeedbackLedger(),
+        var quickChatReactionView: View? = null,
+        var lastQuickChatAtMs: Long = 0L,
     )
 
     fun render(
@@ -168,6 +175,7 @@ internal object OnlineLudoPawsPresentation {
 
         addPlayerSlot(
             activity = activity,
+            quickChatHost = host,
             rail = host.topRail,
             state = state,
             slot = OfflinePlayerLayout.Slot.TOP_LEFT,
@@ -178,6 +186,7 @@ internal object OnlineLudoPawsPresentation {
         )
         addPlayerSlot(
             activity = activity,
+            quickChatHost = host,
             rail = host.topRail,
             state = state,
             slot = OfflinePlayerLayout.Slot.TOP_RIGHT,
@@ -188,6 +197,7 @@ internal object OnlineLudoPawsPresentation {
         )
         addPlayerSlot(
             activity = activity,
+            quickChatHost = host,
             rail = host.bottomRail,
             state = state,
             slot = OfflinePlayerLayout.Slot.BOTTOM_LEFT,
@@ -198,6 +208,7 @@ internal object OnlineLudoPawsPresentation {
         )
         addPlayerSlot(
             activity = activity,
+            quickChatHost = host,
             rail = host.bottomRail,
             state = state,
             slot = OfflinePlayerLayout.Slot.BOTTOM_RIGHT,
@@ -210,6 +221,7 @@ internal object OnlineLudoPawsPresentation {
 
     private fun addPlayerSlot(
         activity: MainActivity,
+        quickChatHost: Host,
         rail: LinearLayout,
         state: MatchSnapshot,
         slot: OfflinePlayerLayout.Slot,
@@ -226,7 +238,7 @@ internal object OnlineLudoPawsPresentation {
                 ) == slot
             }
 
-        val host =
+        val slotHost =
             LinearLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity =
@@ -240,7 +252,9 @@ internal object OnlineLudoPawsPresentation {
             val active =
                 state.status == "ACTIVE" &&
                     player.playerId == activePlayer?.playerId
-            host.addView(
+            val localPlayer = player.playerId == activity.playerId
+            val playerWidth = dp(activity, 112)
+            val playerCard =
                 LudoPawsPlayerCardView(activity).apply {
                     bind(
                         player = player,
@@ -248,19 +262,86 @@ internal object OnlineLudoPawsPresentation {
                         active = active,
                         computer = false,
                         compact = true,
-                        localPlayer = player.playerId == activity.playerId,
+                        localPlayer = localPlayer,
                         portraitOnEnd = alignEnd,
                     )
-                },
+                }
+            val quickChatEnabled =
+                GameSettingsStore(activity).snapshot().quickChatEnabled
+            val quickChatButton =
+                QuickChatButtonView(activity).apply {
+                    visibility = if (quickChatEnabled) View.VISIBLE else View.GONE
+                    isEnabled = localPlayer && state.status == "ACTIVE"
+                    alpha = if (isEnabled) 1f else .58f
+                    contentDescription = "Quick Chat for ${player.displayName}"
+                    setOnClickListener {
+                        if (
+                            !localPlayer ||
+                            GameSettingsStore(activity).snapshot().quickChatEnabled.not()
+                        ) {
+                            return@setOnClickListener
+                        }
+                        showQuickChatPopup(this) { emoji ->
+                            val current = activity.currentState ?: return@showQuickChatPopup
+                            if (current.status != "ACTIVE") return@showQuickChatPopup
+                            val sender = current.players.firstOrNull {
+                                it.playerId == player.playerId &&
+                                    it.playerId == activity.playerId
+                            } ?: return@showQuickChatPopup
+                            val now = SystemClock.elapsedRealtime()
+                            if (
+                                quickChatHost.lastQuickChatAtMs != 0L &&
+                                now - quickChatHost.lastQuickChatAtMs < 700L
+                            ) {
+                                return@showQuickChatPopup
+                            }
+                            quickChatHost.lastQuickChatAtMs = now
+                            quickChatHost.quickChatReactionView =
+                                animateQuickChatReaction(
+                                    parent = quickChatHost.board,
+                                    previous = quickChatHost.quickChatReactionView,
+                                    emoji = emoji,
+                                    displayName = sender.displayName,
+                                )
+                            GameSoundFeedback.click(activity)
+                        }
+                    }
+                }
+            val profileColumn =
+                LinearLayout(activity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER_HORIZONTAL
+                    clipChildren = false
+                    clipToPadding = false
+                    addView(
+                        playerCard,
+                        LinearLayout.LayoutParams(
+                            playerWidth,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                        ),
+                    )
+                    addView(
+                        quickChatButton,
+                        LinearLayout.LayoutParams(
+                            dp(activity, 36),
+                            dp(activity, 36),
+                        ).apply {
+                            gravity = Gravity.CENTER_HORIZONTAL
+                            topMargin = dp(activity, 1)
+                        },
+                    )
+                }
+            slotHost.addView(
+                profileColumn,
                 LinearLayout.LayoutParams(
-                    dp(activity, 112),
+                    playerWidth,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                 ),
             )
         }
 
         rail.addView(
-            host,
+            slotHost,
             LinearLayout.LayoutParams(
                 0,
                 LinearLayout.LayoutParams.WRAP_CONTENT,

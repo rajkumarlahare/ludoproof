@@ -12,7 +12,7 @@ class OfflineQuickReactionPolicyTest {
         val reaction =
             OfflineQuickReactionPolicy.resolve(
                 state = snapshot(turnSeat = 1),
-                emoji = "👏",
+                emoji = "😂",
                 nowMs = 2_000L,
                 lastShownAtMs = null,
             )
@@ -20,7 +20,7 @@ class OfflineQuickReactionPolicyTest {
         assertEquals("p2", reaction?.playerId)
         assertEquals("Player 2", reaction?.displayName)
         assertEquals(1, reaction?.seat)
-        assertEquals("👏", reaction?.emoji)
+        assertEquals("😂", reaction?.emoji)
     }
 
     @Test
@@ -48,9 +48,35 @@ class OfflineQuickReactionPolicyTest {
         assertNull(
             OfflineQuickReactionPolicy.resolve(
                 state = snapshot(turnSeat = 0),
+                emoji = "🧿",
+                nowMs = 2_000L,
+                lastShownAtMs = null,
+            ),
+        )
+    }
+
+    @Test
+    fun selectedProfileIsTheQuickChatSenderAndAllTwentyFourEmojisAreSupported() {
+        val chosen =
+            OfflineQuickReactionPolicy.resolve(
+                state = snapshot(turnSeat = 0),
                 emoji = "🔥",
                 nowMs = 2_000L,
                 lastShownAtMs = null,
+                senderPlayerId = "p2",
+            )
+
+        assertEquals("p2", chosen?.playerId)
+        assertEquals("Player 2", chosen?.displayName)
+        assertEquals(1, chosen?.seat)
+        assertEquals(24, com.ludoproof.game.ui.quickchat.QuickChatEmojiCatalog.EMOJIS.size)
+        assertEquals(
+            24,
+            com.ludoproof.game.ui.quickchat.QuickChatEmojiCatalog.EMOJIS.distinct().size,
+        )
+        assertTrue(
+            com.ludoproof.game.ui.quickchat.QuickChatEmojiCatalog.EMOJIS.containsAll(
+                listOf("👍", "😂", "😮", "😭", "😠", "🥳", "🤦", "😈", "🔥", "💪", "🤡", "👑"),
             ),
         )
     }

@@ -93,6 +93,8 @@ jobs:
         run: node scripts/check-ludo-paws-audio.mjs
       - name: Ludo Paws gameplay background gate
         run: node scripts/check-ludo-paws-gameplay-background.mjs
+      - name: Ludo Paws Quick Chat and settings UI gate
+        run: node scripts/check-ludo-paws-quick-chat.mjs
       - name: Ludo Paws animation and FX gate
         run: node scripts/check-ludo-paws-animation-fx.mjs
       - name: Ludo Paws offline integration gate
