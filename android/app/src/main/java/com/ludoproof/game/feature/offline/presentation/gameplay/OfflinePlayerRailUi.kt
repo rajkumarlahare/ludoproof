@@ -146,13 +146,6 @@ private fun OfflineGameActivity.addPlayerSlot(
         val characterId =
             activeCharacterIdsBySeat
                 .getOrNull(player.seat)
-
-        if (alignEnd && active) {
-            host.addView(
-                activeDiceControl(player),
-            )
-        }
-
         val playerWidth =
             dp(
                 if (isCompactSetup()) {
@@ -162,6 +155,55 @@ private fun OfflineGameActivity.addPlayerSlot(
                 },
             )
         val computerPlayer = engine.isComputerPlayer(player.playerId)
+        val quickChatEnabled =
+            GameSettingsStore(this).snapshot().quickChatEnabled
+        val hasComputerOpponent =
+            state.players.any { engine.isComputerPlayer(it.playerId) }
+        val humanPlayerCount =
+            state.players.count { !engine.isComputerPlayer(it.playerId) }
+        val preferredBottomLeftColor =
+            state.players.firstOrNull()?.color ?: "BLUE"
+        val humanPlayer =
+            state.players.firstOrNull { !engine.isComputerPlayer(it.playerId) }
+        val humanSlot =
+            humanPlayer?.let {
+                OfflinePlayerLayout.slotForColor(
+                    color = it.color,
+                    preferredBottomLeftColor = preferredBottomLeftColor,
+                )
+            }
+        val slotIsBottom =
+            slot == OfflinePlayerLayout.Slot.BOTTOM_LEFT ||
+                slot == OfflinePlayerLayout.Slot.BOTTOM_RIGHT
+        val humanIsBottom =
+            humanSlot == OfflinePlayerLayout.Slot.BOTTOM_LEFT ||
+                humanSlot == OfflinePlayerLayout.Slot.BOTTOM_RIGHT
+        // Reserve the same profile footer for both players on the human's rail row.
+        // This stops the active profile/card/dice from shifting upward when chat appears.
+        val reserveProfileFooter =
+            isComputerMode &&
+                hasComputerOpponent &&
+                humanPlayerCount == 1 &&
+                quickChatEnabled &&
+                slotIsBottom == humanIsBottom
+        val showQuickChat =
+            reserveProfileFooter &&
+                !computerPlayer
+
+        val activeDiceView =
+            if (active) {
+                activeDiceControl(player).apply {
+                    if (reserveProfileFooter) {
+                        translationY = -dp(10).toFloat()
+                    }
+                }
+            } else {
+                null
+            }
+        if (alignEnd && active) {
+            host.addView(requireNotNull(activeDiceView))
+        }
+
         val playerCard =
             LudoPawsPlayerCardView(this).apply {
                 bind(
@@ -173,19 +215,6 @@ private fun OfflineGameActivity.addPlayerSlot(
                     portraitOnEnd = alignEnd,
                 )
             }
-        val quickChatEnabled =
-            GameSettingsStore(this).snapshot().quickChatEnabled
-        val hasComputerOpponent =
-            state.players.any { engine.isComputerPlayer(it.playerId) }
-        val humanPlayerCount =
-            state.players.count { !engine.isComputerPlayer(it.playerId) }
-        // Quick Chat is a local human-vs-computer affordance, never a Pass & Play control.
-        val showQuickChat =
-            isComputerMode &&
-                hasComputerOpponent &&
-                humanPlayerCount == 1 &&
-                !computerPlayer &&
-                quickChatEnabled
         val quickChatButton =
             QuickChatButtonView(this).apply {
                 visibility = if (showQuickChat) View.VISIBLE else View.GONE
@@ -215,6 +244,12 @@ private fun OfflineGameActivity.addPlayerSlot(
                 gravity = Gravity.CENTER_HORIZONTAL
                 clipChildren = false
                 clipToPadding = false
+                setPadding(
+                    0,
+                    if (reserveProfileFooter) dp(18) else 0,
+                    0,
+                    0,
+                )
                 addView(
                     playerCard,
                     LinearLayout.LayoutParams(
@@ -222,16 +257,32 @@ private fun OfflineGameActivity.addPlayerSlot(
                         LinearLayout.LayoutParams.WRAP_CONTENT,
                     ),
                 )
-                addView(
-                    quickChatButton,
-                    LinearLayout.LayoutParams(
-                        dp(36),
-                        dp(36),
-                    ).apply {
-                        gravity = Gravity.CENTER_HORIZONTAL
-                        topMargin = dp(1)
-                    },
-                )
+                if (reserveProfileFooter) {
+                    // Fixed footer height for the human and adjacent CPU profile.
+                    // A GONE CPU button leaves the same measured row, keeping all cards aligned.
+                    val chatSlot =
+                        FrameLayout(this@addPlayerSlot).apply {
+                            clipChildren = false
+                            clipToPadding = false
+                            addView(
+                                quickChatButton,
+                                FrameLayout.LayoutParams(
+                                    dp(36),
+                                    dp(36),
+                                    Gravity.TOP or Gravity.CENTER_HORIZONTAL,
+                                ),
+                            )
+                        }
+                    addView(
+                        chatSlot,
+                        LinearLayout.LayoutParams(
+                            playerWidth,
+                            dp(37),
+                        ).apply {
+                            topMargin = dp(1)
+                        },
+                    )
+                }
             }
         host.addView(
             profileColumn,
@@ -242,16 +293,7 @@ private fun OfflineGameActivity.addPlayerSlot(
         )
 
         if (!alignEnd && active) {
-            host.addView(
-                activeDiceControl(player).apply {
-                    // The profile column is taller when its Quick Chat button is shown.
-                    // Lift only the dice by half that extra height so its center aligns
-                    // with the player card, while the button remains inside its hit area.
-                    if (showQuickChat) {
-                        translationY = -((dp(36) + dp(1)) / 2f)
-                    }
-                },
-            )
+            host.addView(requireNotNull(activeDiceView))
         }
     }
 
