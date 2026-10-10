@@ -40,9 +40,13 @@ class LudoPawsAudioCatalogTest {
                 LudoPawsAudioCatalog.Sfx.MOVE_STEP_DUCK,
                 LudoPawsAudioCatalog.Sfx.MOVE_STEP_CAT,
             )
-        assertTrue(families.all { it.size == 3 })
+        assertTrue(families.all { it.size >= 3 })
         assertTrue(families.flatten().all { it.endsWith(".wav") })
-        assertEquals(12, families.flatten().distinct().size)
+        assertEquals(13, families.flatten().distinct().size)
+        assertEquals(
+            "audio/sfx/gameplay/movement/step/lp_sfx_step_duck_01.wav",
+            LudoPawsAudioCatalog.Sfx.MOVE_STEP_DUCK.last(),
+        )
     }
 
     @Test

@@ -36,6 +36,9 @@ object LudoPawsAudioCatalog {
                 "audio/sfx/gameplay/movement/step/duck/lp_sfx_step_duck_01.wav",
                 "audio/sfx/gameplay/movement/step/duck/lp_sfx_step_duck_02.wav",
                 "audio/sfx/gameplay/movement/step/duck/lp_sfx_step_duck_03.wav",
+                // The surviving Duck take was moved to the shared step directory.
+                // Keep it assigned to Duck; do not expose this clip to other species.
+                "audio/sfx/gameplay/movement/step/lp_sfx_step_duck_01.wav",
             )
 
         val MOVE_STEP_CAT =
