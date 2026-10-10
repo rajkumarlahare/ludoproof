@@ -27,14 +27,8 @@ internal fun settingsCompactPanel(
             settingsDp(context, 8),
             settingsDp(context, 8),
         )
-        // Reuse the exact Home glass language used by the game top Back/Settings
-        // controls. This keeps the settings surface translucent and consistent.
-        background =
-            homeGlassBackground(
-                context = context,
-                shape = HomeGlassShape.TILE,
-                tone = HomeGlassTone.GLASS,
-            )
+        // Match the full-screen app backdrop inside this compact settings panel.
+        background = SettingsSharedWebpDrawable(context)
 
         addView(
             settingsHeader(
@@ -124,8 +118,8 @@ private fun settingsHeader(
         addView(
             close,
             FrameLayout.LayoutParams(
-                settingsDp(context, 38),
-                settingsDp(context, 38),
+                settingsDp(context, 34),
+                settingsDp(context, 34),
                 Gravity.END or Gravity.CENTER_VERTICAL,
             ),
         )
@@ -439,7 +433,7 @@ internal fun settingsPrivacyLink(
         gravity = Gravity.CENTER
         setPadding(
             0,
-            settingsDp(context, 18),
+            settingsDp(context, 10),
             0,
             settingsDp(context, 2),
         )

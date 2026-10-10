@@ -9,6 +9,8 @@ import android.widget.TextView
 import com.ludoproof.game.LudoProofTheme
 import com.ludoproof.game.OfflineGameActivity
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
+import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
+import com.ludoproof.game.ui.quickchat.QuickChatEmojiCatalog
 import com.ludoproof.game.ui.offline.common.*
 
 /**
@@ -17,7 +19,10 @@ import com.ludoproof.game.ui.offline.common.*
  */
 internal fun OfflineGameActivity.presentQuickReaction(
     emoji: String,
+    senderPlayerId: String? = null,
 ): Boolean {
+    if (!GameSettingsStore(this).snapshot().quickChatEnabled) return false
+    if (emoji !in QuickChatEmojiCatalog.EMOJIS) return false
     val now = SystemClock.elapsedRealtime()
     val presentation =
         OfflineQuickReactionPolicy.resolve(
@@ -25,6 +30,7 @@ internal fun OfflineGameActivity.presentQuickReaction(
             emoji = emoji,
             nowMs = now,
             lastShownAtMs = quickReactionLastShownAtMs,
+            senderPlayerId = senderPlayerId,
         ) ?: return false
     val board = boardView ?: return false
 

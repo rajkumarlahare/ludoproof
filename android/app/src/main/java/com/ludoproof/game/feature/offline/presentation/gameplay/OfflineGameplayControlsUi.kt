@@ -23,47 +23,10 @@ import com.ludoproof.game.ui.offline.state.resolveOfflineCharacterIds
 
 internal fun OfflineGameActivity.gameplayActionPanel(): LinearLayout =
     LinearLayout(this).apply {
+        // Quick Chat now lives directly under each player's profile card.
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER
         setPadding(dp(4), 0, dp(4), 0)
-
-        if (
-            GameSettingsStore(this@gameplayActionPanel)
-                .snapshot()
-                .quickChatEnabled
-        ) {
-            addView(quickChatBar())
-        }
-    }
-
-internal fun OfflineGameActivity.quickChatBar(): LinearLayout =
-    LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER
-        setPadding(dp(2), dp(1), dp(2), dp(2))
-
-        listOf("👍", "😄", "👏", "😮").forEach { emoji ->
-            addView(
-                Button(this@quickChatBar).apply {
-                    text = emoji
-                    textSize = if (isCompactSetup()) 16f else 18f
-                    minWidth = 0
-                    minHeight = 0
-                    LudoProofTheme.secondary(this)
-                    setPadding(0, 0, 0, 0)
-                    setOnClickListener {
-                        presentQuickReaction(emoji)
-                    }
-                },
-                LinearLayout.LayoutParams(
-                    0,
-                    dp(if (isCompactSetup()) 34 else 38),
-                    1f,
-                ).apply {
-                    setMargins(dp(3), 0, dp(3), 0)
-                },
-            )
-        }
     }
 
 private const val OFFLINE_RESULT_ACTIONS_TAG =

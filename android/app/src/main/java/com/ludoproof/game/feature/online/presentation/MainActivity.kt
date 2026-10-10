@@ -598,7 +598,15 @@ class MainActivity : Activity() {
             context = this,
             onBack = { requestRemoteExit() },
             onSettings = {
-                ArcadeDialogs.showSettings(this)
+                ArcadeDialogs.showSettings(this) {
+                    currentState?.let { state ->
+                        OnlineLudoPawsPresentation.render(
+                            activity = this,
+                            previous = state,
+                            current = state,
+                        )
+                    }
+                }
             },
         )
 

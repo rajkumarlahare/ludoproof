@@ -6,7 +6,10 @@ import com.ludoproof.game.ui.dialogs.showProofHistoryDialog
 import com.ludoproof.game.ui.dialogs.showSettingsDialog
 
 object ArcadeDialogs {
-    fun showSettings(context: Context) = showSettingsDialog(context)
+    fun showSettings(
+        context: Context,
+        onChanged: (() -> Unit)? = null,
+    ) = showSettingsDialog(context, onChanged)
 
     fun showNaturalWorldAudit(
         context: Context,
