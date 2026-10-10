@@ -20,14 +20,33 @@ class ArcadeBackdropView @JvmOverloads constructor(
         contentDescription = null
         importantForAccessibility =
             View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        applyUiBackdrop()
+        useUiBackground()
+    }
+
+    /** Applies the dedicated art for an active match only. */
+    fun useGameplayBackground() {
+        applyBackdrop(
+            drawableName = "ludo_paws_game_background",
+            fallbackColor = 0xFF17261B.toInt(),
+        )
+    }
+
+    /** Restores the shared nature backdrop used by non-gameplay screens. */
+    fun useUiBackground() {
+        applyBackdrop(
+            drawableName = "ludo_paws_ui_background",
+            fallbackColor = 0xFF275B19.toInt(),
+        )
     }
 
     @Suppress("DiscouragedApi")
-    private fun applyUiBackdrop() {
+    private fun applyBackdrop(
+        drawableName: String,
+        fallbackColor: Int,
+    ) {
         val drawableId =
             resources.getIdentifier(
-                "ludo_paws_ui_background",
+                drawableName,
                 "drawable",
                 context.packageName,
             )
@@ -36,7 +55,7 @@ class ArcadeBackdropView @JvmOverloads constructor(
             setImageResource(drawableId)
         } else {
             setImageDrawable(null)
-            setBackgroundColor(0xFF275B19.toInt())
+            setBackgroundColor(fallbackColor)
         }
     }
 }

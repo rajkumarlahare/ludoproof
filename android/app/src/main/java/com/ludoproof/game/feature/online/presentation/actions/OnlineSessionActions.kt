@@ -129,6 +129,10 @@ internal fun MainActivity.resetInvalidSessionIfNeeded(
     playerToken = null
     playerId = null
     currentState = null
+    LudoProofTheme.setGameplayBackground(
+        root = arcadeRootView,
+        enabled = false,
+    )
     uiStateHolder.update {
         it.copy(
             currentStateSource = null,

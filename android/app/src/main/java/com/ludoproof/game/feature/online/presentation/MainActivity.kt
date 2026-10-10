@@ -65,6 +65,7 @@ class MainActivity : Activity() {
     internal val mainHandler =
         Handler(Looper.getMainLooper())
 
+    internal lateinit var arcadeRootView: FrameLayout
     internal lateinit var lobbyPanel: LinearLayout
     internal lateinit var matchStatusPanel: LinearLayout
     internal lateinit var resultPanel: FrameLayout
@@ -388,6 +389,7 @@ class MainActivity : Activity() {
         val (root, host) =
             LudoProofTheme
                 .arcadeRoot(this)
+        arcadeRootView = root
 
         val scroll =
             ScrollView(this).apply {

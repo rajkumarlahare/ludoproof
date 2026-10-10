@@ -96,10 +96,19 @@ object LudoProofTheme {
                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE
     }
 
-    fun arcadeRoot(context: Context): Pair<FrameLayout, FrameLayout> {
+    fun arcadeRoot(
+        context: Context,
+        gameplayBackground: Boolean = false,
+    ): Pair<FrameLayout, FrameLayout> {
         val root = FrameLayout(context)
+        val backdrop =
+            ArcadeBackdropView(context).apply {
+                if (gameplayBackground) {
+                    useGameplayBackground()
+                }
+            }
         root.addView(
-            ArcadeBackdropView(context),
+            backdrop,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -114,6 +123,19 @@ object LudoProofTheme {
             ),
         )
         return root to content
+    }
+
+    /** Switches only the backdrop child of a root returned by arcadeRoot(). */
+    fun setGameplayBackground(
+        root: FrameLayout,
+        enabled: Boolean,
+    ) {
+        val backdrop = root.getChildAt(0) as? ArcadeBackdropView ?: return
+        if (enabled) {
+            backdrop.useGameplayBackground()
+        } else {
+            backdrop.useUiBackground()
+        }
     }
 
     fun panel(context: Context): LinearLayout =
