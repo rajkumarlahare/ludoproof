@@ -12,7 +12,7 @@ class OfflineQuickReactionPolicyTest {
         val reaction =
             OfflineQuickReactionPolicy.resolve(
                 state = snapshot(turnSeat = 1),
-                emoji = "👏",
+                emoji = "😂",
                 nowMs = 2_000L,
                 lastShownAtMs = null,
             )
@@ -20,7 +20,7 @@ class OfflineQuickReactionPolicyTest {
         assertEquals("p2", reaction?.playerId)
         assertEquals("Player 2", reaction?.displayName)
         assertEquals(1, reaction?.seat)
-        assertEquals("👏", reaction?.emoji)
+        assertEquals("😂", reaction?.emoji)
     }
 
     @Test
