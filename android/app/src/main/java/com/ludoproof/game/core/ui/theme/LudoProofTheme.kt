@@ -125,7 +125,7 @@ object LudoProofTheme {
         return root to content
     }
 
-    /** Switches only the backdrop child of a root returned by arcadeRoot(). */
+    /** Applies the unified app background through the existing compatibility API. */
     fun setGameplayBackground(
         root: FrameLayout,
         enabled: Boolean,

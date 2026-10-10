@@ -6,7 +6,10 @@ import android.view.View
 import android.widget.ImageView
 
 /**
- * Shared full-screen nature backdrop used across the regular UI and gameplay.
+ * Shared full-screen backdrop used by every screen, including active gameplay.
+ *
+ * Both legacy entry points intentionally resolve to the same optimized WebP
+ * so switching between UI states cannot switch the visual theme.
  */
 class ArcadeBackdropView @JvmOverloads constructor(
     context: Context,
@@ -20,33 +23,24 @@ class ArcadeBackdropView @JvmOverloads constructor(
         contentDescription = null
         importantForAccessibility =
             View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        useUiBackground()
+        applySharedBackdrop()
     }
 
-    /** Applies the dedicated art for an active match only. */
+    /** Compatibility entry point used by gameplay callers. */
     fun useGameplayBackground() {
-        applyBackdrop(
-            drawableName = "ludo_paws_game_background",
-            fallbackColor = 0xFF17261B.toInt(),
-        )
+        applySharedBackdrop()
     }
 
-    /** Restores the shared nature backdrop used by non-gameplay screens. */
+    /** Compatibility entry point used by setup and the rest of the UI. */
     fun useUiBackground() {
-        applyBackdrop(
-            drawableName = "ludo_paws_ui_background",
-            fallbackColor = 0xFF275B19.toInt(),
-        )
+        applySharedBackdrop()
     }
 
     @Suppress("DiscouragedApi")
-    private fun applyBackdrop(
-        drawableName: String,
-        fallbackColor: Int,
-    ) {
+    private fun applySharedBackdrop() {
         val drawableId =
             resources.getIdentifier(
-                drawableName,
+                "ludo_paws_game_background",
                 "drawable",
                 context.packageName,
             )
@@ -55,7 +49,7 @@ class ArcadeBackdropView @JvmOverloads constructor(
             setImageResource(drawableId)
         } else {
             setImageDrawable(null)
-            setBackgroundColor(fallbackColor)
+            setBackgroundColor(0xFF17261B.toInt())
         }
     }
 }
