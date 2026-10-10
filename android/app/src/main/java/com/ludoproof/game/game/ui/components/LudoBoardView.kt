@@ -873,9 +873,16 @@ class LudoBoardView @JvmOverloads constructor(
 
     internal fun drawFinishRanksOverlay(canvas: Canvas, cell: Float) {
         val state = snapshot ?: return
-        if (state.players.size != 4 || state.status == "WAITING") return
+        if (state.players.size != 4 || state.status == "WAITING" || state.matchMode == "TEAM_UP") return
         val rankedIds = state.finishOrderPlayerIds.take(4).toMutableList()
-        if (state.status == "FINISHED" && rankedIds.size < state.players.size) {
+        // Remote classic servers may expose only the winner, not the full finish order.
+        // In that case, mark only the authoritative winner as First; never invent the other ranks.
+        if (state.status == "FINISHED" && rankedIds.isEmpty()) {
+            state.winnerPlayerId?.let { rankedIds += it }
+        }
+        // Local classic games finish after three players have placed. Only then is the
+        // single remaining player safely known to be Fourth.
+        if (state.status == "FINISHED" && state.finishOrderPlayerIds.size == state.players.size - 1) {
             state.players.firstOrNull { it.playerId !in rankedIds }?.let { rankedIds += it.playerId }
         }
         if (rankedIds.isEmpty()) return
