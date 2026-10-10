@@ -7,8 +7,10 @@ import com.ludoproof.game.feature.characters.domain.reaction.GameMomentType
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsFeedbackLedger
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReaction
 import com.ludoproof.game.feature.characters.domain.reaction.LudoPawsReactionEngine
+import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
 import com.ludoproof.game.feature.settings.data.local.GameSoundFeedback
 import com.ludoproof.game.feature.settings.data.local.LudoPawsHaptics
+import com.ludoproof.game.ui.offline.gameplay.presentQuickReaction
 
 enum class OfflineFeedbackAction {
     ROLL,
@@ -236,6 +238,78 @@ object OfflineLudoPawsFeedbackDispatcher {
             context = context,
             reactions = decision.reactions,
         )
+        presentComputerQuickChat(
+            context = context,
+            current = safeCurrent,
+            action = action,
+            reactions = decision.reactions,
+        )
     }
+}
 
+private fun presentComputerQuickChat(
+    context: Context,
+    current: MatchSnapshot,
+    action: OfflineFeedbackAction,
+    reactions: List<LudoPawsReaction>,
+) {
+    val activity = context as? OfflineGameActivity ?: return
+    if (!activity.isComputerMode) return
+    if (!GameSettingsStore(context).snapshot().quickChatEnabled) return
+
+    val event =
+        if (action == OfflineFeedbackAction.MOVE) {
+            current.history.lastOrNull { it.moveTokenIndex != null }
+        } else {
+            current.history.lastOrNull()
+        } ?: return
+    val actor =
+        current.players.firstOrNull { it.playerId == event.playerId } ?: return
+    if (!activity.engine.isComputerPlayer(actor.playerId)) return
+
+    val moment =
+        reactions
+            .asSequence()
+            .filter { it.playerId == actor.playerId }
+            .maxByOrNull(LudoPawsReaction::priority)
+            ?.momentType
+    val emoji =
+        when (moment) {
+            GameMomentType.SIX_ROLLED -> "🥳"
+            GameMomentType.TOKEN_LEFT_YARD -> "💪"
+            GameMomentType.THIRD_SIX_FORFEIT,
+            GameMomentType.EXACT_HOME_MISS -> "😤"
+            GameMomentType.CAPTURE_MADE -> "😈"
+            GameMomentType.TOKEN_CAPTURED -> "😭"
+            GameMomentType.SAFE_REACHED,
+            GameMomentType.PLAYER_LEADING -> "😎"
+            GameMomentType.HOME_LANE_ENTERED -> "🔥"
+            GameMomentType.HOME_REACHED,
+            GameMomentType.MATCH_WIN,
+            GameMomentType.TEAM_WIN -> "👑"
+            GameMomentType.MATCH_LOSS,
+            GameMomentType.TEAM_LOSS,
+            GameMomentType.POOR_ROLL_STREAK,
+            GameMomentType.NO_LEGAL_MOVE -> "😞"
+            GameMomentType.TOKEN_THREATENED -> "😮"
+            GameMomentType.TURN_STARTED,
+            GameMomentType.ONLY_LEGAL_MOVE -> "👍"
+            GameMomentType.IDLE_WAITING -> "🤔"
+            GameMomentType.LOW_ROLL -> "😅"
+            GameMomentType.ROLL_STARTED,
+            GameMomentType.TOKEN_MOVED,
+            null ->
+                when {
+                    action == OfflineFeedbackAction.MOVE && event.captures > 0 -> "😈"
+                    action == OfflineFeedbackAction.MOVE && actor.tokens.all { it == 57 } -> "👑"
+                    action == OfflineFeedbackAction.MOVE -> "👍"
+                    event.outcome == 6 -> "🥳"
+                    event.outcome != null && event.outcome <= 2 -> "😅"
+                    else -> "🤔"
+                }
+        }
+    activity.presentQuickReaction(
+        emoji = emoji,
+        senderPlayerId = actor.playerId,
+    )
 }

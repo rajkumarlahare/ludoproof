@@ -58,10 +58,34 @@ if (!settings.includes('settingsPrivacyLink(')) {
   throw new Error('Settings UI must retain its Privacy Policy link.');
 }
 if (!read('settingsKit').includes('background = SettingsSharedWebpDrawable(context)')) {
-  throw new Error('Settings popup must use the shared WebP image as its background.');
+  throw new Error('Settings popup must use the rough Settings texture.');
 }
-if (!read('settingsDrawable').includes('R.drawable.ludo_paws_game_background')) {
-  throw new Error('Settings WebP background must reference the shared gameplay drawable.');
+const settingsDrawable = read('settingsDrawable');
+for (const marker of ['LinearGradient', 'val grain', 'canvas.drawCircle', 'canvas.drawLine']) {
+  if (!settingsDrawable.includes(marker)) throw new Error(`Settings rough texture is missing ${marker}`);
+}
+if (settingsDrawable.includes('BitmapFactory') || settingsDrawable.includes('ludo_paws_game_background')) {
+  throw new Error('Settings background must not fall back to the glossy gameplay image.');
+}
+if (!read('offlineRail').includes('isComputerMode') || !read('offlineRail').includes('hasComputerOpponent')) {
+  throw new Error('Offline Quick Chat must be reserved for the human in Computer mode, never Pass & Play.');
+}
+if (!read('onlinePresentation').includes('quickChatEnabled && localPlayer')) {
+  throw new Error('Online Quick Chat must be visible only on the local player profile.');
+}
+if (!read('onlinePresentation').includes('sendQuickChat(emoji)') || !read('onlinePresentation').includes('presentRemoteQuickChat')) {
+  throw new Error('Online Quick Chat must send and render real remote reactions.');
+}
+const realtime = fs.readFileSync('android/app/src/main/java/com/ludoproof/game/feature/online/data/realtime/MatchRealtimeClient.kt', 'utf8');
+if (!realtime.includes('QUICK_CHAT_SEND') || !realtime.includes('type == "QUICK_CHAT"')) {
+  throw new Error('Realtime client must implement Quick Chat send/receive.');
+}
+const serverRoom = fs.readFileSync('server/src/match-room.js', 'utf8');
+for (const marker of ['QUICK_CHAT_SEND', 'QUICK_CHAT', 'getTags(socket)', 'QUICK_CHAT_COOLDOWN_MS']) {
+  if (!serverRoom.includes(marker)) throw new Error(`Server Quick Chat handler is missing ${marker}`);
+}
+if (!read('settingsKit').includes('background = SettingsSharedWebpDrawable(context)')) {
+  throw new Error('Settings options dialog must use the shared rough-texture background.');
 }
 if (!read('settingsEntry').includes('onChanged: (() -> Unit)? = null')) {
   throw new Error('Settings changes must notify the online UI so Quick Chat visibility refreshes.');

@@ -1,98 +1,138 @@
 package com.ludoproof.game.ui.dialogs
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.ColorFilter
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PixelFormat
-import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.drawable.Drawable
-import com.ludoproof.game.R
+import java.util.Random
 import kotlin.math.max
 
-/** Rounded center-crop rendering of the app-wide WebP with a contrast overlay. */
+/**
+ * Deterministic matte, rough-grain settings texture. The same drawable is used
+ * by the main Settings panel and its option dialogs so both share one visual style.
+ */
 internal class SettingsSharedWebpDrawable(
     context: Context,
 ) : Drawable() {
-    private val bitmap: Bitmap? =
-        runCatching {
-            BitmapFactory.decodeResource(
-                context.resources,
-                R.drawable.ludo_paws_game_background,
-                BitmapFactory.Options().apply {
-                    inSampleSize = 2
-                    inScaled = false
-                },
-            )
-        }.getOrNull()
+    private data class Grain(
+        val x: Float,
+        val y: Float,
+        val radiusDp: Float,
+        val color: Int,
+    )
 
-    private val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-    private val overlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xA909204B.toInt()
+    private val density = context.resources.displayMetrics.density
+    private val cornerRadius = 16f * density
+    private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val grainPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val scratchPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = .55f * density
+        strokeCap = Paint.Cap.ROUND
     }
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFFFC735.toInt()
+        color = 0xFFC9A15C.toInt()
         style = Paint.Style.STROKE
-        strokeWidth = dp(context, 2).toFloat()
+        strokeWidth = 1.8f * density
     }
-    private val fallbackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF082A69.toInt()
+    private val grain = run {
+        val random = Random(0x4C55444F50534C)
+        List(430) {
+            val color = when (random.nextInt(4)) {
+                0 -> 0x24FFFFFF
+                1 -> 0x2A120805
+                2 -> 0x25D0A06A
+                else -> 0x2A06090F
+            }
+            Grain(
+                x = random.nextFloat(),
+                y = random.nextFloat(),
+                radiusDp = .25f + random.nextFloat() * .7f,
+                color = color,
+            )
+        }
     }
-    private val cornerRadius = dp(context, 16).toFloat()
+    private val scratches = run {
+        val random = Random(0x524F554748)
+        List(64) {
+            floatArrayOf(
+                random.nextFloat(),
+                random.nextFloat(),
+                .008f + random.nextFloat() * .035f,
+                (random.nextFloat() - .5f) * .012f,
+            )
+        }
+    }
 
     override fun draw(canvas: Canvas) {
-        val boundsRect = bounds
-        if (boundsRect.isEmpty) return
-        val outer = RectF(boundsRect)
-        val clip = Path().apply {
+        val rect = bounds
+        if (rect.isEmpty) return
+        val outer = RectF(rect)
+        val clipPath = Path().apply {
             addRoundRect(outer, cornerRadius, cornerRadius, Path.Direction.CW)
         }
         val save = canvas.save()
-        canvas.clipPath(clip)
+        canvas.clipPath(clipPath)
 
-        val source = bitmap
-        if (source == null || source.width <= 0 || source.height <= 0) {
-            canvas.drawRoundRect(outer, cornerRadius, cornerRadius, fallbackPaint)
-        } else {
-            val scale = max(
-                outer.width() / source.width.toFloat(),
-                outer.height() / source.height.toFloat(),
-            )
-            val drawnWidth = source.width * scale
-            val drawnHeight = source.height * scale
-            val destination = RectF(
-                outer.centerX() - drawnWidth / 2f,
-                outer.centerY() - drawnHeight / 2f,
-                outer.centerX() + drawnWidth / 2f,
-                outer.centerY() + drawnHeight / 2f,
-            )
-            canvas.drawBitmap(source, Rect(0, 0, source.width, source.height), destination, imagePaint)
-            canvas.drawRect(outer, overlayPaint)
+        backgroundPaint.shader = LinearGradient(
+            outer.left,
+            outer.top,
+            outer.right,
+            outer.bottom,
+            intArrayOf(
+                0xFF624036.toInt(),
+                0xFF47332D.toInt(),
+                0xFF2F2E34.toInt(),
+                0xFF222832.toInt(),
+            ),
+            floatArrayOf(0f, .33f, .72f, 1f),
+            Shader.TileMode.CLAMP,
+        )
+        canvas.drawRoundRect(outer, cornerRadius, cornerRadius, backgroundPaint)
+
+        grain.forEach { dot ->
+            grainPaint.color = dot.color
+            val x = outer.left + outer.width() * dot.x
+            val y = outer.top + outer.height() * dot.y
+            canvas.drawCircle(x, y, max(.35f * density, dot.radiusDp * density), grainPaint)
         }
+
+        scratches.forEachIndexed { index, scratch ->
+            scratchPaint.color =
+                if (index % 3 == 0) 0x2BFFFFFF else 0x25100A08
+            val x = outer.left + outer.width() * scratch[0]
+            val y = outer.top + outer.height() * scratch[1]
+            val endX = x + outer.width() * scratch[2]
+            val endY = y + outer.height() * scratch[3]
+            canvas.drawLine(x, y, endX, endY, scratchPaint)
+        }
+
         canvas.restoreToCount(save)
         canvas.drawRoundRect(outer, cornerRadius, cornerRadius, borderPaint)
     }
 
     override fun setAlpha(alpha: Int) {
-        imagePaint.alpha = alpha
-        overlayPaint.alpha = alpha * 0xA9 / 255
+        backgroundPaint.alpha = alpha
+        grainPaint.alpha = alpha
+        scratchPaint.alpha = alpha
         borderPaint.alpha = alpha
-        fallbackPaint.alpha = alpha
         invalidateSelf()
     }
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
-        imagePaint.colorFilter = colorFilter
+        backgroundPaint.colorFilter = colorFilter
+        grainPaint.colorFilter = colorFilter
+        scratchPaint.colorFilter = colorFilter
+        borderPaint.colorFilter = colorFilter
         invalidateSelf()
     }
 
     @Deprecated("Deprecated in Android Drawable API")
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
-
-    private fun dp(context: Context, value: Int): Int =
-        (value * context.resources.displayMetrics.density).toInt()
 }

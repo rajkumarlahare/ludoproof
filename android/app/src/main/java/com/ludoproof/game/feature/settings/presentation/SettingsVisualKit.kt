@@ -11,9 +11,6 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import com.ludoproof.game.ui.home.HomeGlassShape
-import com.ludoproof.game.ui.home.HomeGlassTone
-import com.ludoproof.game.ui.home.homeGlassBackground
 
 internal fun settingsCompactPanel(
     context: Context,
@@ -463,12 +460,7 @@ internal fun showSettingsChoiceDialog(
                 settingsDp(context, 10),
                 settingsDp(context, 10),
             )
-            background =
-                homeGlassBackground(
-                    context = context,
-                    shape = HomeGlassShape.TILE,
-                    tone = HomeGlassTone.GLASS,
-                )
+            background = SettingsSharedWebpDrawable(context)
 
             addView(
                 TextView(context).apply {

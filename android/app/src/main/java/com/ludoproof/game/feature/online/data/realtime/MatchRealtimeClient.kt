@@ -6,6 +6,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
+import com.ludoproof.game.ui.quickchat.QuickChatEmojiCatalog
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.ThreadLocalRandom
@@ -24,6 +25,12 @@ class MatchRealtimeClient(
         (
             connected: Boolean,
         ) -> Unit = {},
+    private val onQuickChat:
+        (
+            playerId: String,
+            displayName: String,
+            emoji: String,
+        ) -> Unit = { _, _, _ -> },
     private val client: OkHttpClient =
         OkHttpClient
             .Builder()
@@ -312,6 +319,19 @@ class MatchRealtimeClient(
                         .optString(
                             "type",
                         )
+                if (type == "QUICK_CHAT") {
+                    val senderId = payload.optString("playerId").trim()
+                    val displayName = payload.optString("displayName").trim()
+                    val emoji = payload.optString("emoji")
+                    if (
+                        senderId.isNotEmpty() &&
+                        displayName.isNotEmpty() &&
+                        emoji in QuickChatEmojiCatalog.EMOJIS
+                    ) {
+                        onQuickChat(senderId, displayName, emoji)
+                    }
+                    return
+                }
                 if (
                     type !=
                         "SYNC" &&
@@ -500,6 +520,20 @@ class MatchRealtimeClient(
                 desiredSession ==
                 session
         }
+
+    fun sendQuickChat(emoji: String): Boolean {
+        if (emoji !in QuickChatEmojiCatalog.EMOJIS) return false
+        val activeSocket =
+            synchronized(stateLock) {
+                if (connected && desiredSession != null) socket else null
+            } ?: return false
+        val payload =
+            JSONObject()
+                .put("type", "QUICK_CHAT_SEND")
+                .put("emoji", emoji)
+                .toString()
+        return runCatching { activeSocket.send(payload) }.getOrDefault(false)
+    }
 
     fun disconnect() {
         val staleSocket =

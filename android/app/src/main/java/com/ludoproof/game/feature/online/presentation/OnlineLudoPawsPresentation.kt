@@ -95,6 +95,28 @@ internal object OnlineLudoPawsPresentation {
         activity.boardView.visibility = View.VISIBLE
     }
 
+    fun presentRemoteQuickChat(
+        activity: MainActivity,
+        senderPlayerId: String,
+        displayName: String,
+        emoji: String,
+    ) {
+        if (senderPlayerId == activity.playerId) return
+        if (emoji !in com.ludoproof.game.ui.quickchat.QuickChatEmojiCatalog.EMOJIS) return
+        if (!GameSettingsStore(activity).snapshot().quickChatEnabled) return
+        val state = activity.currentState ?: return
+        if (state.status != "ACTIVE") return
+        if (state.players.none { it.playerId == senderPlayerId }) return
+        val host = host(activity) ?: return
+        host.quickChatReactionView =
+            animateQuickChatReaction(
+                parent = host.board,
+                previous = host.quickChatReactionView,
+                emoji = emoji,
+                displayName = displayName,
+            )
+    }
+
     private fun host(activity: MainActivity): Host? =
         activity.boardFrame.tag as? Host
 
@@ -268,10 +290,13 @@ internal object OnlineLudoPawsPresentation {
                 }
             val quickChatEnabled =
                 GameSettingsStore(activity).snapshot().quickChatEnabled
+            val showQuickChat =
+                quickChatEnabled && localPlayer && state.status == "ACTIVE"
             val quickChatButton =
                 QuickChatButtonView(activity).apply {
-                    visibility = if (quickChatEnabled) View.VISIBLE else View.GONE
-                    isEnabled = localPlayer && state.status == "ACTIVE"
+                    // Never render disabled chat controls under remote player profiles.
+                    visibility = if (showQuickChat) View.VISIBLE else View.GONE
+                    isEnabled = showQuickChat
                     alpha = if (isEnabled) 1f else .58f
                     contentDescription = "Quick Chat for ${player.displayName}"
                     setOnClickListener {
@@ -293,6 +318,10 @@ internal object OnlineLudoPawsPresentation {
                                 quickChatHost.lastQuickChatAtMs != 0L &&
                                 now - quickChatHost.lastQuickChatAtMs < 700L
                             ) {
+                                return@showQuickChatPopup
+                            }
+                            if (!activity.realtimeClient.sendQuickChat(emoji)) {
+                                activity.statusText.text = "Quick Chat needs a live connection."
                                 return@showQuickChatPopup
                             }
                             quickChatHost.lastQuickChatAtMs = now
