@@ -214,13 +214,11 @@ class LudoPawsPlayerCardView(
                     0xE01A2337.toInt()
                 },
             )
+            // Active turns may change stroke weight, but never override the
+            // player's team identity with a shared yellow highlight.
             setStroke(
                 dp(if (active) 2 else 1),
-                if (active) {
-                    0xFFFFD54F.toInt()
-                } else {
-                    playerColor(colorName)
-                },
+                playerColor(colorName),
             )
         }
 
