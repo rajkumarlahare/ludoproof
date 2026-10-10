@@ -50,6 +50,35 @@ class DiceRollAnimationPolicyTest {
     }
 
     @Test
+    fun attentionPulseKeepsTheOuterStrokeInsideTheFixedDiceBounds() {
+        val size = 54f
+        val halfStroke = 2.8f / 2f
+        var minimumTopEdge = Float.MAX_VALUE
+
+        for (elapsedMillis in 0L..900L step 15L) {
+            val frame =
+                DiceAttentionAnimationPolicy.frame(elapsedMillis)
+
+            assertTrue(frame.scale in 1f..1.07f)
+            assertTrue(frame.translationYFraction >= -0.0021f)
+
+            // Mirror the actual top border's centreline transform and its scaled
+            // half-stroke for the smallest production dice host (54dp).
+            val topBorderCenter =
+                size / 2f +
+                    (size * 0.07f - size / 2f) * frame.scale +
+                    size * frame.translationYFraction
+            val topBorderEdge =
+                topBorderCenter - halfStroke * frame.scale
+            minimumTopEdge = minOf(minimumTopEdge, topBorderEdge)
+        }
+
+        // Keep visible clearance, not merely a mathematically non-negative edge,
+        // so antialiasing cannot make the top stroke appear chopped.
+        assertTrue(minimumTopEdge > 0.5f)
+    }
+
+    @Test
     fun settleKeepsVerifiedOutcomeAndEndsAtIdentity() {
         val middle =
             DiceRollAnimationPolicy.settleFrame(
