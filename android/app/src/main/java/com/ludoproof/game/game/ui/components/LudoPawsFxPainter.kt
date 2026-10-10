@@ -35,10 +35,6 @@ internal class LudoPawsFxPainter(
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.FILL
         }
-    private val ghostPaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-        }
 
     fun drawCaptureReturn(
         canvas: Canvas,
@@ -56,13 +52,6 @@ internal class LudoPawsFxPainter(
         linePaint.strokeWidth = cell * .12f
         canvas.drawLine(from.first, from.second, x, y, linePaint)
 
-        ghostPaint.color = withAlpha(color, (220f * fade).roundToInt())
-        canvas.drawCircle(
-            x,
-            y,
-            cell * (.25f + .05f * sin(progress * PI).toFloat()),
-            ghostPaint,
-        )
         drawPawMark(
             canvas = canvas,
             x = x,
