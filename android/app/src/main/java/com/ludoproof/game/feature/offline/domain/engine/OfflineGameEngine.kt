@@ -90,7 +90,7 @@ class OfflineGameEngine(
                         displayName =
                             when {
                                 seat == 0 -> humanName
-                                isCpu -> "CPU $seat"
+                                isCpu -> "Robot $seat"
                                 else -> "Player ${seat + 1}"
                             },
                         color = colorOrder[seat],
