@@ -92,45 +92,8 @@ class GameResultArtView @JvmOverloads constructor(
                 0xFF46E8A4.toInt()
             }
 
-        drawGlow(canvas, w, h, accent)
         drawBurst(canvas, w, h, accent)
         drawConfetti(canvas, w, h, accent)
-    }
-
-    private fun drawGlow(
-        canvas: Canvas,
-        w: Float,
-        h: Float,
-        accent: Int,
-    ) {
-        val cx = w * .5f
-        val cy = h * .48f
-        val pulse =
-            ((sin(phase * 2f * PI) + 1f) * .5f)
-                .toFloat()
-        val radius =
-            min(w, h) * (.24f + pulse * .08f)
-
-        paint.shader =
-            RadialGradient(
-                cx,
-                cy,
-                radius,
-                intArrayOf(
-                    Color.argb(
-                        55,
-                        Color.red(accent),
-                        Color.green(accent),
-                        Color.blue(accent),
-                    ),
-                    Color.argb(18, 255, 214, 94),
-                    Color.TRANSPARENT,
-                ),
-                null,
-                Shader.TileMode.CLAMP,
-            )
-        canvas.drawCircle(cx, cy, radius, paint)
-        paint.shader = null
     }
 
     private fun drawBurst(
@@ -168,14 +131,6 @@ class GameResultArtView @JvmOverloads constructor(
             )
         }
 
-        stroke.color = accent
-        stroke.strokeWidth = dp(1.4f)
-        canvas.drawCircle(
-            cx,
-            cy,
-            outer + pulse * dp(8f),
-            stroke,
-        )
     }
 
     private fun drawConfetti(
