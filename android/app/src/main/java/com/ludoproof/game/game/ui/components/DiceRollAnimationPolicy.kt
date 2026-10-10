@@ -141,9 +141,9 @@ object DiceAttentionAnimationPolicy {
         return DiceRollAnimationPolicy.Frame(
             face = 1,
             rotationDegrees = 0f,
-            // A restrained 7.5% breath remains clearly visible but leaves room
-            // for the complete outer stroke and its glow inside the fixed dice view.
-            scale = 1f + breath * .075f,
+            // A restrained 7% breath remains clearly visible with safe clearance
+            // for the complete outer stroke inside the fixed dice view.
+            scale = 1f + breath * .07f,
             // Keep the dice anchored in its existing layout position. The old 4.2%
             // upward shift combined with the zoom pushed the top border out of bounds.
             translationYFraction = -breath * .002f,
