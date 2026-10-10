@@ -45,30 +45,17 @@ if (!read('offlineRail').includes('senderPlayerId = player.playerId')) {
   throw new Error('Offline Quick Chat must attribute the reaction to the profile whose icon was selected.');
 }
 for (const marker of [
-  'val profileColumn =\n            LinearLayout(this).apply',
-  'if (showQuickChat) {\n                        translationY = -((dp(36) + dp(1)) / 2f)',
-  'topMargin = dp(1)',
+  'val reserveProfileFooter =',
+  'setPadding(\n                    0,\n                    if (reserveProfileFooter) dp(18) else 0',
+  'val chatSlot =',
 ]) {
   if (!read('offlineRail').includes(marker)) {
     throw new Error(`Offline profile/dice alignment is missing ${marker}`);
   }
 }
-const feedback = fs.readFileSync('android/app/src/main/java/com/ludoproof/game/feature/offline/presentation/feedback/OfflineLudoPawsFeedback.kt', 'utf8');
-const policyStart = feedback.indexOf('internal object OfflineComputerQuickChatPolicy');
-if (policyStart < 0) throw new Error('CPU chat policy is missing.');
-const cpuPolicy = feedback.slice(policyStart);
-if (!cpuPolicy.includes('else -> null')) {
-  throw new Error('CPU Quick Chat must stay silent for unclassified routine events.');
-}
-for (const forbidden of [
-  'action == OfflineFeedbackAction.MOVE -> "👍"',
-  'event.outcome != null && event.outcome <= 2 -> "😅"',
-  'else -> "🤔"',
-  'GameMomentType.TURN_STARTED ->',
-]) {
-  if (cpuPolicy.includes(forbidden)) {
-    throw new Error(`CPU Quick Chat must not emit routine fallback reactions: ${forbidden}`);
-  }
+const offlineFeedback = fs.readFileSync('android/app/src/main/java/com/ludoproof/game/feature/offline/presentation/feedback/OfflineLudoPawsFeedback.kt', 'utf8');
+if (offlineFeedback.includes('presentComputerQuickChat') || offlineFeedback.includes('presentQuickReaction(')) {
+  throw new Error('CPU players must not auto-send Quick Chat until event-frequency policy is explicitly re-enabled.');
 }
 
 const settings = read('settingsUi');
