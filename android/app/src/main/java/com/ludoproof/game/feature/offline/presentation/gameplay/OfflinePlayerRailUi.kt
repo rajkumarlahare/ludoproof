@@ -209,7 +209,9 @@ private fun OfflineGameActivity.activeDiceControl(
             val newDice =
                 DiceView(
                     this@activeDiceControl,
-                )
+                ).apply {
+                    setPlayerTeamColor(player.color)
+                }
             diceView = newDice
             addView(
                 newDice,
