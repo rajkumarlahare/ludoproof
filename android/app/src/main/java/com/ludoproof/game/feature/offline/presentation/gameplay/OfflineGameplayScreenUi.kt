@@ -24,7 +24,10 @@ internal fun OfflineGameActivity.showGame(snapshot: MatchSnapshot?) {
     prepareOfflineUiTransition()
 
     val (root, host) =
-        LudoProofTheme.arcadeRoot(this)
+        LudoProofTheme.arcadeRoot(
+            context = this,
+            gameplayBackground = true,
+        )
 
     val horizontalPaddingDp =
         LudoProofTheme

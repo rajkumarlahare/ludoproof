@@ -72,6 +72,10 @@ internal fun MainActivity.applyResponse(
 
     val previousState = currentState
     currentState = state
+    LudoProofTheme.setGameplayBackground(
+        root = arcadeRootView,
+        enabled = state.status == "ACTIVE",
+    )
     uiStateHolder.update {
         it.copy(
             currentStateSource = source,

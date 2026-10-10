@@ -1,6 +1,7 @@
 package com.ludoproof.game.feature.online
 
 import com.ludoproof.game.GameApiException
+import com.ludoproof.game.LudoProofTheme
 import com.ludoproof.game.MainActivity
 import com.ludoproof.game.RemoteForfeitApi
 import com.ludoproof.game.feature.profile.data.local.ProfileStore
@@ -63,6 +64,10 @@ internal fun MainActivity.abandonRemoteSessionState() {
     playerToken = null
     playerId = null
     currentState = null
+    LudoProofTheme.setGameplayBackground(
+        root = arcadeRootView,
+        enabled = false,
+    )
     pendingSecret = null
 
     realtimeConnected = false

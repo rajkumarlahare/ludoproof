@@ -91,6 +91,8 @@ jobs:
         run: node scripts/check-ludo-paws-reaction-director.mjs
       - name: Ludo Paws production audio gate
         run: node scripts/check-ludo-paws-audio.mjs
+      - name: Ludo Paws gameplay background gate
+        run: node scripts/check-ludo-paws-gameplay-background.mjs
       - name: Ludo Paws animation and FX gate
         run: node scripts/check-ludo-paws-animation-fx.mjs
       - name: Ludo Paws offline integration gate
