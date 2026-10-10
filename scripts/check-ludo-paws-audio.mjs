@@ -269,10 +269,8 @@ const authoredAudioSlots = [
   authoredAudioReadme,
   jumpAudioReadme,
   stepAudioReadme,
-  'audio/sfx/gameplay/movement/step/dog/.gitkeep',
-  'audio/sfx/gameplay/movement/step/goat/.gitkeep',
-  'audio/sfx/gameplay/movement/step/duck/.gitkeep',
-  'audio/sfx/gameplay/movement/step/cat/.gitkeep',
+  // Species-specific footfalls are optional overrides. Missing/empty folders
+  // are valid because the resolver falls back to the shared step family.
   'audio/sfx/gameplay/six/.gitkeep',
   'audio/sfx/gameplay/dice/settle/.gitkeep',
   'audio/sfx/gameplay/exact_home_miss/.gitkeep',
