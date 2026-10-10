@@ -7,6 +7,9 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import com.ludoproof.game.*
 import com.ludoproof.game.feature.offline.*
+import com.ludoproof.game.feature.settings.data.local.GameSettingsStore
+import com.ludoproof.game.ui.quickchat.QuickChatButtonView
+import com.ludoproof.game.ui.quickchat.showQuickChatPopup
 import com.ludoproof.game.ui.offline.common.*
 import com.ludoproof.game.ui.offline.setup.*
 
@@ -150,25 +153,78 @@ private fun OfflineGameActivity.addPlayerSlot(
             )
         }
 
-        host.addView(
+        val playerWidth =
+            dp(
+                if (isCompactSetup()) {
+                    104
+                } else {
+                    116
+                },
+            )
+        val computerPlayer = engine.isComputerPlayer(player.playerId)
+        val playerCard =
             LudoPawsPlayerCardView(this).apply {
                 bind(
                     player = player,
                     characterId = characterId,
                     active = active,
-                    computer = engine.isComputerPlayer(player.playerId),
+                    computer = computerPlayer,
                     compact = isCompactSetup(),
                     portraitOnEnd = alignEnd,
                 )
-            },
-            LinearLayout.LayoutParams(
-                dp(
-                    if (isCompactSetup()) {
-                        104
-                    } else {
-                        116
+            }
+        val quickChatEnabled =
+            GameSettingsStore(this).snapshot().quickChatEnabled
+        val quickChatButton =
+            QuickChatButtonView(this).apply {
+                visibility = if (quickChatEnabled) View.VISIBLE else View.GONE
+                isEnabled = state.status == "ACTIVE" && !computerPlayer
+                alpha = if (isEnabled) 1f else .58f
+                contentDescription = "Quick Chat for ${player.displayName}"
+                setOnClickListener {
+                    if (
+                        state.status != "ACTIVE" ||
+                        computerPlayer ||
+                        !GameSettingsStore(this@addPlayerSlot).snapshot().quickChatEnabled
+                    ) {
+                        return@setOnClickListener
+                    }
+                    showQuickChatPopup(this) { emoji ->
+                        presentQuickReaction(
+                            emoji = emoji,
+                            senderPlayerId = player.playerId,
+                        )
+                    }
+                }
+            }
+        val profileColumn =
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                clipChildren = false
+                clipToPadding = false
+                addView(
+                    playerCard,
+                    LinearLayout.LayoutParams(
+                        playerWidth,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ),
+                )
+                addView(
+                    quickChatButton,
+                    LinearLayout.LayoutParams(
+                        dp(36),
+                        dp(36),
+                    ).apply {
+                        gravity = Gravity.CENTER_HORIZONTAL
+                        topMargin = dp(1)
                     },
-                ),
+                )
+            }
+        host.addView(
+            profileColumn,
+            LinearLayout.LayoutParams(
+                playerWidth,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ),
         )

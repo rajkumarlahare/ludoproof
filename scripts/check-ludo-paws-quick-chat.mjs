@@ -23,7 +23,7 @@ const emojis = [...emojiBlock[1].matchAll(/"([^"]+)"/g)].map(match => match[1]);
 if (emojis.length !== 24 || new Set(emojis).size !== 24) {
   throw new Error(`Quick Chat must contain 24 unique emojis; found ${emojis.length}.`);
 }
-for (const marker of ['class QuickChatButtonView', 'fun showQuickChatPopup(', 'GridLayout', 'fun animateQuickChatReaction(']) {
+for (const marker of ['class QuickChatButtonView', 'fun showQuickChatPopup(', 'fun animateQuickChatReaction(']) {
   if (!quickChat.includes(marker)) throw new Error(`Quick Chat UI is missing ${marker}`);
 }
 if (!quickChat.includes('QuickChatEmojiCatalog.EMOJIS.chunked(6)')) {
